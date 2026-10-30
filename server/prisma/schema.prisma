@@ -1,0 +1,230 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+enum FulfillmentType {
+  DINE_IN
+  TAKEAWAY
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PENDING_ACCEPT
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  DEMO_PAID
+}
+
+enum ActorType {
+  CUSTOMER
+  MERCHANT
+  SYSTEM
+}
+
+model User {
+  id          String   @id @db.Char(26)
+  openId      String   @unique @map("open_id") @db.VarChar(64)
+  displayName String   @map("display_name") @db.VarChar(64) @default("微信顾客")
+  createdAt   DateTime @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @map("updated_at") @db.DateTime(3)
+
+  sessions        Session[]
+  memberships     StoreMember[]
+  orders          Order[]
+  idempotencyKeys IdempotencyKey[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @db.Char(26)
+  userId    String   @map("user_id") @db.Char(26)
+  tokenHash String   @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime @map("expires_at") @db.DateTime(3)
+  createdAt DateTime @map("created_at") @db.DateTime(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Store {
+  id              String   @id @db.VarChar(64)
+  name            String   @db.VarChar(64)
+  address         String   @db.VarChar(255) @default("")
+  phone           String   @db.VarChar(32) @default("")
+  businessHours   String   @map("business_hours") @db.VarChar(64) @default("")
+  dineInEnabled   Boolean  @map("dine_in_enabled") @default(true)
+  takeawayEnabled Boolean  @map("takeaway_enabled") @default(true)
+  backgroundColor String   @map("background_color") @db.Char(7) @default("#F7F3EC")
+  textColor       String   @map("text_color") @db.Char(7) @default("#232323")
+  primaryColor    String   @map("primary_color") @db.Char(7) @default("#E86A17")
+  catalogVersion  Int      @map("catalog_version") @default(0)
+  createdAt       DateTime @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime @map("updated_at") @db.DateTime(3)
+
+  categories      Category[]
+  products        Product[]
+  tables          StoreTable[]
+  members         StoreMember[]
+  orders          Order[]
+  idempotencyKeys IdempotencyKey[]
+
+  @@map("stores")
+}
+
+model StoreMember {
+  id        String   @id @db.Char(26)
+  storeId   String   @map("store_id") @db.VarChar(64)
+  userId    String   @map("user_id") @db.Char(26)
+  role      Role
+  createdAt DateTime @map("created_at") @db.DateTime(3)
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, userId])
+  @@index([userId])
+  @@map("store_members")
+}
+
+model Category {
+  id        String   @id @db.VarChar(64)
+  storeId   String   @map("store_id") @db.VarChar(64)
+  name      String   @db.VarChar(64)
+  sortOrder Int      @map("sort_order") @default(0)
+  createdAt DateTime @map("created_at") @db.DateTime(3)
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@index([storeId, sortOrder])
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @db.VarChar(64)
+  storeId     String   @map("store_id") @db.VarChar(64)
+  categoryId  String   @map("category_id") @db.VarChar(64)
+  name        String   @db.VarChar(64)
+  description String   @db.VarChar(255) @default("")
+  priceCents  Int      @map("price_cents") @db.UnsignedInt
+  imageUrl    String   @map("image_url") @db.VarChar(512) @default("")
+  available   Boolean  @default(true)
+  sortOrder   Int      @map("sort_order") @default(0)
+  createdAt   DateTime @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @map("updated_at") @db.DateTime(3)
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, categoryId, sortOrder])
+  @@index([storeId, available])
+  @@map("products")
+}
+
+model StoreTable {
+  id        String   @id @db.VarChar(64)
+  storeId   String   @map("store_id") @db.VarChar(64)
+  name      String   @db.VarChar(32)
+  sortOrder Int      @map("sort_order") @default(0)
+  createdAt DateTime @map("created_at") @db.DateTime(3)
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([storeId, sortOrder])
+  @@map("store_tables")
+}
+
+model Order {
+  id              String          @id @db.Char(26)
+  storeId         String          @map("store_id") @db.VarChar(64)
+  userId          String          @map("user_id") @db.Char(26)
+  tableId         String?         @map("table_id") @db.VarChar(64)
+  fulfillmentType FulfillmentType @map("fulfillment_type")
+  status          OrderStatus
+  paymentStatus   PaymentStatus   @map("payment_status")
+  totalCents      Int             @map("total_cents") @db.UnsignedInt
+  note            String          @db.VarChar(255) @default("")
+  createdAt       DateTime        @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime        @map("updated_at") @db.DateTime(3)
+
+  store      Store            @relation(fields: [storeId], references: [id])
+  user       User             @relation(fields: [userId], references: [id])
+  table      StoreTable?      @relation(fields: [tableId], references: [id])
+  items      OrderItem[]
+  statusLogs OrderStatusLog[]
+
+  @@index([storeId, status, createdAt])
+  @@index([userId, storeId, createdAt])
+  @@index([storeId, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String @id @db.Char(26)
+  orderId        String @map("order_id") @db.Char(26)
+  productId      String @map("product_id") @db.VarChar(64)
+  name           String @db.VarChar(64)
+  unitPriceCents Int    @map("unit_price_cents") @db.UnsignedInt
+  quantity       Int    @db.UnsignedInt
+  lineTotalCents Int    @map("line_total_cents") @db.UnsignedInt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderStatusLog {
+  id         String       @id @db.Char(26)
+  orderId    String       @map("order_id") @db.Char(26)
+  fromStatus OrderStatus? @map("from_status")
+  toStatus   OrderStatus  @map("to_status")
+  actorType  ActorType    @map("actor_type")
+  actorId    String?      @map("actor_id") @db.Char(26)
+  reason     String?      @db.VarChar(255)
+  createdAt  DateTime     @map("created_at") @db.DateTime(3)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@map("order_status_logs")
+}
+
+model IdempotencyKey {
+  id          String   @id @db.Char(26)
+  userId      String   @map("user_id") @db.Char(26)
+  storeId     String   @map("store_id") @db.VarChar(64)
+  key         String   @db.VarChar(128)
+  requestHash String   @map("request_hash") @db.Char(64)
+  orderId     String?  @map("order_id") @db.Char(26)
+  expiresAt   DateTime @map("expires_at") @db.DateTime(3)
+  createdAt   DateTime @map("created_at") @db.DateTime(3)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}

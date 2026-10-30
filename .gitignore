@@ -1,14 +1,81 @@
+# =============================================================
+# 智能开店app（桌面生成器 + 小程序 + NestJS 业务后端）
+# 规则说明：不带前导斜杠的目录/文件名会匹配任意层级，因此
+# server/、miniprogram/ 等子工程无需各自再写一份 .gitignore。
+# =============================================================
+
+# ---------- 依赖 ----------
 node_modules/
-.npm-cache*/
-.npm-logs/
+.pnpm-store/
+
+# ---------- 构建产物 ----------
+# Vite（根）与 NestJS（server）的编译输出、Electron 安装包
 dist/
 release/
-generated-projects/
+.vite/
+*.tsbuildinfo
+
+# ---------- 环境变量与密钥 ----------
+# 真实密钥只放在本机 .env 或云端密钥管理系统，示例文件必须提交
 .env
 .env.*
 !.env.example
-server/.env
+*.pem
+*.key
+
+# ---------- 本机工具链 ----------
+# MySQL 8.4 ZIP 免安装实例、npm 缓存与安装日志（均只属于本机）
+.tools/
+.npm-cache*/
+.npm-logs/
+.mysql-data/
+.mysql/
+
+# ---------- 本地数据库遗留文件 ----------
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ---------- 日志与临时文件 ----------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ---------- 测试与覆盖率 ----------
+coverage/
+.nyc_output/
+test-results/
+
+# ---------- 微信小程序本地配置 ----------
+# project.config.json 需要提交；private 版本是本机开发者工具配置
+project.private.config.json
+miniprogram_npm/
+.miniprogram-ci/
+
+# ---------- 本机编辑器 / 操作系统 ----------
+.vscode/
+.idea/
+*.iml
+.fleet/
 .DS_Store
 Thumbs.db
-npm-debug.log*
-coverage/
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------- 生成器本地输出 ----------
+# 生成的小程序工程属于用户本机产物，不提交；
+# 注意：generated-projects-test/ 是仓库内回归样例，不受此规则影响，继续提交
+generated-projects/
+
+# ---------- AI 工具本地状态 ----------
+.codeartsdoer/
+.merkle-snapshot.json

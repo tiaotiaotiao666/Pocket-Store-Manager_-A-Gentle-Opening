@@ -316,3 +316,72 @@
 - 收到 `PRODUCT_UNAVAILABLE` 后刷新菜单并提示用户重新选择。
 - 收到 `AUTH_REQUIRED` / `AUTH_INVALID` 时清理本地 Token 并重新登录。
 - 店主入口必须以后端 `memberships` 为准；前端隐藏入口不是权限控制。
+## 9. B 套餐增补接口（v1.1，2026-10-31）
+
+本节为 B 套餐（可演示闭环）增补，原章节编号不变。
+
+### POST /orders/:id/cancel
+
+仅订单所属顾客可调用，且订单必须为 `PENDING_PAYMENT`。
+
+请求：
+
+```json
+{ "reason": "可选，顾客取消原因" }
+```
+
+- 成功：`PENDING_PAYMENT → CANCELLED`，`paymentStatus` 保持 `UNPAID`，写一条 `actorType=CUSTOMER` 的状态记录。
+- 订单已为 `CANCELLED`：幂等返回当前订单（`200`）。
+- 订单已 `PENDING_ACCEPT` 及之后：`409 INVALID_STATUS_TRANSITION`。
+- 非本人订单：`404 ORDER_NOT_FOUND`。
+- 顾客取消不受 `ALLOW_DEMO_PAYMENT` 开关影响。
+
+### GET /merchant/stores/:storeId/products
+
+要求 Token 用户在该门店拥有 `OWNER` 或 `STAFF`。返回包含下架商品的完整目录，供店主上下架使用。
+
+```json
+{
+  "storeId": "store-demo-001",
+  "categories": [
+    {
+      "id": "cat_001",
+      "name": "招牌主食",
+      "sortOrder": 1,
+      "products": [
+        {
+          "id": "prd_001",
+          "name": "柑橘牛肉饭",
+          "description": "现炒牛肉，配时蔬",
+          "priceCents": 2800,
+          "imageUrl": "",
+          "available": true,
+          "sortOrder": 1,
+          "updatedAt": "2026-10-29T04:30:00.000Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+- 跨店访问：`403 FORBIDDEN`。
+- 与公开 `GET /stores/:storeId/catalog` 的区别：不过滤 `available`、不读 Redis、不返回目录 `version`。
+
+### GET /readyz
+
+无需登录，用于部署就绪检查，会访问数据库与缓存。
+
+```json
+{
+  "status": "ok",
+  "database": "ok",
+  "cache": "redis",
+  "timestamp": "2026-10-29T04:30:00.000Z"
+}
+```
+
+- 数据库不可用：`503`，`status: "error"`，`database: "unavailable"`。
+- 缓存使用内存降级模式时：`cache: "memory"`，`status` 仍为 `ok`；Redis 连接失败并已降级时同样报告 `memory`，由服务端日志告警。
+- 不返回连接串、密钥或驱动错误细节。
+- 该接口不替代 `GET /health`；`/health` 仍保持不访问数据库与缓存。

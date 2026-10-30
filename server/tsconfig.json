@@ -19,5 +19,6 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node"
-  }
+  },
+  "include": ["src/**/*.ts"]
 }

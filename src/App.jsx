@@ -1,169 +1,733 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, BadgeInfo, Check, CircleHelp, ClipboardList, CloudUpload, CookingPot, Download, FileImage, FolderOpen, House, ImagePlus, LayoutTemplate, LoaderCircle, Palette, RefreshCw, Rocket, ScanLine, Settings2, Sparkles, Store, Upload, WandSparkles, X } from 'lucide-react';
-import { features, templates, themes, iconCatalog, matchTemplate, makeProjectConfig } from './domain/catalog.mjs';
-import { generateIcon, hasCloudImageModel } from './services/imageService.js';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
-const steps = [
-  { id: 'brief', label: '门店资料', icon: Store, caption: '先定义这家店' },
-  { id: 'features', label: '功能选择', icon: Settings2, caption: '勾选经营需要' },
-  { id: 'template', label: '模板匹配', icon: LayoutTemplate, caption: '选择页面骨架' },
-  { id: 'style', label: '风格与图标', icon: Palette, caption: '生成视觉资产' },
-  { id: 'preview', label: '预览与导出', icon: Rocket, caption: '交付独立工程' },
-];
+import { features as catalogFeatures } from './domain/catalog.mjs';
+import { STORE_TYPES, STYLE_PRESETS } from './domain/storeBrief.mjs';
+import { DEPLOY_STEPS, SKIP_HINT } from './domain/onboardingScript.mjs';
+import {
+  PHASES,
+  PHASE_META,
+  HOME_GREETING,
+  COMPOSER_PLACEHOLDER,
+  COMPOSER_SUBMIT_LABEL,
+} from './state/constants.mjs';
+import {
+  createInitialState,
+  reducer,
+  selectActiveSession,
+  selectAgentComposerState,
+} from './state/sessionMachine.mjs';
+import { formatCents } from './domain/agentDraft.mjs';
+import { requestAgentTurn, describeAgentTransport } from './services/agentTurn/agentTurnService.js';
+import {
+  buildTemplateCandidates,
+  composePrompt,
+  revisePrompt,
+  generateImage,
+  reviseImage,
+} from './services/agentService.js';
 
-const initialIcons = iconCatalog.map((icon) => ({ ...icon, dataUrl: null, status: 'idle', provider: 'placeholder', disclaimer: '' }));
+import AppShell from './components/layout/AppShell.jsx';
+import Sidebar from './components/layout/Sidebar.jsx';
+import TitleBar from './components/layout/TitleBar.jsx';
+import RightPanel from './components/layout/RightPanel.jsx';
+import ChatStream from './components/chat/ChatStream.jsx';
+import Composer from './components/chat/Composer.jsx';
+import SkipNotice from './components/chat/SkipNotice.jsx';
+import HomeStage from './components/flow/HomeStage.jsx';
+import FeaturePicker from './components/flow/FeaturePicker.jsx';
+import BuildLoading from './components/flow/BuildLoading.jsx';
+import TemplateGallery from './components/flow/TemplateGallery.jsx';
+import MiniProgramPreview from './components/preview/MiniProgramPreview.jsx';
+import StoreInfoStep from './components/build/StoreInfoStep.jsx';
+import PromptStudio from './components/build/PromptStudio.jsx';
+import ImageReview from './components/build/ImageReview.jsx';
+import DeployStep from './components/build/DeployStep.jsx';
+import AgentIntakePanel from './components/agent/AgentIntakePanel.jsx';
+import DraftEditor from './components/agent/DraftEditor.jsx';
+import AgentDraftSummary from './components/agent/AgentDraftSummary.jsx';
 
-function money(value) { return `¥${(value / 100).toFixed(2)}`; }
-function classNames(...values) { return values.filter(Boolean).join(' '); }
+const FEATURE_GROUPS = [...new Set(catalogFeatures.map((feature) => feature.group))];
+const REQUIRED_IDS = catalogFeatures.filter((feature) => feature.required).map((feature) => feature.id);
+const BUILD_STEPS = ['解析功能清单', '匹配页面骨架', '拼装门店页面', '准备预览'];
+const INTRO_AUTO_ADVANCE_MS = 5200;
+const COMPOSER_PHASES = [PHASES.ONBOARDING, PHASES.STORE_INFO, PHASES.PROMPT_STUDIO, PHASES.IMAGE_REVIEW];
 
-function Icon({ name, ...props }) {
-  const icons = { House, CookingPot, ClipboardList, Store, BadgeInfo };
-  const Component = icons[name] || Sparkles;
-  return <Component {...props} />;
+function fulfillmentLabel(fulfillment) {
+  if (fulfillment.dineIn && fulfillment.takeaway) return '堂食 + 自取';
+  if (fulfillment.dineIn) return '仅堂食';
+  if (fulfillment.takeaway) return '仅自取';
+  return '未选择';
 }
 
-function App() {
-  const [stepIndex, setStepIndex] = useState(0);
-  const [storeName, setStoreName] = useState('');
-  const [storeType, setStoreType] = useState('社区餐馆');
-  const [notes, setNotes] = useState('');
-  const [selectedFeatures, setSelectedFeatures] = useState(['table-dining', 'takeaway', 'merchant-orders', 'product-availability', 'store-profile']);
-  const [templateId, setTemplateId] = useState('warm-bistro');
-  const [themeId, setThemeId] = useState('citrus');
-  const [icons, setIcons] = useState(initialIcons);
-  const [materials, setMaterials] = useState([]);
-  const [analysis, setAnalysis] = useState(null);
-  const [exportState, setExportState] = useState('idle');
-  const [notice, setNotice] = useState(null);
+const COMPOSER_HINTS = {
+  [PHASES.ONBOARDING]: '名字不超过 48 个字符，之后随时可以修改。',
+  [PHASES.PROMPT_STUDIO]: '满意后点下方「这版可以了，开始生成」进入效果图。',
+  [PHASES.IMAGE_REVIEW]: '满意后点下方「效果满意，去部署」。',
+};
 
-  const selectedTheme = themes.find((theme) => theme.id === themeId) || themes[0];
-  const match = useMemo(() => matchTemplate(selectedFeatures), [selectedFeatures]);
-  const selectedTemplate = templates.find((template) => template.id === templateId) || match.template;
-  const configuredFeatureIds = useMemo(() => [...new Set([...features.filter((feature) => feature.required).map((feature) => feature.id), ...selectedFeatures])], [selectedFeatures]);
-  const projectPayload = useMemo(() => makeProjectConfig({ storeName, selectedFeatures: configuredFeatureIds, templateId, themeId, selectedStyleIcons: icons, images: materials }), [storeName, configuredFeatureIds, templateId, themeId, icons, materials]);
+function buildPanelCards(state, tips, imageBusy) {
+  const cards = [];
+  const style = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
+  const selectedTemplate = state.build.candidates.find((item) => item.id === state.build.selectedId)
+    ?? state.build.candidates[0];
 
-  function toggleFeature(id) {
-    const current = new Set(selectedFeatures);
-    if (current.has(id)) current.delete(id); else current.add(id);
-    setSelectedFeatures([...current]);
+  switch (state.phase) {
+    case PHASES.HOME:
+      cards.push({
+        id: 'welcome',
+        type: 'guidance',
+        icon: 'sparkles',
+        tone: 'accent',
+        title: '轻启',
+        body: '点击左侧「轻启」，我会陪你一步步搭出这家店的小程序。',
+      });
+      break;
+    case PHASES.ONBOARDING:
+      cards.push({
+        id: 'naming',
+        type: 'guidance',
+        icon: 'store',
+        tone: state.store.name ? 'success' : 'accent',
+        title: state.store.name ? `项目：${state.store.name}` : '请给你的店铺小程序命名',
+        body: state.store.name
+          ? '名字已经记下，接下来我会介绍这个项目怎么用。'
+          : '这个名字会出现在小程序标题与分享卡片上，之后随时可以修改。',
+      });
+      if (state.store.name) {
+        cards.push({
+          id: 'onboarding-steps',
+          type: 'steps',
+          icon: 'list',
+          title: '接下来的流程',
+          items: ['了解项目能力', '选择门店功能', '匹配页面骨架', '店铺装修与视觉', '部署小程序'],
+        });
+      }
+      break;
+    case PHASES.FEATURES:
+      cards.push({
+        id: 'feature-status',
+        type: 'status',
+        icon: 'list',
+        tone: 'accent',
+        title: `已选 ${state.features.selected.length} 项能力`,
+        body: '带“必选”的基础能力已自动勾选，其余按经营需要增加。',
+      });
+      cards.push({
+        id: 'feature-custom',
+        type: 'guidance',
+        icon: 'sparkles',
+        title: '没有想要的功能？',
+        body: '可以在下方输入框直接描述，我会把它加入定制方案。',
+      });
+      break;
+    case PHASES.BUILDING:
+      cards.push({
+        id: 'pending-app',
+        type: 'status',
+        icon: 'rocket',
+        tone: 'warn',
+        title: '待加载小程序',
+        body: '正在按你的功能清单拼装页面骨架…',
+      });
+      break;
+    case PHASES.TEMPLATE_PICK:
+      cards.push({
+        id: 'templates',
+        type: 'preview',
+        icon: 'list',
+        tone: 'accent',
+        title: '候选页面骨架',
+        items: state.build.candidates.map((item) => `${item.name} · ${item.score}%`),
+      });
+      cards.push({
+        id: 'template-preview',
+        type: 'preview',
+        icon: 'image',
+        title: '实时预览',
+        body: '点选骨架后，这里会按模板结构重新渲染。',
+        node: (
+          <MiniProgramPreview
+            template={selectedTemplate}
+            theme={style}
+            storeName={state.store.name || '我的餐馆'}
+            features={state.features.selected}
+            size="compact"
+          />
+        ),
+      });
+      break;
+    case PHASES.STORE_INFO:
+      cards.push({
+        id: 'store-brief',
+        type: 'guidance',
+        icon: 'store',
+        title: '店铺信息与装修风格',
+        body: '先补充门店资料，再挑一个更贴合气质的配色。',
+      });
+      cards.push({
+        id: 'style',
+        type: 'status',
+        icon: 'palette',
+        title: `当前风格：${style.name}`,
+        body: `背景 ${style.colors[0]} · 主色 ${style.colors[1]}`,
+      });
+      cards.push({
+        id: 'style-preview',
+        type: 'preview',
+        icon: 'image',
+        title: '装修实时预览',
+        body: '切换风格后，预览会立即重新渲染。',
+        node: (
+          <MiniProgramPreview
+            template={selectedTemplate}
+            theme={style}
+            storeName={state.store.name || '我的餐馆'}
+            features={state.features.selected}
+            size="compact"
+          />
+        ),
+      });
+      {
+        const transport = describeAgentTransport();
+        const agent = state.agent;
+        const filled = [
+          state.agentDraft.storeName,
+          state.agentDraft.category,
+          state.agentDraft.businessHours,
+          state.agentDraft.fulfillment.dineIn || state.agentDraft.fulfillment.takeaway,
+          state.agentDraft.dishes.length >= 3,
+        ].filter(Boolean).length;
+        cards.push({
+          id: 'agent-intake',
+          type: 'status',
+          icon: 'sparkles',
+          tone: agent.status === 'confirmed' ? 'success' : (agent.status === 'failed' ? 'warn' : 'accent'),
+          title: `开店资料 · ${transport.label}`,
+          body: agent.status === 'confirmed'
+            ? '资料已在本地确认，等待补充风格与地址；尚未保存或发布。'
+            : `已完成 ${filled}/5 类资料，还差 ${agent.missingFields.length} 项。${agent.nextQuestion?.text ?? '可以直接描述，也可以手动编辑草稿。'}`,
+        });
+      }
+      break;
+    case PHASES.PROMPT_STUDIO:
+      cards.push({
+        id: 'prompt',
+        type: 'preview',
+        icon: 'sparkles',
+        tone: 'accent',
+        title: '生图提示词',
+        body: state.visual.prompt || '正在生成第一版提示词…',
+      });
+      if (tips.length) {
+        cards.push({
+          id: 'prompt-tips',
+          type: 'guidance',
+          icon: 'list',
+          title: '可以这样调整',
+          items: tips,
+        });
+      }
+      break;
+    case PHASES.IMAGE_REVIEW:
+      cards.push({
+        id: 'image',
+        type: 'preview',
+        icon: 'image',
+        tone: 'accent',
+        title: '待审核效果图',
+        body: imageBusy ? '正在生成新的效果图…' : '满意后即可进入部署。',
+        image: state.visual.image?.dataUrl,
+      });
+      break;
+    case PHASES.DEPLOY:
+      cards.push({
+        id: 'deploy',
+        type: 'steps',
+        icon: 'rocket',
+        tone: state.deploy.status === 'done' ? 'success' : 'accent',
+        title: '部署进度',
+        items: DEPLOY_STEPS.map((label, index) => {
+          if (state.deploy.status === 'done' || index < state.deploy.step) return `已完成 · ${label}`;
+          if (index === state.deploy.step) return `进行中 · ${label}`;
+          return `待执行 · ${label}`;
+        }),
+      });
+      break;
+    default:
+      break;
   }
 
-  function goTo(next) {
-    setNotice(null);
-    setStepIndex(Math.max(0, Math.min(steps.length - 1, next)));
-  }
+  return cards;
+}
 
-  async function addMaterials() {
-    if (!window.smartStore?.pickMaterials) {
-      setNotice({ type: 'info', text: '浏览器原型暂不读取本机图片；打包为 Windows 应用后可打开文件选择器。' }); return;
+export default function App() {
+  const [state, dispatch] = useReducer(reducer, undefined, createInitialState);
+  const [draft, setDraft] = useState('');
+  const [buildProgress, setBuildProgress] = useState(0);
+  const [promptTips, setPromptTips] = useState([]);
+  const [promptBusy, setPromptBusy] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
+  const buildStarted = useRef(false);
+  const promptStarted = useRef(false);
+  const imageStarted = useRef(false);
+  const deployStarted = useRef(false);
+  const agentBusy = useRef(false);
+
+  const phase = state.phase;
+  const meta = PHASE_META[phase];
+  const activeSession = selectActiveSession(state);
+  const selectedTemplate = state.build.candidates.find((item) => item.id === state.build.selectedId)
+    ?? state.build.candidates[0];
+  const currentTheme = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
+  const styleName = currentTheme.name;
+  const storeTypesForForm = useMemo(() => {
+    const category = state.agentDraft.category;
+    if (!category) return STORE_TYPES;
+    const exists = STORE_TYPES.some((item) => {
+      const value = typeof item === 'string' ? item : (item?.value ?? item?.name ?? '');
+      return value === category;
+    });
+    return exists ? STORE_TYPES : [...STORE_TYPES, { value: category, label: category }];
+  }, [state.agentDraft.category]);
+
+  useEffect(() => {
+    setDraft('');
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== PHASES.BUILDING) {
+      buildStarted.current = false;
+      setBuildProgress(0);
+      return undefined;
     }
-    const picked = await window.smartStore.pickMaterials();
-    if (picked.length) { setMaterials(picked); setAnalysis(null); setNotice({ type: 'success', text: `已选择 ${picked.length} 张门店资料图。发送给模型前仍需由你确认。` }); }
-  }
+    if (buildStarted.current) return undefined;
+    buildStarted.current = true;
+    let alive = true;
+    let value = 0;
+    const timer = setInterval(() => {
+      value = Math.min(94, value + 9);
+      setBuildProgress(value);
+    }, 130);
+    buildTemplateCandidates({
+      selectedFeatures: state.features.selected,
+      customPrompt: state.features.custom,
+    }).then((candidates) => {
+      if (!alive) return;
+      clearInterval(timer);
+      setBuildProgress(100);
+      setTimeout(() => {
+        if (alive) dispatch({ type: 'BUILD_READY', candidates });
+      }, 460);
+    });
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [phase, state.features.selected, state.features.custom]);
 
-  async function analyzeMaterials() {
-    if (!materials.length) { setNotice({ type: 'info', text: '先选择至少一张门店图片，再请求风格建议。' }); return; }
-    let recommendation = templates.find(({ id }) => id === 'warm-bistro');
-    let reason = `本地演示建议：根据你填写的“${storeType}”与门店说明推荐样板；当前未连接云端视觉模型，因此尚未识别照片内容。`;
-    if (hasCloudImageModel()) {
-      const consent = window.confirm(`将通过已配置的云端模型分析 ${materials.length} 张门店图片和文字资料，用于推荐风格。是否发送？`);
-      if (!consent) return;
-      setAnalysis({ status: 'analyzing' });
-      try {
-        const response = await fetch(`${import.meta.env.VITE_IMAGE_MODEL_ENDPOINT.replace(/\/$/, '')}/recommend-style`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storeType, storeName, notes, referenceImages: materials.map(({ dataUrl }) => dataUrl).filter(Boolean) }) });
-        if (!response.ok) throw new Error('云端风格分析服务暂时不可用');
-        const result = await response.json();
-        recommendation = templates.find(({ id }) => id === result.templateId);
-        if (!recommendation) throw new Error('风格分析服务返回了未支持的模板');
-        reason = `${result.reason || '云端模型已根据你主动选择的门店照片提出建议。'} ${result.disclaimer || '最终由你决定是否采用。'}`;
-      } catch (error) { setAnalysis(null); setNotice({ type: 'error', text: error.message }); return; }
-    } else if (storeType === '咖啡茶饮' || storeType === '烘焙甜品') {
-      recommendation = templates.find(({ id }) => id === 'modern-coffee');
-    } else if (storeType === '特色餐馆') {
-      recommendation = templates.find(({ id }) => id === 'signature-kitchen');
+  useEffect(() => {
+    if (phase !== PHASES.PROMPT_STUDIO) {
+      promptStarted.current = false;
+      return undefined;
     }
-    setAnalysis({ status: 'done', templateId: recommendation.id, reason });
-    setTemplateId(recommendation.id);
-    setNotice({ type: hasCloudImageModel() ? 'success' : 'info', text: hasCloudImageModel() ? '云端模型已完成风格建议，是否采用仍由你决定。' : '本地规则演示已给出建议；尚未联网识别图片或调用 AI 生图。' });
-  }
+    if (promptStarted.current) return undefined;
+    promptStarted.current = true;
+    let alive = true;
+    composePrompt({ store: state.store, styleId: state.visual.styleId }).then((result) => {
+      if (!alive) return;
+      setPromptTips(result.tips);
+      dispatch({ type: 'SET_PROMPT', prompt: result.prompt });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [phase, state.store, state.visual.styleId]);
 
-  async function regenerateIcon(iconId) {
-    const icon = icons.find((item) => item.id === iconId);
-    if (!icon) return;
-    if (hasCloudImageModel() && materials.length && !window.confirm(`重新生成“${icon.label}”时，将把 ${materials.length} 张你选中的门店图片发送给云端图像模型。是否继续？`)) return;
-    setIcons((items) => items.map((item) => item.id === iconId ? { ...item, status: 'loading' } : item));
+  useEffect(() => {
+    if (phase !== PHASES.IMAGE_REVIEW) {
+      imageStarted.current = false;
+      return undefined;
+    }
+    if (imageStarted.current || state.visual.image) return undefined;
+    imageStarted.current = true;
+    let alive = true;
+    setImageBusy(true);
+    generateImage({ prompt: state.visual.prompt, seed: Date.now() }).then((image) => {
+      if (!alive) return;
+      setImageBusy(false);
+      dispatch({ type: 'SET_IMAGE', image });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [phase, state.visual.image, state.visual.prompt]);
+
+  useEffect(() => {
+    if (phase !== PHASES.DEPLOY) {
+      deployStarted.current = false;
+      return undefined;
+    }
+    if (deployStarted.current) return undefined;
+    deployStarted.current = true;
+    let step = 0;
+    const timer = setInterval(() => {
+      step += 1;
+      if (step >= DEPLOY_STEPS.length) {
+        clearInterval(timer);
+        dispatch({ type: 'DEPLOY_DONE' });
+        return;
+      }
+      dispatch({
+        type: 'DEPLOY_PROGRESS',
+        step,
+        progress: Math.round((step / DEPLOY_STEPS.length) * 100),
+      });
+    }, 900);
+    return () => clearInterval(timer);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== PHASES.ONBOARDING || !state.store.name) return undefined;
+    const timer = setTimeout(() => dispatch({ type: 'SKIP_INTRO' }), INTRO_AUTO_ADVANCE_MS);
+    return () => clearTimeout(timer);
+  }, [phase, state.store.name]);
+
+  const panelCards = useMemo(
+    () => buildPanelCards(state, promptTips, imageBusy),
+    [state, promptTips, imageBusy],
+  );
+
+  const startOnboarding = () => dispatch({ type: 'START_ONBOARDING' });
+  const reset = () => dispatch({ type: 'RESET' });
+  const selectSession = (id) => dispatch({ type: 'SWITCH_SESSION', id });
+
+  const handlePromptFeedback = async (text) => {
+    if (promptBusy) return;
+    setPromptBusy(true);
+    const nextPrompt = await revisePrompt({ base: state.visual.prompt, feedback: text });
+    setPromptBusy(false);
+    dispatch({
+      type: 'ADD_PROMPT_ROUND',
+      text,
+      reply: `好的，我把「${text}」补充进提示词里了。`,
+      prompt: nextPrompt,
+    });
+  };
+
+  const handleImageFeedback = async (text) => {
+    if (imageBusy) return;
+    setImageBusy(true);
+    const image = await reviseImage({
+      prompt: `${state.visual.prompt} ${text}`,
+      seed: Date.now(),
+    });
+    setImageBusy(false);
+    dispatch({
+      type: 'ADD_IMAGE_ROUND',
+      text,
+      reply: '已经按你的意见重新生成，看看这一版是否更接近你要的感觉。',
+      image,
+    });
+  };
+
+  const handleAgentTurn = async (utterance, { retry = false } = {}) => {
+    if (agentBusy.current) return;
+    if (phase !== PHASES.STORE_INFO) return;
+    const text = String(utterance ?? '').trim();
+    if (!text) return;
+    agentBusy.current = true;
+    dispatch(retry ? { type: 'AGENT_TURN_RETRY' } : { type: 'AGENT_TURN_REQUEST', utterance: text });
     try {
-      const result = await generateIcon({ name: icon.label, theme: selectedTheme.name, seed: Date.now(), referenceImages: materials.map(({ dataUrl }) => dataUrl).filter(Boolean) });
-      setIcons((items) => items.map((item) => item.id === iconId ? { ...item, ...result, status: 'ready' } : item));
-      setNotice({ type: result.provider === 'local-demo' ? 'info' : 'success', text: `${icon.label} 已生成。${result.disclaimer}` });
+      const result = await requestAgentTurn({
+        utterance: text,
+        draft: state.agentDraft,
+        simulateFailureOnce: state.agent.simulateFailure,
+      });
+      dispatch({ type: 'AGENT_TURN_SUCCESS', ...result });
+      setDraft('');
     } catch (error) {
-      setIcons((items) => items.map((item) => item.id === iconId ? { ...item, status: 'error' } : item));
-      setNotice({ type: 'error', text: error.message });
+      dispatch({ type: 'AGENT_TURN_FAILURE', error });
+    } finally {
+      agentBusy.current = false;
+    }
+  };
+
+  const handleAgentRetry = () => {
+    if (!state.agent.lastUtterance) return;
+    handleAgentTurn(state.agent.lastUtterance, { retry: true });
+  };
+
+  const handleAgentConfirm = () => dispatch({ type: 'CONFIRM_AGENT_DRAFT' });
+  const handleAgentReopen = () => dispatch({ type: 'REOPEN_AGENT_DRAFT' });
+  const handleAgentFieldChange = (field, value) => dispatch({ type: 'EDIT_AGENT_DRAFT_FIELD', field, value });
+  const handleAgentFulfillment = (field, value) => dispatch({ type: 'EDIT_AGENT_FULFILLMENT', field, value });
+  const handleAgentDishChange = (id, field, value) => dispatch({ type: 'EDIT_AGENT_DISH', id, field, value });
+  const handleAgentAddDish = () => dispatch({ type: 'ADD_AGENT_DISH' });
+  const handleAgentRemoveDish = (id) => dispatch({ type: 'REMOVE_AGENT_DISH', id });
+  const handleSimulateFailure = (value) => dispatch({ type: 'AGENT_SIMULATE_FAILURE', value });
+
+  const handleComposerSubmit = (value) => {
+    const text = String(value ?? '').trim();
+    if (!text) return;
+    if (phase === PHASES.STORE_INFO) {
+      handleAgentTurn(text);
+      return;
+    }
+    if (phase === PHASES.ONBOARDING) {
+      if (!state.store.name) dispatch({ type: 'SUBMIT_NAME', name: text });
+      setDraft('');
+      return;
+    }
+    if (phase === PHASES.PROMPT_STUDIO) {
+      handlePromptFeedback(text);
+      setDraft('');
+      return;
+    }
+    if (phase === PHASES.IMAGE_REVIEW) {
+      handleImageFeedback(text);
+      setDraft('');
+    }
+  };
+
+  const handleStoreSubmit = () => {
+    const summary = [
+      `店铺：${state.store.name || '未命名'}`,
+      state.store.type,
+      state.store.address || '未填写地址',
+    ].join(' · ');
+    dispatch({ type: 'SUBMIT_STORE_INFO', summary, styleId: state.visual.styleId });
+  };
+
+  const handleFieldChange = (field, value) => {
+    dispatch({ type: 'SET_STORE_FIELD', field: field === 'intro' ? 'notes' : field, value });
+  };
+
+  function renderStage() {
+    switch (phase) {
+      case PHASES.FEATURES:
+        return (
+          <FeaturePicker
+            groups={FEATURE_GROUPS}
+            features={catalogFeatures}
+            selectedIds={state.features.selected}
+            requiredIds={REQUIRED_IDS}
+            onToggle={(id) => dispatch({ type: 'TOGGLE_FEATURE', id })}
+            custom={state.features.custom}
+            onCustomChange={(value) => dispatch({ type: 'SET_FEATURES_CUSTOM', value })}
+            onCustomize={(value) => dispatch({ type: 'SUBMIT_CUSTOMIZE', value })}
+          />
+        );
+      case PHASES.TEMPLATE_PICK:
+        return (
+          <TemplateGallery
+            candidates={state.build.candidates}
+            selectedId={state.build.selectedId}
+            onSelect={(id) => dispatch({ type: 'SELECT_TEMPLATE', id })}
+            onConfirm={() => dispatch({ type: 'CONFIRM_TEMPLATE' })}
+            theme={currentTheme}
+            storeName={state.store.name || '我的餐馆'}
+            features={state.features.selected}
+          />
+        );
+      case PHASES.STORE_INFO: {
+        const agent = state.agent;
+        const transport = describeAgentTransport();
+        const canConfirm = agent.status === 'reviewing'
+          && agent.missingFields.length === 0
+          && agent.errors.length === 0;
+        const storeForm = (
+          <StoreInfoStep
+            store={{ ...state.store, intro: state.store.notes }}
+            storeTypes={storeTypesForForm}
+            styles={STYLE_PRESETS}
+            styleId={state.visual.styleId}
+            onFieldChange={handleFieldChange}
+            onStyleChange={(id) => dispatch({ type: 'SET_STYLE', id })}
+            onSubmit={handleStoreSubmit}
+          />
+        );
+        if (agent.status === 'confirmed') {
+          return (
+            <>
+              <AgentDraftSummary
+                storeName={state.agentDraft.storeName}
+                category={state.agentDraft.category}
+                businessHours={state.agentDraft.businessHours}
+                fulfillmentText={fulfillmentLabel(state.agentDraft.fulfillment)}
+                dishes={state.agentDraft.dishes.map((dish) => ({
+                  id: dish.id,
+                  name: dish.name,
+                  priceDisplay: dish.priceCents === null ? '待填写' : `¥${formatCents(dish.priceCents)}`,
+                  description: dish.description,
+                }))}
+                onReopen={handleAgentReopen}
+              />
+              {storeForm}
+            </>
+          );
+        }
+        return (
+          <>
+            <AgentIntakePanel
+              status={agent.status}
+              transportLabel={transport.label}
+              transportMode={transport.mode}
+              reply={agent.reply}
+              missingFields={agent.missingFields}
+              errors={agent.errors}
+              nextQuestion={agent.nextQuestion}
+              lastError={agent.lastError}
+              attempts={agent.attempts}
+              canConfirm={canConfirm}
+              simulateFailure={agent.simulateFailure}
+              onRetry={handleAgentRetry}
+              onToggleSimulateFailure={handleSimulateFailure}
+              onConfirm={handleAgentConfirm}
+              onReopen={handleAgentReopen}
+            />
+            <DraftEditor
+              draft={state.agentDraft}
+              validation={{
+                missingFields: agent.missingFields,
+                errors: agent.errors,
+                readyForReview: canConfirm,
+              }}
+              disabled={agent.status === 'requesting'}
+              maxDishes={5}
+              minDishes={3}
+              defaultOpen={agent.status !== 'idle'}
+              onChangeField={handleAgentFieldChange}
+              onToggleFulfillment={handleAgentFulfillment}
+              onChangeDish={handleAgentDishChange}
+              onAddDish={handleAgentAddDish}
+              onRemoveDish={handleAgentRemoveDish}
+            />
+          </>
+        );
+      }
+      case PHASES.PROMPT_STUDIO:
+        return (
+          <PromptStudio
+            prompt={state.visual.prompt}
+            tips={promptTips}
+            rounds={state.visual.promptRounds}
+            busy={promptBusy}
+            onPromptChange={(value) => dispatch({ type: 'SET_PROMPT', prompt: value })}
+            onFeedback={handlePromptFeedback}
+            onConfirm={() => dispatch({ type: 'CONFIRM_PROMPT' })}
+          />
+        );
+      case PHASES.IMAGE_REVIEW:
+        return (
+          <ImageReview
+            image={state.visual.image}
+            rounds={state.visual.imageRounds}
+            busy={imageBusy}
+            onRegenerate={handleImageFeedback}
+            onApprove={() => dispatch({ type: 'APPROVE_IMAGE' })}
+          />
+        );
+      case PHASES.DEPLOY:
+        return (
+          <DeployStep
+            status={state.deploy.status}
+            steps={DEPLOY_STEPS}
+            step={state.deploy.step}
+            progress={state.deploy.progress}
+            storeName={state.store.name}
+            templateName={selectedTemplate?.name ?? '默认骨架'}
+            styleName={styleName}
+          />
+        );
+      default:
+        return null;
     }
   }
 
-  function submitStore(event) {
-    event.preventDefault();
-    if (!storeName.trim()) { setNotice({ type: 'error', text: '请先输入门店名称。' }); return; }
-    goTo(1);
-  }
+  const agentComposer = selectAgentComposerState(state);
+  const composerVisible = phase === PHASES.STORE_INFO
+    ? agentComposer.visible
+    : COMPOSER_PHASES.includes(phase);
+  const skipVisible = phase === PHASES.ONBOARDING && Boolean(state.store.name);
 
-  async function exportProject() {
-    setExportState('exporting'); setNotice(null);
-    if (!window.smartStore?.exportProject) { setExportState('idle'); setNotice({ type: 'info', text: '浏览器原型只展示导出结果；打包为 Windows 应用后可选择文件夹导出。' }); return; }
-    try {
-      const result = await window.smartStore.exportProject(projectPayload);
-      setExportState('idle');
-      if (result.cancelled) return;
-      setNotice({ type: 'success', text: `已导出独立小程序工程：${result.projectPath}` });
-    } catch (error) { setExportState('idle'); setNotice({ type: 'error', text: `导出失败：${error.message}` }); }
-  }
-
-  return <div className="app-shell">
-    <aside className="sidebar">
-      <div className="brand"><div className="brand-mark"><Sparkles size={18} /></div><div><strong>智能开店</strong><span>独立小程序生成器</span></div></div>
-      <div className="workspace-label">创建工作台 <span>V0.2</span></div>
-      <nav className="step-nav">{steps.map((step, index) => <button key={step.id} className={classNames('step-item', index === stepIndex && 'active', index < stepIndex && 'completed')} onClick={() => goTo(index)}><span className="step-number">{index < stepIndex ? <Check size={15} /> : index + 1}</span><span className="step-copy"><b>{step.label}</b><small>{step.caption}</small></span>{index === stepIndex && <span className="step-dot" />}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="cloud-status"><span className={classNames('status-dot', hasCloudImageModel() && 'online')} /><div><b>{hasCloudImageModel() ? '云端模型已配置' : '本地演示模式'}</b><small>{hasCloudImageModel() ? '请求将由服务端转发' : '未连接生图服务'}</small></div></div><button className="help-link"><CircleHelp size={16} /> 使用说明</button></div>
-    </aside>
-    <main className="main-area">
-      <header className="topbar"><div><span className="eyebrow">WINDOWS WORKSPACE / NEW PROJECT</span><h1>{steps[stepIndex].label}</h1></div><div className="topbar-actions"><span className="draft-pill"><span className="status-dot" />草稿自动保存在本机</span><button className="icon-button" title="设置"><Settings2 size={18} /></button><div className="avatar">店</div></div></header>
-      <div className="content-wrap">
-        {notice && <div className={classNames('notice', `notice-${notice.type}`)}><span>{notice.text}</span><button onClick={() => setNotice(null)}><X size={16} /></button></div>}
-        {stepIndex === 0 && <BriefStep storeName={storeName} storeType={storeType} notes={notes} setStoreName={setStoreName} setStoreType={setStoreType} setNotes={setNotes} onSubmit={submitStore} materials={materials} addMaterials={addMaterials} analyzeMaterials={analyzeMaterials} analysis={analysis} />}
-        {stepIndex === 1 && <FeatureStep selectedFeatures={selectedFeatures} toggleFeature={toggleFeature} onBack={() => goTo(0)} onNext={() => goTo(2)} />}
-        {stepIndex === 2 && <TemplateStep match={match} selectedTemplate={selectedTemplate} templateId={templateId} setTemplateId={setTemplateId} onBack={() => goTo(1)} onNext={() => goTo(3)} />}
-        {stepIndex === 3 && <StyleStep theme={selectedTheme} themeId={themeId} setThemeId={setThemeId} icons={icons} regenerateIcon={regenerateIcon} materials={materials} addMaterials={addMaterials} analyzeMaterials={analyzeMaterials} analysis={analysis} onBack={() => goTo(2)} onNext={() => goTo(4)} />}
-        {stepIndex === 4 && <PreviewStep storeName={storeName} template={selectedTemplate} theme={selectedTheme} icons={icons} payload={projectPayload} exportState={exportState} exportProject={exportProject} onBack={() => goTo(3)} />}
-      </div>
-    </main>
-  </div>;
+  return (
+    <AppShell
+      sidebar={(
+        <Sidebar
+          appName="智能开店"
+          sessions={state.sessions}
+          activeSessionId={state.activeSessionId}
+          currentStoreName={state.store.name}
+          onStartOnboarding={startOnboarding}
+          onSelectSession={selectSession}
+          onReset={reset}
+        />
+      )}
+      panel={<RightPanel meta={meta} cards={panelCards} />}
+      main={(
+        <>
+          <TitleBar
+            title={meta.label}
+            caption={meta.caption}
+            badge={activeSession.title}
+            onReset={reset}
+          />
+          <div className="workspace">
+            {phase === PHASES.HOME ? (
+              <HomeStage
+                greeting={HOME_GREETING}
+                hint="点击左侧「轻启」开始，用自然语言描述你想要的店铺小程序。"
+                onStart={startOnboarding}
+              />
+            ) : (
+              <>
+                <div className={`workspace-conversation${phase === PHASES.BUILDING ? ' is-building' : ''}`}>
+                  <ChatStream messages={activeSession.messages} revealKey={activeSession.id}>
+                    {phase !== PHASES.BUILDING ? renderStage() : null}
+                  </ChatStream>
+                  {phase === PHASES.BUILDING ? (
+                    <BuildLoading
+                      active
+                      title="正在构建小程序"
+                      message="消息正在上移，新的页面骨架马上呈现。"
+                      steps={BUILD_STEPS}
+                      progress={buildProgress}
+                    />
+                  ) : null}
+                </div>
+                {composerVisible ? (
+                  <div className="workspace-composer">
+                    <Composer
+                      value={draft}
+                      placeholder={phase === PHASES.STORE_INFO
+                        ? agentComposer.placeholder
+                        : COMPOSER_PLACEHOLDER[phase]}
+                      submitLabel={phase === PHASES.STORE_INFO
+                        ? agentComposer.submitLabel
+                        : (COMPOSER_SUBMIT_LABEL[phase] ?? '发送')}
+                      hint={phase === PHASES.STORE_INFO ? agentComposer.hint : COMPOSER_HINTS[phase]}
+                      disabled={phase === PHASES.STORE_INFO ? !agentComposer.editable : false}
+                      submitDisabled={phase === PHASES.STORE_INFO ? agentComposer.submitDisabled : false}
+                      onChange={setDraft}
+                      onSubmit={handleComposerSubmit}
+                    />
+                  </div>
+                ) : null}
+                {skipVisible ? (
+                  <div className="workspace-skip">
+                    <SkipNotice
+                      visible
+                      question={SKIP_HINT.question}
+                      action={SKIP_HINT.action}
+                      onSkip={() => dispatch({ type: 'SKIP_INTRO' })}
+                    />
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
+        </>
+      )}
+    />
+  );
 }
-
-function BriefStep({ storeName, storeType, notes, setStoreName, setStoreType, setNotes, onSubmit, materials, addMaterials, analyzeMaterials, analysis }) {
-  return <section className="step-layout brief-layout"><div className="step-intro"><span className="section-kicker">01 / 建立门店档案</span><h2>先把这家店说清楚。</h2><p>这些资料会进入生成配置，帮助你挑选模板和生成小程序。只有主动发起云端分析或云端图标生成时，选中的图片才会发送给配置的模型服务；本地演示不会上传图片。</p><form onSubmit={onSubmit} className="form-panel"><label>门店名称 <span className="required">必填</span><input value={storeName} onChange={(event) => setStoreName(event.target.value)} placeholder="例如：松月食堂" maxLength={48} /></label><label>门店类型 <select value={storeType} onChange={(event) => setStoreType(event.target.value)}><option>社区餐馆</option><option>咖啡茶饮</option><option>烘焙甜品</option><option>特色餐馆</option><option>其他餐饮</option></select></label><label>一句话介绍 <span className="optional">可选</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="例如：主打下班后也能快速吃到的家常饭。" maxLength={180} /></label><button className="primary-button" type="submit">继续选择功能 <ArrowRight size={17} /></button></form></div><div className="material-card"><div className="card-heading"><div><span className="section-kicker">参考资料</span><h3>准备一些门店素材</h3></div><FileImage size={21} /></div><p>选择门店外观、菜单、招牌或室内照片，仅在当前 Windows 应用进程中预览。最多 5 张，每张不超过 5 MB。</p>{materials.length ? <div className="material-grid">{materials.map((image) => <div className="material-thumb" key={image.name}><img src={image.previewUrl} alt="" /><span>{image.name}</span></div>)}</div> : <div className="upload-empty"><ImagePlus size={27} /><b>还没有添加图片</b><small>本机预览不会上传图片</small></div>}<div className="material-actions"><button className="secondary-button" onClick={addMaterials}><Upload size={16} />选择图片</button><button className="text-button" onClick={analyzeMaterials} disabled={analysis?.status === 'analyzing'}>{analysis?.status === 'analyzing' ? <LoaderCircle className="spin" size={16} /> : <WandSparkles size={16} />}分析风格</button></div>{analysis?.status === 'done' && <div className="analysis-result"><Check size={15} /><span>{hasCloudImageModel() ? '模型推荐' : '本地规则建议'}：{templates.find(({ id }) => id === analysis.templateId)?.name}</span><small>{analysis.reason}</small></div>}<div className="privacy-note"><CloudUpload size={14} />{hasCloudImageModel() ? '发起云端分析时先确认；原图不会写入导出工程。' : '当前使用本地演示规则，不会识别或发送图片。'}</div></div></section>;
-}
-
-function FeatureStep({ selectedFeatures, toggleFeature, onBack, onNext }) {
-  const groups = [...new Set(features.map((feature) => feature.group))];
-  return <section className="step-layout"><div className="wide-intro"><span className="section-kicker">02 / 选择你要经营的能力</span><h2>功能先由你决定，模板再来适配。</h2><p>带有“必选”标记的是所有餐饮小程序的基础能力。可选能力会参与模板匹配，没有完整匹配时只使用已经验证过的安全模块。</p></div><div className="feature-board">{groups.map((group) => <div className="feature-group" key={group}><div className="group-heading"><h3>{group}</h3>{features.find((feature) => feature.group === group)?.required && <span>基础能力</span>}</div><div className="feature-grid">{features.filter((feature) => feature.group === group).map((feature) => { const checked = feature.required || selectedFeatures.includes(feature.id); return <button key={feature.id} className={classNames('feature-card', checked && 'checked', feature.required && 'required-card')} onClick={() => !feature.required && toggleFeature(feature.id)}><span className="feature-check">{checked ? <Check size={15} /> : null}</span><div><div className="feature-title"><b>{feature.label}</b>{feature.required ? <em>必选</em> : <em className="muted">可选</em>}</div><p>{feature.description}</p></div></button>; })}</div></div>)}</div><BottomActions onBack={onBack} onNext={onNext} nextText="查看匹配模板" /></section>;
-}
-
-function TemplateStep({ match, selectedTemplate, templateId, setTemplateId, onBack, onNext }) {
-  return <section className="step-layout"><div className="wide-intro template-intro"><div><span className="section-kicker">03 / 模板匹配</span><h2>这组功能，最适合哪种门店骨架？</h2><p>匹配结果只决定页面结构，不会替你改变功能选择。你可以切换样板，生成器会同步说明缺失项。</p></div><div className="fit-summary"><strong>{match.score}%</strong><span>功能匹配度</span></div></div><div className="template-grid">{templates.map((template) => <button key={template.id} className={classNames('template-card', template.id === templateId && 'selected')} onClick={() => setTemplateId(template.id)}><div className={classNames('template-visual', `visual-${template.layout}`)}><span className="visual-brand">{storeNameShort(template.name)}</span><div className="visual-line wide" /><div className="visual-line" /><div className="visual-products"><i /><i /><i /></div><div className="visual-bottom" /></div><div className="template-meta"><div><span className="template-badge">{template.badge}</span><h3>{template.name}</h3><p>{template.summary}</p></div><span className="radio-check">{template.id === templateId && <Check size={14} />}</span></div></button>)}</div><div className="match-notice"><Sparkles size={18} /><div><b>当前建议：{match.template.name}</b><span>根据所选功能得出 {match.score}% 匹配度。{match.addons.length ? `可安全拼装：${match.addons.join('、')}。` : ''}{match.unsupported.length ? `暂未实现：${match.unsupported.join('、')}。` : '当前功能均有已验证模板支持。'}</span></div></div><BottomActions onBack={onBack} onNext={onNext} nextText="调整视觉风格" /></section>;
-}
-
-function storeNameShort(name) { return String(name).slice(0, 4); }
-
-function StyleStep({ theme, themeId, setThemeId, icons, regenerateIcon, materials, addMaterials, analyzeMaterials, analysis, onBack, onNext }) {
-  return <section className="step-layout"><div className="wide-intro style-intro"><div><span className="section-kicker">04 / 风格与页面图标</span><h2>先看整体气质，再逐个调整图标。</h2><p>这些占位图标对应导出小程序中的页面名称。未配置云端图像生成服务时，可以查看本地演示图；只有接通模型后，按钮才会生成真正的模型图像。</p></div><div className="model-pill"><span className={classNames('status-dot', hasCloudImageModel() && 'online')} />{hasCloudImageModel() ? '云端生图已配置' : '本地占位预览'}</div></div><div className="style-workspace"><div className="style-controls"><div className="panel-title"><b>视觉方向</b><span>选择一个基础风格</span></div><div className="theme-list">{themes.map((item) => <button key={item.id} className={classNames('theme-choice', item.id === themeId && 'selected')} onClick={() => setThemeId(item.id)}><span className="theme-swatch"><i style={{ background: item.preview[1] }} /><i style={{ background: item.preview[2] }} /><i style={{ background: item.preview[3] }} /></span><span><b>{item.name}</b><small>{item.caption}</small></span>{item.id === themeId && <Check size={16} />}</button>)}</div><div className="reference-mini"><div className="panel-title"><b>参考资料</b><span>{materials.length ? `${materials.length} 张已添加` : '可选'}</span></div><div className="reference-actions"><button className="secondary-button" onClick={addMaterials}><Upload size={15} />添加图片</button><button className="text-button" onClick={analyzeMaterials} disabled={!materials.length || analysis?.status === 'analyzing'}><WandSparkles size={15} />{analysis?.status === 'analyzing' ? '分析中…' : '生成风格建议'}</button></div></div></div><div className="icon-preview-panel"><div className="panel-title"><b>页面图标预览</b><span>每个图标独立生成</span></div><div className="icon-grid">{icons.map((icon) => <div className="icon-card" key={icon.id}><div className="icon-image" style={{ background: icon.dataUrl ? `url(${icon.dataUrl}) center/cover` : icon.tint }}><Icon name={icon.icon} size={34} strokeWidth={1.6} /></div><div className="icon-card-footer"><span>{icon.label}</span><button title={`重新生成${icon.label}`} onClick={() => regenerateIcon(icon.id)} disabled={icon.status === 'loading'}>{icon.status === 'loading' ? <LoaderCircle className="spin" size={15} /> : icon.status === 'error' ? <RefreshCw size={15} /> : <WandSparkles size={15} />}</button></div>{icon.provider !== 'local-demo' && icon.dataUrl && <small className="asset-label">AI 生成图像</small>}{icon.provider === 'local-demo' && <small className="asset-label">本地演示，不是 AI 生图</small>}</div>)}</div><div className="icon-note"><Sparkles size={15} /><span>{hasCloudImageModel() ? '逐个图标采用云端图像模型生成；涉及门店图片时将先征得同意。' : '本地占位图用于预览生成流程，不能当作 AI 图像生成结果。'}</span></div></div></div><BottomActions onBack={onBack} onNext={onNext} nextText="查看完整预览" /></section>;
-}
-
-function PreviewStep({ storeName, template, theme, icons, payload, exportState, exportProject, onBack }) {
-  const [tab, setTab] = useState('home');
-  return <section className="step-layout"><div className="wide-intro preview-intro"><div><span className="section-kicker">05 / 预览与导出</span><h2>确认后，导出属于这家店的工程。</h2><p>这是独立小程序项目的效果预览。导出后可用微信开发者工具打开；正式发布仍需要店主自己的 AppID、主体认证和审核。</p></div><button className="primary-button export-button" onClick={exportProject} disabled={exportState === 'exporting'}>{exportState === 'exporting' ? <LoaderCircle className="spin" size={17} /> : <Download size={17} />}{exportState === 'exporting' ? '正在导出…' : '导出独立小程序'}</button></div><div className="preview-stage"><div className="preview-summary"><div className="summary-block"><span className="summary-label">门店</span><b>{storeName || '我的餐馆'}</b></div><div className="summary-block"><span className="summary-label">模板</span><b>{template.name}</b></div><div className="summary-block"><span className="summary-label">风格</span><b>{theme.name}</b></div><div className="summary-block"><span className="summary-label">能力</span><b>{payload.features.length} 项已配置</b></div></div><div className="phone-wrap"><div className="phone-frame"><div className="phone-notch" /><div className="phone-screen" style={{ background: theme.preview[0] }}><div className="phone-status"><span>9:41</span><span>▮▮▮ ◉</span></div><div className="mini-store-header"><span className="mini-logo" style={{ background: theme.preview[1] }}><Store size={13} /></span><div><b>{storeName || '我的餐馆'}</b><small>营业中 · 预计 20 分钟</small></div><span className="mini-more">•••</span></div><div className="mini-hero" style={{ background: `linear-gradient(135deg, ${theme.preview[2]}, ${theme.preview[1]})` }}><span>今日菜单已准备好</span><b>从一份招牌开始</b><button style={{ background: theme.preview[3] }}>开始点餐 <ArrowRight size={12} /></button></div><div className="mini-section-title"><b>{tab === 'home' ? '本店推荐' : tab === 'menu' ? '全部菜单' : '订单进度'}</b><span>查看全部</span></div><div className="mini-product-list"><div className="mini-product"><div className="mini-product-art" style={{ background: theme.preview[1] }}><CookingPot size={22} /></div><div><b>门店招牌饭</b><small>现做热卖 · 今日推荐</small><strong>{money(2800)}</strong></div><button style={{ color: theme.preview[1] }}>＋</button></div><div className="mini-product"><div className="mini-product-art" style={{ background: theme.preview[2] }}><Sparkles size={22} /></div><div><b>时令小食拼盘</b><small>轻松分享 · 配餐推荐</small><strong>{money(1600)}</strong></div><button style={{ color: theme.preview[1] }}>＋</button></div></div><div className="mini-tabbar">{icons.slice(0, 4).map((icon) => <button key={icon.id} className={tab === icon.id ? 'active' : ''} onClick={() => setTab(icon.id)}><div style={{ background: tab === icon.id ? theme.preview[1] : icon.tint }}><Icon name={icon.icon} size={13} /></div><span>{icon.label.replace('门店', '').replace('美味', '').replace('订单进度', '订单').replace('店主', '店主')}</span></button>)}</div></div></div></div><div className="preview-details"><div className="details-card"><div className="panel-title"><b>交付内容</b><span>导出时自动写入</span></div><ul className="deliver-list"><li><Check size={15} />独立 `miniprogram/` 工程</li><li><Check size={15} />门店配置与已选功能清单</li><li><Check size={15} />模板颜色与页面图标资源</li><li><Check size={15} />微信开发者工具导入说明</li></ul></div><div className="details-card warning-card"><div className="panel-title"><b>发布前仍需完成</b><span>不是生成器自动代办</span></div><ul className="todo-list"><li><span>01</span>店主注册并认证自己的微信小程序</li><li><span>02</span>在导出工程中配置自己的 AppID</li><li><span>03</span>准备 HTTPS 合法域名和正式业务后端</li><li><span>04</span>按微信要求提交审核与发布</li></ul></div></div></div><div className="preview-footer"><button className="ghost-button" onClick={onBack}><ArrowLeft size={16} />返回调整</button><span><FolderOpen size={15} />导出后可直接在微信开发者工具中打开</span></div></section>;
-}
-
-function BottomActions({ onBack, onNext, nextText }) { return <div className="bottom-actions"><button className="ghost-button" onClick={onBack}><ArrowLeft size={16} />返回</button><button className="primary-button" onClick={onNext}>{nextText}<ArrowRight size={17} /></button></div>; }
-
-export default App;

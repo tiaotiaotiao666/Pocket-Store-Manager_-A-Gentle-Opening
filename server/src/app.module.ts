@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AgentModule } from './agent/agent.module';
 import { CacheModule } from './cache/cache.module';
 import { validateEnv } from './common/config/env.validation';
 import { PrismaModule } from './database/prisma.module';
@@ -17,6 +18,7 @@ import { ReadyController } from './ready.controller';
     PrismaModule,
     CacheModule,
     GenerationModule,
+    AgentModule,
   ],
   controllers: [HealthController, ReadyController],
 })

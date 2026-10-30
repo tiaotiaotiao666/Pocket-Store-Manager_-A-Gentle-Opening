@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { ChevronDown, Trash2 } from 'lucide-react';
 
 function fieldError(validation, field) {
   return validation.errors.find((error) => error.field === field) ?? null;
@@ -25,20 +25,15 @@ export default function DraftEditor({
   disabled = false,
   maxDishes = 5,
   minDishes = 3,
-  defaultOpen = false,
+  open = false,
+  onToggleOpen,
   onChangeField,
   onToggleFulfillment,
   onChangeDish,
-  onAddDish,
   onRemoveDish,
 }) {
-  const [open, setOpen] = useState(Boolean(defaultOpen));
   const nameRefs = useRef({});
   const previousCount = useRef(draft.dishes.length);
-
-  useEffect(() => {
-    if (defaultOpen) setOpen(true);
-  }, [defaultOpen]);
 
   useEffect(() => {
     if (draft.dishes.length > previousCount.current) {
@@ -60,7 +55,7 @@ export default function DraftEditor({
       <button
         type="button"
         className="agent-editor-toggle"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => onToggleOpen?.()}
         aria-expanded={open}
       >
         <span>
@@ -231,20 +226,6 @@ export default function DraftEditor({
             <p className="agent-field-hint agent-dish-missing">{dishesMissing.detail}</p>
           ) : null}
 
-          <div className="agent-editor-foot">
-            <button
-              type="button"
-              className="agent-btn agent-btn-ghost"
-              disabled={disabled || visibleDishCount >= maxDishes}
-              onClick={() => onAddDish?.()}
-            >
-              <Plus size={14} />
-              添加菜品（{visibleDishCount}/{maxDishes}）
-            </button>
-            {visibleDishCount >= maxDishes ? (
-              <span className="agent-field-tip">已到 5 道上限</span>
-            ) : null}
-          </div>
         </div>
       ) : (
         <p className="agent-editor-collapsed">也可以直接手动填写这些资料。</p>

@@ -44,6 +44,7 @@ import ImageReview from './components/build/ImageReview.jsx';
 import DeployStep from './components/build/DeployStep.jsx';
 import AgentIntakePanel from './components/agent/AgentIntakePanel.jsx';
 import DraftEditor from './components/agent/DraftEditor.jsx';
+import StoreInfoActionBar from './components/agent/StoreInfoActionBar.jsx';
 import AgentDraftSummary from './components/agent/AgentDraftSummary.jsx';
 
 const FEATURE_GROUPS = [...new Set(catalogFeatures.map((feature) => feature.group))];
@@ -267,11 +268,14 @@ export default function App() {
   const [promptTips, setPromptTips] = useState([]);
   const [promptBusy, setPromptBusy] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
+  const [draftEditorOpen, setDraftEditorOpen] = useState(false);
   const buildStarted = useRef(false);
   const promptStarted = useRef(false);
   const imageStarted = useRef(false);
   const deployStarted = useRef(false);
   const agentBusy = useRef(false);
+  const previousPhase = useRef(state.phase);
+  const previousAgentStatus = useRef(state.agent.status);
 
   const phase = state.phase;
   const meta = PHASE_META[phase];
@@ -293,6 +297,18 @@ export default function App() {
   useEffect(() => {
     setDraft('');
   }, [phase]);
+
+  useEffect(() => {
+    if (phase !== PHASES.STORE_INFO) {
+      setDraftEditorOpen(false);
+    } else if (previousPhase.current !== PHASES.STORE_INFO) {
+      setDraftEditorOpen(state.agent.status !== 'idle');
+    } else if (previousAgentStatus.current === 'idle' && state.agent.status !== 'idle') {
+      setDraftEditorOpen(true);
+    }
+    previousPhase.current = phase;
+    previousAgentStatus.current = state.agent.status;
+  }, [phase, state.agent.status]);
 
   useEffect(() => {
     if (phase !== PHASES.BUILDING) {
@@ -578,12 +594,9 @@ export default function App() {
               nextQuestion={agent.nextQuestion}
               lastError={agent.lastError}
               attempts={agent.attempts}
-              canConfirm={canConfirm}
               simulateFailure={agent.simulateFailure}
               onRetry={handleAgentRetry}
               onToggleSimulateFailure={handleSimulateFailure}
-              onConfirm={handleAgentConfirm}
-              onReopen={handleAgentReopen}
             />
             <DraftEditor
               draft={state.agentDraft}
@@ -595,11 +608,11 @@ export default function App() {
               disabled={agent.status === 'requesting'}
               maxDishes={5}
               minDishes={3}
-              defaultOpen={agent.status !== 'idle'}
+              open={draftEditorOpen}
+              onToggleOpen={() => setDraftEditorOpen((value) => !value)}
               onChangeField={handleAgentFieldChange}
               onToggleFulfillment={handleAgentFulfillment}
               onChangeDish={handleAgentDishChange}
-              onAddDish={handleAgentAddDish}
               onRemoveDish={handleAgentRemoveDish}
             />
           </>
@@ -695,6 +708,20 @@ export default function App() {
                     />
                   ) : null}
                 </div>
+                {phase === PHASES.STORE_INFO && state.agent.status !== 'confirmed' ? (
+                  <div className="workspace-actions">
+                    <StoreInfoActionBar
+                      status={state.agent.status}
+                      dishCount={state.agentDraft.dishes.length}
+                      maxDishes={5}
+                      missingCount={state.agent.missingFields.length}
+                      errorCount={state.agent.errors.length}
+                      editorOpen={draftEditorOpen}
+                      onAddDish={handleAgentAddDish}
+                      onConfirm={handleAgentConfirm}
+                    />
+                  </div>
+                ) : null}
                 {composerVisible ? (
                   <div className="workspace-composer">
                     <Composer

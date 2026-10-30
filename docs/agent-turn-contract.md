@@ -1,9 +1,10 @@
 # 开店 Agent 单轮接口契约（agent-turn.v1）
 
-> 状态：**契约冻结，后端尚未实现**。本文只定义边界与字段，不代表 `/api/v1/agent/turn` 已经上线。
-> 本轮前端只使用**本地 Mock**：规则解析、固定文案、零网络请求。**真实 ModelArts 尚未接入**（盘古同样未接入），也没有配置任何华为云凭据。
+> 状态：**契约冻结；`POST /api/v1/agent/turn` 已实现，真实 Provider 为 DeepSeek。**
+> 桌面端默认仍为**本地 Mock**（规则解析、固定文案、零网络请求）；设置 `VITE_AGENT_TRANSPORT=http` 后走 NestJS 后端 → DeepSeek。
+> **ModelArts / 盘古尚未接入**；当前没有 Skill、工具调用、多 Agent、自主规划和自动发布。
 > 适用阶段：桌面端 `STORE_INFO`（店铺装修）阶段内的开店资料收集。
-> 设计依据：[`agent-turn-design.md`](agent-turn-design.md)；任务清单：[`tasks-agent-turn.md`](tasks-agent-turn.md)。
+> 设计依据：[`agent-turn-design.md`](agent-turn-design.md)；任务清单：[`tasks-agent-turn.md`](tasks-agent-turn.md)；本轮交接：[`本轮DeepSeek接入交接.md`](本轮DeepSeek接入交接.md)。
 
 ---
 
@@ -11,10 +12,10 @@
 
 | 角色 | 负责 | 不负责 |
 | --- | --- | --- |
-| 模型（未来 ModelArts Studio / 盘古） | 从店主自然语言中**提取**店名、品类、营业时间、取餐方式、菜品名称与价格文本，生成面向店主的回复 | 不直接写数据库、不发布、不决定是否可确认、不生成动态代码、不调用外部工具 |
-| 后端（未来 NestJS `agent` 模块） | 字段校验、价格二次校验、幂等、限流、鉴权、日志脱敏、确认后的持久化 | 不在店主确认前保存或发布；不把密钥下发前端 |
-| 前端领域层（本轮已实现） | 草稿规范化、金额整数分、缺项/错误判定、`readyForReview` 最终门槛、补丁合并、契约投影 | 不调用真实模型；不伪造模型名 |
-| 前端 transport（本轮已实现） | Mock 规则解析；HTTP transport 已实现但默认不启用 | 不自动重试、不读取全局 Token、不写 `localStorage` |
+| 模型（**DeepSeek，已接入**） | 从店主自然语言中**提取**店名、品类、营业时间、取餐方式、菜品名称与整数分价格，生成面向店主的回复 | 不直接写数据库、不发布、不决定是否可确认、不生成动态代码、不调用外部工具 |
+| 后端（NestJS `agent` 模块，**已实现**） | 请求校验、字段校验、价格二次校验、日志脱敏；模型输出白名单合并；店主确认前不写库 | 不在店主确认前保存或发布；不把密钥下发前端；本轮不做幂等、限流与真实店主身份解析 |
+| 前端领域层（已实现） | 草稿规范化、金额整数分、缺项/错误判定、`readyForReview` 最终门槛、补丁合并、契约投影 | 不调用真实模型；不伪造模型名 |
+| 前端 transport（已实现） | Mock 规则解析（默认）；`VITE_AGENT_TRANSPORT=http` 时使用 HTTP transport | 不自动重试、不读取全局 Token、不写 `localStorage`、不携带 DeepSeek Key |
 | 店主 | 用自然语言补充资料、编辑草稿、明确点击确认 | — |
 
 **硬规则**
@@ -57,7 +58,7 @@ Authorization: Bearer <未来由宿主注入的短期 Token，本轮不发>
 | `Content-Type` | 是 | `application/json; charset=utf-8` |
 | `Accept` | 是 | `application/json` |
 | `X-Agent-Contract` | 否 | `agent-turn.v1`，便于网关路由与日志 |
-| `Authorization` | 未来 | 仅由宿主注入短期 Token；**AK/SK 永不下发前端**。本轮 Mock 不发送 |
+| `Authorization` | 条件 | 短期 Token；**AK/SK 与 DeepSeek Key 永不下发前端**。development/test 且 `AGENT_REQUIRE_AUTH=false` 时可省略；production 必须提供，否则 401 |
 
 ### 3.2 请求体
 
@@ -120,10 +121,10 @@ Authorization: Bearer <未来由宿主注入的短期 Token，本轮不发>
 | `errors` | `FieldError[]` | 是 | `{ field, code, message }`，可为空 |
 | `nextQuestion` | `Question \| null` | 是 | `{ field, label, text }`；`reviewing` 时为 `null` |
 | `meta.transport` | string | 是 | `"mock"` \| `"http"` |
-| `meta.provider` | string | 是 | 本轮固定 `"local-mock"` |
-| `meta.mock` | boolean | 是 | 本轮固定 `true` |
-| `meta.model` | string \| null | 是 | 本轮固定 `null`；不得填 `pangu` / `modelarts` 等未实际调用的名称 |
-| `meta.latencyMs` | number | 否 | ≥0；Mock 固定 0，不冒充真实模型延迟 |
+| `meta.provider` | string | 是 | `"local-mock"`（mock）或 `"deepseek"`（http） |
+| `meta.mock` | boolean | 是 | mock 固定 `true`；真实 DeepSeek 调用固定 `false` |
+| `meta.model` | string \| null | 是 | mock 固定 `null`；http 为实际模型名（默认 `deepseek-chat`）；不得填未实际调用的名称 |
+| `meta.latencyMs` | number | 否 | ≥0；Mock 固定 0，不冒充真实模型延迟；http 为后端实际处理耗时 |
 
 **状态语义**
 
@@ -187,9 +188,11 @@ Authorization: Bearer <未来由宿主注入的短期 Token，本轮不发>
 
 ---
 
-## 5. 校验规则（前端领域层已实现）
+## 5. 校验规则（前端领域层 + 后端 `AgentService` 双实现）
 
 长度按 Unicode 码点计；字段先 `trim`；空值优先判缺项，同一字段不会同时出现在缺项与错误中。
+
+后端实现位于 `server/src/agent/agent-draft.validator.ts`，**独立于前端实现**，不复用 React 状态，也不接受模型或前端传入的 `status` / `missingFields` / `errors` / `readyForReview`。
 
 | 字段 | 合法 | 缺项 | 错误码 |
 | --- | --- | --- | --- |
@@ -229,6 +232,30 @@ Authorization: Bearer <未来由宿主注入的短期 Token，本轮不发>
 
 `AgentTurnError` 只暴露 `name / code / message / retryable / httpStatus / serverCode / requestId / details`；**不包含堆栈、原始响应体、Token、密钥**。
 
+### 6.1.1 后端 HTTP 错误码（NestJS AgentModule）
+
+| code | HTTP | 触发 |
+| --- | --- | --- |
+| `AGENT_REQUEST_INVALID` | 400 | 请求体不是 JSON 对象 |
+| `AGENT_CONTRACT_MISMATCH` | 400 | `contractVersion` 不是 `agent-turn.v1` |
+| `UTTERANCE_INVALID` | 400 | `utterance` 为空或超过 500 字 |
+| `DRAFT_INVALID` | 400 | `draft` 不是对象 |
+| `CLIENT_INVALID` | 400 | `client.surface/phase` 不匹配 |
+| `PROJECT_ID_INVALID` | 400 | 本轮 `projectId` 非 null |
+| `AUTH_REQUIRED` | 401 | production 或 `AGENT_REQUIRE_AUTH=true` 且无 Authorization |
+| `AUTH_INVALID` | 401 | Authorization 不是合法 Bearer |
+| `DEEPSEEK_NOT_CONFIGURED` | 503 | 缺少 `DEEPSEEK_API_KEY`（不会回退 Mock） |
+| `DEEPSEEK_TIMEOUT` | 504 | 超过 `DEEPSEEK_TIMEOUT_MS` |
+| `DEEPSEEK_UNAVAILABLE` | 502 | 网络不可达 |
+| `DEEPSEEK_AUTH_FAILED` | 502 | 上游 401/403 |
+| `DEEPSEEK_RATE_LIMITED` | 503 | 上游 429 |
+| `DEEPSEEK_UPSTREAM_ERROR` | 502 | 上游 5xx |
+| `DEEPSEEK_REQUEST_REJECTED` | 502 | 上游其它 4xx |
+| `DEEPSEEK_RESPONSE_INVALID` | 502 | 内容为空、非 JSON、不是对象 |
+| `AGENT_INTERNAL_ERROR` | 500 | 未预期异常 |
+
+错误体统一为 `{ code, message, requestId }`，同时写入响应头 `X-Request-Id`。
+
 ### 6.2 重试约定
 
 1. 不自动重试；超时、网络、5xx、429、Mock 失败只提供手动重试。
@@ -239,19 +266,33 @@ Authorization: Bearer <未来由宿主注入的短期 Token，本轮不发>
 
 ---
 
-## 7. 前端实现映射（本轮已落地）
+## 7. 实现映射
+
+### 7.1 前端（已落地）
 
 | 文件 | 职责 |
 | --- | --- |
 | `src/domain/agentDraft.mjs` | 草稿工厂、规范化、金额整数分、营业时间归一化、缺项/错误、追问、补丁合并、契约投影/反投影 |
-| `src/services/agentTurn/agentServiceConfig.js` | `AGENT_TRANSPORT='mock'`、`AGENT_ENDPOINT`、超时、版本、`describeAgentTransport()` |
+| `src/services/agentTurn/agentServiceConfig.js` | `VITE_AGENT_TRANSPORT=mock\|http`、`AGENT_ENDPOINT`、超时、版本、`describeAgentTransport()` |
 | `src/services/agentTurn/agentTurnError.js` | 错误码、构造、识别、归一化 |
 | `src/services/agentTurn/mockAgentTransport.js` | 本地规则解析、固定回复模板、`meta.mock=true`、一次性失败注入 |
-| `src/services/agentTurn/httpAgentTransport.js` | 完整 HTTP 契约、超时、错误归一化、响应结构校验；**本轮默认不启用** |
-| `src/services/agentTurn/agentTurnService.js` | React 唯一调用入口；不信服务端 `status`，用本地校验决定状态 |
+| `src/services/agentTurn/httpAgentTransport.js` | 完整 HTTP 契约、超时、错误归一化、响应结构校验；`http` 模式启用 |
+| `src/services/agentTurn/agentTurnService.js` | React 唯一调用入口；`http` 模式自动创建 HTTP transport；不信服务端 `status`，用本地校验决定状态 |
 | `src/state/sessionMachine.mjs` | `agentDraft` / `agent` 切片、请求生命周期、编辑、确认/重开、选择器 |
 | `src/components/agent/*` | 状态面板、草稿编辑器、已确认摘要；组件内无 `fetch`、无 service import |
 | `src/App.jsx` | 只做组合根：派发 action、调用 `requestAgentTurn`、接线组件 |
+
+### 7.2 后端（已落地）
+
+| 文件 | 职责 |
+| --- | --- |
+| `server/src/agent/agent.controller.ts` | `POST /agent/turn`，返回 200，写 `X-Request-Id` |
+| `server/src/agent/agent.service.ts` | 严格请求校验 → Provider → 白名单合并 → 校验 → `agent-turn.v1` |
+| `server/src/agent/agent-draft.validator.ts` | 服务端独立校验、营业时间归一化、补丁合并、追问 |
+| `server/src/agent/provider/deepseek-agent.provider.ts` | DeepSeek `/chat/completions`、超时、响应清洗、错误映射 |
+| `server/src/agent/agent-auth.guard.ts` | 临时鉴权边界（401） |
+| `server/src/agent/agent-exception.filter.ts` | 统一错误体 `{ code, message, requestId }` |
+| `server/src/common/config/env.validation.ts` | DeepSeek 配置校验；production 强制 `AGENT_REQUIRE_AUTH=true` |
 
 **状态机（`STORE_INFO` 内子状态，不新增顶层 phase）**
 
@@ -265,29 +306,33 @@ confirmed → reviewing（再次编辑）→ confirmed（重新确认）
 
 ---
 
-## 8. Mock ↔ HTTP 替换步骤
+## 8. Mock ↔ HTTP 替换（已完成）
 
-本轮 `AGENT_TRANSPORT` 固定为 `mock`。接入真实后端时**只替换 transport**，UI、reducer、领域层不改：
+本轮已完成替换，前端只换 transport，UI、reducer、领域层不改：
 
-1. 后端实现 `POST /api/v1/agent/turn`，响应严格符合第 4 节，`meta.mock=false`、`meta.model` 为真实模型标识。
-2. 在组合根创建 HTTP transport：
+1. 后端 `POST /api/v1/agent/turn` 已实现，响应严格符合第 4 节，`meta.mock=false`、`meta.provider="deepseek"`、`meta.model` 为实际模型名。
+2. `agentTurnService.js` 在 `VITE_AGENT_TRANSPORT=http` 时自动创建 `createHttpTransport`：
 
    ```js
    createHttpTransport({
-     fetchImpl: window.fetch.bind(window),
+     fetchImpl: globalThis.fetch.bind(globalThis),
      endpoint: '/api/v1/agent/turn',
-     timeoutMs: 12000,
-     getAuthorization: () => tokenProvider.get(), // 短期 Token，不得是 AK/SK
+     timeoutMs: 30000,
+     // getAuthorization 默认返回 null；DeepSeek Key 永不下发前端
    })
    ```
 
-3. 把 transport 注入 `createAgentTurnService({ transport })`；`AGENT_TRANSPORT` 改为 `http` 或由宿主显式注入。
-4. 保持 `meta.mock` 可辨识：HTTP 模式 UI 不再显示“本地 Mock”徽标，但也不得把未联调的环境描述为已接入模型。
-5. 联调通过前，`AGENT_TRANSPORT` 保持 `mock`；HTTP 实现已存在但默认不启用。
+3. 默认仍为 `mock`，保证没有后端时桌面端可启动；切换只依赖环境变量。
+4. `meta.mock` 可辨识：HTTP 模式 UI 显示「DeepSeek 后端（真实模型）」，Mock 模式显示「本地 Mock（未接入真实模型）」。
+5. **真实 DeepSeek 调用已于 2026-10-31 验证通过**（键值仅在本机被 git 忽略的 `server/.env`，验证后由用户销毁）；自动化测试仍全部使用 mock fetch，禁止真实计费请求。
 
 ---
 
-## 9. 接入真实 ModelArts 前待确认项（Q1–Q10）
+## 9. 模型接入状态与后续（Q1–Q10）
+
+**当前真实 Provider：DeepSeek。** 通过 `DEEPSEEK_API_BASE_URL / DEEPSEEK_API_KEY / DEEPSEEK_MODEL / DEEPSEEK_TIMEOUT_MS` 配置，**Key 只存在于服务端**。**ModelArts Studio / 盘古尚未接入**；没有 Skill、工具调用、多 Agent、自主规划和自动发布。
+
+下表保留为后续切换 ModelArts / 盘古时的待确认项：
 
 | 编号 | 待确认 | 本轮处理 |
 | --- | --- | --- |
@@ -306,11 +351,20 @@ confirmed → reviewing（再次编辑）→ confirmed（重新确认）
 
 ---
 
-## 10. 本轮验证证据
+## 10. 本轮验证证据（DeepSeek 接入轮次）
 
-- `npm test`：91/91 通过（原有 20 项 + 领域 31 项 + 服务 21 项 + 流程 19 项）。
-- `npm run build`：退出码 0，1612 modules，CSS 56.12 kB / JS 250.07 kB。
-- 测试运行期间无真实网络请求；HTTP transport 使用注入 stub。
-- 组件目录静态检查：无 `fetch`、无 service import、无 `localStorage`、无 `dispatch(`。
+- `cd server && npm test`：**68/68 通过**（validator 29、service 12、provider 16、e2e 11）。
+- `cd server && npm run build`：通过（`nest build`，无错误）。
+- 根目录 `npm test`：**96/96 通过**（原有 91 项 + 新增 5 项 transport 配置测试）。
+- 根目录 `npm run build`：退出码 0，1613 modules，CSS 56.12 kB / JS 254.73 kB。
+- `VITE_AGENT_TRANSPORT=http npx vite build`：通过，产物包含 `VITE_AGENT_TRANSPORT:"http"`。
+- 真实服务启动验证：
+  - `GET /api/v1/health` → 200；`GET /api/v1/readyz` → 200（database ok，cache redis）。
+  - 无 Key 时 `POST /api/v1/agent/turn` → **503 `DEEPSEEK_NOT_CONFIGURED`**，`X-Request-Id` 与响应体 `requestId` 一致。
+  - `contractVersion=agent-turn.v0` → **400 `AGENT_CONTRACT_MISMATCH`**。
+  - CORS 预检 → 204，允许 `X-Agent-Contract`，暴露 `X-Request-Id`。
+- 测试运行期间无真实 DeepSeek 请求。
 
-> 再次强调：**真实 ModelArts / 盘古尚未接入**。本轮交付的是可替换边界、冻结契约与明确标注的本地 Mock。
+> **真实 DeepSeek 调用未验证**：本机 `server/.env` 与仓库均未配置 `DEEPSEEK_API_KEY`。填入 Key 后按 [`本轮DeepSeek接入交接.md`](本轮DeepSeek接入交接.md) 第 9 节完成首次真实调用。
+>
+> **ModelArts / 盘古仍未接入**；本轮交付的是 DeepSeek 真实链路 + 可替换的 Provider 边界。

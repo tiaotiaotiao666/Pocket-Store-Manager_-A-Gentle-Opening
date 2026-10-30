@@ -33,6 +33,12 @@
   animation: rise-in 0.6s var(--ease-spring) both;
 }
 
+.workspace-actions {
+  flex: none;
+  padding: 0 24px;
+  background: linear-gradient(180deg, rgba(250, 249, 247, 0) 0%, var(--bg) 46%);
+}
+
 .workspace-composer {
   flex: none;
   padding: 14px 24px 22px;

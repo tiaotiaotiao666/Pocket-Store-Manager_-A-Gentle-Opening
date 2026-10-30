@@ -7,6 +7,8 @@ import {
 } from '../../domain/agentDraft.mjs';
 import {
   AGENT_CONTRACT_VERSION,
+  AGENT_ENDPOINT,
+  AGENT_TIMEOUT_MS,
   AGENT_TRANSPORT,
   describeAgentTransport as describeTransport,
 } from './agentServiceConfig.js';
@@ -15,6 +17,7 @@ import {
   isAgentTurnError,
   normalizeAgentTurnError,
 } from './agentTurnError.js';
+import { createHttpTransport } from './httpAgentTransport.js';
 import { createMockTransport } from './mockAgentTransport.js';
 
 const MAX_UTTERANCE = 500;
@@ -24,6 +27,13 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function resolveFetchImpl() {
+  if (typeof globalThis !== 'undefined' && typeof globalThis.fetch === 'function') {
+    return globalThis.fetch.bind(globalThis);
+  }
+  return null;
+}
+
 function resolveTransport(transport) {
   if (transport) {
     if (typeof transport.send !== 'function') {
@@ -31,10 +41,23 @@ function resolveTransport(transport) {
     }
     return transport;
   }
-  if (AGENT_TRANSPORT === 'mock') {
-    if (!fallbackTransport) fallbackTransport = createMockTransport();
+  if (fallbackTransport) return fallbackTransport;
+
+  if (AGENT_TRANSPORT === 'http') {
+    // 只携带短期 Token（默认不携带）；DeepSeek API Key 永远留在服务端。
+    fallbackTransport = createHttpTransport({
+      fetchImpl: resolveFetchImpl(),
+      endpoint: AGENT_ENDPOINT,
+      timeoutMs: AGENT_TIMEOUT_MS,
+    });
     return fallbackTransport;
   }
+
+  if (AGENT_TRANSPORT === 'mock') {
+    fallbackTransport = createMockTransport();
+    return fallbackTransport;
+  }
+
   throw createAgentTurnError('AGENT_TRANSPORT_UNKNOWN');
 }
 
@@ -45,6 +68,7 @@ function createResult(response, draft, validation) {
     nextQuestion: buildNextQuestion(validation),
     reply: typeof response.reply === 'string' ? response.reply : '',
     meta: isPlainObject(response.meta) ? response.meta : null,
+    // 前端最终状态只由本地 validateAgentDraft 决定，不信任服务端 status。
     status: validation.readyForReview ? 'reviewing' : 'collecting',
     turnId: typeof response.turnId === 'string' ? response.turnId : null,
   };
@@ -56,6 +80,7 @@ export function createAgentTurnService(options = {}) {
 
   return {
     describeAgentTransport: describeTransport,
+    transportName: transport.name,
 
     async requestAgentTurn({ utterance, draft, simulateFailureOnce = false } = {}) {
       const text = String(utterance ?? '').trim();

@@ -1,7 +1,8 @@
 # 本轮交接：开店 Agent 接入前准备（本地 Mock）
 
 > 日期：2026-10-31
-> 状态：**前端实现完成，本地 Mock 可运行；真实 ModelArts 尚未接入，后端 `/api/v1/agent/turn` 尚未实现。**
+> 状态：**前端实现完成，本地 Mock 可运行。** 后续同日的 DeepSeek 接入轮次已实现后端 `POST /api/v1/agent/turn`，真实 Provider 为 DeepSeek；ModelArts / 盘古仍未接入。
+> 最新状态与验证证据见 [`本轮DeepSeek接入交接.md`](本轮DeepSeek接入交接.md)；本文保留为 Mock 轮次的历史交接。
 > 上游文档：[`agent-turn-contract.md`](agent-turn-contract.md)、[`agent-turn-design.md`](agent-turn-design.md)、[`tasks-agent-turn.md`](tasks-agent-turn.md)。
 
 ---
@@ -141,3 +142,24 @@
 2. 后端按 `docs/agent-turn-contract.md` 实现 `POST /api/v1/agent/turn`，并完成服务端二次校验与幂等。
 3. 确认第 5 节账号/API/鉴权/区域信息后，再把 `AGENT_TRANSPORT` 切到 `http` 并做契约联调。
 4. 仍然不要在本轮范围内接入多 Agent、自主规划、Skill 注册或模型直接写库。
+---
+
+## 8. 后续更新：DeepSeek 真实接入（同日）
+
+上一轮遗留的两项已被后续轮次处理：
+
+| 原遗留项 | 后续状态 |
+| --- | --- |
+| 后端 `POST /api/v1/agent/turn` 尚未实现 | ✅ 已实现 `server/src/agent/**`，契约仍为 `agent-turn.v1` |
+| 真实 ModelArts 尚未接入 | ⚠️ 改为先接 **DeepSeek**；ModelArts / 盘古仍未接入 |
+
+本轮变化摘要：
+
+- 后端新增 `AgentModule`：严格请求校验 → DeepSeek `/chat/completions` → 白名单合并 → 服务端独立校验 → 统一 `agent-turn.v1`。
+- 缺少 `DEEPSEEK_API_KEY` 返回 `503 DEEPSEEK_NOT_CONFIGURED`，**不回退本地 Mock**。
+- 前端新增 `VITE_AGENT_TRANSPORT=mock|http`；默认仍为 `mock`，不破坏原有启动与交互。
+- 鉴权临时边界：development/test + `AGENT_REQUIRE_AUTH=false` 允许联调；production 必须 `AGENT_REQUIRE_AUTH=true` 且无 Authorization 返回 401。
+- Agent 仍然**不写业务数据库**；确认前不落库、不发布。
+- 当前没有 Skill、工具调用、多 Agent、自主规划和自动发布。
+
+完整文件清单、配置变量、API 示例与测试结果见 [`本轮DeepSeek接入交接.md`](本轮DeepSeek接入交接.md)。

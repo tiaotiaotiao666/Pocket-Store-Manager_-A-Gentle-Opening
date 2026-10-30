@@ -7,7 +7,8 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: process.env.DESKTOP_ORIGIN ? [process.env.DESKTOP_ORIGIN] : true,
     methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Agent-Contract'],
+    exposedHeaders: ['X-Request-Id'],
   });
   app.enableShutdownHooks();
 

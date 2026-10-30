@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, RotateCcw, ShieldCheck, Sparkles } from 'lucide-react';
+import { AlertCircle, RotateCcw, Sparkles } from 'lucide-react';
 
 const STATUS_LABELS = {
   idle: '等待输入',
@@ -31,18 +31,14 @@ export default function AgentIntakePanel({
   nextQuestion = null,
   lastError = null,
   attempts = 0,
-  canConfirm = false,
   simulateFailure = false,
   onRetry,
   onToggleSimulateFailure,
-  onConfirm,
-  onReopen,
 }) {
   const fieldErrors = uniqueFieldErrors(errors);
   const shownErrors = fieldErrors.slice(0, 3);
   const hiddenErrorCount = Math.max(0, fieldErrors.length - shownErrors.length);
   const message = reply || nextQuestion?.text || '';
-  const showConfirmArea = status === 'collecting' || status === 'reviewing' || status === 'failed';
 
   return (
     <section className="agent-panel" aria-label="开店资料助手">
@@ -144,40 +140,6 @@ export default function AgentIntakePanel({
         </label>
       ) : null}
 
-      {showConfirmArea ? (
-        <div className="agent-confirm-bar">
-          <button
-            type="button"
-            className="agent-btn agent-btn-confirm"
-            disabled={!canConfirm || status !== 'reviewing'}
-            onClick={() => onConfirm?.()}
-          >
-            <CheckCircle2 size={15} />
-            资料无误，继续
-          </button>
-          {!canConfirm ? (
-            <span className="agent-confirm-hint">
-              {status === 'failed'
-                ? '请求失败，请先重试或继续补充资料。'
-                : `还有 ${missingFields.length + fieldErrors.length} 项需要处理。`}
-            </span>
-          ) : (
-            <span className="agent-confirm-hint">确认后才会进入装修风格与地址填写。</span>
-          )}
-        </div>
-      ) : null}
-
-      {status === 'confirmed' ? (
-        <div className="agent-confirm-bar is-confirmed">
-          <span className="agent-confirm-done">
-            <ShieldCheck size={15} />
-            已确认，请补充风格与地址
-          </span>
-          <button type="button" className="agent-btn agent-btn-ghost" onClick={() => onReopen?.()}>
-            返回修改资料
-          </button>
-        </div>
-      ) : null}
     </section>
   );
 }

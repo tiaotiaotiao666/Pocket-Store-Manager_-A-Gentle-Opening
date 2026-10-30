@@ -1,0 +1,1 @@
+<view class="page"><view class="title">订单</view><view class="card"><view class="row"><text>订单进度</text><text class="pill">演示预览</text></view><view class="muted">接入门店自己的服务端后，此处展示进行中和历史订单。</view></view><view class="muted">当前导出模板不连接真实订单服务，也不进行真实支付。</view></view>

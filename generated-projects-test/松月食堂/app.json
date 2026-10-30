@@ -1,0 +1,41 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/menu/index",
+    "pages/orders/index",
+    "pages/mine/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#FAF7F1",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "松月食堂",
+    "backgroundColor": "#FAF7F1",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#77766f",
+    "selectedColor": "#E78A35",
+    "backgroundColor": "#fffefa",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/menu/index",
+        "text": "菜单"
+      },
+      {
+        "pagePath": "pages/orders/index",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

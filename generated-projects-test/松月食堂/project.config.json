@@ -1,0 +1,14 @@
+{
+  "description": "松月食堂 独立小程序工程",
+  "compileType": "miniprogram",
+  "appid": "touristappid",
+  "projectname": "松月食堂-miniprogram",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "minified": true
+  },
+  "miniprogramRoot": "./",
+  "condition": {}
+}

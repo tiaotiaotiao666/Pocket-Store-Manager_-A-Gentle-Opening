@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "store": {
+    "id": "store-demo-001",
+    "name": "松月食堂",
+    "address": "",
+    "phone": "",
+    "businessHours": "10:00-22:00",
+    "notice": "欢迎光临，现点现做。"
+  },
+  "catalog": [
+    {
+      "id": "signature",
+      "name": "主打推荐",
+      "products": [
+        {
+          "id": "meal-1",
+          "name": "门店招牌饭",
+          "description": "在项目配置中替换为自己的商品介绍",
+          "priceCents": 2800,
+          "priceText": "28.00",
+          "badge": "本店招牌",
+          "icon": "★",
+          "available": true
+        },
+        {
+          "id": "meal-2",
+          "name": "时令小食拼盘",
+          "description": "清爽搭配，适合和朋友一起分享",
+          "priceCents": 1600,
+          "priceText": "16.00",
+          "badge": "人气推荐",
+          "icon": "✳",
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "drinks",
+      "name": "饮品与小食",
+      "products": [
+        {
+          "id": "drink-1",
+          "name": "自选鲜泡茶",
+          "description": "每日现泡，可以根据门店风格自由调整",
+          "priceCents": 1000,
+          "priceText": "10.00",
+          "badge": "每日现泡",
+          "icon": "◇",
+          "available": true
+        }
+      ]
+    }
+  ],
+  "fulfillmentOptions": {
+    "dineIn": true,
+    "takeaway": true,
+    "delivery": false
+  },
+  "capabilities": {
+    "configured": [
+      "scan-order",
+      "product-catalog",
+      "cart-checkout",
+      "order-tracking",
+      "table-dining",
+      "takeaway",
+      "merchant-orders",
+      "store-profile"
+    ],
+    "available": [
+      "table-dining",
+      "takeaway",
+      "merchant-orders",
+      "store-profile"
+    ],
+    "pendingImplementation": []
+  },
+  "template": "街巷食集",
+  "theme": {
+    "id": "citrus",
+    "colors": [
+      "#FAF7F1",
+      "#E78A35",
+      "#286957",
+      "#29332F"
+    ]
+  },
+  "icons": [],
+  "demoPaymentDisclaimer": "此模板为演示工程。生成的模板当前不集成真实订单后端、真实微信支付或自动小程序发布。上线前需接入独立服务器、HTTPS 域名、合法域名配置、店铺业务数据及微信支付。"
+}

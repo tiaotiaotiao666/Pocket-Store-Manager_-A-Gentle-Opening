@@ -1,0 +1,39 @@
+{
+  "name": "smart-store-generator",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Windows-first guided generator for individual restaurant WeChat mini-program projects",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "desktop": "electron .",
+    "desktop:dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "build": "vite build",
+    "build:win": "npm run build && electron-builder --win nsis --x64",
+    "test": "node --test test/*.test.cjs",
+    "test:generator": "node --test test/generator.test.cjs",
+    "test:desktop": "node --test test/desktop-contract.test.cjs",
+    "mini:example": "node scripts/generate-mini-program.cjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "vite": "^6.0.1",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "cn.smartstore.generator",
+    "productName": "智能开店",
+    "directories": { "output": "release" },
+    "files": ["desktop/**/*", "dist/**/*", "templates/**/*", "scripts/**/*", "package.json"],
+    "win": { "target": ["nsis"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+  }
+}

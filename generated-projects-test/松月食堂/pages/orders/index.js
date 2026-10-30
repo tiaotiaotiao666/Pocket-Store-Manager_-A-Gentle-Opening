@@ -1,0 +1,1 @@
+Page({ data: { demo: true } });

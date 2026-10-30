@@ -1,0 +1,14 @@
+node_modules/
+.npm-cache*/
+.npm-logs/
+dist/
+release/
+generated-projects/
+.env
+.env.*
+!.env.example
+server/.env
+.DS_Store
+Thumbs.db
+npm-debug.log*
+coverage/

@@ -1,0 +1,4 @@
+<view class="placeholder">
+  <text class="placeholder__title">我的</text>
+  <text class="placeholder__hint">阶段 3 实现登录信息与店主入口，入口由后端角色决定</text>
+</view>

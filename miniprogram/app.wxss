@@ -1,0 +1,39 @@
+page {
+  --color-bg: #f7f3ec;
+  --color-surface: #fffdf9;
+  --color-text: #232323;
+  --color-muted: #8a8178;
+  --color-primary: #e86a17;
+  --color-primary-soft: #fde9d8;
+  --color-success: #2f7d4f;
+  --color-danger: #b23a2f;
+  --color-border: #e6ded2;
+  --radius-card: 20rpx;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+.placeholder {
+  margin: 48rpx 32rpx;
+  padding: 48rpx 32rpx;
+  border: 2rpx dashed var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.placeholder__title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.placeholder__hint {
+  display: block;
+  margin-top: 12rpx;
+  color: var(--color-muted);
+  font-size: 24rpx;
+}

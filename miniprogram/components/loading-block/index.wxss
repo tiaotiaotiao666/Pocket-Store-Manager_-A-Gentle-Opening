@@ -41,7 +41,7 @@
   margin-top: 12rpx;
   text-align: center;
   font-size: 22rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 @keyframes loading-block-pulse {

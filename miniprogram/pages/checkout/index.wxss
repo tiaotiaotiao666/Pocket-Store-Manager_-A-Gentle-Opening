@@ -211,7 +211,7 @@
   min-width: 280rpx;
   padding: 24rpx 40rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #f39445 0%, #e86a17 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
   color: #fff;
   font-size: 29rpx;
   font-weight: 700;

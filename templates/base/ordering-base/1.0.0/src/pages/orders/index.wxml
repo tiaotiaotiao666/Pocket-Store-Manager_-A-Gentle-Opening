@@ -1,0 +1,56 @@
+<view class="page orders">
+  <view class="orders__head">
+    <text class="orders__eyebrow">我的订单</text>
+    <text class="orders__title">{{storeName || '当前门店'}}</text>
+    <text class="orders__sub">下单身份：{{identityLabel}}</text>
+  </view>
+
+  <view class="orders__filters">
+    <view
+      wx:for="{{filters}}"
+      wx:key="key"
+      class="orders__filter {{filter === item.key ? 'orders__filter--active' : ''}}"
+      data-key="{{item.key}}"
+      bind:tap="onChangeFilter"
+    >
+      {{item.label}}
+    </view>
+  </view>
+
+  <view wx:if="{{pendingPaymentCount > 0 && filter !== 'history'}}" class="orders__notice">
+    <text class="orders__notice-dot"></text>
+    <text>有 {{pendingPaymentCount}} 笔订单等待演示模拟支付</text>
+  </view>
+
+  <state-view wx:if="{{loading && orders.length === 0}}" state="loading" title="正在加载订单" />
+
+  <view wx:elif="{{error}}" class="orders__error">
+    <error-banner message="{{error}}" action="{{errorAction}}" request-id="{{requestId}}" bind:retry="onRetry" bind:close="onRetry" />
+  </view>
+
+  <state-view
+    wx:elif="{{orders.length === 0}}"
+    state="empty"
+    title="{{emptyTitle}}"
+    description="{{emptyDescription}}"
+    action-text="去点餐"
+    bind:retry="goMenu"
+  />
+
+  <view wx:else class="orders__list">
+    <view wx:for="{{orders}}" wx:key="id" class="orders__item">
+      <order-card
+        order="{{item}}"
+        role="CUSTOMER"
+        actionable="{{true}}"
+        bind:open="onOpen"
+        bind:pay="onPay"
+        bind:cancel="onCancel"
+      />
+    </view>
+
+    <view wx:if="{{hasMore}}" class="ghost-button orders__more" bind:tap="onLoadMore">
+      {{loadingMore ? '加载中…' : '加载更多'}}
+    </view>
+  </view>
+</view>

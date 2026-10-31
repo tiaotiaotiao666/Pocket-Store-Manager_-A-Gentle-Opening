@@ -1,0 +1,107 @@
+{
+  "schemaDocVersion": "schema-doc.v1",
+  "contract": "lock.v1",
+  "status": "frozen",
+  "description": "组合锁：记录一次确定生成的完整输入与输出摘要。相同 Lock 必须可复现字节级一致的工程。",
+  "required": [
+    "lockVersion",
+    "planDigest",
+    "base",
+    "registryVersion",
+    "registryDigest",
+    "features",
+    "resolvedDependencies",
+    "composerVersion",
+    "apiContract",
+    "capabilitySet",
+    "sourceDigests",
+    "outputDigest",
+    "backendVersions",
+    "generatedAt"
+  ],
+  "properties": {
+    "lockVersion": { "type": "string", "const": "lock.v1" },
+    "planDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "base": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      }
+    },
+    "registryVersion": { "type": "string" },
+    "registryDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "version", "digest"],
+        "properties": {
+          "id": { "type": "string" },
+          "version": { "type": "string" },
+          "kind": { "type": "string" },
+          "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "resolvedDependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "version"],
+        "properties": {
+          "id": { "type": "string" },
+          "version": { "type": "string" },
+          "requiredBy": { "type": "string" }
+        }
+      }
+    },
+    "composerVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "apiContract": { "type": "string", "enum": ["storefront.v1"] },
+    "capabilitySet": { "type": "array", "items": { "type": "string" } },
+    "sourceDigests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "digest"],
+        "properties": {
+          "path": { "type": "string", "path": "relative-posix" },
+          "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "outputDigest": {
+      "type": "object",
+      "required": ["tree", "files"],
+      "properties": {
+        "tree": { "type": "string" },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "digest"],
+            "properties": {
+              "path": { "type": "string" },
+              "digest": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "backendVersions": {
+      "type": "object",
+      "properties": {
+        "configVersion": { "type": ["integer", "null"] },
+        "catalogVersion": { "type": ["integer", "null"] }
+      }
+    },
+    "generatedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" }
+  },
+  "lockDigestRule": "lockDigest = sha256(canonical(lock 去掉 generatedAt 与 lockDigest))，禁止参与比较的字段只有 generatedAt。",
+  "rules": [
+    "M5-4-05：14 个必填项缺一即构建失败，不允许默认空对象。",
+    "M5-4-06：相同 Plan + 相同注册表 + 不同 generatedAt 必须得到相同 lockDigest。",
+    "M5-4-08：Lock 禁止业务数据、菜单全文、Token、OpenID、密钥。"
+  ]
+}

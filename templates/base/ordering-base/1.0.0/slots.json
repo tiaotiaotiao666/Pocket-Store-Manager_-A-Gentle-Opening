@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "slots.v1",
+  "slots": [
+    {
+      "slotId": "home-hero",
+      "pageId": "home",
+      "maxItems": 1,
+      "accepts": ["feature-pack", "ui-block"],
+      "required": false,
+      "dataKey": "homeHero",
+      "anchor": {
+        "begin": "<!-- @slot:home-hero -->",
+        "fallbackBegin": "<!-- @slot-fallback:home-hero -->",
+        "fallbackEnd": "<!-- @slot-fallback:home-hero:end -->",
+        "end": "<!-- @slot:home-hero:end -->"
+      }
+    },
+    {
+      "slotId": "home-marketing",
+      "pageId": "home",
+      "maxItems": 2,
+      "accepts": ["feature-pack"],
+      "required": false,
+      "dataKey": "homeMarketing",
+      "anchor": {
+        "begin": "<!-- @slot:home-marketing -->",
+        "fallbackBegin": "<!-- @slot-fallback:home-marketing -->",
+        "fallbackEnd": "<!-- @slot-fallback:home-marketing:end -->",
+        "end": "<!-- @slot:home-marketing:end -->"
+      }
+    },
+    {
+      "slotId": "menu-aside",
+      "pageId": "menu",
+      "maxItems": 1,
+      "accepts": ["ui-block"],
+      "required": false,
+      "dataKey": "menuAside",
+      "anchor": {
+        "begin": "<!-- @slot:menu-aside -->",
+        "fallbackBegin": "<!-- @slot-fallback:menu-aside -->",
+        "fallbackEnd": "<!-- @slot-fallback:menu-aside:end -->",
+        "end": "<!-- @slot:menu-aside:end -->"
+      }
+    }
+  ]
+}

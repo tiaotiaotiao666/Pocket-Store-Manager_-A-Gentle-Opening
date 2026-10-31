@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "manifest.v1",
+  "identity": { "id": "store-header", "version": "1.0.0" },
+  "kind": "ui-block",
+  "displayName": "门店头部",
+  "entry": {
+    "path": "src",
+    "files": ["index.js", "index.json", "index.wxml", "index.wxss"],
+    "assets": []
+  },
+  "interface": {
+    "props": [
+      { "name": "storeName", "type": "string", "required": true, "description": "门店名称" },
+      { "name": "tableName", "type": "string", "required": false, "description": "桌号名称" },
+      { "name": "businessHours", "type": "string", "required": false, "description": "营业时间文案" },
+      { "name": "mode", "type": "string", "required": false, "description": "展示模式：customer/merchant" }
+    ],
+    "events": []
+  },
+  "boundary": { "allowNetwork": false, "allowRoutes": false, "allowGlobalState": false, "allowServices": false },
+  "compatibility": { "baseRange": "^1.0.0", "minWechatLib": "3.0.0", "apiContract": "storefront.v1" },
+  "requiredPages": ["home"],
+  "requiresSlots": [],
+  "dependencies": [],
+  "conflicts": [],
+  "preview": { "dir": "preview", "kinds": ["normal", "empty", "error", "long"] },
+  "release": { "stage": "online-ready", "knownLimits": ["不含门店实景图"], "verifiedRecipes": [] }
+}

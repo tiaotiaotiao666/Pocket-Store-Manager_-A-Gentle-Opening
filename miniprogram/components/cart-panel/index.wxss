@@ -8,7 +8,7 @@
   padding: 8rpx 20rpx;
   border-radius: 999rpx;
   background: rgba(35, 35, 35, 0.06);
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
   font-size: 22rpx;
 }
 
@@ -43,7 +43,7 @@
 .cart-panel__unit {
   margin-top: 4rpx;
   font-size: 22rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .cart-panel__stepper {
@@ -59,14 +59,14 @@
   width: 48rpx;
   height: 48rpx;
   border-radius: 999rpx;
-  border: 2rpx solid var(--color-primary, #e86a17);
-  color: var(--color-primary, #e86a17);
+  border: 2rpx solid var(--color-primary);
+  color: var(--color-primary);
   font-size: 30rpx;
   line-height: 1;
 }
 
 .cart-panel__step--add {
-  background: var(--color-primary, #e86a17);
+  background: var(--color-primary);
   color: #fff;
 }
 
@@ -82,14 +82,14 @@
   text-align: right;
   font-size: 26rpx;
   font-weight: 700;
-  color: var(--color-text, #232323);
+  color: var(--color-text);
 }
 
 .cart-panel__empty {
   padding: 60rpx 0;
   text-align: center;
   font-size: 24rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .cart-panel__footer {
@@ -107,14 +107,14 @@
 
 .cart-panel__total-label {
   font-size: 22rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .cart-panel__total-value {
   margin-left: 10rpx;
   font-size: 36rpx;
   font-weight: 700;
-  color: var(--color-primary, #e86a17);
+  color: var(--color-primary);
 }
 
 .cart-panel__checkout {

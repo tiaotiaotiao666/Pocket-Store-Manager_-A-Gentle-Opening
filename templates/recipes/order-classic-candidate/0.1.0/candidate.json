@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "recipe-candidate.v1",
+  "recipeId": "order-classic-candidate",
+  "recipeVersion": "0.1.0",
+  "stage": "candidate",
+  "reason": "为 M7-5-02 提供可观察的候选/正式分离样本；不进入店主可选列表。",
+  "promotionRequirements": [
+    "微信开发者工具人工编译通过",
+    "核心点餐闭环回归通过",
+    "敏感信息扫描零命中",
+    "单人 release-review 审核记录"
+  ]
+}

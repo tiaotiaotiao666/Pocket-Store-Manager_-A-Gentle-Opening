@@ -1,4 +1,4 @@
-import { Check, Store } from 'lucide-react';
+import { Check, ImagePlus, Store } from 'lucide-react';
 
 
 export default function StoreInfoStep({
@@ -6,12 +6,16 @@ export default function StoreInfoStep({
   storeTypes = [],
   styles = [],
   styleId,
+  images = [],
+  imageBusy = false,
   onFieldChange,
   onStyleChange,
+  onPickImages,
   onSubmit,
 }) {
   const typeList = Array.isArray(storeTypes) ? storeTypes : [];
   const styleList = Array.isArray(styles) ? styles : [];
+  const imageList = Array.isArray(images) ? images : [];
   const data = store || {};
 
   return (
@@ -90,6 +94,49 @@ export default function StoreInfoStep({
             onChange={(event) => onFieldChange?.('intro', event.target.value)}
           />
         </label>
+      </div>
+
+      <div className="store-images-block">
+        <div className="store-images-head">
+          <h4>门店图片</h4>
+          <span className="store-style-hint">最多 6 张；只保存在本机项目里，不会打进导出工程。第一张会作为工作台缩略图。</span>
+        </div>
+
+        {imageList.length > 0 ? (
+          <ul className="store-images-list">
+            {imageList.map((item) => (
+              <li key={item.assetId} className="store-image-item">
+                <span className="store-image-mark">
+                  <ImagePlus size={13} />
+                </span>
+                <span className="store-image-name">{item.originalName || item.fileName || item.assetId}</span>
+                <span className="store-image-meta">
+                  {item.width && item.height ? `${item.width}×${item.height}` : item.mime || '图片'}
+                  {item.bytes ? ` · ${Math.max(1, Math.round(item.bytes / 1024))} KB` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="store-images-empty">还没有门店图片。添加后工作台卡片会显示第一张作为缩略图。</p>
+        )}
+
+        <div className="store-images-actions">
+          <button
+            type="button"
+            className="ghost-button store-images-button"
+            onClick={() => onPickImages?.()}
+            disabled={imageBusy}
+          >
+            <ImagePlus size={14} />
+            {imageBusy ? '正在导入图片…' : (imageList.length > 0 ? '继续添加图片' : '添加门店图片')}
+          </button>
+          <span className="store-images-note">
+            {imageList.length > 0
+              ? `已添加 ${imageList.length} / 6 张`
+              : '支持 PNG / JPG / WebP，单张不超过 10 MB'}
+          </span>
+        </div>
       </div>
 
       <div className="store-style-block">

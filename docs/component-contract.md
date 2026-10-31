@@ -70,7 +70,7 @@
 事件：
 - `add` → `{ productId }`
 - `remove` → `{ productId }`
-- `open-detail` → `{ productId }`
+- `openDetail` → `{ productId }`
 
 组件不得自行判断库存或售卖状态，`disabled` 由页面传入。
 

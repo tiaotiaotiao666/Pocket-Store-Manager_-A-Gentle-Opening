@@ -78,7 +78,7 @@ test('product-card 组件：金额格式化、加购与详情事件', () => {
   assert.deepEqual(events[0], { name: 'add', detail: { productId: 'prd_beef_rice' } });
 
   instance.onOpen();
-  assert.deepEqual(events[1], { name: 'open-detail', detail: { productId: 'prd_beef_rice' } });
+  assert.deepEqual(events[1], { name: 'openDetail', detail: { productId: 'prd_beef_rice' } });
 
   instance.data.disabled = true;
   instance.onAdd({ stopPropagation() {} });

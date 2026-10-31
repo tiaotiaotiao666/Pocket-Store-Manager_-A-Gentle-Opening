@@ -10,12 +10,12 @@
   position: relative;
   padding: 30rpx 18rpx 30rpx 24rpx;
   font-size: 26rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .category-nav__item--active {
-  background: var(--color-surface, #fffdf9);
-  color: var(--color-text, #232323);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-weight: 700;
 }
 
@@ -27,7 +27,7 @@
   left: 0;
   width: 8rpx;
   border-radius: 999rpx;
-  background: var(--color-primary, #e86a17);
+  background: var(--color-primary);
 }
 
 .category-nav__label {
@@ -38,6 +38,6 @@
 .category-nav__empty {
   padding: 40rpx 20rpx;
   font-size: 22rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
   text-align: center;
 }

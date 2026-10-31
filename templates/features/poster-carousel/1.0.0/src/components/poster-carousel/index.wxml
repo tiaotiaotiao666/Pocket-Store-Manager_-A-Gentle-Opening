@@ -1,0 +1,25 @@
+<view class="poster-carousel">
+  <swiper
+    wx:if="{{slides.length > 0}}"
+    class="poster-swiper"
+    autoplay="{{autoplay}}"
+    interval="{{safeInterval}}"
+    circular
+    indicator-dots="{{showIndicator}}"
+    indicator-color="rgba(255,255,255,0.45)"
+    indicator-active-color="#FFFFFF"
+  >
+    <swiper-item wx:for="{{slides}}" wx:key="id">
+      <view class="poster-slide poster-slide--{{item.tone || 'warm'}}" data-index="{{index}}" bind:tap="onSelect">
+        <view wx:if="{{item.image && failedIndex !== index}}" class="poster-image-wrap">
+          <image class="poster-image" src="{{item.image}}" mode="aspectFill" data-index="{{index}}" binderror="onImageError" />
+        </view>
+        <text class="poster-eyebrow">本周推荐</text>
+        <text class="poster-title">{{item.title || '欢迎光临'}}</text>
+        <text class="poster-sub">{{item.subtitle || ''}}</text>
+      </view>
+    </swiper-item>
+  </swiper>
+  <view wx:else class="poster-empty">POSTER</view>
+  <view wx:if="{{failedIndex >= 0}}" class="poster-error">海报加载失败，已显示备用底色</view>
+</view>

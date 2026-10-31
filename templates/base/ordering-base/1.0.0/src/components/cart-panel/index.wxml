@@ -1,0 +1,40 @@
+<view wx:if="{{visible}}" class="ss-mask" bind:tap="onClose"></view>
+<view wx:if="{{visible}}" class="ss-sheet cart-panel">
+  <view class="ss-sheet__header">
+    <view>
+      <view class="ss-sheet__title">已选菜品</view>
+      <view class="ss-muted">共 {{totalQuantity}} 件</view>
+    </view>
+    <view class="cart-panel__clear" bind:tap="onClose">收起</view>
+  </view>
+  <view class="ss-divider"></view>
+
+  <scroll-view class="cart-panel__list" scroll-y>
+    <view wx:for="{{rows}}" wx:key="productId" class="cart-panel__row">
+      <view class="cart-panel__info">
+        <text class="cart-panel__name">{{item.name}}</text>
+        <text class="cart-panel__unit">{{item.unitPriceText}}</text>
+      </view>
+      <view class="cart-panel__stepper">
+        <view class="cart-panel__step" data-id="{{item.productId}}" bind:tap="onRemove">−</view>
+        <text class="cart-panel__qty">{{item.quantity}}</text>
+        <view class="cart-panel__step cart-panel__step--add" data-id="{{item.productId}}" bind:tap="onAdd">+</view>
+      </view>
+      <text class="cart-panel__line">{{item.lineTotalText}}</text>
+    </view>
+    <view wx:if="{{!rows || rows.length === 0}}" class="cart-panel__empty">购物车还是空的</view>
+  </scroll-view>
+
+  <view class="cart-panel__footer">
+    <view class="cart-panel__total">
+      <text class="cart-panel__total-label">合计</text>
+      <text class="cart-panel__total-value">{{totalText}}</text>
+    </view>
+    <view
+      class="ss-btn ss-btn--primary cart-panel__checkout {{totalQuantity > 0 && !submitting ? '' : 'ss-btn--disabled'}}"
+      bind:tap="onCheckout"
+    >
+      {{submitting ? '处理中' : '去结算'}}
+    </view>
+  </view>
+</view>

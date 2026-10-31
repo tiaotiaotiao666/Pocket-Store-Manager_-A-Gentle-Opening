@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "manifest.v1",
+  "identity": { "id": "poster-carousel", "version": "1.0.0" },
+  "kind": "feature-pack",
+  "displayName": "海报轮播",
+  "entry": {
+    "path": "src/components/poster-carousel",
+    "files": ["index.js", "index.json", "index.wxml", "index.wxss"],
+    "assets": []
+  },
+  "interface": {
+    "props": [
+      { "name": "items", "type": "array", "required": true, "description": "海报列表：title/subtitle/tone/optional image" },
+      { "name": "autoplay", "type": "boolean", "required": false, "description": "是否自动播放" },
+      { "name": "interval", "type": "number", "required": false, "description": "切换间隔，3000–8000ms，越界取 4000" },
+      { "name": "showIndicator", "type": "boolean", "required": false, "description": "是否显示指示点" }
+    ],
+    "events": [
+      { "name": "select", "payload": ["index"], "description": "点击海报" },
+      { "name": "error", "payload": ["index"], "description": "海报图片加载失败" }
+    ]
+  },
+  "boundary": { "allowNetwork": false, "allowRoutes": false, "allowGlobalState": false, "allowServices": false },
+  "compatibility": { "baseRange": "^1.0.0", "minWechatLib": "3.0.0", "apiContract": "storefront.v1" },
+  "requiredPages": ["home"],
+  "requiresSlots": ["home-hero"],
+  "dependencies": [],
+  "conflicts": [],
+  "preview": { "dir": "preview", "kinds": ["normal", "empty", "error", "long"] },
+  "release": {
+    "stage": "online-ready",
+    "knownLimits": [
+      "演示海报使用主题渐变色块，不含摄影素材，店主可自行替换 image",
+      "关闭轮播时首页回落到 store-header fallback"
+    ],
+    "verifiedRecipes": []
+  }
+}

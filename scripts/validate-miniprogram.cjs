@@ -16,11 +16,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const root = path.resolve(__dirname, '..');
-const miniRoot = path.join(root, 'miniprogram');
+const repoRoot = path.resolve(__dirname, '..');
 
-const errors = [];
-const warnings = [];
+let state = {
+  root: path.join(repoRoot, 'miniprogram'),
+  errors: [],
+  warnings: [],
+};
 
 const BUILTIN_TAGS = new Set([
   'view', 'scroll-view', 'swiper', 'swiper-item', 'movable-area', 'movable-view', 'cover-view',
@@ -57,15 +59,15 @@ function read(file) {
 }
 
 function rel(file) {
-  return path.relative(root, file).replace(/\\/g, '/');
+  return path.relative(state.root, file).replace(/\\/g, '/');
 }
 
 function addError(file, message) {
-  errors.push(rel(file) + ': ' + message);
+  state.errors.push(rel(file) + ': ' + message);
 }
 
 function addWarning(file, message) {
-  warnings.push(rel(file) + ': ' + message);
+  state.warnings.push(rel(file) + ': ' + message);
 }
 
 function parseJson(file) {
@@ -197,7 +199,7 @@ function checkJsonFile(file) {
 
 function resolveComponentDir(baseDir, target) {
   const resolved = target.startsWith('/')
-    ? path.join(miniRoot, target.slice(1))
+    ? path.join(state.root, target.slice(1))
     : path.resolve(baseDir, target);
   if (path.basename(resolved) === 'index') {
     return path.dirname(resolved);
@@ -413,20 +415,32 @@ function checkComponent(componentDir) {
   }
 }
 
-function main() {
+function runChecks(targetRoot) {
+  const miniRoot = path.resolve(targetRoot);
+  if (!fs.existsSync(miniRoot) || !fs.statSync(miniRoot).isDirectory()) {
+    return {
+      ok: false,
+      fatal: true,
+      errors: ['静态校验根目录不存在或不是目录：' + miniRoot],
+      warnings: [],
+      stats: { pages: 0, components: 0, js: 0, wxss: 0 },
+    };
+  }
+  state = { root: miniRoot, errors: [], warnings: [] };
+
   const appJsonFile = path.join(miniRoot, 'app.json');
-  const appJson = parseJson(appJsonFile);
+  const appJson = fs.existsSync(appJsonFile) ? parseJson(appJsonFile) : null;
   if (!appJson) {
-    console.error('无法读取 app.json');
-    process.exitCode = 1;
-    return;
+    state.errors.push('无法读取 ' + path.join(miniRoot, 'app.json'));
+    const stats = { pages: 0, components: 0, js: 0, wxss: 0 };
+    return { ok: false, fatal: true, errors: [...state.errors], warnings: [], stats };
   }
 
   const pages = Array.isArray(appJson.pages) ? appJson.pages : [];
   pages.forEach((page) => {
     const pageDir = path.dirname(path.join(miniRoot, page));
     if (!fs.existsSync(pageDir)) {
-      errors.push('app.json: 页面目录不存在 ' + page);
+      state.errors.push('app.json: 页面目录不存在 ' + page);
       return;
     }
     checkPage(pageDir);
@@ -435,7 +449,7 @@ function main() {
   const tabList = appJson.tabBar && Array.isArray(appJson.tabBar.list) ? appJson.tabBar.list : [];
   tabList.forEach((tab) => {
     if (pages.indexOf(tab.pagePath) < 0) {
-      errors.push('app.json: tabBar 页面未在 pages 注册 ' + tab.pagePath);
+      state.errors.push('app.json: tabBar 页面未在 pages 注册 ' + tab.pagePath);
     }
   });
 
@@ -449,10 +463,10 @@ function main() {
   }
 
   if (!fs.existsSync(path.join(miniRoot, 'app.js'))) {
-    errors.push('缺少 miniprogram/app.js');
+    state.errors.push('缺少 app.js');
   }
   if (!fs.existsSync(path.join(miniRoot, 'app.wxss'))) {
-    errors.push('缺少 miniprogram/app.wxss');
+    state.errors.push('缺少 app.wxss');
   }
 
   const jsFiles = walk(miniRoot, (file) => file.endsWith('.js'));
@@ -474,19 +488,59 @@ function main() {
     }
   });
 
-  console.log('小程序静态校验：' + pages.length + ' 个页面，' +
-    (fs.existsSync(componentsDir) ? fs.readdirSync(componentsDir).length : 0) + ' 个组件目录，' +
-    jsFiles.length + ' 个 JS 文件，' + wxssFiles.length + ' 个 WXSS 文件');
+  return {
+    ok: state.errors.length === 0,
+    fatal: false,
+    errors: [...state.errors],
+    warnings: [...state.warnings],
+    stats: {
+      pages: pages.length,
+      components: fs.existsSync(componentsDir) ? fs.readdirSync(componentsDir).filter((name) => fs.statSync(path.join(componentsDir, name)).isDirectory()).length : 0,
+      js: jsFiles.length,
+      wxss: wxssFiles.length,
+    },
+  };
+}
 
-  warnings.forEach((warning) => console.log('  ⚠ ' + warning));
-  if (errors.length > 0) {
-    errors.forEach((error) => console.log('  ✗ ' + error));
-    console.error('\n静态校验失败：' + errors.length + ' 个错误，' + warnings.length + ' 个警告');
+function printResult(result) {
+  console.log('小程序静态校验：' + result.stats.pages + ' 个页面，' +
+    result.stats.components + ' 个组件目录，' +
+    result.stats.js + ' 个 JS 文件，' + result.stats.wxss + ' 个 WXSS 文件');
+
+  result.warnings.forEach((warning) => console.log('  ⚠ ' + warning));
+  if (result.errors.length > 0) {
+    result.errors.forEach((error) => console.log('  ✗ ' + error));
+    console.error('\n静态校验失败：' + result.errors.length + ' 个错误，' + result.warnings.length + ' 个警告');
     process.exitCode = 1;
     return;
   }
   console.log('  ✓ 标签配对、组件注册、事件处理函数、越界调用与 require 路径检查通过');
-  console.log('静态校验通过：0 个错误，' + warnings.length + ' 个警告\n');
+  console.log('静态校验通过：0 个错误，' + result.warnings.length + ' 个警告\n');
 }
 
-main();
+function main() {
+  const args = process.argv.slice(2);
+  const rootIndex = args.indexOf('--root');
+  let target = path.join(repoRoot, 'miniprogram');
+  if (rootIndex >= 0) {
+    target = args[rootIndex + 1];
+    if (!target) {
+      console.error('参数错误：--root 需要一个目录路径');
+      process.exitCode = 2;
+      return;
+    }
+  }
+  const result = runChecks(target);
+  if (result.fatal) {
+    console.error(result.errors[0]);
+    process.exitCode = 1;
+    return;
+  }
+  printResult(result);
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = { runChecks, main, repoRoot };

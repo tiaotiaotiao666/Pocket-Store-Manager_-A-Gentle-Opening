@@ -9,14 +9,44 @@ import {
   HOME_GREETING,
   COMPOSER_PLACEHOLDER,
   COMPOSER_SUBMIT_LABEL,
+  DEPLOY_STATUS,
 } from './state/constants.mjs';
+import { buildPlanFromSession } from './composition/planFromSession.mjs';
+import {
+  isDesktopExportAvailable,
+  subscribeProgress,
+  chooseDirectory,
+  preflightTarget,
+  exportProject,
+  cancelExport,
+  openProjectDirectory,
+  describeExportError,
+  DESKTOP_REQUIRED_MESSAGE,
+} from './services/exportService.js';
+import { buildImportPayload, previewImport, applyImport, DEFAULT_STORE_ID } from './services/importService.js';
 import {
   createInitialState,
   reducer,
   selectActiveSession,
   selectAgentComposerState,
+  selectVisibleProjects,
+  selectWorkbenchState,
+  selectSaveLabel,
+  selectDiagnosticsSummary,
+  selectCanExport,
+  selectCanChooseDirectory,
+  selectHandoffProgress,
+  selectUndoState,
 } from './state/sessionMachine.mjs';
 import { formatCents } from './domain/agentDraft.mjs';
+import { toDocument, fromDocument } from './domain/projectSnapshot.mjs';
+import { evaluateLocal, mergeComposerResult, mergeTargetPreflight } from './domain/preflightRules.mjs';
+import { createProjectService } from './services/projectService.js';
+import { createProjectThumbnailLoader } from './services/projectThumbnailLoader.js';
+import { createSettingsService } from './services/settingsService.js';
+import { createDiagnosticsService } from './services/diagnosticsService.js';
+import { createAppidService } from './services/appidService.js';
+import { createDevtoolsService } from './services/devtoolsService.js';
 import { requestAgentTurn, describeAgentTransport } from './services/agentTurn/agentTurnService.js';
 import {
   buildTemplateCandidates,
@@ -46,6 +76,10 @@ import AgentIntakePanel from './components/agent/AgentIntakePanel.jsx';
 import DraftEditor from './components/agent/DraftEditor.jsx';
 import StoreInfoActionBar from './components/agent/StoreInfoActionBar.jsx';
 import AgentDraftSummary from './components/agent/AgentDraftSummary.jsx';
+import ProjectWorkbench from './components/workbench/ProjectWorkbench.jsx';
+import SettingsPanel from './components/settings/SettingsPanel.jsx';
+import PreflightPanel from './components/deploy/PreflightPanel.jsx';
+import HandoffWizard from './components/deploy/HandoffWizard.jsx';
 
 const FEATURE_GROUPS = [...new Set(catalogFeatures.map((feature) => feature.group))];
 const REQUIRED_IDS = catalogFeatures.filter((feature) => feature.required).map((feature) => feature.id);
@@ -246,7 +280,10 @@ function buildPanelCards(state, tips, imageBusy) {
         type: 'steps',
         icon: 'rocket',
         tone: state.deploy.status === 'done' ? 'success' : 'accent',
-        title: '部署进度',
+        title: state.deploy.status === 'done' ? '工程已生成' : '生成进度',
+        body: state.deploy.status === 'done'
+          ? '工程已写入本地目录，可在微信开发者工具中导入；不会自动发布。'
+          : (state.deploy.stageMessage || '选择导出位置后生成小程序工程。'),
         items: DEPLOY_STEPS.map((label, index) => {
           if (state.deploy.status === 'done' || index < state.deploy.step) return `已完成 · ${label}`;
           if (index === state.deploy.step) return `进行中 · ${label}`;
@@ -261,18 +298,66 @@ function buildPanelCards(state, tips, imageBusy) {
   return cards;
 }
 
+function sanitizeProjectName(value) {
+  const cleaned = String(value || '')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .trim()
+    .slice(0, 60);
+  return cleaned || 'smart-store';
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(reducer, undefined, createInitialState);
+  const projectServiceRef = useRef(null);
+  if (!projectServiceRef.current) projectServiceRef.current = createProjectService();
+  const projectService = projectServiceRef.current;
+  const thumbnailLoaderRef = useRef(null);
+  if (!thumbnailLoaderRef.current) {
+    thumbnailLoaderRef.current = createProjectThumbnailLoader({
+      readAsset: (projectId, assetId, maxWidth) => projectServiceRef.current.readAsset(projectId, assetId, maxWidth),
+      concurrency: 4,
+      maxCacheEntries: 100,
+    });
+  }
+  const settingsServiceRef = useRef(null);
+  if (!settingsServiceRef.current) settingsServiceRef.current = createSettingsService();
+  const settingsService = settingsServiceRef.current;
+  const diagnosticsServiceRef = useRef(null);
+  if (!diagnosticsServiceRef.current) diagnosticsServiceRef.current = createDiagnosticsService();
+  const diagnosticsService = diagnosticsServiceRef.current;
+  const appidServiceRef = useRef(null);
+  if (!appidServiceRef.current) appidServiceRef.current = createAppidService();
+  const appidService = appidServiceRef.current;
+  const devtoolsServiceRef = useRef(null);
+  if (!devtoolsServiceRef.current) devtoolsServiceRef.current = createDevtoolsService();
+  const devtoolsService = devtoolsServiceRef.current;
+  const skipNextSave = useRef(false);
+  const settingsFallbackLoading = useRef(false);
+  const lastDiagnostics = useRef({ json: null, copyText: '' });
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const [handoffBusy, setHandoffBusy] = useState(false);
+  const [handoffError, setHandoffError] = useState(null);
+  const [devtoolsState, setDevtoolsState] = useState({ status: 'idle', found: false, via: 'none', path: null });
+  const [settingsError, setSettingsError] = useState(null);
+  const [diagnosticsCopyStatus, setDiagnosticsCopyStatus] = useState(null);
+  const [diagnosticsSnapshotPath, setDiagnosticsSnapshotPath] = useState(null);
+  const [notice, setNotice] = useState(null);
   const [draft, setDraft] = useState('');
   const [buildProgress, setBuildProgress] = useState(0);
   const [promptTips, setPromptTips] = useState([]);
   const [promptBusy, setPromptBusy] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [draftEditorOpen, setDraftEditorOpen] = useState(false);
+  const [thumbnails, setThumbnails] = useState({});
+  const [storeImageBusy, setStoreImageBusy] = useState(false);
   const buildStarted = useRef(false);
   const promptStarted = useRef(false);
   const imageStarted = useRef(false);
   const deployStarted = useRef(false);
+  const preflightStarted = useRef(false);
+  const deployBusy = useRef(false);
   const agentBusy = useRef(false);
   const previousPhase = useRef(state.phase);
   const previousAgentStatus = useRef(state.agent.status);
@@ -293,6 +378,166 @@ export default function App() {
     });
     return exists ? STORE_TYPES : [...STORE_TYPES, { value: category, label: category }];
   }, [state.agentDraft.category]);
+
+  const apiHost = useMemo(() => {
+    try {
+      const url = new URL(state.settings.config?.apiBaseUrl || 'http://127.0.0.1:3000/api/v1');
+      return url.host;
+    } catch (error) {
+      return '127.0.0.1:3000';
+    }
+  }, [state.settings.config?.apiBaseUrl]);
+
+  useEffect(() => {
+    const service = projectServiceRef.current;
+    let alive = true;
+    dispatch({ type: 'PROJECT_SET_MODE', mode: service.mode });
+    dispatch({ type: 'PROJECT_LIST_REQUEST' });
+    service.list()
+      .then((result) => {
+        if (!alive) return;
+        if (result.status === 'ok') {
+          dispatch({ type: 'PROJECT_LIST_SUCCESS', list: result.projects });
+        } else {
+          dispatch({
+            type: 'PROJECT_LIST_FAILURE',
+            error: { code: result.code, message: result.message },
+          });
+        }
+      })
+      .catch((error) => {
+        if (!alive) return;
+        dispatch({
+          type: 'PROJECT_LIST_FAILURE',
+          error: { code: 'PROJECT_READ_FAILED', message: error instanceof Error ? error.message : '项目列表读取失败' },
+        });
+      });
+    settingsServiceRef.current.load()
+      .then((loaded) => {
+        if (!alive) return;
+        dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: loaded.config });
+        projectServiceRef.current.setDebounce(loaded.config.autoSaveDebounceMs);
+        if (loaded.warning) setNotice(loaded.warning);
+      })
+      .catch(() => {
+        if (!alive) return;
+        dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: settingsServiceRef.current.defaults });
+        setNotice('设置读取失败，已使用默认值');
+      });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    // 设置只应加载一次，但新建/重置项目等路径可能清空 settings 切片。
+    // 进入设置页时若还没有 config，主动补一次加载，避免永久停在“正在读取应用设置…”。
+    if (state.view !== 'settings' || state.settings.config) return undefined;
+    if (settingsFallbackLoading.current) return undefined;
+    settingsFallbackLoading.current = true;
+    let alive = true;
+    settingsServiceRef.current.load()
+      .then((loaded) => {
+        if (!alive) return;
+        dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: loaded.config });
+        projectServiceRef.current.setDebounce(loaded.config.autoSaveDebounceMs);
+        if (loaded.warning) setNotice(loaded.warning);
+      })
+      .catch(() => {
+        if (alive) dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: settingsServiceRef.current.defaults });
+      })
+      .finally(() => { settingsFallbackLoading.current = false; });
+    return () => { alive = false; };
+  }, [state.view, state.settings.config]);
+
+  useEffect(() => {
+    const projects = Array.isArray(state.project.list) ? state.project.list : [];
+    if (projectServiceRef.current.mode !== 'desktop') {
+      setThumbnails({});
+      return undefined;
+    }
+    if (projects.length === 0) {
+      setThumbnails({});
+      return undefined;
+    }
+    let alive = true;
+    thumbnailLoaderRef.current.load(projects)
+      .then((map) => {
+        if (!alive) return;
+        const allowed = new Set(projects.map((project) => project && project.projectId).filter(Boolean));
+        const next = {};
+        allowed.forEach((projectId) => {
+          if (map[projectId]) next[projectId] = map[projectId];
+        });
+        setThumbnails(next);
+      })
+      .catch(() => {
+        if (alive) setThumbnails({});
+      });
+    return () => { alive = false; };
+  }, [state.project.list]);
+
+  useEffect(() => {
+    const service = projectServiceRef.current;
+    return service.onFlushRequest(async () => {
+      try {
+        await service.flush();
+      } finally {
+        await service.reportFlushDone();
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    if (!projectId || state.project.status !== 'ready') return undefined;
+    if (state.settings.config && state.settings.config.autoSaveEnabled === false) return undefined;
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return undefined;
+    }
+    const doc = toDocument(state, {
+      projectId,
+      createdAt: state.project.createdAt,
+      appid: state.project.appid,
+    });
+    dispatch({ type: 'PROJECT_MARK_DIRTY' });
+    let alive = true;
+    service.save(projectId, doc).then((result) => {
+      if (!alive) return;
+      if (result.status === 'ok') {
+        dispatch({ type: 'PROJECT_SAVED', savedAt: result.savedAt, bytes: result.bytes });
+      } else if (result.status === 'failed') {
+        dispatch({
+          type: 'PROJECT_SAVE_FAILED',
+          error: { code: result.code, message: result.message },
+        });
+      }
+    });
+    return () => { alive = false; };
+    // 只依赖可持久化切片；deploy 的进度/错误等 transient 不触发保存。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    state.phase,
+    state.activeSessionId,
+    state.store,
+    state.features,
+    state.build,
+    state.visual,
+    state.agentDraft,
+    state.sessions,
+    state.seq,
+    state.agent.status,
+    state.agent.confirmedAtSeq,
+    state.assets,
+    state.deploy.directory,
+    state.deploy.projectName,
+    state.deploy.resultDigest,
+    state.deploy.handoff,
+    state.project.appid,
+    state.project.status,
+    state.settings.config?.autoSaveEnabled,
+    state.settings.config?.autoSaveDebounceMs,
+  ]);
 
   useEffect(() => {
     setDraft('');
@@ -379,27 +624,17 @@ export default function App() {
   }, [phase, state.visual.image, state.visual.prompt]);
 
   useEffect(() => {
-    if (phase !== PHASES.DEPLOY) {
-      deployStarted.current = false;
-      return undefined;
-    }
-    if (deployStarted.current) return undefined;
-    deployStarted.current = true;
-    let step = 0;
-    const timer = setInterval(() => {
-      step += 1;
-      if (step >= DEPLOY_STEPS.length) {
-        clearInterval(timer);
-        dispatch({ type: 'DEPLOY_DONE' });
-        return;
-      }
+    if (phase !== PHASES.DEPLOY) return undefined;
+    const unsubscribe = subscribeProgress((event) => {
       dispatch({
-        type: 'DEPLOY_PROGRESS',
-        step,
-        progress: Math.round((step / DEPLOY_STEPS.length) * 100),
+        type: 'DEPLOY_STAGE',
+        stage: event.stage,
+        step: event.step,
+        progress: event.progress,
+        message: event.message,
       });
-    }, 900);
-    return () => clearInterval(timer);
+    });
+    return unsubscribe;
   }, [phase]);
 
   useEffect(() => {
@@ -413,8 +648,267 @@ export default function App() {
     [state, promptTips, imageBusy],
   );
 
+  const refreshProjectList = async () => {
+    const service = projectServiceRef.current;
+    dispatch({ type: 'PROJECT_LIST_REQUEST' });
+    try {
+      const result = await service.list();
+      if (result.status === 'ok') {
+        dispatch({ type: 'PROJECT_LIST_SUCCESS', list: result.projects });
+      } else {
+        dispatch({ type: 'PROJECT_LIST_FAILURE', error: { code: result.code, message: result.message } });
+      }
+    } catch (error) {
+      dispatch({
+        type: 'PROJECT_LIST_FAILURE',
+        error: { code: 'PROJECT_READ_FAILED', message: error instanceof Error ? error.message : '项目列表读取失败' },
+      });
+    }
+  };
+
+  const handleProjectOpen = async (projectId) => {
+    const service = projectServiceRef.current;
+    if (state.project.activeId && state.project.activeId !== projectId) {
+      await service.flush();
+    }
+    dispatch({ type: 'PROJECT_OPEN_REQUEST', projectId });
+    let result;
+    try {
+      result = await service.load(projectId);
+    } catch (error) {
+      result = { status: 'failed', code: 'PROJECT_READ_FAILED', message: error instanceof Error ? error.message : '项目读取失败' };
+    }
+    if (!result || result.status !== 'ok') {
+      dispatch({
+        type: 'PROJECT_OPEN_FAILURE',
+        error: { code: result?.code, message: result?.message || '项目读取失败' },
+      });
+      return;
+    }
+    if (result.futureVersion) {
+      dispatch({
+        type: 'PROJECT_OPEN_FAILURE',
+        error: { code: 'PROJECT_FUTURE_VERSION', message: '项目由更高版本创建，请升级应用后再打开' },
+      });
+      return;
+    }
+
+    const hydrated = fromDocument(result.doc);
+    if (hydrated.phase === PHASES.PROMPT_STUDIO || hydrated.phase === PHASES.IMAGE_REVIEW) {
+      promptStarted.current = true;
+    }
+    if (hydrated.phase === PHASES.IMAGE_REVIEW) {
+      imageStarted.current = true;
+    }
+    if (hydrated.phase !== PHASES.BUILDING) {
+      buildStarted.current = false;
+    }
+    skipNextSave.current = true;
+    dispatch({
+      type: 'PROJECT_OPEN_SUCCESS',
+      projectId,
+      doc: result.doc,
+      savedAt: result.savedAt,
+      bytes: result.bytes,
+    });
+    if (result.recoveredFrom) {
+      setNotice('项目文件损坏，已从最近一次备份恢复。原文件已保留在项目目录内。');
+    } else if (result.corrupt) {
+      setNotice('项目文件已损坏且没有可用备份，已以空白项目打开；损坏文件保留在项目目录内。');
+    }
+
+    const assetId = result.doc && result.doc.visual && result.doc.visual.imageAssetId;
+    if (assetId && service.mode === 'desktop') {
+      const asset = await service.readAsset(projectId, assetId, 720).catch(() => null);
+      if (asset && asset.status === 'ok') {
+        const meta = result.doc.visual.imageMeta || {};
+        dispatch({
+          type: 'SET_IMAGE',
+          image: { dataUrl: asset.asset.dataUrl, provider: meta.provider, note: meta.note },
+        });
+      }
+    }
+  };
+
+  const handleProjectCreate = async () => {
+    const service = projectServiceRef.current;
+    if (state.project.activeId) {
+      await service.flush().catch(() => {});
+    }
+    let result;
+    try {
+      result = await service.create({ name: '', inheritAppid: true });
+    } catch (error) {
+      result = { status: 'failed', code: 'PROJECT_WRITE_FAILED', message: error instanceof Error ? error.message : '新建项目失败' };
+    }
+    if (!result || result.status !== 'ok') {
+      dispatch({
+        type: 'PROJECT_OPEN_FAILURE',
+        error: { code: result?.code || 'PROJECT_WRITE_FAILED', message: result?.message || '新建项目失败' },
+      });
+      return;
+    }
+    buildStarted.current = false;
+    promptStarted.current = false;
+    imageStarted.current = false;
+    skipNextSave.current = true;
+    dispatch({
+      type: 'PROJECT_NEW_SUCCESS',
+      projectId: result.projectId,
+      createdAt: result.createdAt,
+      appid: result.appid,
+    });
+  };
+
+  const handleProjectReveal = async (projectId) => {
+    const result = await projectServiceRef.current.reveal(projectId);
+    if (result.status !== 'ok') {
+      setNotice(result.message || '无法打开项目目录');
+    }
+  };
+
+  const handleProjectCopyId = async (projectId) => {
+    try {
+      await navigator.clipboard.writeText(projectId);
+      setNotice(`已复制项目 ID：${projectId}`);
+    } catch (error) {
+      setNotice(`项目 ID：${projectId}`);
+    }
+  };
+
+  const handleProjectDeleteRequest = (project) => {
+    dispatch({ type: 'PROJECT_DELETE_REQUEST', projectId: project.projectId, name: project.name });
+  };
+
+  const handleProjectDeleteCancel = () => dispatch({ type: 'PROJECT_DELETE_CANCEL' });
+
+  const handleProjectDeleteConfirm = async () => {
+    const target = state.project.deleteTarget;
+    if (!target || deleteBusy) return;
+    setDeleteBusy(true);
+    const service = projectServiceRef.current;
+    if (state.project.activeId === target.projectId) service.cancelPending();
+    let result;
+    try {
+      result = await service.remove(target.projectId, target.name);
+    } catch (error) {
+      result = { status: 'failed', code: 'PROJECT_WRITE_FAILED', message: error instanceof Error ? error.message : '删除项目失败' };
+    }
+    setDeleteBusy(false);
+    if (result.status === 'ok') {
+      dispatch({ type: 'PROJECT_DELETE_SUCCESS', projectId: target.projectId });
+    } else {
+      dispatch({
+        type: 'PROJECT_DELETE_FAILURE',
+        error: { code: result.code || 'PROJECT_WRITE_FAILED', message: result.message || '删除项目失败' },
+      });
+    }
+  };
+
+  const handleProjectSearch = (value) => dispatch({ type: 'PROJECT_SEARCH_SET', value });
+
+  const handleOpenWorkbench = async () => {
+    if (state.project.activeId) {
+      await projectServiceRef.current.flush().catch(() => {});
+    }
+    setNotice(null);
+    dispatch({ type: 'VIEW_SET', view: 'workbench' });
+    await refreshProjectList();
+  };
+
+  const handleBackToFlow = () => dispatch({ type: 'VIEW_SET', view: 'flow' });
+
+  const handleOpenDataDirectory = async () => {
+    const result = await projectServiceRef.current.openDataDirectory();
+    if (result.status !== 'ok') setNotice(result.message || '无法打开数据目录');
+  };
+
+  const handleOpenSettings = () => dispatch({ type: 'VIEW_SET', view: 'settings' });
+
+  const handleUndo = () => dispatch({ type: 'UNDO_APPLY' });
+  const handleRedo = () => dispatch({ type: 'REDO_APPLY' });
+
+  useEffect(() => {
+    const onKey = (event) => {
+      if (state.view !== 'flow') return;
+      if (!(event.ctrlKey || event.metaKey) || String(event.key).toLowerCase() !== 'z') return;
+      const tag = event.target && event.target.tagName ? String(event.target.tagName).toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      event.preventDefault();
+      dispatch({ type: event.shiftKey ? 'REDO_APPLY' : 'UNDO_APPLY' });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [state.view]);
+
+  const handleSettingsBack = () => {
+    dispatch({ type: 'VIEW_SET', view: state.project.activeId ? 'flow' : 'workbench' });
+  };
+
+  const handleSettingsSave = async (config) => {
+    if (settingsSaving) return;
+    setSettingsSaving(true);
+    setSettingsError(null);
+    const result = await settingsService.save(config).catch((error) => ({
+      status: 'failed',
+      code: 'SETTINGS_INVALID',
+      message: error instanceof Error ? error.message : '设置保存失败',
+    }));
+    setSettingsSaving(false);
+    if (result.status === 'ok') {
+      dispatch({ type: 'SETTINGS_SAVE_SUCCESS', config: result.config || config });
+      projectService.setDebounce(config.autoSaveDebounceMs);
+      setNotice('设置已保存');
+      return;
+    }
+    setSettingsError({ code: result.code, message: result.message });
+  };
+
+  const handleRunDiagnostics = async () => {
+    dispatch({ type: 'DIAGNOSTICS_START' });
+    setDiagnosticsSnapshotPath(null);
+    const config = state.settings.config || settingsService.defaults;
+    try {
+      const result = await diagnosticsService.run(config);
+      lastDiagnostics.current = { json: result.json, copyText: result.copyText };
+      dispatch({
+        type: 'DIAGNOSTICS_DONE',
+        lines: result.lines,
+        checkedAt: result.json.generatedAt || null,
+      });
+    } catch (error) {
+      dispatch({
+        type: 'DIAGNOSTICS_FAILURE',
+        error: { code: 'DIAGNOSTICS_FAILED', message: error instanceof Error ? error.message : '自检未完成' },
+      });
+    }
+  };
+
+  const handleCopyDiagnostics = async () => {
+    const text = lastDiagnostics.current.copyText || '尚未运行自检';
+    const copied = await diagnosticsService.copyText(text);
+    setDiagnosticsCopyStatus(copied ? 'done' : 'failed');
+    setTimeout(() => setDiagnosticsCopyStatus(null), 2200);
+  };
+
+  const handleSaveDiagnosticsSnapshot = async () => {
+    if (!lastDiagnostics.current.json) {
+      setNotice('请先运行自检');
+      return;
+    }
+    const result = await diagnosticsService.saveSnapshot(lastDiagnostics.current.json);
+    if (result.status === 'ok') {
+      setDiagnosticsSnapshotPath(result.path || '已保存');
+    } else {
+      setNotice(result.message || '诊断快照保存失败');
+    }
+  };
+
   const startOnboarding = () => dispatch({ type: 'START_ONBOARDING' });
-  const reset = () => dispatch({ type: 'RESET' });
+  const reset = async () => {
+    await projectServiceRef.current.flush().catch(() => {});
+    dispatch({ type: 'RESET_PROJECT' });
+  };
   const selectSession = (id) => dispatch({ type: 'SWITCH_SESSION', id });
 
   const handlePromptFeedback = async (text) => {
@@ -518,6 +1012,390 @@ export default function App() {
     dispatch({ type: 'SET_STORE_FIELD', field: field === 'intro' ? 'notes' : field, value });
   };
 
+  const handlePickStoreImages = async () => {
+    if (storeImageBusy) return;
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    if (service.mode !== 'desktop') {
+      setNotice('浏览器模式不支持图片落盘，请在桌面应用中添加门店图片');
+      return;
+    }
+    if (!projectId) {
+      setNotice('请先在工作台新建项目，再添加门店图片');
+      return;
+    }
+    const current = Array.isArray(state.assets && state.assets.images) ? state.assets.images : [];
+    if (current.length >= 6) {
+      setNotice('最多保留 6 张门店图片');
+      return;
+    }
+    setStoreImageBusy(true);
+    try {
+      const picked = await service.pickImages(6);
+      if (picked.status !== 'ok') {
+        setNotice(picked.message || '选择图片失败');
+        return;
+      }
+      if (!Array.isArray(picked.items) || picked.items.length === 0) return;
+      const attached = await service.attachImages(projectId, picked.items.map((item) => item.token));
+      if (attached.status !== 'ok') {
+        setNotice(attached.message || '导入图片失败');
+        return;
+      }
+      dispatch({ type: 'ADD_PROJECT_IMAGES', images: attached.assets });
+      const known = new Set(current.map((item) => item.assetId));
+      const added = attached.assets.filter((item) => !known.has(item.assetId)).length;
+      setNotice(added > 0 ? `已添加 ${added} 张门店图片` : '所选图片已在项目中');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '导入图片失败');
+    } finally {
+      setStoreImageBusy(false);
+    }
+  };
+
+  const runDeployExport = async (directory, plan, projectName, extraWarnings) => {
+    if (deployBusy.current) return;
+    deployBusy.current = true;
+    dispatch({ type: 'DEPLOY_DIRECTORY_CHOSEN', directory, projectName });
+    try {
+      // 预检后目录可能被其他进程抢走，因此真正导出前再做一次只读检查；
+      // Composer 自身的 TARGET_EXISTS 仍然保留为最后一道保护。
+      if (projectServiceRef.current.mode === 'desktop') {
+        const target = await preflightTarget({ parentDir: directory, projectName });
+        if (target.status === 'conflict') {
+          const merged = mergeTargetPreflight(state.deploy.preflight, target);
+          dispatch({
+            type: 'PREFLIGHT_RESULT',
+            errors: merged.errors,
+            warns: merged.warns,
+            infos: merged.infos,
+            planDigest: merged.planDigest,
+            checkedAt: merged.checkedAt,
+          });
+          dispatch({
+            type: 'DEPLOY_CONFLICT',
+            error: {
+              code: 'TARGET_EXISTS',
+              message: target.message || describeExportError('TARGET_EXISTS'),
+              suggestedName: target.suggestedName,
+            },
+          });
+          return;
+        }
+        if (target.status !== 'ok') {
+          const merged = mergeTargetPreflight(state.deploy.preflight, target);
+          dispatch({
+            type: 'PREFLIGHT_RESULT',
+            errors: merged.errors,
+            warns: merged.warns,
+            infos: merged.infos,
+            planDigest: merged.planDigest,
+            checkedAt: merged.checkedAt,
+          });
+          dispatch({
+            type: 'DEPLOY_FAILURE',
+            error: {
+              code: target.code || 'TARGET_CHECK_FAILED',
+              message: target.message || describeExportError('TARGET_CHECK_FAILED'),
+            },
+          });
+          return;
+        }
+      }
+      const result = await exportProject({ parentDir: directory, plan, projectName, mode: 'development' });
+      if (result.status === 'ok') {
+        const payload = result.result || {};
+        const mergedWarnings = [...(extraWarnings || []), ...(payload.warnings || [])];
+        dispatch({
+          type: 'DEPLOY_SUCCESS',
+          result: { ...payload, warnings: mergedWarnings },
+          previewOnly: payload.previewOnly || [],
+          versionGaps: payload.updatesAvailable || [],
+          warnings: mergedWarnings,
+        });
+        return;
+      }
+      if (result.status === 'cancelled') {
+        dispatch({ type: 'DEPLOY_CANCELLED' });
+        return;
+      }
+      if (result.status === 'conflict') {
+        dispatch({
+          type: 'DEPLOY_CONFLICT',
+          error: {
+            code: result.code || 'TARGET_EXISTS',
+            message: result.message || describeExportError('TARGET_EXISTS'),
+            suggestedName: result.suggestedName,
+          },
+        });
+        return;
+      }
+      dispatch({
+        type: 'DEPLOY_FAILURE',
+        error: {
+          code: result.code || 'COMPOSE_FAILED',
+          message: result.message || describeExportError(result.code),
+        },
+      });
+    } finally {
+      deployBusy.current = false;
+    }
+  };
+
+  const handleDeployChooseDirectory = async () => {
+    if (deployBusy.current) return;
+    const gate = selectCanChooseDirectory(state);
+    if (!gate.can) {
+      setNotice(`还不能选择导出位置：${gate.reason}`);
+      return;
+    }
+    if (!isDesktopExportAvailable()) {
+      dispatch({
+        type: 'DEPLOY_FAILURE',
+        error: { code: 'DESKTOP_REQUIRED', message: DESKTOP_REQUIRED_MESSAGE },
+      });
+      return;
+    }
+    dispatch({ type: 'DEPLOY_START' });
+    const chosen = await chooseDirectory();
+    if (chosen.status === 'cancelled') {
+      dispatch({ type: 'DEPLOY_CANCELLED' });
+      return;
+    }
+    if (chosen.status !== 'ok') {
+      dispatch({ type: 'DEPLOY_FAILURE', error: { code: chosen.status, message: chosen.message } });
+      return;
+    }
+    const { plan, warnings } = buildPlanFromSession(state);
+    const projectName = sanitizeProjectName(state.store.name || state.agentDraft.storeName);
+    await runDeployExport(chosen.path, plan, projectName, warnings);
+  };
+
+  const handleDeployRetry = async () => {
+    if (deployBusy.current) return;
+    const directory = state.deploy.directory;
+    if (!directory) {
+      await handleDeployChooseDirectory();
+      return;
+    }
+    const gate = selectCanChooseDirectory(state);
+    if (!gate.can) {
+      setNotice(`还不能重试导出：${gate.reason}`);
+      return;
+    }
+    const projectName = sanitizeProjectName(
+      (state.deploy.error && state.deploy.error.suggestedName) || state.deploy.projectName,
+    );
+    const { plan, warnings } = buildPlanFromSession(state);
+    await runDeployExport(directory, plan, projectName, warnings);
+  };
+
+  const handleDeployCancel = async () => {
+    await cancelExport(state.deploy.taskId);
+    dispatch({ type: 'DEPLOY_CANCELLED' });
+  };
+
+  const runPreflight = async () => {
+    dispatch({ type: 'PREFLIGHT_START' });
+    const local = evaluateLocal(state, {
+      devtoolsDetected: state.deploy.handoff ? state.deploy.handoff.devtoolsDetected : null,
+    });
+    let merged = { ...local, planDigest: null };
+    const desktop = projectServiceRef.current.mode === 'desktop';
+    if (desktop && local.errors.length === 0) {
+      const { plan } = buildPlanFromSession(state);
+      const result = await validatePlan(plan);
+      if (result.status === 'ok') {
+        merged = mergeComposerResult(local, result.result);
+      } else {
+        merged = mergeComposerResult(local, {
+          ok: false,
+          code: result.code || 'COMPOSE_FAILED',
+          message: result.message,
+        });
+      }
+    }
+    // 已有导出位置时提前暴露同名冲突；未选择目录不伪造目标路径。
+    const rawTargetName = String(state.deploy.projectName || state.store.name || state.agentDraft.storeName || '').trim();
+    if (desktop && state.deploy.directory && rawTargetName) {
+      const target = await preflightTarget({
+        parentDir: state.deploy.directory,
+        projectName: sanitizeProjectName(rawTargetName),
+      });
+      merged = mergeTargetPreflight(merged, target);
+    }
+    dispatch({
+      type: 'PREFLIGHT_RESULT',
+      errors: merged.errors,
+      warns: merged.warns,
+      infos: merged.infos,
+      planDigest: merged.planDigest,
+      checkedAt: merged.checkedAt,
+      error: merged.error || null,
+    });
+  };
+
+  useEffect(() => {
+    if (state.view !== 'flow' || phase !== PHASES.DEPLOY) {
+      preflightStarted.current = false;
+      return undefined;
+    }
+    if (![DEPLOY_STATUS.IDLE, DEPLOY_STATUS.CANCELLED, DEPLOY_STATUS.FAILED].includes(state.deploy.status)) {
+      return undefined;
+    }
+    if (preflightStarted.current) return undefined;
+    preflightStarted.current = true;
+    void runPreflight();
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.view, phase, state.deploy.status]);
+
+  const handleDeployOpenPath = async (target) => {
+    const resolved = target || (state.deploy.directory && state.deploy.projectName
+      ? `${state.deploy.directory}/${state.deploy.projectName}`
+      : '');
+    if (!resolved) return;
+    const result = await openProjectDirectory(resolved);
+    if (!result.ok) {
+      dispatch({
+        type: 'DEPLOY_FAILURE',
+        error: { code: 'OPEN_FAILED', message: result.message || '目录不存在，可重新导出。' },
+      });
+    }
+  };
+
+  const handleDeployCopyPath = async (target) => {
+    if (!target || typeof navigator === 'undefined' || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(target);
+    } catch (error) {
+      /* 剪贴板不可用时静默忽略，路径仍可见可手选 */
+    }
+  };
+
+  const handleProbeDevtools = async () => {
+    setDevtoolsState((previous) => ({ ...previous, status: 'checking' }));
+    const result = await devtoolsService.probe();
+    const next = {
+      status: result.found ? 'found' : 'absent',
+      found: Boolean(result.found),
+      via: result.via || 'none',
+      path: result.path || null,
+      message: result.message || null,
+    };
+    setDevtoolsState(next);
+    if (state.deploy.handoff) dispatch({ type: 'HANDOFF_DEVTOOLS_RESULT', detected: next.found });
+  };
+
+  const handleHandoffOpen = () => {
+    dispatch({ type: 'HANDOFF_OPEN' });
+    setHandoffOpen(true);
+    setHandoffError(null);
+    if (devtoolsState.status === 'idle') void handleProbeDevtools();
+  };
+
+  const handleHandoffClose = () => setHandoffOpen(false);
+
+  const handleHandoffStepSelect = (stepId) => dispatch({ type: 'HANDOFF_STEP_SET', stepId });
+
+  const handleHandoffComplete = (stepId) => {
+    dispatch({ type: 'HANDOFF_STEP_COMPLETE', stepId });
+  };
+
+  const handleHandoffApplyAppid = async (appid) => {
+    const outputPath = state.deploy.result?.outputPath
+      || (state.deploy.directory && state.deploy.projectName
+        ? `${state.deploy.directory}/${state.deploy.projectName}`
+        : '');
+    if (!outputPath) {
+      setHandoffError({ code: 'APPID_TARGET_MISSING', message: '找不到产物目录，请重新导出' });
+      return;
+    }
+    setHandoffBusy(true);
+    setHandoffError(null);
+    const result = await appidService.apply(outputPath, appid);
+    setHandoffBusy(false);
+    if (result.status === 'ok') {
+      dispatch({ type: 'PROJECT_SET_APPID', appid: result.appid });
+      dispatch({
+        type: 'HANDOFF_APPID_RESULT',
+        applied: true,
+        digestBefore: result.digestBefore,
+        digestAfter: result.digestAfter,
+        lockDigestBefore: result.lockDigestBefore,
+        lockDigestAfter: result.lockDigestAfter,
+      });
+      dispatch({ type: 'HANDOFF_STEP_COMPLETE', stepId: 'appid' });
+      setNotice(result.unchanged ? 'AppID 已是该值，无需改写' : 'AppID 已写入，产物摘要已重新封存');
+      return;
+    }
+    setHandoffError({ code: result.code, message: result.message });
+  };
+
+  const handleHandoffFinish = async () => {
+    dispatch({ type: 'HANDOFF_STEP_COMPLETE', stepId: 'next' });
+    setHandoffOpen(false);
+    await handleOpenWorkbench();
+  };
+
+  const handleCopyDevtoolsGuide = async () => {
+    const copied = await devtoolsService.copyGuide();
+    setNotice(copied ? '安装说明已复制' : '复制失败，请手动打开官方下载页');
+  };
+
+  const handleImportPreview = async () => {
+    if (state.deploy.import.busy) return;
+    dispatch({ type: 'IMPORT_PREVIEW_START' });
+    try {
+      const payload = await buildImportPayload(state.agentDraft, state.store);
+      const result = await previewImport({ storeId: DEFAULT_STORE_ID, payload });
+      if (result.status === 'ok') {
+        dispatch({ type: 'IMPORT_PREVIEW_SUCCESS', preview: { ...result.data, payload } });
+        return;
+      }
+      dispatch({
+        type: 'IMPORT_PREVIEW_FAILURE',
+        status: result.status,
+        error: { code: result.code, message: result.message },
+      });
+    } catch (error) {
+      dispatch({
+        type: 'IMPORT_PREVIEW_FAILURE',
+        error: { code: 'IMPORT_FAILED', message: error instanceof Error ? error.message : '检查差异失败。' },
+      });
+    }
+  };
+
+  const handleImportToggle = (key) => dispatch({ type: 'IMPORT_CONFIRM_TOGGLE', key });
+
+  const handleImportApply = async () => {
+    const current = state.deploy.import;
+    if (current.busy || !current.preview || !current.preview.previewToken) return;
+    dispatch({ type: 'IMPORT_APPLY_START' });
+    try {
+      const result = await applyImport({
+        storeId: DEFAULT_STORE_ID,
+        payload: current.preview.payload,
+        previewToken: current.preview.previewToken,
+        confirmations: current.confirmations,
+      });
+      if (result.status === 'ok') {
+        dispatch({ type: 'IMPORT_SUCCESS', result: result.data });
+        return;
+      }
+      dispatch({
+        type: 'IMPORT_FAILURE',
+        status: result.status,
+        error: { code: result.code, message: result.message },
+      });
+    } catch (error) {
+      dispatch({
+        type: 'IMPORT_FAILURE',
+        error: { code: 'IMPORT_FAILED', message: error instanceof Error ? error.message : '导入失败。' },
+      });
+    }
+  };
+
   function renderStage() {
     switch (phase) {
       case PHASES.FEATURES:
@@ -557,8 +1435,11 @@ export default function App() {
             storeTypes={storeTypesForForm}
             styles={STYLE_PRESETS}
             styleId={state.visual.styleId}
+            images={state.assets.images}
+            imageBusy={storeImageBusy}
             onFieldChange={handleFieldChange}
             onStyleChange={(id) => dispatch({ type: 'SET_STYLE', id })}
+            onPickImages={handlePickStoreImages}
             onSubmit={handleStoreSubmit}
           />
         );
@@ -640,39 +1521,154 @@ export default function App() {
             onApprove={() => dispatch({ type: 'APPROVE_IMAGE' })}
           />
         );
-      case PHASES.DEPLOY:
+case PHASES.DEPLOY: {
+        const exportGate = selectCanExport(state);
+        const chooseGate = selectCanChooseDirectory(state);
         return (
-          <DeployStep
-            status={state.deploy.status}
-            steps={DEPLOY_STEPS}
-            step={state.deploy.step}
-            progress={state.deploy.progress}
-            storeName={state.store.name}
-            templateName={selectedTemplate?.name ?? '默认骨架'}
-            styleName={styleName}
-          />
+          <>
+            <PreflightPanel
+              status={state.deploy.preflight.status}
+              errors={state.deploy.preflight.errors}
+              warns={state.deploy.preflight.warns}
+              infos={state.deploy.preflight.infos}
+              acknowledged={state.deploy.preflight.acknowledged}
+              planDigest={state.deploy.preflight.planDigest}
+              checkedAt={state.deploy.preflight.checkedAt}
+              canExport={exportGate}
+              onRerun={runPreflight}
+              onToggleAck={(ruleId) => dispatch({ type: 'PREFLIGHT_ACK_TOGGLE', ruleId })}
+              onGoto={(nextPhase) => dispatch({ type: 'PHASE_GOTO', phase: nextPhase })}
+            />
+            <DeployStep
+              status={state.deploy.status}
+              steps={DEPLOY_STEPS}
+              step={state.deploy.step}
+              progress={state.deploy.progress}
+              stageMessage={state.deploy.stageMessage}
+              storeName={state.store.name}
+              templateName={selectedTemplate?.name ?? '默认骨架'}
+              styleName={styleName}
+              directory={state.deploy.directory}
+              projectName={state.deploy.projectName}
+              result={state.deploy.result}
+              error={state.deploy.error}
+              previewOnly={state.deploy.previewOnly}
+              versionGaps={state.deploy.versionGaps}
+              warnings={state.deploy.warnings}
+              busy={state.deploy.busy}
+              blockedReason={chooseGate.can ? null : chooseGate.reason}
+              onChooseDirectory={handleDeployChooseDirectory}
+              onRetry={handleDeployRetry}
+              onCancel={handleDeployCancel}
+              onOpenPath={handleDeployOpenPath}
+              onCopyPath={handleDeployCopyPath}
+              onOpenHandoff={handleHandoffOpen}
+            />
+            {state.deploy.status === 'done' ? (
+              <ImportDiffCard
+                status={state.deploy.import.status}
+                preview={state.deploy.import.preview}
+                confirmations={state.deploy.import.confirmations}
+                busy={state.deploy.import.busy}
+                result={state.deploy.import.result}
+                error={state.deploy.import.error}
+                onPreview={handleImportPreview}
+                onToggleConfirmation={handleImportToggle}
+                onApply={handleImportApply}
+              />
+            ) : null}
+          </>
         );
+      }
       default:
         return null;
     }
   }
 
   const agentComposer = selectAgentComposerState(state);
+  const undoState = selectUndoState(state);
   const composerVisible = phase === PHASES.STORE_INFO
     ? agentComposer.visible
     : COMPOSER_PHASES.includes(phase);
   const skipVisible = phase === PHASES.ONBOARDING && Boolean(state.store.name);
 
+  if (state.view === 'workbench') {
+    return (
+      <ProjectWorkbench
+        status={selectWorkbenchState(state)}
+        projects={selectVisibleProjects(state)}
+        search={state.project.search}
+        mode={state.project.mode}
+        thumbnails={thumbnails}
+        activeId={state.project.activeId}
+        activeName={state.store.name || state.agentDraft.storeName || '当前项目'}
+        lastProjectId={state.settings.config?.lastProjectId || null}
+        deleteTarget={state.project.deleteTarget}
+        deleteBusy={deleteBusy}
+        error={state.project.status === 'error' ? state.project.openError : null}
+        openError={state.project.status === 'error' ? null : state.project.openError}
+        onDismissError={() => dispatch({ type: 'PROJECT_OPEN_ERROR_CLEAR' })}
+        onSearch={handleProjectSearch}
+        onCreate={handleProjectCreate}
+        onOpen={handleProjectOpen}
+        onReveal={handleProjectReveal}
+        onCopyId={handleProjectCopyId}
+        onDeleteRequest={handleProjectDeleteRequest}
+        onDeleteCancel={handleProjectDeleteCancel}
+        onDeleteConfirm={handleProjectDeleteConfirm}
+        onOpenRecent={handleProjectOpen}
+        onBackToFlow={handleBackToFlow}
+        onRetry={refreshProjectList}
+        onOpenDirectory={handleOpenDataDirectory}
+        onOpenSettings={handleOpenSettings}
+      />
+    );
+  }
+
+  if (state.view === 'settings') {
+    return (
+      <SettingsPanel
+        config={state.settings.config}
+        mode={state.project.mode}
+        diagnostics={state.settings.diagnostics}
+        summary={selectDiagnosticsSummary(state)}
+        copyStatus={diagnosticsCopyStatus}
+        snapshotPath={diagnosticsSnapshotPath}
+        saving={settingsSaving}
+        saveError={settingsError}
+        projectCount={state.project.list.length}
+        activeProjectId={state.project.activeId}
+        onSave={handleSettingsSave}
+        onRunDiagnostics={handleRunDiagnostics}
+        onCopyDiagnostics={handleCopyDiagnostics}
+        onSaveSnapshot={handleSaveDiagnosticsSnapshot}
+        onBack={handleSettingsBack}
+        onOpenDataDir={handleOpenDataDirectory}
+        onOpenProjectDirectory={() => {
+          if (state.project.activeId) handleProjectReveal(state.project.activeId);
+        }}
+      />
+    );
+  }
+
   return (
-    <AppShell
+    <>
+      <AppShell
       sidebar={(
         <Sidebar
           appName="智能开店"
           sessions={state.sessions}
           activeSessionId={state.activeSessionId}
           currentStoreName={state.store.name}
+          saveLabel={selectSaveLabel(state)}
+          mode={state.project.mode}
+          agentLabel={state.settings.config
+            ? (state.settings.config.agentTransport === 'http' ? 'DeepSeek 后端（真实模型）' : '本地 Mock（未接入真实模型）')
+            : describeAgentTransport().label}
           onStartOnboarding={startOnboarding}
           onSelectSession={selectSession}
+          onOpenWorkbench={handleOpenWorkbench}
+          onOpenSettings={handleOpenSettings}
           onReset={reset}
         />
       )}
@@ -683,8 +1679,20 @@ export default function App() {
             title={meta.label}
             caption={meta.caption}
             badge={activeSession.title}
+            saveLabel={selectSaveLabel(state)}
+            canUndo={undoState.canUndo}
+            canRedo={undoState.canRedo}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onOpenWorkbench={handleOpenWorkbench}
             onReset={reset}
           />
+          {notice ? (
+            <div className="app-notice" role="status">
+              <span>{notice}</span>
+              <button type="button" onClick={() => setNotice(null)}>关闭</button>
+            </div>
+          ) : null}
           <div className="workspace">
             {phase === PHASES.HOME ? (
               <HomeStage
@@ -759,6 +1767,28 @@ export default function App() {
           </div>
         </>
       )}
-    />
+      />
+      <HandoffWizard
+        open={handoffOpen}
+        handoff={state.deploy.handoff}
+        progress={selectHandoffProgress(state)}
+        result={state.deploy.result}
+        appid={state.project.appid}
+        apiHost={apiHost}
+        devtools={devtoolsState}
+        busy={handoffBusy}
+        error={handoffError}
+        blockedReason={state.deploy.status === 'done' ? '' : '上一次交接进度已保留；重新导出后可继续写入 AppID'}
+        onClose={handleHandoffClose}
+        onStepSelect={handleHandoffStepSelect}
+        onCompleteStep={handleHandoffComplete}
+        onApplyAppid={handleHandoffApplyAppid}
+        onOpenPath={handleDeployOpenPath}
+        onCopyPath={handleDeployCopyPath}
+        onProbeDevtools={handleProbeDevtools}
+        onCopyGuide={handleCopyDevtoolsGuide}
+        onFinish={handleHandoffFinish}
+      />
+    </>
   );
 }

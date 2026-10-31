@@ -1,0 +1,23 @@
+<view class="product-card {{disabled ? 'product-card--disabled' : ''}}" bind:tap="onOpen">
+  <view class="product-card__media">
+    <image wx:if="{{product.imageUrl}}" class="product-card__image" src="{{product.imageUrl}}" mode="aspectFill" lazy-load />
+    <view wx:else class="product-card__initial">{{display.initial}}</view>
+    <view wx:if="{{disabled}}" class="product-card__soldout">已售罄</view>
+  </view>
+
+  <view class="product-card__main">
+    <view class="product-card__name">{{product.name || '未命名商品'}}</view>
+    <view class="product-card__desc">{{product.description || '暂无描述'}}</view>
+    <view class="product-card__footer">
+      <view class="product-card__price">
+        <text class="product-card__currency">¥</text>
+        <text class="product-card__amount">{{display.amount}}</text>
+      </view>
+      <view class="product-card__stepper">
+        <view wx:if="{{quantity > 0}}" class="product-card__step" catch:tap="onRemove">−</view>
+        <text wx:if="{{quantity > 0}}" class="product-card__qty">{{quantity}}</text>
+        <view class="product-card__step product-card__step--add {{disabled ? 'product-card__step--off' : ''}}" catch:tap="onAdd">+</view>
+      </view>
+    </view>
+  </view>
+</view>

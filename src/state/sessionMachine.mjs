@@ -1,5 +1,6 @@
 import {
   PHASES,
+  PHASE_META,
   ROLES,
   SESSION_KIND,
   NEW_PROJECT_LABEL,
@@ -7,6 +8,7 @@ import {
   AGENT_STORE_INFO_HINT,
   COMPOSER_PLACEHOLDER,
   COMPOSER_SUBMIT_LABEL,
+  DEPLOY_STATUS,
 } from './constants.mjs';
 import { features as catalogFeatures } from '../domain/catalog.mjs';
 import {
@@ -31,6 +33,11 @@ import {
 } from '../domain/onboardingScript.mjs';
 import { buildHandoff } from '../domain/handoff.mjs';
 import { STORE_TYPES, STYLE_PRESETS } from '../domain/storeBrief.mjs';
+import {
+  createEmptyDeployState,
+  createEmptyPreflight,
+  fromDocument,
+} from '../domain/projectSnapshot.mjs';
 
 const REQUIRED_FEATURE_IDS = catalogFeatures.filter((feature) => feature.required).map((feature) => feature.id);
 const MAX_DISHES = 5;
@@ -96,6 +103,44 @@ function withAgentStoreName(state, storeName) {
   };
 }
 
+function createInitialDeploySlice() {
+  return createEmptyDeployState();
+}
+
+function createInitialProjectSlice() {
+  return {
+    mode: 'desktop',
+    status: 'idle',
+    list: [],
+    activeId: null,
+    createdAt: null,
+    appid: '',
+    dirty: false,
+    saving: false,
+    lastSavedAt: null,
+    lastSavedBytes: 0,
+    saveError: null,
+    openError: null,
+    deleteTarget: null,
+    search: '',
+  };
+}
+
+function createInitialSettingsSlice() {
+  return {
+    status: 'idle',
+    config: null,
+    diagnostics: {
+      status: 'idle',
+      checkedAt: null,
+      lines: [],
+      error: null,
+    },
+  };
+}
+
+const VIEWS = Object.freeze(['workbench', 'flow', 'settings']);
+
 export function createInitialState() {
   const mainSession = {
     id: 'session-main',
@@ -107,17 +152,23 @@ export function createInitialState() {
     revealFlush: 0,
   };
   return {
+    view: 'workbench',
     seq: 0,
     phase: PHASES.HOME,
     activeSessionId: mainSession.id,
     sessions: [mainSession],
-    store: { name: '', type: STORE_TYPES[0], notes: '', address: '', phone: '' },
+    store: { name: '', type: STORE_TYPES[0], notes: '', address: '', phone: '', logoAssetId: null, imageAssetIds: [] },
     features: { selected: [...REQUIRED_FEATURE_IDS], custom: '' },
     build: { status: 'idle', candidates: [], selectedId: null },
-    visual: { styleId: STYLE_PRESETS[0].id, promptRounds: [], imageRounds: [], image: null, prompt: '' },
-    deploy: { status: 'idle', step: 0, progress: 0 },
+    visual: { styleId: STYLE_PRESETS[0].id, promptRounds: [], imageRounds: [], image: null, prompt: '', imageAssetId: null, imageMeta: null },
+    deploy: createInitialDeploySlice(),
     agentDraft: createEmptyAgentDraft(),
     agent: createInitialAgentSlice(),
+    assets: { images: [] },
+    unmappedFields: {},
+    project: createInitialProjectSlice(),
+    settings: createInitialSettingsSlice(),
+    undo: { past: [], future: [], lastKey: null },
   };
 }
 
@@ -194,8 +245,444 @@ function enterFeatures(state) {
   return { ...next, phase: PHASES.FEATURES };
 }
 
-export function reducer(state, action) {
+function baseReducer(state, action) {
   switch (action.type) {
+    case 'VIEW_SET':
+      return VIEWS.includes(action.view) ? { ...state, view: action.view } : state;
+
+    case 'PHASE_GOTO': {
+      if (!Object.values(PHASES).includes(action.phase)) return state;
+      const sessionByPhase = {
+        [PHASES.STORE_INFO]: 'session-store',
+        [PHASES.PROMPT_STUDIO]: 'session-visual',
+        [PHASES.IMAGE_REVIEW]: 'session-visual',
+        [PHASES.DEPLOY]: 'session-deploy',
+      };
+      const targetSession = sessionByPhase[action.phase];
+      const hasSession = state.sessions.some((session) => session.id === targetSession);
+      return {
+        ...state,
+        view: 'flow',
+        phase: action.phase,
+        activeSessionId: hasSession ? targetSession : state.activeSessionId,
+      };
+    }
+
+    case 'PROJECT_LIST_REQUEST':
+      return { ...state, project: { ...state.project, status: 'loading', openError: null } };
+
+    case 'PROJECT_LIST_SUCCESS':
+      return {
+        ...state,
+        project: {
+          ...state.project,
+          status: 'ready',
+          list: Array.isArray(action.list) ? action.list : [],
+          openError: null,
+        },
+      };
+
+    case 'PROJECT_LIST_FAILURE':
+      return {
+        ...state,
+        project: {
+          ...state.project,
+          status: 'error',
+          openError: action.error || { code: 'PROJECT_READ_FAILED', message: '项目列表读取失败' },
+        },
+      };
+
+    case 'PROJECT_OPEN_REQUEST':
+      return { ...state, project: { ...state.project, status: 'loading', openError: null } };
+
+    case 'PROJECT_OPEN_SUCCESS': {
+      const hydrated = fromDocument(action.doc);
+      return {
+        ...state,
+        ...hydrated,
+        view: 'flow',
+        project: {
+          ...state.project,
+          status: 'ready',
+          activeId: action.projectId,
+          createdAt: hydrated.project.createdAt,
+          appid: hydrated.project.appid,
+          dirty: false,
+          saving: false,
+          lastSavedAt: action.savedAt || null,
+          lastSavedBytes: action.bytes || 0,
+          saveError: null,
+          openError: null,
+          deleteTarget: null,
+        },
+      };
+    }
+
+    case 'PROJECT_OPEN_FAILURE':
+      return {
+        ...state,
+        project: {
+          ...state.project,
+          status: (state.project.list || []).length > 0 ? 'ready' : 'error',
+          saving: false,
+          openError: action.error || { code: 'PROJECT_READ_FAILED', message: '项目读取失败' },
+        },
+      };
+
+    case 'PROJECT_OPEN_ERROR_CLEAR':
+      return { ...state, project: { ...state.project, openError: null } };
+
+    case 'ADD_PROJECT_IMAGES': {
+      const incoming = Array.isArray(action.images) ? action.images : [];
+      if (incoming.length === 0) return state;
+      const current = state.assets && Array.isArray(state.assets.images) ? state.assets.images : [];
+      const seen = new Set(current.map((item) => item && item.assetId).filter(Boolean));
+      const merged = [...current];
+      incoming.forEach((item) => {
+        if (!item || typeof item.assetId !== 'string' || seen.has(item.assetId)) return;
+        seen.add(item.assetId);
+        merged.push(item);
+      });
+      if (merged.length > 6) merged.length = 6;
+      if (merged.length === current.length) return state;
+      return { ...state, assets: { ...(state.assets || {}), images: merged } };
+    }
+
+    case 'PROJECT_NEW_SUCCESS': {
+      const blank = createInitialState();
+      return {
+        ...blank,
+        view: 'flow',
+        settings: state.settings,
+        project: {
+          ...state.project,
+          ...blank.project,
+          status: 'ready',
+          activeId: action.projectId,
+          createdAt: action.createdAt || null,
+          appid: typeof action.appid === 'string' ? action.appid : '',
+          dirty: false,
+          saving: false,
+          lastSavedAt: null,
+          saveError: null,
+          openError: null,
+          deleteTarget: null,
+        },
+      };
+    }
+
+    case 'PROJECT_MARK_DIRTY':
+      return state.project.dirty ? state : { ...state, project: { ...state.project, dirty: true } };
+
+    case 'PROJECT_SAVE_REQUEST':
+      return { ...state, project: { ...state.project, saving: true } };
+
+    case 'PROJECT_SAVED':
+      return {
+        ...state,
+        project: {
+          ...state.project,
+          saving: false,
+          dirty: false,
+          lastSavedAt: action.savedAt || null,
+          lastSavedBytes: Number.isFinite(action.bytes) ? action.bytes : state.project.lastSavedBytes,
+          saveError: null,
+        },
+      };
+
+    case 'PROJECT_SAVE_FAILED':
+      return {
+        ...state,
+        project: {
+          ...state.project,
+          saving: false,
+          saveError: action.error || { code: 'PROJECT_WRITE_FAILED', message: '保存失败' },
+        },
+      };
+
+    case 'PROJECT_DELETE_REQUEST':
+      return { ...state, project: { ...state.project, deleteTarget: { projectId: action.projectId, name: action.name } } };
+
+    case 'PROJECT_DELETE_CANCEL':
+      return { ...state, project: { ...state.project, deleteTarget: null } };
+
+    case 'PROJECT_DELETE_SUCCESS': {
+      const remaining = state.project.list.filter((item) => item.projectId !== action.projectId);
+      if (state.project.activeId === action.projectId) {
+        const blank = createInitialState();
+        return {
+          ...blank,
+          view: 'workbench',
+          settings: state.settings,
+          project: {
+            ...blank.project,
+            list: remaining,
+            status: 'ready',
+            search: state.project.search,
+            deleteTarget: null,
+            mode: state.project.mode,
+          },
+        };
+      }
+      return {
+        ...state,
+        project: { ...state.project, list: remaining, status: 'ready', deleteTarget: null },
+      };
+    }
+
+    case 'PROJECT_DELETE_FAILURE':
+      return {
+        ...state,
+        project: { ...state.project, deleteTarget: null, saveError: action.error || { code: 'PROJECT_WRITE_FAILED', message: '删除项目失败' } },
+      };
+
+    case 'PROJECT_SEARCH_SET':
+      return { ...state, project: { ...state.project, search: String(action.value || '') } };
+
+    case 'PROJECT_SET_APPID':
+      return { ...state, project: { ...state.project, appid: String(action.appid || ''), dirty: true } };
+
+    case 'PROJECT_SET_MODE':
+      return { ...state, project: { ...state.project, mode: action.mode === 'browser' ? 'browser' : 'desktop' } };
+
+    case 'PROJECT_SET_LAST_SAVED':
+      return {
+        ...state,
+        project: { ...state.project, lastSavedAt: action.savedAt || null, lastSavedBytes: action.bytes || 0 },
+      };
+
+    case 'SETTINGS_LOAD_SUCCESS':
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          status: 'ready',
+          config: action.config || null,
+        },
+      };
+
+    case 'SETTINGS_SAVE_SUCCESS':
+      return {
+        ...state,
+        settings: { ...state.settings, status: 'ready', config: action.config || state.settings.config },
+      };
+
+    case 'SETTINGS_PATCH': {
+      const patch = action.patch && typeof action.patch === 'object' ? action.patch : {};
+      return {
+        ...state,
+        settings: { ...state.settings, config: { ...(state.settings.config || {}), ...patch } },
+      };
+    }
+
+    case 'DIAGNOSTICS_START':
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          diagnostics: { status: 'running', checkedAt: null, lines: [], error: null },
+        },
+      };
+
+    case 'DIAGNOSTICS_LINE': {
+      const line = action.line;
+      if (!line || !line.id) return state;
+      const lines = state.settings.diagnostics.lines.filter((item) => item.id !== line.id);
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          diagnostics: { ...state.settings.diagnostics, lines: [...lines, line] },
+        },
+      };
+    }
+
+    case 'DIAGNOSTICS_DONE':
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          diagnostics: {
+            status: 'done',
+            checkedAt: action.checkedAt || null,
+            lines: Array.isArray(action.lines) ? action.lines : state.settings.diagnostics.lines,
+            error: null,
+          },
+        },
+      };
+
+    case 'DIAGNOSTICS_FAILURE':
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          diagnostics: {
+            ...state.settings.diagnostics,
+            status: 'failed',
+            error: action.error || { code: 'DIAGNOSTICS_FAILED', message: '自检未完成' },
+          },
+        },
+      };
+
+    case 'PREFLIGHT_START':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          preflight: { ...createEmptyPreflight(), status: 'checking' },
+        },
+      };
+
+    case 'PREFLIGHT_RESULT':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          preflight: {
+            status: action.error ? 'failed' : 'done',
+            errors: Array.isArray(action.errors) ? action.errors : [],
+            warns: Array.isArray(action.warns) ? action.warns : [],
+            infos: Array.isArray(action.infos) ? action.infos : [],
+            acknowledged: state.deploy.preflight.acknowledged || [],
+            planDigest: action.planDigest || null,
+            checkedAt: action.checkedAt || null,
+            error: action.error || null,
+          },
+        },
+      };
+
+    case 'PREFLIGHT_RESET':
+      return { ...state, deploy: { ...state.deploy, preflight: createEmptyPreflight() } };
+
+    case 'PREFLIGHT_ACK_TOGGLE': {
+      const ruleId = String(action.ruleId || '');
+      if (!ruleId) return state;
+      const current = new Set(state.deploy.preflight.acknowledged || []);
+      if (current.has(ruleId)) current.delete(ruleId); else current.add(ruleId);
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          preflight: { ...state.deploy.preflight, acknowledged: [...current].sort() },
+        },
+      };
+    }
+
+    case 'HANDOFF_OPEN': {
+      const existing = state.deploy.handoff;
+      const handoff = existing || {
+        stepId: 'prepare',
+        completedStepIds: [],
+        appidApplied: false,
+        appidDigestBefore: null,
+        appidDigestAfter: null,
+        devtoolsDetected: false,
+        updatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      };
+      return { ...state, deploy: { ...state.deploy, handoff } };
+    }
+
+    case 'HANDOFF_STEP_SET': {
+      if (!state.deploy.handoff) return state;
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          handoff: { ...state.deploy.handoff, stepId: action.stepId, updatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') },
+        },
+      };
+    }
+
+    case 'HANDOFF_STEP_COMPLETE': {
+      if (!state.deploy.handoff) return state;
+      const completed = [...new Set([...(state.deploy.handoff.completedStepIds || []), action.stepId])];
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          handoff: { ...state.deploy.handoff, completedStepIds: completed, updatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') },
+        },
+      };
+    }
+
+    case 'HANDOFF_APPID_RESULT':
+      if (!state.deploy.handoff) return state;
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          handoff: {
+            ...state.deploy.handoff,
+            appidApplied: Boolean(action.applied),
+            appidDigestBefore: action.digestBefore ?? state.deploy.handoff.appidDigestBefore,
+            appidDigestAfter: action.digestAfter ?? state.deploy.handoff.appidDigestAfter,
+            updatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+          },
+        },
+      };
+
+    case 'HANDOFF_CLOSE':
+      return { ...state, deploy: { ...state.deploy, handoff: null } };
+
+    case 'HANDOFF_DEVTOOLS_RESULT':
+      if (!state.deploy.handoff) return state;
+      return {
+        ...state,
+        deploy: { ...state.deploy, handoff: { ...state.deploy.handoff, devtoolsDetected: Boolean(action.detected) } },
+      };
+
+    case 'UNDO_APPLY':
+    case 'REDO_APPLY': {
+      const snapshot = action.snapshot;
+      if (!snapshot) return state;
+      const draft = normalizeAgentDraft(snapshot.agentDraft ?? state.agentDraft);
+      const validation = validateAgentDraft(draft);
+      const status = state.agent.status === AGENT_STATUS.CONFIRMED && validation.readyForReview
+        ? AGENT_STATUS.CONFIRMED
+        : (validation.readyForReview ? AGENT_STATUS.REVIEWING : AGENT_STATUS.COLLECTING);
+      return {
+        ...state,
+        store: snapshot.store ? { ...state.store, ...snapshot.store } : state.store,
+        features: snapshot.features ? { ...state.features, ...snapshot.features } : state.features,
+        build: snapshot.build ? { ...state.build, selectedId: snapshot.build.selectedId } : state.build,
+        visual: snapshot.visual ? { ...state.visual, ...snapshot.visual, image: state.visual.image } : state.visual,
+        agentDraft: draft,
+        agent: {
+          ...state.agent,
+          status,
+          missingFields: validation.missingFields,
+          errors: validation.errors,
+          nextQuestion: buildNextQuestion(validation),
+        },
+        project: {
+          ...state.project,
+          appid: typeof snapshot.appid === 'string' ? snapshot.appid : state.project.appid,
+          dirty: true,
+        },
+      };
+    }
+
+    case 'RESET_PROJECT': {
+      const blank = createInitialState();
+      return {
+        ...blank,
+        view: 'flow',
+        project: {
+          ...blank.project,
+          list: state.project.list,
+          status: state.project.status,
+          search: state.project.search,
+          mode: state.project.mode,
+          activeId: state.project.activeId,
+          createdAt: state.project.createdAt,
+          appid: state.project.appid,
+          dirty: true,
+          lastSavedAt: state.project.lastSavedAt,
+        },
+        settings: state.settings,
+      };
+    }
+
     case 'RESET':
       return createInitialState();
 
@@ -549,8 +1036,8 @@ export function reducer(state, action) {
       };
     }
 
-    case 'APPROVE_IMAGE':
-      return createStepSession(state, {
+    case 'APPROVE_IMAGE': {
+      const entered = createStepSession(state, {
         phase: PHASES.DEPLOY,
         id: 'session-deploy',
         title: '部署小程序',
@@ -562,6 +1049,238 @@ export function reducer(state, action) {
         ],
         payload: { styleId: state.visual.styleId, prompt: state.visual.prompt },
       });
+      return { ...entered, deploy: createInitialDeploySlice() };
+    }
+
+    case 'DEPLOY_START':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          status: DEPLOY_STATUS.CHOOSING,
+          taskId: action.taskId || null,
+          directory: action.directory || state.deploy.directory,
+          projectName: action.projectName || state.deploy.projectName,
+          stageMessage: '等待选择导出位置',
+          error: null,
+          result: null,
+          busy: false,
+        },
+      };
+
+    case 'DEPLOY_DIRECTORY_CHOSEN':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          status: DEPLOY_STATUS.VALIDATING,
+          directory: action.directory || state.deploy.directory,
+          projectName: action.projectName || state.deploy.projectName,
+          step: 0,
+          progress: 0,
+          stageMessage: '正在校验配置',
+          error: null,
+          busy: true,
+        },
+      };
+
+    case 'DEPLOY_STAGE': {
+      const stageStep = {
+        validate: 0,
+        registry: 0,
+        resolve: 0,
+        lock: 0,
+        preflight: 0,
+        emit: 1,
+        verify: 2,
+        commit: 1,
+        report: 2,
+      }[action.stage];
+      const step = stageStep === undefined ? state.deploy.step : stageStep;
+      const status = step === 0
+        ? DEPLOY_STATUS.VALIDATING
+        : (step === 1 ? DEPLOY_STATUS.GENERATING : DEPLOY_STATUS.VERIFYING);
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          status,
+          stage: action.stage || state.deploy.stage,
+          step,
+          progress: action.progress === undefined ? Math.round((step / 4) * 100) : action.progress,
+          stageMessage: action.message || state.deploy.stageMessage,
+          busy: true,
+        },
+      };
+    }
+
+    case 'DEPLOY_SUCCESS':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          status: DEPLOY_STATUS.DONE,
+          step: 4,
+          progress: 100,
+          result: action.result || null,
+          resultDigest: (action.result && action.result.lockDigest) || state.deploy.resultDigest || null,
+          previewOnly: action.previewOnly || [],
+          versionGaps: action.versionGaps || [],
+          warnings: action.warnings || [],
+          error: null,
+          stageMessage: '工程已生成',
+          busy: false,
+          preflight: createEmptyPreflight(),
+          handoff: null,
+        },
+      };
+
+    case 'DEPLOY_FAILURE':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          status: DEPLOY_STATUS.FAILED,
+          error: action.error || { code: 'COMPOSE_FAILED', message: '导出失败，请重试。' },
+          busy: false,
+        },
+      };
+
+    case 'DEPLOY_CONFLICT':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          status: DEPLOY_STATUS.CONFLICT,
+          error: action.error || { code: 'TARGET_EXISTS', message: '同名目录已存在，请换一个项目名。' },
+          busy: false,
+        },
+      };
+
+    case 'DEPLOY_CANCELLED':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          status: DEPLOY_STATUS.CANCELLED,
+          step: 0,
+          progress: 0,
+          error: null,
+          stageMessage: '已取消，没有生成任何文件',
+          busy: false,
+        },
+      };
+
+    case 'DEPLOY_RESET':
+      return {
+        ...state,
+        deploy: {
+          ...createInitialDeploySlice(),
+          directory: state.deploy.directory,
+          projectName: state.deploy.projectName,
+          resultDigest: state.deploy.resultDigest,
+        },
+      };
+
+    case 'IMPORT_PREVIEW_START':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          import: { status: 'checking', preview: null, confirmations: [], busy: true, error: null, result: null },
+        },
+      };
+
+    case 'IMPORT_PREVIEW_SUCCESS':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          import: {
+            status: 'reviewing',
+            preview: action.preview || null,
+            confirmations: [],
+            busy: false,
+            error: null,
+            result: null,
+          },
+        },
+      };
+
+    case 'IMPORT_PREVIEW_FAILURE':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          import: {
+            ...state.deploy.import,
+            status: action.status === 'auth-unavailable' ? 'auth-unavailable' : 'failed',
+            busy: false,
+            error: action.error || { code: 'IMPORT_FAILED', message: '检查差异失败。' },
+          },
+        },
+      };
+
+    case 'IMPORT_CONFIRM_TOGGLE': {
+      const key = String(action.key || '');
+      if (!key) return state;
+      const current = new Set(state.deploy.import.confirmations || []);
+      if (current.has(key)) current.delete(key); else current.add(key);
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          import: { ...state.deploy.import, confirmations: [...current].sort() },
+        },
+      };
+    }
+
+    case 'IMPORT_APPLY_START':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          import: { ...state.deploy.import, status: 'applying', busy: true, error: null },
+        },
+      };
+
+    case 'IMPORT_SUCCESS':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          import: {
+            ...state.deploy.import,
+            status: 'done',
+            busy: false,
+            result: action.result || null,
+            error: null,
+          },
+        },
+      };
+
+    case 'IMPORT_FAILURE':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          import: {
+            ...state.deploy.import,
+            status: action.status === 'auth-unavailable' ? 'auth-unavailable' : 'failed',
+            busy: false,
+            error: action.error || { code: 'IMPORT_FAILED', message: '导入失败，请重试。' },
+          },
+        },
+      };
+
+    case 'IMPORT_RESET':
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          import: { status: 'idle', preview: null, confirmations: [], busy: false, error: null, result: null },
+        },
+      };
 
     case 'DEPLOY_PROGRESS':
       return { ...state, deploy: { ...state.deploy, status: 'running', step: action.step, progress: action.progress } };
@@ -575,6 +1294,116 @@ export function reducer(state, action) {
     default:
       return state;
   }
+}
+
+const UNDOABLE_ACTIONS = new Set([
+  'SUBMIT_NAME',
+  'TOGGLE_FEATURE',
+  'SET_FEATURES_CUSTOM',
+
+  'SET_STORE_FIELD',
+  'SET_STYLE',
+  'EDIT_AGENT_DRAFT_FIELD',
+  'EDIT_AGENT_FULFILLMENT',
+  'EDIT_AGENT_DISH',
+  'ADD_AGENT_DISH',
+  'REMOVE_AGENT_DISH',
+  'CONFIRM_AGENT_DRAFT',
+  'REOPEN_AGENT_DRAFT',
+  'SET_PROMPT',
+  'CONFIRM_PROMPT',
+  'APPROVE_IMAGE',
+  'PROJECT_SET_APPID',
+]);
+
+const UNDO_RESET_ACTIONS = new Set(['RESET', 'RESET_PROJECT', 'PROJECT_OPEN_SUCCESS', 'PROJECT_NEW_SUCCESS', 'PROJECT_DELETE_SUCCESS']);
+const UNDO_DEPTH = 20;
+
+function cloneJson(value) {
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (error) {
+    return value;
+  }
+}
+
+/** 撤销快照只包含业务切片；phase/view/会话/deploy 不回退。 */
+function undoSnapshot(state) {
+  const visual = state.visual || {};
+  return {
+    store: cloneJson(state.store || {}),
+    features: cloneJson(state.features || {}),
+    build: { selectedId: state.build ? state.build.selectedId : null },
+    visual: {
+      styleId: visual.styleId,
+      prompt: visual.prompt,
+      promptRounds: cloneJson(visual.promptRounds || []),
+      imageAssetId: visual.imageAssetId ?? null,
+      imageMeta: cloneJson(visual.imageMeta ?? null),
+      imageRounds: cloneJson(visual.imageRounds || []),
+    },
+    agentDraft: cloneJson(state.agentDraft || {}),
+    appid: (state.project && state.project.appid) || '',
+  };
+}
+
+/**
+ * reducer 包装：在语义动作前压快照，支持撤销/重做。
+ * 合并策略：同一动作名 + 同一字段连续触发只压第一次，避免每次按键都占一格。
+ * 栈不持久化（重启清空）。
+ */
+export function reducer(state, action) {
+  const undo = state.undo || { past: [], future: [], lastKey: null };
+
+  if (action.type === 'UNDO_APPLY' || action.type === 'REDO_APPLY') {
+    const isUndo = action.type === 'UNDO_APPLY';
+    const source = isUndo ? undo.past : undo.future;
+    if (!Array.isArray(source) || source.length === 0) return state;
+    const snapshot = source[source.length - 1];
+    const rest = source.slice(0, -1);
+    const redoOrUndo = isUndo
+      ? [...undo.future, undoSnapshot(state)].slice(-UNDO_DEPTH)
+      : [...undo.past, undoSnapshot(state)].slice(-UNDO_DEPTH);
+    const nextUndo = isUndo
+      ? { past: rest, future: redoOrUndo, lastKey: null }
+      : { past: redoOrUndo, future: rest, lastKey: null };
+    return baseReducer({ ...state, undo: nextUndo }, { type: action.type, snapshot });
+  }
+
+  if (UNDO_RESET_ACTIONS.has(action.type)) {
+    const next = baseReducer(state, action);
+    return { ...next, undo: { past: [], future: [], lastKey: null } };
+  }
+
+  if (UNDOABLE_ACTIONS.has(action.type)) {
+    const key = `${action.type}:${action.field || action.id || ''}`;
+    const snapshot = undoSnapshot(state);
+    const next = baseReducer(state, action);
+    // 被 reducer 拒绝的动作（例如锁定 required 功能）不应产生历史记录。
+    const changed = JSON.stringify(undoSnapshot(next)) !== JSON.stringify(snapshot);
+    if (!changed) return next;
+    let past = undo.past;
+    if (undo.lastKey !== key) {
+      past = [...past, snapshot].slice(-UNDO_DEPTH);
+    }
+    return { ...next, undo: { past, future: [], lastKey: key } };
+  }
+
+  const next = baseReducer(state, action);
+  if (undo.lastKey !== null) {
+    return { ...next, undo: { ...undo, lastKey: null } };
+  }
+  return next;
+}
+
+export function selectUndoState(state) {
+  const undo = state.undo || { past: [], future: [] };
+  return {
+    canUndo: Array.isArray(undo.past) && undo.past.length > 0,
+    canRedo: Array.isArray(undo.future) && undo.future.length > 0,
+    undoCount: Array.isArray(undo.past) ? undo.past.length : 0,
+    redoCount: Array.isArray(undo.future) ? undo.future.length : 0,
+  };
 }
 
 export function selectActiveSession(state) {
@@ -603,4 +1432,131 @@ export function selectAgentComposerState(state) {
     submitDisabled: state.agent.status === AGENT_STATUS.REQUESTING,
     editable: true,
   };
+}
+const HANDOFF_STEP_ORDER = Object.freeze(['prepare', 'import', 'appid', 'domain', 'preview', 'next']);
+
+function formatClock(iso) {
+  if (typeof iso !== 'string' || !iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+export function selectVisibleProjects(state) {
+  const project = state.project || {};
+  const list = Array.isArray(project.list) ? project.list : [];
+  const query = String(project.search || '').trim().toLowerCase();
+  if (!query) return list;
+  return list.filter((item) => {
+    const meta = PHASE_META[item.phase] || {};
+    return String(item.name || '').toLowerCase().includes(query)
+      || String(meta.label || '').toLowerCase().includes(query)
+      || String(meta.caption || '').toLowerCase().includes(query);
+  });
+}
+
+export function selectWorkbenchState(state) {
+  const project = state.project || {};
+  if (project.deleteTarget) return 'deleting';
+  if (project.status === 'loading') return 'loading';
+  if (project.status === 'error') return 'error';
+  if (project.status === 'idle') return 'idle';
+  if ((project.list || []).length === 0) return 'empty';
+  if (selectVisibleProjects(state).length === 0 && String(project.search || '').trim()) return 'search-empty';
+  return 'list';
+}
+
+export function selectSaveLabel(state) {
+  const project = state.project || {};
+  if (project.saveError) return { tone: 'error', text: '保存失败 · 点击重试' };
+  if (project.saving) return { tone: 'saving', text: '保存中…' };
+  if (project.dirty) return { tone: 'dirty', text: '有未保存更改' };
+  if (project.lastSavedAt) return { tone: 'saved', text: `已保存 ${formatClock(project.lastSavedAt)}` };
+  return { tone: 'saved', text: '尚未保存' };
+}
+
+export function selectCanExport(state) {
+  const preflight = (state.deploy && state.deploy.preflight) || { status: 'idle', errors: [], warns: [], acknowledged: [] };
+  if ((state.project || {}).mode === 'browser') {
+    return { can: false, reason: '浏览器预览不能写出工程，请在桌面应用中导出' };
+  }
+  if (preflight.status === 'checking') return { can: false, reason: '正在体检，请稍候' };
+  if (preflight.status === 'failed') return { can: false, reason: '体检未完成，请重试' };
+  if ((preflight.errors || []).length > 0) {
+    return { can: false, reason: `有 ${preflight.errors.length} 项需要先修正` };
+  }
+  const acknowledged = new Set(preflight.acknowledged || []);
+  const unacked = (preflight.warns || []).filter((warn) => !acknowledged.has(warn.ruleId));
+  if (unacked.length > 0) return { can: false, reason: `还有 ${unacked.length} 项提示需要确认` };
+  if (preflight.status !== 'done') return { can: false, reason: '请先完成导出前体检' };
+  return { can: true, reason: '可以导出' };
+}
+
+/**
+ * 是否允许“选择/更换导出位置”。
+ *
+ * 与 selectCanExport 的区别：目标同名冲突时不允许直接导出，但必须允许用户换目录，
+ * 否则唯一解冲突的入口会被门禁锁死。其他 error 或未确认 warn 仍然阻断。
+ */
+export function selectCanChooseDirectory(state) {
+  const preflight = (state.deploy && state.deploy.preflight) || { status: 'idle', errors: [], warns: [], acknowledged: [] };
+  if ((state.project || {}).mode === 'browser') {
+    return { can: false, reason: '浏览器预览不能写出工程，请在桌面应用中导出' };
+  }
+  if (preflight.status === 'checking') return { can: false, reason: '正在体检，请稍候' };
+  if (preflight.status === 'failed') return { can: false, reason: '体检未完成，请重试' };
+  if (preflight.status !== 'done') return { can: false, reason: '请先完成导出前体检' };
+
+  const errors = preflight.errors || [];
+  const otherErrors = errors.filter((item) => item && item.ruleId !== 'E-TARGET-EXISTS');
+  if (otherErrors.length > 0) {
+    return { can: false, reason: `有 ${otherErrors.length} 项需要先修正` };
+  }
+  const acknowledged = new Set(preflight.acknowledged || []);
+  const unacked = (preflight.warns || []).filter((warn) => !acknowledged.has(warn.ruleId));
+  if (unacked.length > 0) return { can: false, reason: `还有 ${unacked.length} 项提示需要确认` };
+
+  const hasConflict = errors.some((item) => item && item.ruleId === 'E-TARGET-EXISTS');
+  return {
+    can: true,
+    reason: hasConflict ? '可更换导出位置以解除同名冲突' : '可以导出',
+  };
+}
+
+export function selectDiagnosticsSummary(state) {
+  const diagnostics = (state.settings && state.settings.diagnostics) || { status: 'idle', lines: [] };
+  const lines = Array.isArray(diagnostics.lines) ? diagnostics.lines : [];
+  const passed = lines.filter((line) => line.result === 'pass').length;
+  const failed = lines.filter((line) => line.result === 'fail').length;
+  const warned = lines.filter((line) => line.result === 'warn').length;
+  let headline = '尚未自检';
+  if (diagnostics.status === 'running') headline = '正在自检…';
+  else if (diagnostics.status === 'failed') headline = '自检未完成';
+  else if (diagnostics.status === 'done') {
+    if (failed > 0) headline = `有 ${failed} 项未通过`;
+    else if (warned > 0) headline = `通过，有 ${warned} 项提醒`;
+    else headline = '全部通过';
+  }
+  return { status: diagnostics.status, passed, failed, warned, checkedAt: diagnostics.checkedAt, headline };
+}
+
+export function selectHandoffProgress(state) {
+  const handoff = state.deploy && state.deploy.handoff;
+  const total = HANDOFF_STEP_ORDER.length;
+  if (!handoff) return { currentIndex: 0, total, completedCount: 0, canContinue: true, blockingReason: '' };
+  const index = HANDOFF_STEP_ORDER.indexOf(handoff.stepId);
+  const canContinue = state.deploy.status === DEPLOY_STATUS.DONE;
+  return {
+    currentIndex: index === -1 ? 0 : index,
+    total,
+    completedCount: (handoff.completedStepIds || []).length,
+    canContinue,
+    blockingReason: canContinue ? '' : '重新导出后可继续交接',
+  };
+}
+
+export function selectHydrationSource(state) {
+  const project = state.project || {};
+  if (!project.activeId) return 'none';
+  return project.mode === 'browser' ? 'browser' : 'desktop';
 }

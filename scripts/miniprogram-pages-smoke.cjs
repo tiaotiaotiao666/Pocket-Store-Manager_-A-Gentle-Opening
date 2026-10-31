@@ -235,6 +235,10 @@ async function main() {
   assert.equal(detail.data.order.canPay, false);
   assert.equal(detail.data.order.canCancel, false);
   step('详情页演示模拟支付成功：PENDING_ACCEPT / DEMO_PAID');
+  assert.equal(detail.data.payResult.state, 'success');
+  assert.equal(detail.data.payResult.shortId, detail.data.order.shortId);
+  assert.equal(detail.data.payResult.totalText, detail.data.order.totalText);
+  step('支付结果页 success，取餐号等于订单 shortId');
 
   const mine = loadPage('mine');
   mine.onShow();

@@ -43,28 +43,28 @@
   width: 20rpx;
   height: 20rpx;
   border-radius: 999rpx;
-  background: #e6ded2;
+  background: var(--color-border);
 }
 
 .timeline__step--done .timeline__dot {
-  background: var(--color-primary, #e86a17);
+  background: var(--color-primary);
 }
 
 .timeline__step--current .timeline__dot {
-  background: var(--color-primary, #e86a17);
+  background: var(--color-primary);
   box-shadow: 0 0 0 8rpx rgba(232, 106, 23, 0.16);
 }
 
 .timeline__text {
   margin-top: 14rpx;
   font-size: 20rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
   text-align: center;
 }
 
 .timeline__step--done .timeline__text,
 .timeline__step--current .timeline__text {
-  color: var(--color-text, #232323);
+  color: var(--color-text);
   font-weight: 600;
 }
 
@@ -115,11 +115,11 @@
 }
 
 .timeline__log-dot--primary {
-  background: var(--color-primary, #e86a17);
+  background: var(--color-primary);
 }
 
 .timeline__log-dot--success {
-  background: #2f7d4f;
+  background: var(--color-success);
 }
 
 .timeline__log-body {
@@ -141,19 +141,19 @@
 
 .timeline__log-time {
   font-size: 21rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .timeline__log-meta {
   display: block;
   margin-top: 4rpx;
   font-size: 21rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .timeline__empty {
   padding: 30rpx 0;
   font-size: 22rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
   text-align: center;
 }

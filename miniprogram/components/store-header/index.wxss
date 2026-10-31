@@ -5,8 +5,8 @@
   overflow: hidden;
   border-radius: 32rpx;
   padding: 40rpx 36rpx 44rpx;
-  background: linear-gradient(135deg, #2f2a25 0%, #46403a 58%, #6b5540 100%);
-  color: #fffaf3;
+  background: linear-gradient(135deg, var(--color-text) 0%, #46403a 58%, #6b5540 100%);
+  color: var(--color-surface);
   box-shadow: 0 16rpx 40rpx rgba(47, 42, 37, 0.22);
 }
 
@@ -52,7 +52,7 @@
   padding: 2rpx 14rpx;
   border-radius: 999rpx;
   background: rgba(255, 250, 243, 0.16);
-  color: #fffaf3;
+  color: var(--color-surface);
   font-size: 20rpx;
   letter-spacing: 0;
 }

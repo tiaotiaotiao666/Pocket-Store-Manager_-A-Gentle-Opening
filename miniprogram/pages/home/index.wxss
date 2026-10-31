@@ -48,7 +48,7 @@
   height: 12rpx;
   margin-right: 10rpx;
   border-radius: 999rpx;
-  background: #2f7d4f;
+  background: var(--color-success);
 }
 
 .home__error {
@@ -64,7 +64,7 @@
   padding: 14rpx 20rpx;
   border-radius: 14rpx;
   background: rgba(47, 125, 79, 0.09);
-  color: #2f7d4f;
+  color: var(--color-success);
   font-size: 22rpx;
 }
 
@@ -146,8 +146,8 @@
   margin-top: 36rpx;
   padding: 28rpx;
   border-radius: 24rpx;
-  background: linear-gradient(135deg, #232323 0%, #3a3430 100%);
-  color: #fffaf3;
+  background: linear-gradient(135deg, var(--color-text) 0%, #3a3430 100%);
+  color: var(--color-surface);
   box-shadow: 0 14rpx 32rpx rgba(35, 35, 35, 0.2);
 }
 

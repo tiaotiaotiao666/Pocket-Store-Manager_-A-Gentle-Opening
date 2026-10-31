@@ -13,8 +13,8 @@
 .detail__hero {
   padding: 30rpx 28rpx;
   border-radius: 28rpx;
-  background: linear-gradient(135deg, #232323 0%, #3b352f 100%);
-  color: #fffaf3;
+  background: linear-gradient(135deg, var(--color-text) 0%, #3b352f 100%);
+  color: var(--color-surface);
   box-shadow: 0 16rpx 36rpx rgba(35, 35, 35, 0.22);
 }
 
@@ -211,7 +211,7 @@
 }
 
 .detail__merchant-btn--success {
-  background: #2f7d4f;
+  background: var(--color-success);
   color: #fff;
 }
 
@@ -249,10 +249,17 @@
   flex: 1;
   padding: 24rpx 20rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #f39445 0%, #e86a17 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
   color: #fff;
   font-size: 28rpx;
   font-weight: 700;
   text-align: center;
   box-shadow: 0 12rpx 26rpx rgba(232, 106, 23, 0.26);
+}
+.detail--result {
+  padding-bottom: 40rpx;
+}
+
+.detail__result {
+  margin-top: 8rpx;
 }

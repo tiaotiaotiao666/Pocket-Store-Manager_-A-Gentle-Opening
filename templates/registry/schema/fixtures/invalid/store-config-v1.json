@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "configSchemaVersion": 2,
+    "storeConfigVersion": 3,
+    "catalogVersion": 5,
+    "apiContractVersion": "storefront.v1",
+    "recipeId": "order-classic",
+    "recipeVersion": "1.0.0",
+    "lockDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "generatedAt": "2026-11-20T00:00:00Z",
+    "generatorVersion": "0.1.0",
+    "planDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "mode": "production",
+    "versionGaps": {
+      "storeConfigVersion": 3,
+      "catalogVersion": 5
+    }
+  },
+  "store": {
+    "name": "松月食堂",
+    "category": "中式简餐",
+    "address": "上海市静安区示例路 1 号",
+    "phone": "13800000000",
+    "notes": "",
+    "businessHours": [
+      {
+        "start": "10:00",
+        "end": "21:00"
+      }
+    ]
+  },
+  "api": {
+    "baseUrl": "https://api.example.com",
+    "contract": "storefront.v1",
+    "timeoutMs": 8000
+  },
+  "catalog": {
+    "mode": "remote",
+    "version": 5,
+    "categories": [],
+    "products": []
+  },
+  "fulfillmentOptions": {
+    "dineIn": true,
+    "takeaway": true,
+    "delivery": false
+  },
+  "theme": {
+    "pageBackground": "#FAF7F1",
+    "primaryColor": "#1F6F54",
+    "accentColor": "#C2410C",
+    "textColor": "#1F2933",
+    "tabBarBackground": "#FFFFFF",
+    "tabBarColor": "#6B7280",
+    "tabBarSelectedColor": "#1F6F54"
+  },
+  "capabilities": {
+    "onlineReady": [
+      "store-header",
+      "product-card",
+      "cart-bar"
+    ],
+    "previewOnly": []
+  },
+  "demoPaymentDisclaimer": "演示付款，不产生真实扣款"
+}

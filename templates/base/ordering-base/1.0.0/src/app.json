@@ -1,0 +1,32 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/menu/index",
+    "pages/orders/index",
+    "pages/mine/index",
+    "pages/checkout/index",
+    "pages/order-detail/index",
+    "pages/merchant-orders/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#F7F3EC",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "柑橘小馆",
+    "backgroundColor": "#F7F3EC",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8A8178",
+    "selectedColor": "#E86A17",
+    "backgroundColor": "#FFFDF9",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/menu/index", "text": "菜单" },
+      { "pagePath": "pages/orders/index", "text": "订单" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

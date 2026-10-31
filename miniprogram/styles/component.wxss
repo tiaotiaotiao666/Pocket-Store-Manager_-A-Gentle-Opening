@@ -1,5 +1,5 @@
 .ss-card {
-  background: var(--color-surface, #fffdf9);
+  background: var(--color-surface);
   border-radius: var(--radius-card, 20rpx);
   box-shadow: 0 8rpx 28rpx rgba(35, 35, 35, 0.06);
 }
@@ -11,12 +11,12 @@
 }
 
 .ss-muted {
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
   font-size: 24rpx;
 }
 
 .ss-price {
-  color: var(--color-primary, #e86a17);
+  color: var(--color-primary);
   font-size: 32rpx;
   font-weight: 700;
 }
@@ -34,24 +34,24 @@
 }
 
 .ss-btn--primary {
-  background: var(--color-primary, #e86a17);
+  background: var(--color-primary);
   color: #fff;
 }
 
 .ss-btn--success {
-  background: #2f7d4f;
+  background: var(--color-success);
   color: #fff;
 }
 
 .ss-btn--danger {
   background: #fdeceb;
-  color: var(--color-danger, #b23a2f);
+  color: var(--color-danger);
 }
 
 .ss-btn--ghost {
   background: rgba(255, 255, 255, 0.7);
-  border: 2rpx solid var(--color-border, #e6ded2);
-  color: var(--color-text, #232323);
+  border: 2rpx solid var(--color-border);
+  color: var(--color-text);
 }
 
 .ss-btn--disabled {
@@ -84,7 +84,7 @@
   bottom: 0;
   left: 0;
   z-index: 41;
-  background: var(--color-surface, #fffdf9);
+  background: var(--color-surface);
   border-radius: 32rpx 32rpx 0 0;
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -109,7 +109,7 @@
   height: 56rpx;
   border-radius: 999rpx;
   background: rgba(35, 35, 35, 0.06);
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
   font-size: 28rpx;
 }
 

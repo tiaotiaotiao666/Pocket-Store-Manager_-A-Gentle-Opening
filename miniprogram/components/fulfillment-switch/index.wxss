@@ -16,7 +16,7 @@
 }
 
 .fulfillment__option--active {
-  background: var(--color-surface, #fffdf9);
+  background: var(--color-surface);
   box-shadow: 0 6rpx 18rpx rgba(35, 35, 35, 0.08);
 }
 
@@ -28,14 +28,14 @@
   display: block;
   font-size: 27rpx;
   font-weight: 700;
-  color: var(--color-text, #232323);
+  color: var(--color-text);
 }
 
 .fulfillment__sub {
   display: block;
   margin-top: 4rpx;
   font-size: 20rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .fulfillment__hint {

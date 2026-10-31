@@ -25,8 +25,8 @@
   margin-top: 26rpx;
   padding: 28rpx;
   border-radius: 28rpx;
-  background: linear-gradient(135deg, #2f2a25 0%, #4a4138 100%);
-  color: #fffaf3;
+  background: linear-gradient(135deg, var(--color-text) 0%, #4a4138 100%);
+  color: var(--color-surface);
   box-shadow: 0 16rpx 36rpx rgba(47, 42, 37, 0.2);
 }
 
@@ -37,7 +37,7 @@
   width: 96rpx;
   height: 96rpx;
   border-radius: 999rpx;
-  background: linear-gradient(140deg, #f3a55f 0%, #e86a17 100%);
+  background: linear-gradient(140deg, #f3a55f 0%, var(--color-primary) 100%);
   font-size: 40rpx;
   font-weight: 700;
 }

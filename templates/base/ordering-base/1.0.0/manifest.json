@@ -1,0 +1,179 @@
+{
+  "schemaVersion": "base.manifest.v1",
+  "identity": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "entry": {
+    "root": "src",
+    "files": [
+      "app.js",
+      "app.json",
+      "app.wxss",
+      "sitemap.json",
+      "project.config.json",
+      "theme.generated.wxss"
+    ],
+    "assets": []
+  },
+  "pages": [
+    {
+      "pageId": "home",
+      "path": "pages/home",
+      "required": true,
+      "audience": "customer"
+    },
+    {
+      "pageId": "menu",
+      "path": "pages/menu",
+      "required": true,
+      "audience": "customer"
+    },
+    {
+      "pageId": "checkout",
+      "path": "pages/checkout",
+      "required": true,
+      "audience": "customer"
+    },
+    {
+      "pageId": "orders",
+      "path": "pages/orders",
+      "required": true,
+      "audience": "customer"
+    },
+    {
+      "pageId": "order-detail",
+      "path": "pages/order-detail",
+      "required": true,
+      "audience": "customer"
+    },
+    {
+      "pageId": "mine",
+      "path": "pages/mine",
+      "required": true,
+      "audience": "customer"
+    },
+    {
+      "pageId": "merchant-orders",
+      "path": "pages/merchant-orders",
+      "required": true,
+      "audience": "merchant"
+    }
+  ],
+  "themeTokens": [
+    {
+      "key": "pageBackground",
+      "cssVar": "--store-page-background",
+      "type": "color",
+      "required": true
+    },
+    {
+      "key": "primaryColor",
+      "cssVar": "--store-primary-color",
+      "type": "color",
+      "required": true,
+      "contrastWith": "pageBackground"
+    },
+    {
+      "key": "accentColor",
+      "cssVar": "--store-accent-color",
+      "type": "color",
+      "required": true,
+      "contrastWith": "pageBackground"
+    },
+    {
+      "key": "textColor",
+      "cssVar": "--store-text-color",
+      "type": "color",
+      "required": true,
+      "contrastWith": "pageBackground"
+    },
+    {
+      "key": "tabBarBackground",
+      "cssVar": "--store-tab-bar-background",
+      "type": "color",
+      "required": false
+    },
+    {
+      "key": "tabBarColor",
+      "cssVar": "--store-tab-bar-color",
+      "type": "color",
+      "required": false
+    },
+    {
+      "key": "tabBarSelectedColor",
+      "cssVar": "--store-tab-bar-selected-color",
+      "type": "color",
+      "required": false
+    }
+  ],
+  "layouts": [
+    "page-shell"
+  ],
+  "services": [
+    "services/platform.js",
+    "services/request-core.js",
+    "services/request.js",
+    "services/api-error.js",
+    "services/store.js",
+    "services/order.js",
+    "services/auth.js",
+    "services/session.js",
+    "services/merchant.js"
+  ],
+  "builtinComponents": [
+    "cart-bar",
+    "cart-panel",
+    "category-nav",
+    "error-banner",
+    "fulfillment-switch",
+    "loading-block",
+    "order-card",
+    "order-status",
+    "product-card",
+    "product-detail",
+    "state-view",
+    "status-timeline",
+    "store-header"
+  ],
+  "excludedCapabilities": [
+    "ad-slot",
+    "coupon",
+    "poster-carousel"
+  ],
+  "storeConfigSchema": "store.generated.v2",
+  "slots": [
+    {
+      "slotId": "home-hero",
+      "pageId": "home",
+      "maxItems": 1,
+      "accepts": [
+        "feature-pack",
+        "ui-block"
+      ],
+      "required": false
+    },
+    {
+      "slotId": "home-marketing",
+      "pageId": "home",
+      "maxItems": 2,
+      "accepts": [
+        "feature-pack"
+      ],
+      "required": false
+    },
+    {
+      "slotId": "menu-aside",
+      "pageId": "menu",
+      "maxItems": 1,
+      "accepts": [
+        "ui-block"
+      ],
+      "required": false
+    }
+  ],
+  "release": {
+    "stage": "stable",
+    "verifiedRecipes": []
+  }
+}

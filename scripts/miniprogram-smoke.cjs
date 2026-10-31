@@ -28,6 +28,7 @@ const visitStore = require(path.join(root, 'miniprogram/state/visit-store'));
 const cartDomain = require(path.join(root, 'miniprogram/domain/cart'));
 const idempotency = require(path.join(root, 'miniprogram/domain/idempotency'));
 const orderView = require(path.join(root, 'miniprogram/domain/orderView'));
+const payResultView = require(path.join(root, 'miniprogram/domain/payResult'));
 const errorText = require(path.join(root, 'miniprogram/domain/errorText'));
 
 const STORE_ID = process.env.MINIPROGRAM_STORE_ID || 'store-demo-001';
@@ -187,6 +188,13 @@ async function main() {
   assert.equal(paid.status, 'PENDING_ACCEPT');
   assert.equal(paid.paymentStatus, 'DEMO_PAID');
   step('演示模拟支付成功：PENDING_ACCEPT / DEMO_PAID');
+
+  const paidView = orderView.toOrderView(paid);
+  const payResult = payResultView.buildPayResult(paidView);
+  assert.equal(payResult.state, 'success');
+  assert.equal(payResult.shortId, paidView.shortId);
+  assert.equal(payResult.shortId, String(paid.id).slice(-6).toUpperCase());
+  step('支付结果页 success，取餐号等于订单 shortId');
 
   const paidAgain = await orderService.demoPayment(created.id);
   assert.equal(paidAgain.status, 'PENDING_ACCEPT');

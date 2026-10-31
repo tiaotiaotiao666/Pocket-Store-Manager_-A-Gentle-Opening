@@ -3,7 +3,7 @@
 .order-card {
   padding: 26rpx 26rpx 22rpx;
   border-radius: 24rpx;
-  background: var(--color-surface, #fffdf9);
+  background: var(--color-surface);
   box-shadow: 0 8rpx 26rpx rgba(35, 35, 35, 0.06);
 }
 
@@ -27,7 +27,7 @@
 .order-card__time {
   margin-left: 14rpx;
   font-size: 22rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .order-card__badge {
@@ -48,13 +48,13 @@
 }
 
 .order-card__badge--primary {
-  background: #fde9d8;
+  background: var(--color-primary-soft);
   color: #b5530f;
 }
 
 .order-card__badge--success {
   background: #e6f2ea;
-  color: #2f7d4f;
+  color: var(--color-success);
 }
 
 .order-card__badge--neutral {
@@ -86,7 +86,7 @@
   padding: 4rpx 14rpx;
   border-radius: 999rpx;
   background: rgba(47, 125, 79, 0.1);
-  color: #2f7d4f;
+  color: var(--color-success);
   font-size: 21rpx;
 }
 
@@ -113,19 +113,19 @@
 .order-card__item-qty {
   margin: 0 18rpx;
   font-size: 23rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .order-card__item-line {
   min-width: 108rpx;
   text-align: right;
   font-size: 24rpx;
-  color: var(--color-text, #232323);
+  color: var(--color-text);
 }
 
 .order-card__summary {
   font-size: 24rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .order-card__foot {
@@ -144,14 +144,14 @@
 
 .order-card__total-label {
   font-size: 22rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .order-card__total-value {
   margin-left: 10rpx;
   font-size: 34rpx;
   font-weight: 700;
-  color: var(--color-primary, #e86a17);
+  color: var(--color-primary);
 }
 
 .order-card__actions {

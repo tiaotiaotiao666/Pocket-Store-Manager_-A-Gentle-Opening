@@ -1,0 +1,10 @@
+{
+  "product": {
+    "id": "prd_missing_price",
+    "name": "价格缺失的菜品",
+    "description": "",
+    "priceCents": null
+  },
+  "quantity": 0,
+  "disabled": true
+}

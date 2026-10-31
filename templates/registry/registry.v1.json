@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "registry.v1",
+  "registryVersion": "2026.11.0",
+  "frozen": true,
+  "assets": [
+    {
+      "id": "order-classic",
+      "version": "1.0.0",
+      "kind": "recipe",
+      "path": "templates/recipes/order-classic/1.0.0",
+      "integrity": "sha256:49f314c46ee62bcfbf806ade9f42c8af4ceef108f292929542cf7dd375a6b198"
+    },
+    {
+      "id": "ordering-base",
+      "version": "1.0.0",
+      "kind": "base",
+      "path": "templates/base/ordering-base/1.0.0",
+      "integrity": "sha256:67edc8be863b3675d393dc01eab1949ff1f6bcb3fe07991a1c051de87b98137d"
+    },
+    {
+      "id": "store-header",
+      "version": "1.0.0",
+      "kind": "ui-block",
+      "path": "templates/components/store-header/1.0.0",
+      "integrity": "sha256:1f4c55dd97cfebb8fec3eba39528e2d3de0254354a9f0d32f4880e131fad759f"
+    },
+    {
+      "id": "product-card",
+      "version": "1.0.0",
+      "kind": "ui-block",
+      "path": "templates/components/product-card/1.0.0",
+      "integrity": "sha256:c24c58d3372123aca28b74dd839effff2dc86ef08e9f00842bfdc1d21e5d6b1c"
+    },
+    {
+      "id": "cart-bar",
+      "version": "1.0.0",
+      "kind": "ui-block",
+      "path": "templates/components/cart-bar/1.0.0",
+      "integrity": "sha256:a0f48a757a28d8f56739198a1dca35414fd0fd532b679931eceb3d753a4bd8f3"
+    },
+    {
+      "id": "poster-carousel",
+      "version": "1.0.0",
+      "kind": "feature-pack",
+      "path": "templates/features/poster-carousel/1.0.0",
+      "integrity": "sha256:46dbb583f3db6a8fcc20993ad25ddf6c0184740d7c4014daf4331e5398ad6dce"
+    },
+    {
+      "id": "order-poster",
+      "version": "1.0.0",
+      "kind": "recipe",
+      "path": "templates/recipes/order-poster/1.0.0",
+      "integrity": "sha256:593f5d1b69c9b8a8df8c0acc27bad09cc09bac8c090175b603a1fc97471e1d49"
+    },
+    {
+      "id": "order-classic-candidate",
+      "version": "0.1.0",
+      "kind": "recipe",
+      "path": "templates/recipes/order-classic-candidate/0.1.0",
+      "integrity": "sha256:395a93ddb2a0c95287ff74ee491644ea4cc635c26fd23fcc7517191df2ac72b7"
+    }
+  ]
+}

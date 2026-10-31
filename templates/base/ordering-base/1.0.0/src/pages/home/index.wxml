@@ -1,0 +1,103 @@
+<view class="page home">
+  <view class="home__top">
+    <view class="home__brand">
+      <text class="home__eyebrow">扫码点餐</text>
+      <text class="home__title">今天想吃点什么？</text>
+    </view>
+    <view class="home__identity" bind:tap="goMine">
+      <text class="home__identity-dot"></text>
+      <text>{{identityLabel}}</text>
+    </view>
+  </view>
+
+  <state-view wx:if="{{loading}}" state="loading" title="正在准备门店信息" description="马上就好" />
+
+  <view wx:elif="{{error}}" class="home__error">
+    <error-banner message="{{error}}" action="{{errorAction}}" request-id="{{requestId}}" bind:retry="onRetry" bind:close="onRetry" />
+    <view class="ghost-button home__retry" bind:tap="onRetry">重新加载</view>
+  </view>
+
+  <block wx:else>
+    <!-- @slot:home-hero -->
+    <!-- @slot-fallback:home-hero -->
+    <store-header
+      store-name="{{store.name}}"
+      table-name="{{tableName}}"
+      business-hours="{{store.businessHours}}"
+      mode="{{mode}}"
+      address="{{store.address}}"
+    />
+    <!-- @slot-fallback:home-hero:end -->
+    <!-- @slot:home-hero:end -->
+
+    <view wx:if="{{demoHint}}" class="home__scene-hint">{{demoHint}}</view>
+
+    <view wx:if="{{versionNotice}}" class="home__scene-hint">{{versionNotice}}</view>
+
+    <!-- @slot:home-marketing -->
+    <!-- @slot-fallback:home-marketing -->
+    <!-- @slot-fallback:home-marketing:end -->
+    <!-- @slot:home-marketing:end -->
+
+    <view class="home__section">
+      <view class="section-head">
+        <text class="section-title">用餐方式</text>
+        <text class="section-extra">{{mode === 'DINE_IN' ? '堂食' : '到店自取'}}</text>
+      </view>
+      <fulfillment-switch
+        value="{{mode}}"
+        dine-in-enabled="{{store.fulfillment.dineIn}}"
+        takeaway-enabled="{{store.fulfillment.takeaway}}"
+        table-name="{{tableName}}"
+        table-required="{{true}}"
+        bind:change="onModeChange"
+      />
+      <view wx:if="{{mode === 'DINE_IN' && !tableName}}" class="home__tables">
+        <text class="home__tables-label">演示桌号</text>
+        <view
+          wx:for="{{tableOptions}}"
+          wx:key="id"
+          class="home__table"
+          data-id="{{item.id}}"
+          data-name="{{item.name}}"
+          bind:tap="onPickTable"
+        >
+          {{item.name}}
+        </view>
+      </view>
+    </view>
+
+    <view class="primary-button home__cta" bind:tap="goMenu">
+      <text>开始点餐</text>
+      <text class="home__cta-arrow">→</text>
+    </view>
+
+    <view wx:if="{{pendingPaymentCount > 0}}" class="home__notice" bind:tap="goOrders">
+      <view class="home__notice-dot"></view>
+      <text class="home__notice-text">你有 {{pendingPaymentCount}} 笔订单待演示付款</text>
+      <text class="home__notice-arrow">去处理 ›</text>
+    </view>
+
+    <view wx:if="{{activeOrders.length > 0}}" class="page__section">
+      <view class="section-head">
+        <text class="section-title">进行中</text>
+        <text class="section-extra" bind:tap="goOrders">全部订单 ›</text>
+      </view>
+      <view wx:for="{{activeOrders}}" wx:key="id" class="home__order">
+        <order-card order="{{item}}" role="CUSTOMER" actionable="{{false}}" bind:open="onOpenOrder" />
+      </view>
+    </view>
+
+    <view wx:if="{{merchantStoreId}}" class="home__merchant" bind:tap="goMerchant">
+      <view class="home__merchant-body">
+        <text class="home__merchant-title">店主订单台</text>
+        <text class="home__merchant-sub">当前身份拥有该门店的管理权限</text>
+      </view>
+      <text class="home__merchant-arrow">›</text>
+    </view>
+
+    <view class="home__foot">
+      <text wx:if="{{demoMode}}">演示环境 · 演示登录与模拟支付，不产生真实交易</text>
+    </view>
+  </block>
+</view>

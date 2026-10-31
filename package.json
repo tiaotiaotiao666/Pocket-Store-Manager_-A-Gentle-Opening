@@ -13,10 +13,15 @@
     "test": "node --test test/*.test.cjs",
     "test:generator": "node --test test/generator.test.cjs",
     "test:desktop": "node --test test/desktop-contract.test.cjs",
+    "registry:check": "node scripts/registry-check.cjs",
+    "composer:build": "node scripts/composer/cli.cjs",
+    "composer:verify": "node scripts/composer/verify-cli.cjs",
     "mini:example": "node scripts/generate-mini-program.cjs",
     "mini:check": "node scripts/validate-miniprogram.cjs",
+    "mini:dup-check": "node scripts/mini-dup-check.cjs",
     "mini:smoke": "node scripts/miniprogram-smoke.cjs",
-    "mini:pages": "node scripts/miniprogram-pages-smoke.cjs"
+    "mini:pages": "node scripts/miniprogram-pages-smoke.cjs",
+    "check:packaging": "node scripts/check-packaging.cjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -34,9 +39,29 @@
   "build": {
     "appId": "cn.smartstore.generator",
     "productName": "智能开店",
-    "directories": { "output": "release" },
-    "files": ["desktop/**/*", "dist/**/*", "templates/**/*", "scripts/**/*", "package.json"],
-    "win": { "target": ["nsis"] },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "dist/**/*",
+      "templates/registry/**",
+      "templates/base/**",
+      "templates/components/**",
+      "templates/features/**",
+      "templates/recipes/**",
+      "scripts/composer/**",
+      "scripts/validate-miniprogram.cjs",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

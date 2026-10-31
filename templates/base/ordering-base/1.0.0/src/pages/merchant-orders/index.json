@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "店主订单台",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "order-card": "/components/order-card/index",
+    "state-view": "/components/state-view/index",
+    "error-banner": "/components/error-banner/index",
+    "loading-block": "/components/loading-block/index"
+  }
+}

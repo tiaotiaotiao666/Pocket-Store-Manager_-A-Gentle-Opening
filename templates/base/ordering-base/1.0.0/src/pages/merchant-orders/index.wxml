@@ -1,0 +1,151 @@
+<view class="page merchant">
+  <view class="merchant__head">
+    <view class="merchant__head-top">
+      <view class="merchant__head-main">
+        <text class="merchant__eyebrow">店主工作台</text>
+        <text class="merchant__title">{{storeName || storeId || '门店'}}</text>
+      </view>
+      <view class="merchant__role">{{roleLabel || '—'}}</view>
+    </view>
+    <view class="merchant__meta">
+      <text>{{lastUpdated || '尚未刷新'}}</text>
+      <text wx:if="{{allowed}}" class="merchant__polling">
+        {{polling ? '每 10 秒自动刷新' : '自动刷新已暂停'}}
+      </text>
+    </view>
+    <view wx:if="{{allowed}}" class="merchant__actions">
+      <view class="merchant__refresh" bind:tap="onRefresh">立即刷新</view>
+      <view class="merchant__poll-switch">
+        <text class="merchant__poll-label">自动刷新</text>
+        <switch checked="{{polling}}" color="#E86A17" bindchange="onTogglePolling" />
+      </view>
+    </view>
+  </view>
+
+  <state-view wx:if="{{checking}}" state="loading" title="正在校验门店权限" />
+
+  <view wx:elif="{{!allowed}}" class="merchant__denied">
+    <state-view
+      state="empty"
+      title="{{error || '没有门店操作权限'}}"
+      description="店主入口以后端 memberships 为准。请在「我的」切换到演示店主或店员。"
+      action-text="去切换身份"
+      bind:retry="onRetry"
+    />
+  </view>
+
+  <block wx:else>
+    <view wx:if="{{error}}" class="merchant__error">
+      <error-banner
+        message="{{error}}"
+        action="{{errorAction}}"
+        request-id="{{requestId}}"
+        bind:retry="onRetry"
+        bind:close="onCloseError"
+      />
+    </view>
+
+    <view class="merchant__tabs">
+      <view
+        class="merchant__tab {{tab === 'orders' ? 'merchant__tab--active' : ''}}"
+        data-tab="orders"
+        bind:tap="onChangeTab"
+      >
+        订单台
+      </view>
+      <view
+        class="merchant__tab {{tab === 'products' ? 'merchant__tab--active' : ''}}"
+        data-tab="products"
+        bind:tap="onChangeTab"
+      >
+        商品管理
+      </view>
+    </view>
+
+    <block wx:if="{{tab === 'orders'}}">
+      <view class="merchant__segments">
+        <view
+          wx:for="{{segments}}"
+          wx:key="key"
+          class="merchant__segment {{segment === item.key ? 'merchant__segment--active' : ''}}"
+          data-key="{{item.key}}"
+          bind:tap="onChangeSegment"
+        >
+          {{item.label}}
+        </view>
+      </view>
+
+      <loading-block wx:if="{{ordersLoading && orders.length === 0}}" text="正在拉取订单" />
+
+      <state-view
+        wx:elif="{{orders.length === 0}}"
+        state="empty"
+        title="{{segment === 'pending' ? '暂时没有待处理订单' : '暂时没有制作中的订单'}}"
+        description="新订单会自动出现在这里，也可以下拉刷新"
+      />
+
+      <view wx:else class="merchant__orders">
+        <view wx:for="{{orders}}" wx:key="id" class="merchant__order">
+          <order-card
+            order="{{item}}"
+            role="MERCHANT"
+            actionable="{{true}}"
+            bind:open="onOpenOrder"
+            bind:advance="onAdvance"
+          />
+        </view>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view class="merchant__product-summary">
+        <text class="merchant__product-stat">共 {{productCount}} 个商品</text>
+        <text class="merchant__product-stat merchant__product-stat--ok">在售 {{availableCount}}</text>
+        <text class="merchant__product-stat merchant__product-stat--off">下架 {{productCount - availableCount}}</text>
+      </view>
+
+      <loading-block wx:if="{{productsLoading}}" text="正在加载商品" />
+
+      <view wx:elif="{{categories.length === 0}}" class="merchant__empty">
+        <state-view state="empty" title="没有商品数据" description="请确认门店目录已完成初始化" />
+      </view>
+
+      <view wx:else class="merchant__products">
+        <view wx:for="{{categories}}" wx:key="id" wx:for-item="category" class="merchant__category">
+          <view class="merchant__category-head">
+            <text class="merchant__category-name">{{category.name}}</text>
+            <text class="merchant__category-count">{{category.products.length}} 项</text>
+          </view>
+          <view class="surface-card merchant__product-list">
+            <view
+              wx:for="{{category.products}}"
+              wx:key="id"
+              wx:for-item="product"
+              class="merchant__product"
+            >
+              <view class="merchant__product-main">
+                <view class="merchant__product-title">
+                  <text class="merchant__product-name">{{product.name}}</text>
+                  <text wx:if="{{!product.available}}" class="merchant__product-tag">已下架</text>
+                </view>
+                <text class="merchant__product-desc">{{product.description || '暂无描述'}}</text>
+                <text class="merchant__product-price">{{product.amountText}}</text>
+              </view>
+              <switch
+                checked="{{product.available}}"
+                color="#E86A17"
+                data-id="{{product.id}}"
+                data-name="{{product.name}}"
+                bindchange="onToggleProduct"
+              />
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="merchant__foot">
+      <text>演示环境 · 订单状态推进与商品上下架会真实写入本地后端</text>
+    </view>
+  </block>
+</view>

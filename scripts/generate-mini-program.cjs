@@ -1,3 +1,10 @@
+/**
+ * @deprecated 旧复制模板导出脚本，仅保留用于历史追溯。
+ *
+ * 自 M5 起，导出主链改为 scripts/composer（契约校验 → 组合解析 → 确定性生成 → 产物校验 → 原子提交）。
+ * 本文件不再被 desktop/main.cjs 或任何运行时路径引用，也不进入安装包（见 scripts/check-packaging.cjs）。
+ * 新功能不要在这里扩展。
+ */
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const templateRoot = path.join(__dirname, '..', 'templates', 'mini-program');

@@ -1,0 +1,260 @@
+.merchant {
+  padding-top: 20rpx;
+}
+
+.merchant__head {
+  padding: 26rpx 28rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #1f2a2e 0%, #33413f 100%);
+  color: #f3f5f2;
+  box-shadow: 0 16rpx 36rpx rgba(31, 42, 46, 0.24);
+}
+
+.merchant__head-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.merchant__head-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.merchant__eyebrow {
+  font-size: 21rpx;
+  letter-spacing: 4rpx;
+  color: #8fc0a9;
+}
+
+.merchant__title {
+  margin-top: 8rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+}
+
+.merchant__role {
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(143, 192, 169, 0.16);
+  color: #a8d5bf;
+  font-size: 21rpx;
+  font-weight: 600;
+}
+
+.merchant__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14rpx;
+  font-size: 21rpx;
+  color: rgba(243, 245, 242, 0.55);
+}
+
+.merchant__polling {
+  color: rgba(168, 213, 191, 0.8);
+}
+
+.merchant__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  padding-top: 18rpx;
+  border-top: 2rpx solid rgba(243, 245, 242, 0.12);
+}
+
+.merchant__refresh {
+  padding: 10rpx 24rpx;
+  border-radius: 999rpx;
+  background: rgba(243, 245, 242, 0.14);
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.merchant__poll-switch {
+  display: flex;
+  align-items: center;
+}
+
+.merchant__poll-label {
+  margin-right: 8rpx;
+  font-size: 21rpx;
+  color: rgba(243, 245, 242, 0.65);
+}
+
+.merchant__denied {
+  margin-top: 40rpx;
+}
+
+.merchant__error {
+  margin-top: 20rpx;
+}
+
+.merchant__tabs {
+  display: flex;
+  margin-top: 24rpx;
+  padding: 8rpx;
+  border-radius: 999rpx;
+  background: rgba(35, 35, 35, 0.06);
+}
+
+.merchant__tab {
+  flex: 1;
+  padding: 16rpx 0;
+  border-radius: 999rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: var(--color-muted);
+}
+
+.merchant__tab--active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 700;
+  box-shadow: 0 6rpx 16rpx rgba(35, 35, 35, 0.08);
+}
+
+.merchant__segments {
+  display: flex;
+  margin-top: 20rpx;
+}
+
+.merchant__segment {
+  margin-right: 14rpx;
+  padding: 12rpx 32rpx;
+  border-radius: 999rpx;
+  background: rgba(35, 35, 35, 0.05);
+  font-size: 24rpx;
+  color: var(--color-muted);
+}
+
+.merchant__segment--active {
+  background: var(--color-text);
+  color: var(--color-surface);
+  font-weight: 700;
+}
+
+.merchant__orders {
+  margin-top: 22rpx;
+}
+
+.merchant__order {
+  margin-bottom: 20rpx;
+}
+
+.merchant__product-summary {
+  display: flex;
+  align-items: center;
+  margin-top: 22rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 16rpx;
+  background: rgba(35, 35, 35, 0.04);
+}
+
+.merchant__product-stat {
+  margin-right: 22rpx;
+  font-size: 22rpx;
+  color: var(--color-muted);
+}
+
+.merchant__product-stat--ok {
+  color: var(--color-success);
+}
+
+.merchant__product-stat--off {
+  color: var(--color-danger);
+}
+
+.merchant__empty {
+  margin-top: 24rpx;
+}
+
+.merchant__products {
+  margin-top: 22rpx;
+}
+
+.merchant__category {
+  margin-bottom: 24rpx;
+}
+
+.merchant__category-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 4rpx 12rpx;
+}
+
+.merchant__category-name {
+  font-size: 27rpx;
+  font-weight: 700;
+}
+
+.merchant__category-count {
+  font-size: 21rpx;
+  color: var(--color-muted);
+}
+
+.merchant__product-list {
+  padding: 4rpx 22rpx;
+}
+
+.merchant__product {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 2rpx solid rgba(230, 222, 210, 0.55);
+}
+
+.merchant__product:last-child {
+  border-bottom: none;
+}
+
+.merchant__product-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.merchant__product-title {
+  display: flex;
+  align-items: center;
+}
+
+.merchant__product-name {
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.merchant__product-tag {
+  margin-left: 10rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(178, 58, 47, 0.1);
+  color: var(--color-danger);
+  font-size: 19rpx;
+}
+
+.merchant__product-desc {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: var(--color-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.merchant__product-price {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.merchant__foot {
+  margin-top: 32rpx;
+  padding: 0 6rpx;
+  font-size: 20rpx;
+  color: rgba(138, 129, 120, 0.8);
+}

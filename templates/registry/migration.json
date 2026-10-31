@@ -1,0 +1,19 @@
+{
+  "sourceOfTruth": "templates/base/ordering-base/1.0.0/src",
+  "mirror": "miniprogram",
+  "status": "migrating",
+  "allowedDiffs": [
+    "app.wxss",
+    "config/env.js",
+    "config/slots.generated.js",
+    "config/store.generated.js",
+    "pages/home/index.js",
+    "pages/home/index.wxml",
+    "pages/menu/index.js",
+    "pages/menu/index.wxml",
+    "project.config.json",
+    "project.private.config.json"
+  ],
+  "exitCondition": "Base 完成插槽、配置与主题迁移后，把 miniprogram/ 改为只读参考或删除镜像；届时本文件 status 改为 completed 并保留历史说明。",
+  "updatedAt": "2026-10-31"
+}

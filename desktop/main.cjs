@@ -1,8 +1,50 @@
-const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, shell, nativeImage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const { pathToFileURL } = require('node:url');
-const { writeProject } = require('../scripts/generate-mini-program.cjs');
+
+const composer = require('../scripts/composer/index.cjs');
+const { registerComposerIpc } = require('./composer-ipc.cjs');
+const { createProjectStore } = require('./project-store.cjs');
+const { createAssetStore } = require('./asset-store.cjs');
+const { createSettingsStore } = require('./settings-store.cjs');
+const { registerProjectIpc } = require('./project-ipc.cjs');
+const { registerFlushGuard, recoverPendingWrites } = require('./flush-guard.cjs');
+const { createDiagnostics } = require('./diagnostics.cjs');
+const { probeDevtools } = require('./devtools-probe.cjs');
+
+const userDataDir = app.getPath('userData');
+
+const imageAdapter = {
+  resize(buffer, maxWidth) {
+    try {
+      const image = nativeImage.createFromBuffer(buffer);
+      if (image.isEmpty()) return null;
+      const size = image.getSize();
+      if (!size.width || size.width <= maxWidth) return { buffer };
+      const resized = image.resize({ width: maxWidth, quality: 'good' });
+      const output = resized.toJPEG(82);
+      return output.length > 0 ? { buffer: output, mime: 'image/jpeg' } : null;
+    } catch (error) {
+      return null;
+    }
+  },
+};
+
+const projectStore = createProjectStore({ userDataDir });
+const assetStore = createAssetStore({ userDataDir, imageAdapter });
+const settingsStore = createSettingsStore({ userDataDir });
+const diagnostics = createDiagnostics({
+  userDataDir,
+  runtime: {
+    appVersion: app.getVersion(),
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    node: process.versions.node,
+    platform: process.platform,
+    arch: process.arch,
+  },
+});
 
 function createWindow() {
   const window = new BrowserWindow({
@@ -24,14 +66,28 @@ function createWindow() {
   else window.loadURL('http://127.0.0.1:5173');
 }
 
-ipcMain.handle('generator:export', async (_event, payload) => {
-  const result = await dialog.showOpenDialog({
-    title: '选择独立小程序项目的保存位置',
-    properties: ['openDirectory', 'createDirectory'],
-  });
-  if (result.canceled || !result.filePaths[0]) return { cancelled: true };
-  const project = await writeProject(result.filePaths[0], payload);
-  return { cancelled: false, projectPath: project };
+registerComposerIpc(ipcMain, {
+  dialog,
+  shell,
+  compose: composer.compose,
+  validateComposition: composer.validateComposition,
+});
+
+registerProjectIpc(ipcMain, {
+  store: projectStore,
+  assets: assetStore,
+  settings: settingsStore,
+  diagnostics,
+  probeDevtools,
+  dialog,
+  shell,
+});
+
+registerFlushGuard({
+  app,
+  ipcMain,
+  getWindows: () => BrowserWindow.getAllWindows(),
+  timeoutMs: 3000,
 });
 
 ipcMain.handle('generator:pick-materials', async () => {
@@ -72,6 +128,13 @@ ipcMain.handle('generator:save-image', async (_event, payload) => {
   return { cancelled: false, path: result.filePath };
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  try {
+    await recoverPendingWrites(userDataDir);
+  } catch (error) {
+    /* 自愈失败不阻断启动；下次保存会覆盖残留 tmp */
+  }
+  createWindow();
+});
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

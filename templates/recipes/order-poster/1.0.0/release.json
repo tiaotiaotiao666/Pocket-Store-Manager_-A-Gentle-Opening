@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "recipe-release.v1",
+  "recipeId": "order-poster",
+  "recipeVersion": "1.0.0",
+  "stage": "candidate",
+  "verifiedAt": null,
+  "wechatCompile": "not-run",
+  "regression": "not-run",
+  "secretScan": "pass",
+  "approvals": [],
+  "knownLimits": [
+    "演示海报为色块素材，未含摄影图片",
+    "关闭轮播后首页回落到 store-header"
+  ],
+  "note": "微信开发者工具人工编译与核心回归未执行，不得晋升 direct。"
+}

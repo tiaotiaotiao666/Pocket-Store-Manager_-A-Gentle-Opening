@@ -1,12 +1,22 @@
-import { Sparkles } from 'lucide-react';
+import { FolderKanban, Settings, Sparkles } from 'lucide-react';
+
+const MODE_LABEL = {
+  desktop: '桌面模式 · 本机落盘',
+  browser: '浏览器预览 · 不落盘',
+};
 
 export default function Sidebar({
   appName = '智能开店',
   sessions = [],
   activeSessionId,
   currentStoreName,
+  saveLabel = { tone: 'saved', text: '尚未保存' },
+  mode = 'desktop',
+  agentLabel = '本地 Mock（未接入真实模型）',
   onStartOnboarding,
   onSelectSession,
+  onOpenWorkbench,
+  onOpenSettings,
   onReset,
 }) {
   return (
@@ -19,6 +29,17 @@ export default function Sidebar({
           <span className="sidebar-brand-name">{appName}</span>
           <span className="sidebar-brand-sub">轻启 · 会话式生成器</span>
         </div>
+      </div>
+
+      <div className="sidebar-nav">
+        <button type="button" className="sidebar-nav-item" onClick={onOpenWorkbench}>
+          <FolderKanban size={15} />
+          我的项目
+        </button>
+        <button type="button" className="sidebar-nav-item" onClick={onOpenSettings}>
+          <Settings size={15} />
+          设置与自检
+        </button>
       </div>
 
       <div className="sidebar-cta">
@@ -54,9 +75,16 @@ export default function Sidebar({
       </div>
 
       <div className="sidebar-foot">
-        <span className="sidebar-status">本地演示模式 · 未连接大模型</span>
+        <div className="sidebar-status-block">
+          <span className="sidebar-status">{MODE_LABEL[mode] || MODE_LABEL.desktop}</span>
+          <span className={`sidebar-status-line is-${saveLabel.tone}`}>
+            <i aria-hidden="true" />
+            {saveLabel.text}
+          </span>
+          <span className="sidebar-status-line is-agent">{agentLabel}</span>
+        </div>
         <button type="button" className="sidebar-reset" onClick={onReset}>
-          重置
+          重置项目
         </button>
       </div>
     </div>

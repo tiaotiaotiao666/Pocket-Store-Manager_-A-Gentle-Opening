@@ -25,7 +25,17 @@ async function getCatalog(storeId) {
   });
 }
 
+async function getTables(storeId) {
+  assertStoreId(storeId);
+  return request({
+    path: '/stores/' + encodeURIComponent(storeId) + '/tables',
+    method: 'GET',
+    auth: false,
+  });
+}
+
 module.exports = {
   getStore,
   getCatalog,
+  getTables,
 };

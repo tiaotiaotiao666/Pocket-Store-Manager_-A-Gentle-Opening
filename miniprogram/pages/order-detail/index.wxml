@@ -1,9 +1,24 @@
-<view class="page detail">
-  <state-view wx:if="{{loading}}" state="loading" title="正在读取订单" />
+<view class="page detail {{payResult ? 'detail--result' : ''}}">
+  <state-view wx:if="{{loading && !payResult}}" state="loading" title="正在读取订单" />
 
-  <view wx:elif="{{error && !order}}" class="detail__error">
+  <view wx:elif="{{error && !order && !payResult}}" class="detail__error">
     <error-banner message="{{error}}" action="{{errorAction}}" request-id="{{requestId}}" bind:retry="onRetry" bind:close="goOrders" />
     <view class="ghost-button detail__retry" bind:tap="onRetry">重新加载</view>
+  </view>
+
+  <view wx:elif="{{payResult}}" class="detail__result">
+    <pay-result
+      state="{{payResult.state}}"
+      short-id="{{payResult.shortId}}"
+      total-text="{{payResult.totalText}}"
+      fulfillment-text="{{payResult.fulfillmentText}}"
+      title="{{payResult.title}}"
+      description="{{payResult.description}}"
+      request-id="{{payResult.requestId}}"
+      bind:primary="onResultPrimary"
+      bind:secondary="onResultSecondary"
+      bind:retry="onResultRetry"
+    />
   </view>
 
   <block wx:else>
@@ -92,7 +107,7 @@
     </view>
   </block>
 
-  <view wx:if="{{order && (order.canPay || order.canCancel || merchantActions.length > 0)}}" class="detail__bar">
+  <view wx:if="{{!payResult && order && (order.canPay || order.canCancel || merchantActions.length > 0)}}" class="detail__bar">
     <view wx:if="{{order.canCancel}}" class="detail__bar-ghost" bind:tap="onCancel">
       {{acting && actionLabel === 'cancel' ? '处理中…' : '取消订单'}}
     </view>

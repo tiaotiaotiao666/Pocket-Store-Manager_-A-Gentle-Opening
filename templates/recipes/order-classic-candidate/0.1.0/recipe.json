@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "recipe.v1",
+  "identity": { "id": "order-classic-candidate", "version": "0.1.0" },
+  "planRef": "plan.json",
+  "displayName": "经典点餐（候选）",
+  "description": "用于演示候选/正式分离的样本方案，不得出现在店主可选列表。",
+  "recipe": {
+    "stage": "candidate",
+    "verifiedAt": null,
+    "wechatCompile": "not-run",
+    "regression": "not-run",
+    "secretScan": "pass",
+    "approvals": [],
+    "knownLimits": ["候选方案，仅供内部预览"]
+  }
+}

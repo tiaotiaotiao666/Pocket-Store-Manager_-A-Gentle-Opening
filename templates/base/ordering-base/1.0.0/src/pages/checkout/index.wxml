@@ -1,0 +1,111 @@
+<view class="page checkout">
+  <state-view wx:if="{{loading}}" state="loading" title="正在确认订单" />
+
+  <block wx:else>
+    <view class="checkout__head">
+      <text class="checkout__eyebrow">确认订单</text>
+      <text class="checkout__title">{{store.name || '门店'}}</text>
+      <text class="checkout__sub">{{modeText}}{{tableName ? ' · ' + tableName + ' 桌' : ''}}</text>
+    </view>
+
+    <view wx:if="{{emptyCart}}" class="checkout__empty">
+      <state-view
+        state="empty"
+        title="购物车是空的"
+        description="回到菜单挑选几道菜，再回来结算"
+        action-text="去点餐"
+        bind:retry="goMenu"
+      />
+    </view>
+
+    <block wx:else>
+      <view class="surface-card checkout__card">
+        <view class="checkout__row">
+          <text class="checkout__row-label">用餐方式</text>
+          <text class="checkout__row-value">{{modeText}}</text>
+        </view>
+        <view class="checkout__row">
+          <text class="checkout__row-label">桌号</text>
+          <text class="checkout__row-value">{{tableName || '无需桌号'}}</text>
+        </view>
+        <view class="checkout__row">
+          <text class="checkout__row-label">下单身份</text>
+          <text class="checkout__row-value">{{identityLabel}}</text>
+        </view>
+        <view wx:if="{{mode === 'DINE_IN' && !tableName}}" class="checkout__tables">
+          <text class="checkout__tables-label">演示桌号</text>
+          <view
+            wx:for="{{tableOptions}}"
+            wx:key="id"
+            class="checkout__table"
+            data-id="{{item.id}}"
+            data-name="{{item.name}}"
+            bind:tap="onPickTable"
+          >
+            {{item.name}}
+          </view>
+        </view>
+      </view>
+
+      <view class="surface-card checkout__card">
+        <view class="checkout__card-head">
+          <text class="checkout__card-title">菜品明细</text>
+          <text class="checkout__card-extra">{{totalQuantity}} 件</text>
+        </view>
+        <view class="checkout__divider"></view>
+        <view wx:for="{{items}}" wx:key="productId" class="checkout__item">
+          <view class="checkout__item-main">
+            <text class="checkout__item-name">{{item.name}}</text>
+            <text class="checkout__item-unit">{{item.unitPriceText}} × {{item.quantity}}</text>
+          </view>
+          <text class="checkout__item-line">{{item.lineTotalText}}</text>
+        </view>
+        <view class="checkout__divider"></view>
+        <view class="checkout__total">
+          <text class="checkout__total-label">合计（服务端将重新计价）</text>
+          <text class="checkout__total-value">{{totalText}}</text>
+        </view>
+      </view>
+
+      <view class="surface-card checkout__card">
+        <view class="checkout__card-head">
+          <text class="checkout__card-title">备注</text>
+          <text class="checkout__card-extra">{{noteLength}}/50</text>
+        </view>
+        <textarea
+          class="checkout__textarea"
+          value="{{note}}"
+          placeholder="口味偏好、忌口等，可留空"
+          placeholder-class="checkout__placeholder"
+          maxlength="50"
+          bindinput="onNoteInput"
+          auto-height
+        />
+      </view>
+
+      <view wx:if="{{error}}" class="checkout__error">
+        <error-banner
+          message="{{error}}"
+          action="{{errorAction}}"
+          request-id="{{requestId}}"
+          bind:retry="onRetry"
+          bind:close="onCloseError"
+        />
+      </view>
+
+      <view class="checkout__pay-hint">
+        <text>{{payHint}}</text>
+      </view>
+    </block>
+  </block>
+
+  <view wx:if="{{!loading && !emptyCart}}" class="checkout__bar">
+    <view class="checkout__bar-total">
+      <text class="checkout__bar-label">合计</text>
+      <text class="checkout__bar-value">{{totalText}}</text>
+    </view>
+    <view class="checkout__bar-button {{submitting ? 'checkout__bar-button--off' : ''}}" bind:tap="onSubmit">
+      {{submitting ? '提交中…' : '提交订单'}}
+    </view>
+  </view>
+</view>

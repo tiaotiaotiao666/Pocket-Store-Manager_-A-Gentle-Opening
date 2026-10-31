@@ -58,6 +58,18 @@ export const AGENT_STORE_INFO_HINT = '示例：店名是松月食堂，做社区
 
 export const CLOSED_PHASES = Object.freeze([PHASES.BUILDING, PHASES.DEPLOY]);
 
+export const DEPLOY_STATUS = Object.freeze({
+  IDLE: 'idle',
+  CHOOSING: 'choosing',
+  VALIDATING: 'validating',
+  GENERATING: 'generating',
+  VERIFYING: 'verifying',
+  DONE: 'done',
+  FAILED: 'failed',
+  CONFLICT: 'conflict',
+  CANCELLED: 'cancelled',
+});
+
 export function composerEnabled(phase) {
   return Object.prototype.hasOwnProperty.call(COMPOSER_PLACEHOLDER, phase);
 }

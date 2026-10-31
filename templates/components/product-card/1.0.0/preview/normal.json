@@ -1,0 +1,11 @@
+{
+  "product": {
+    "id": "prd_beef_rice",
+    "name": "柑橘牛肉饭",
+    "description": "现炒牛肉，配时蔬",
+    "priceCents": 2800,
+    "imageUrl": ""
+  },
+  "quantity": 2,
+  "disabled": false
+}

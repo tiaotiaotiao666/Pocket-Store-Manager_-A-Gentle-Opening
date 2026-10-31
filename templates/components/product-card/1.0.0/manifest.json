@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "manifest.v1",
+  "identity": { "id": "product-card", "version": "1.0.0" },
+  "kind": "ui-block",
+  "displayName": "菜品卡片",
+  "entry": {
+    "path": "src",
+    "files": ["index.js", "index.json", "index.wxml", "index.wxss"],
+    "assets": []
+  },
+  "interface": {
+    "props": [
+      { "name": "product", "type": "object", "required": true, "description": "菜品对象，金额只读 priceCents" },
+      { "name": "quantity", "type": "number", "required": false, "description": "已选数量" },
+      { "name": "disabled", "type": "boolean", "required": false, "description": "是否售罄；由页面传入" }
+    ],
+    "events": [
+      { "name": "openDetail", "payload": ["productId"], "description": "打开菜品详情" },
+      { "name": "add", "payload": ["productId"], "description": "加入购物车" },
+      { "name": "remove", "payload": ["productId"], "description": "从购物车移除" }
+    ]
+  },
+  "boundary": { "allowNetwork": false, "allowRoutes": false, "allowGlobalState": false, "allowServices": false },
+  "compatibility": { "baseRange": "^1.0.0", "minWechatLib": "3.0.0", "apiContract": "storefront.v1" },
+  "requiredPages": ["menu"],
+  "requiresSlots": [],
+  "dependencies": [],
+  "conflicts": [],
+  "preview": { "dir": "preview", "kinds": ["normal", "empty", "error", "long"] },
+  "release": {
+    "stage": "online-ready",
+    "knownLimits": ["菜品图片为空时使用首字占位", "金额只展示 priceCents 派生文本"],
+    "verifiedRecipes": []
+  }
+}

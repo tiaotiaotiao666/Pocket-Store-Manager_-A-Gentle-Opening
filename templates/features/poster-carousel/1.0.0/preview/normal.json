@@ -1,0 +1,10 @@
+{
+  "items": [
+    { "id": "poster-1", "title": "秋日暖锅上新", "subtitle": "两人份 · 到店自取也可", "tone": "warm" },
+    { "id": "poster-2", "title": "午后茶点 8 折", "subtitle": "14:00-17:00 限时", "tone": "green" },
+    { "id": "poster-3", "title": "扫码点餐免排队", "subtitle": "堂食扫码直达桌号", "tone": "ink" }
+  ],
+  "autoplay": true,
+  "interval": 4000,
+  "showIndicator": true
+}

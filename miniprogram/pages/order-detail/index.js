@@ -6,6 +6,7 @@ const orderService = require('../../services/order.js');
 const merchantService = require('../../services/merchant.js');
 const auth = require('../../services/auth.js');
 const session = require('../../services/session.js');
+const payResultView = require('../../domain/payResult.js');
 
 const CANCEL_REASONS = ['不想要了', '点错了', '等待太久', '其他原因'];
 
@@ -22,6 +23,7 @@ Page({
     showPayHint: false,
     acting: false,
     actionLabel: '',
+    payResult: null,
   },
 
   onLoad(options) {
@@ -57,13 +59,28 @@ Page({
       const order = await orderService.getOrder(this.data.orderId);
       const view = orderView.toOrderView(order);
       const isMerchant = session.isMerchantOf(order.storeId);
-      this.setData({
+
+      // 店主通过 ?pay=1 进入时不展示顾客支付结果页，直接回到接单列表。
+      if (isMerchant && this.data.showPayHint) {
+        platform.toast('店主身份不进行顾客支付');
+        if (typeof wx !== 'undefined' && wx.redirectTo) {
+          wx.redirectTo({ url: '/pages/merchant-orders/index' });
+        }
+        return;
+      }
+
+      const next = {
         loading: false,
         order: view,
         role: isMerchant ? 'MERCHANT' : 'CUSTOMER',
         merchantActions: isMerchant ? orderStatus.merchantActions(order) : [],
         showPayHint: this.data.showPayHint && view.canPay,
-      });
+      };
+      if (this.data.payResult) {
+        next.payResult = this.resolvePayResult(view, this.data.payResult);
+      }
+      this.setData(next);
+
       if (typeof wx !== 'undefined' && wx.setNavigationBarTitle) {
         wx.setNavigationBarTitle({ title: '订单 #' + view.shortId });
       }
@@ -82,21 +99,86 @@ Page({
     }
   },
 
+  /** 刷新时以服务端订单状态为准：DEMO_PAID → success，否则 pending。 */
+  resolvePayResult(view, current) {
+    if (!view || view.status === 'CANCELLED') {
+      return null;
+    }
+    if (!current || current.state === 'error' || current.state === 'loading') {
+      return current;
+    }
+    return payResultView.buildPayResult(view, {
+      title: current.title,
+      description: current.description,
+      requestId: current.requestId,
+    });
+  },
+
   async onPay() {
     if (this.data.acting || !this.data.order) {
       return;
     }
-    this.setData({ acting: true, actionLabel: 'pay', error: '' });
+    const current = this.data.order;
+    this.setData({
+      acting: true,
+      actionLabel: 'pay',
+      error: '',
+      payResult: payResultView.loadingPayResult(current),
+    });
     try {
-      await orderService.demoPayment(this.data.order.id);
-      platform.toast('演示模拟支付成功');
-      this.setData({ showPayHint: false });
-      await this.load();
+      await orderService.demoPayment(current.id);
+      const latest = await orderService.getOrder(current.id);
+      const view = orderView.toOrderView(latest);
+      const result = payResultView.buildPayResult(view);
+      this.setData({
+        order: view,
+        showPayHint: false,
+        payResult: result,
+      });
+      if (result && result.state === 'success') {
+        platform.toast('演示模拟支付成功');
+      }
     } catch (error) {
-      this.showError(error);
+      const described = errorText.describeError(error);
+      this.setData({
+        payResult: payResultView.errorPayResult(current, described),
+      });
     } finally {
       this.setData({ acting: false, actionLabel: '' });
     }
+  },
+
+  async onResultPrimary() {
+    const result = this.data.payResult;
+    if (!result) {
+      return;
+    }
+    if (result.state === 'success') {
+      this.setData({ payResult: null });
+      if (typeof wx !== 'undefined' && wx.pageScrollTo) {
+        wx.pageScrollTo({ selector: '.detail__card', duration: 260 });
+      }
+      return;
+    }
+    if (result.state === 'pending') {
+      await this.load();
+      const latest = this.data.order;
+      if (latest) {
+        this.setData({ payResult: this.resolvePayResult(latest, result) });
+      }
+      return;
+    }
+    if (result.state === 'error') {
+      await this.onPay();
+    }
+  },
+
+  onResultSecondary() {
+    this.goOrders();
+  },
+
+  async onResultRetry() {
+    await this.onPay();
   },
 
   async onCancel() {
@@ -111,6 +193,7 @@ Page({
     try {
       await orderService.cancelOrder(this.data.order.id, reason);
       platform.toast('订单已取消');
+      this.setData({ payResult: null });
       await this.load();
     } catch (error) {
       this.showError(error);

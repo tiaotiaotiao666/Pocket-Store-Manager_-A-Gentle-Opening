@@ -1,0 +1,207 @@
+.mine {
+  padding-top: 32rpx;
+}
+
+.mine__head {
+  padding: 0 6rpx;
+}
+
+.mine__eyebrow {
+  font-size: 22rpx;
+  letter-spacing: 4rpx;
+  color: var(--color-primary);
+}
+
+.mine__title {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.mine__profile {
+  display: flex;
+  align-items: center;
+  margin-top: 26rpx;
+  padding: 28rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, var(--color-text) 0%, #4a4138 100%);
+  color: var(--color-surface);
+  box-shadow: 0 16rpx 36rpx rgba(47, 42, 37, 0.2);
+}
+
+.mine__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(140deg, #f3a55f 0%, var(--color-primary) 100%);
+  font-size: 40rpx;
+  font-weight: 700;
+}
+
+.mine__profile-body {
+  flex: 1;
+  min-width: 0;
+  margin-left: 22rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.mine__profile-name {
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.mine__profile-meta {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: rgba(255, 250, 243, 0.62);
+}
+
+.mine__profile-tag {
+  flex: none;
+  max-width: 220rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 250, 243, 0.14);
+  font-size: 20rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mine__error {
+  margin-top: 22rpx;
+}
+
+.mine__membership {
+  padding: 6rpx 24rpx;
+}
+
+.mine__membership-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22rpx 0;
+  border-bottom: 2rpx solid rgba(230, 222, 210, 0.55);
+}
+
+.mine__membership-row:last-child {
+  border-bottom: none;
+}
+
+.mine__membership-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.mine__membership-name {
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.mine__membership-role {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: var(--color-muted);
+}
+
+.mine__membership-arrow {
+  font-size: 36rpx;
+  color: var(--color-muted);
+}
+
+.mine__membership-empty {
+  padding: 26rpx 0;
+  font-size: 23rpx;
+  color: var(--color-muted);
+}
+
+.mine__identities {
+  display: flex;
+  flex-direction: column;
+}
+
+.mine__identity {
+  display: flex;
+  align-items: center;
+  margin-bottom: 14rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 20rpx;
+  background: var(--color-surface);
+  border: 2rpx solid transparent;
+  box-shadow: 0 6rpx 20rpx rgba(35, 35, 35, 0.05);
+}
+
+.mine__identity--active {
+  border-color: rgba(232, 106, 23, 0.45);
+  background: #fff8f1;
+}
+
+.mine__identity-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.mine__identity-label {
+  font-size: 27rpx;
+  font-weight: 700;
+}
+
+.mine__identity-desc {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: var(--color-muted);
+}
+
+.mine__identity-badge {
+  flex: none;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(232, 106, 23, 0.12);
+  color: #b5530f;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.mine__identity-badge--busy {
+  background: rgba(35, 35, 35, 0.08);
+  color: var(--color-muted);
+}
+
+.mine__links {
+  padding: 6rpx 24rpx;
+}
+
+.mine__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-bottom: 2rpx solid rgba(230, 222, 210, 0.55);
+}
+
+.mine__link:last-child {
+  border-bottom: none;
+}
+
+.mine__link-label {
+  font-size: 27rpx;
+}
+
+.mine__link-arrow {
+  font-size: 34rpx;
+  color: var(--color-muted);
+}
+
+.mine__foot {
+  margin-top: 36rpx;
+  padding: 0 8rpx;
+  font-size: 20rpx;
+  line-height: 1.7;
+  color: rgba(138, 129, 120, 0.8);
+}

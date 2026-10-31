@@ -1,0 +1,132 @@
+{
+  "schemaDocVersion": "schema-doc.v1",
+  "contract": "manifest.v1",
+  "status": "frozen",
+  "description": "资产清单：UI Block 与 Feature Pack 的统一声明，必须与源码实现双向一致，并声明边界、兼容性与预览数据。",
+  "required": [
+    "schemaVersion",
+    "identity",
+    "kind",
+    "displayName",
+    "entry",
+    "interface",
+    "boundary",
+    "compatibility",
+    "requiredPages",
+    "requiresSlots",
+    "dependencies",
+    "conflicts",
+    "preview",
+    "release"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "manifest.v1" },
+    "identity": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$", "length": [3, 48] },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      }
+    },
+    "kind": { "type": "string", "enum": ["ui-block", "feature-pack"] },
+    "displayName": { "type": "string", "maxLength": 48 },
+    "entry": {
+      "type": "object",
+      "required": ["path", "files", "assets"],
+      "properties": {
+        "path": { "type": "string", "path": "relative-posix" },
+        "files": { "type": "array", "items": "path", "mustExist": true },
+        "assets": { "type": "array", "items": "path", "mustExist": true }
+      }
+    },
+    "interface": {
+      "type": "object",
+      "required": ["props", "events"],
+      "properties": {
+        "props": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type", "required"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9]*$" },
+              "type": { "type": "string", "enum": ["string", "number", "boolean", "array", "object"] },
+              "required": { "type": "boolean" },
+              "description": { "type": "string", "maxLength": 200 }
+            }
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "description"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+              "payload": { "type": "array", "items": "string" },
+              "description": { "type": "string", "maxLength": 200 }
+            }
+          }
+        }
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "required": ["allowNetwork", "allowRoutes", "allowGlobalState", "allowServices"],
+      "properties": {
+        "allowNetwork": { "type": "boolean" },
+        "allowRoutes": { "type": "boolean" },
+        "allowGlobalState": { "type": "boolean" },
+        "allowServices": { "type": "boolean" }
+      },
+      "rule": "ui-block 四项必须全为 false；feature-pack 只允许 allowServices=true 时通过页面扩展文件触网。"
+    },
+    "compatibility": {
+      "type": "object",
+      "required": ["baseRange", "minWechatLib", "apiContract"],
+      "properties": {
+        "baseRange": { "type": "string", "pattern": "^\\^\\d+\\.\\d+\\.\\d+$" },
+        "minWechatLib": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "apiContract": { "type": "string", "enum": ["storefront.v1"] }
+      }
+    },
+    "requiredPages": { "type": "array", "items": { "type": "string" } },
+    "requiresSlots": { "type": "array", "items": { "type": "string" } },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "version"],
+        "properties": {
+          "id": { "type": "string" },
+          "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+        }
+      }
+    },
+    "conflicts": { "type": "array", "items": { "type": "string" } },
+    "preview": {
+      "type": "object",
+      "required": ["dir", "kinds"],
+      "properties": {
+        "dir": { "type": "string", "path": "relative-posix" },
+        "kinds": { "type": "array", "mustInclude": ["normal", "empty", "error", "long"], "items": { "type": "string", "enum": ["normal", "empty", "error", "long"] } }
+      }
+    },
+    "release": {
+      "type": "object",
+      "required": ["stage", "knownLimits"],
+      "properties": {
+        "stage": { "type": "string", "enum": ["online-ready", "preview-only", "blocked", "candidate"] },
+        "knownLimits": { "type": "array", "items": { "type": "string", "maxLength": 200 } },
+        "verifiedRecipes": { "type": "array", "items": "string" }
+      }
+    }
+  },
+  "rules": [
+    "M5-1-03：全部必填字段缺失即拒绝，不允许用默认值补齐。",
+    "M5-1-06：interface.props/events 必须与组件实现一致，多声明与少声明都失败。",
+    "M7-3-02：preview 必须同时提供 normal/empty/error/long 四类可解析数据。",
+    "M7-4-01：release.stage=preview-only 的资产不得进入 online-ready 列表。"
+  ]
+}

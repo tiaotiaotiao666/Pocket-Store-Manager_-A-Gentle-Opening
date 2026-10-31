@@ -1,0 +1,184 @@
+{
+  "schemaDocVersion": "schema-doc.v1",
+  "contract": "store.generated.v2",
+  "status": "frozen",
+  "description": "导出工程公开配置。只允许公开字段，禁止密钥、内部地址、源码、第二份金额事实。金额唯一事实为 priceCents（整数分）。",
+  "required": [
+    "schemaVersion",
+    "meta",
+    "store",
+    "api",
+    "catalog",
+    "fulfillmentOptions",
+    "theme",
+    "capabilities",
+    "demoPaymentDisclaimer"
+  ],
+  "allowedKeys": {
+    "root": [
+      "schemaVersion",
+      "meta",
+      "store",
+      "api",
+      "catalog",
+      "fulfillmentOptions",
+      "theme",
+      "capabilities",
+      "demoPaymentDisclaimer"
+    ],
+    "meta": [
+      "configSchemaVersion",
+      "storeConfigVersion",
+      "catalogVersion",
+      "apiContractVersion",
+      "recipeId",
+      "recipeVersion",
+      "lockDigest",
+      "generatedAt",
+      "generatorVersion",
+      "planDigest",
+      "mode",
+      "versionGaps"
+    ],
+    "store": ["name", "category", "address", "phone", "notes", "businessHours"],
+    "api": ["baseUrl", "contract", "timeoutMs"],
+    "catalog": ["mode", "version", "categories", "products"],
+    "fulfillmentOptions": ["dineIn", "takeaway", "delivery"],
+    "theme": [
+      "pageBackground",
+      "primaryColor",
+      "accentColor",
+      "textColor",
+      "tabBarBackground",
+      "tabBarColor",
+      "tabBarSelectedColor"
+    ],
+    "capabilities": ["onlineReady", "previewOnly"],
+    "versionGaps": ["storeConfigVersion", "catalogVersion"]
+  },
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 2 },
+    "meta": {
+      "type": "object",
+      "required": [
+        "configSchemaVersion",
+        "storeConfigVersion",
+        "catalogVersion",
+        "apiContractVersion",
+        "recipeId",
+        "recipeVersion",
+        "lockDigest",
+        "generatedAt",
+        "generatorVersion",
+        "planDigest",
+        "mode",
+        "versionGaps"
+      ],
+      "properties": {
+        "configSchemaVersion": { "type": "integer", "const": 2 },
+        "storeConfigVersion": { "type": ["integer", "null"] },
+        "catalogVersion": { "type": ["integer", "null"] },
+        "apiContractVersion": { "type": "string", "const": "storefront.v1" },
+        "recipeId": { "type": "string" },
+        "recipeVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "lockDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "generatedAt": { "type": "string" },
+        "generatorVersion": { "type": "string" },
+        "planDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "mode": { "type": "string", "enum": ["production", "development"] },
+        "versionGaps": { "type": "object" }
+      }
+    },
+    "store": {
+      "type": "object",
+      "required": ["name", "category", "address", "phone", "notes", "businessHours"],
+      "properties": {
+        "name": { "type": "string", "maxLength": 48 },
+        "category": { "type": "string", "maxLength": 48 },
+        "address": { "type": "string", "maxLength": 120 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "notes": { "type": "string", "maxLength": 200 },
+        "businessHours": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "api": {
+      "type": "object",
+      "required": ["baseUrl", "contract", "timeoutMs"],
+      "properties": {
+        "baseUrl": { "type": "string" },
+        "contract": { "type": "string", "const": "storefront.v1" },
+        "timeoutMs": { "type": "integer", "minimum": 1000, "maximum": 30000 }
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "required": ["mode", "version", "categories", "products"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["remote", "snapshot"] },
+        "version": { "type": ["integer", "null"] },
+        "categories": { "type": "array", "items": { "type": "object" } },
+        "products": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "fulfillmentOptions": {
+      "type": "object",
+      "required": ["dineIn", "takeaway", "delivery"],
+      "properties": {
+        "dineIn": { "type": "boolean" },
+        "takeaway": { "type": "boolean" },
+        "delivery": { "type": "boolean", "const": false }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "required": [
+        "pageBackground",
+        "primaryColor",
+        "accentColor",
+        "textColor",
+        "tabBarBackground",
+        "tabBarColor",
+        "tabBarSelectedColor"
+      ],
+      "properties": {
+        "pageBackground": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "primaryColor": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "accentColor": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "textColor": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "tabBarBackground": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "tabBarColor": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "tabBarSelectedColor": { "type": "string", "pattern": "^#[0-9A-F]{6}$" }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["onlineReady", "previewOnly"],
+      "properties": {
+        "onlineReady": { "type": "array", "items": { "type": "string" } },
+        "previewOnly": { "type": "array", "items": { "type": "string" } }
+      },
+      "rule": "onlineReady 与 previewOnly 交集必须为空。"
+    },
+    "demoPaymentDisclaimer": { "type": "string", "maxLength": 200 }
+  },
+  "forbiddenKeys": [
+    "priceText",
+    "totalCents",
+    "template",
+    "icons",
+    "token",
+    "secret",
+    "password",
+    "apiKey",
+    "appSecret",
+    "openid",
+    "openId"
+  ],
+  "rules": [
+    "M6-3-01：只允许白名单键，任何未知键在生成前拒绝。",
+    "M6-3-02：禁止密钥与内部地址；生产模式 baseUrl 必须 HTTPS。",
+    "M6-3-04：meta 六类版本齐全，无后端版本时写 null 并进入 versionGaps。",
+    "M6-3-05：schemaVersion 只接受 2，v1 直接 STORE_CONFIG_SCHEMA_UNSUPPORTED。",
+    "M6-2-06：金额唯一事实为 priceCents，禁止 priceText。"
+  ]
+}

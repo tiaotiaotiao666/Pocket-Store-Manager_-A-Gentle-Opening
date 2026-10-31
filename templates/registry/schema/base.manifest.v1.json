@@ -1,0 +1,107 @@
+{
+  "schemaDocVersion": "schema-doc.v1",
+  "contract": "base.manifest.v1",
+  "status": "frozen",
+  "description": "Base 模板清单：声明唯一 Base 的入口、页面、主题 Token、服务边界、内置组件、插槽与排除能力。Base 是确定性生成的唯一源码基线。",
+  "required": [
+    "schemaVersion",
+    "identity",
+    "entry",
+    "pages",
+    "themeTokens",
+    "layouts",
+    "services",
+    "builtinComponents",
+    "excludedCapabilities",
+    "storeConfigSchema",
+    "slots",
+    "release"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "base.manifest.v1" },
+    "identity": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$", "length": [3, 48] },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["root", "files", "assets"],
+      "properties": {
+        "root": { "type": "string", "path": "relative-posix" },
+        "files": { "type": "array", "items": "path", "mustExist": true },
+        "assets": { "type": "array", "items": "path", "mustExist": true }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["pageId", "path", "required", "audience"],
+        "properties": {
+          "pageId": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+          "path": { "type": "string", "path": "relative-posix" },
+          "required": { "type": "boolean" },
+          "audience": { "type": "string", "enum": ["customer", "merchant"] }
+        }
+      }
+    },
+    "themeTokens": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["key", "cssVar", "type", "required"],
+        "properties": {
+          "key": { "type": "string", "enum": ["pageBackground", "primaryColor", "accentColor", "textColor", "tabBarBackground", "tabBarColor", "tabBarSelectedColor"] },
+          "cssVar": { "type": "string", "pattern": "^--store-[a-z0-9-]+$" },
+          "type": { "type": "string", "enum": ["color"] },
+          "required": { "type": "boolean" },
+          "contrastWith": { "type": "string" }
+        }
+      }
+    },
+    "layouts": { "type": "array", "items": "string" },
+    "services": { "type": "array", "items": "path" },
+    "builtinComponents": { "type": "array", "items": "string" },
+    "excludedCapabilities": {
+      "type": "array",
+      "mustInclude": ["ad-slot", "coupon", "poster-carousel"],
+      "items": { "type": "string" }
+    },
+    "storeConfigSchema": { "type": "string", "const": "store.generated.v2" },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["slotId", "pageId", "maxItems", "accepts", "required"],
+        "properties": {
+          "slotId": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+          "pageId": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+          "maxItems": { "type": "integer", "minimum": 0, "maximum": 5 },
+          "accepts": { "type": "array", "items": { "type": "string", "enum": ["ui-block", "feature-pack"] } },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "required": ["stage", "verifiedRecipes"],
+      "properties": {
+        "stage": { "type": "string", "enum": ["stable", "candidate", "expired"] },
+        "verifiedRecipes": { "type": "array", "items": "string" }
+      }
+    }
+  },
+  "rules": [
+    "M5-2-01：同一时刻只允许一个 stable Base，组件源与镜像由 migration.json 指定。",
+    "M5-2-03：页面必须覆盖 home/menu/checkout/orders/order-detail/mine/merchant-orders 闭环。",
+    "M5-2-04：excludedCapabilities 必须显式列出尚未内置的营销能力，禁止静默宣称支持。",
+    "M5-2-06：组件边界由 boundary 与静态校验共同保证。",
+    "M6-3-03：themeTokens 是唯一颜色事实，生成器只按 Token 写入 theme.generated.wxss。"
+  ]
+}

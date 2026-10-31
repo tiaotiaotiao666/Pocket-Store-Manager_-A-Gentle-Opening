@@ -1,0 +1,125 @@
+{
+  "valid": [
+    {
+      "file": "base-manifest.json",
+      "contract": "base",
+      "expect": "ok"
+    },
+    {
+      "file": "ui-block-manifest.json",
+      "contract": "manifest",
+      "expect": "ok"
+    },
+    {
+      "file": "feature-pack-manifest.json",
+      "contract": "manifest",
+      "expect": "ok"
+    },
+    {
+      "file": "composition.json",
+      "contract": "plan",
+      "expect": "ok"
+    },
+    {
+      "file": "slots.json",
+      "contract": "slots",
+      "expect": "ok"
+    },
+    {
+      "file": "lock.json",
+      "contract": "lock",
+      "expect": "ok"
+    },
+    {
+      "file": "store-config.json",
+      "contract": "store",
+      "expect": "ok"
+    }
+  ],
+  "invalid": [
+    {
+      "file": "plan-schema-unsupported.json",
+      "contract": "plan",
+      "code": "PLAN_SCHEMA_UNSUPPORTED",
+      "path": "schemaVersion"
+    },
+    {
+      "file": "version-not-exact.json",
+      "contract": "plan",
+      "code": "VERSION_NOT_EXACT",
+      "path": "baseTemplate.version"
+    },
+    {
+      "file": "plan-field-forbidden.json",
+      "contract": "plan",
+      "code": "PLAN_FIELD_FORBIDDEN",
+      "path": "features[0].source"
+    },
+    {
+      "file": "page-duplicated.json",
+      "contract": "plan",
+      "code": "PAGE_DUPLICATED",
+      "path": "pages[7].pageId"
+    },
+    {
+      "file": "api-contract-incompatible.json",
+      "contract": "plan",
+      "code": "API_CONTRACT_INCOMPATIBLE",
+      "path": "apiBinding.contract"
+    },
+    {
+      "file": "manifest-field-missing.json",
+      "contract": "manifest",
+      "code": "FIELD_MISSING",
+      "path": "release"
+    },
+    {
+      "file": "entry-path-invalid.json",
+      "contract": "manifest",
+      "code": "ENTRY_PATH_INVALID",
+      "path": "entry.path"
+    },
+    {
+      "file": "preview-missing-kind.json",
+      "contract": "manifest",
+      "code": "PREVIEW_DATA_MISSING",
+      "path": "preview.kinds"
+    },
+    {
+      "file": "slots-duplicated.json",
+      "contract": "slots",
+      "code": "SLOT_DUPLICATED",
+      "path": "slots[2].slotId"
+    },
+    {
+      "file": "lock-field-missing.json",
+      "contract": "lock",
+      "code": "LOCK_FIELD_MISSING",
+      "path": "registryDigest"
+    },
+    {
+      "file": "store-config-v1.json",
+      "contract": "store",
+      "code": "STORE_CONFIG_SCHEMA_UNSUPPORTED",
+      "path": "schemaVersion"
+    },
+    {
+      "file": "store-config-extra-key.json",
+      "contract": "store",
+      "code": "STORE_CONFIG_FIELD_FORBIDDEN",
+      "path": "secretKey"
+    },
+    {
+      "file": "store-config-delivery.json",
+      "contract": "store",
+      "code": "DELIVERY_NOT_SUPPORTED",
+      "path": "fulfillmentOptions.delivery"
+    },
+    {
+      "file": "store-config-https.json",
+      "contract": "store",
+      "code": "API_BASE_URL_NOT_HTTPS",
+      "path": "api.baseUrl"
+    }
+  ]
+}

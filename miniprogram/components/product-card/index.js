@@ -38,7 +38,7 @@ Component({
 
   methods: {
     onOpen() {
-      this.triggerEvent('open-detail', { productId: this.data.product.id || '' });
+      this.triggerEvent('openDetail', { productId: this.data.product.id || '' });
     },
 
     onAdd(event) {

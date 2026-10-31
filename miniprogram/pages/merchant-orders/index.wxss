@@ -130,8 +130,8 @@
 }
 
 .merchant__segment--active {
-  background: #232323;
-  color: #fffaf3;
+  background: var(--color-text);
+  color: var(--color-surface);
   font-weight: 700;
 }
 
@@ -159,7 +159,7 @@
 }
 
 .merchant__product-stat--ok {
-  color: #2f7d4f;
+  color: var(--color-success);
 }
 
 .merchant__product-stat--off {

@@ -1,0 +1,21 @@
+/* 由 Composer 生成，勿手改。主题唯一事实来自 templates/base/ordering-base/1.0.0/theme.tokens.json 的 presets。 */
+page {
+  --store-page-background: #F7F3EC;
+  --store-primary-color: #B34A0F;
+  --store-accent-color: #9C2E12;
+  --store-text-color: #232323;
+  --store-tab-bar-background: #FFFDF9;
+  --store-tab-bar-color: #8A8178;
+  --store-tab-bar-selected-color: #B34A0F;
+
+  --color-bg: var(--store-page-background);
+  --color-surface: #FFFDF9;
+  --color-text: var(--store-text-color);
+  --color-muted: #8A8178;
+  --color-primary: var(--store-primary-color);
+  --color-primary-soft: #FDE9D8;
+  --color-accent: var(--store-accent-color);
+  --color-success: #2F7D4F;
+  --color-danger: #B23A2F;
+  --color-border: #E6DED2;
+}

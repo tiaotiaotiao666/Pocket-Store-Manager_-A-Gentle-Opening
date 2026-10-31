@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "recipe.v1",
+  "identity": { "id": "order-classic", "version": "1.0.0" },
+  "planRef": "plan.json",
+  "displayName": "经典点餐",
+  "description": "以首页门店头部、菜单列表、购物车与六态订单为核心的餐饮扫码点餐基线方案。",
+  "recipe": {
+    "stage": "candidate",
+    "verifiedAt": null,
+    "wechatCompile": "not-run",
+    "regression": "not-run",
+    "secretScan": "pass",
+    "approvals": [],
+    "knownLimits": [
+      "演示付款，不产生真实交易",
+      "不含外送与公开店主注册"
+    ]
+  }
+}

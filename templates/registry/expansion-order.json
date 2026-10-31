@@ -1,0 +1,5 @@
+{
+  "order": ["poster-carousel", "home-marketing", "ad-slot", "coupon"],
+  "requirePreviousDirect": true,
+  "note": "M7 只允许推进到 poster-carousel；home-marketing / ad-slot / coupon 未实现，登记即失败。"
+}

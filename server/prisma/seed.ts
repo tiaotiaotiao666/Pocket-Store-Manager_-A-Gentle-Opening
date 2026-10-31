@@ -23,6 +23,7 @@ async function seedStore() {
     create: {
       id: STORE_ID,
       name: '柑橘小馆',
+      category: '社区餐馆',
       address: '示范市演示路 1 号',
       phone: '000-0000-0000',
       businessHours: '10:00-21:00',
@@ -32,6 +33,7 @@ async function seedStore() {
       textColor: '#232323',
       primaryColor: '#E86A17',
       catalogVersion: 1,
+      configVersion: 1,
       createdAt: now,
       updatedAt: now,
     },

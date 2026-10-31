@@ -1,0 +1,11 @@
+{
+  "product": {
+    "id": "prd_long",
+    "name": "招牌慢炖番茄牛腩配时令蔬菜与手工宽面超长菜名演示",
+    "description": "这是一段非常长的菜品描述，用于验证两行截断、按钮不换行以及长文本不会把价格挤出卡片。",
+    "priceCents": 12800,
+    "imageUrl": ""
+  },
+  "quantity": 99,
+  "disabled": false
+}

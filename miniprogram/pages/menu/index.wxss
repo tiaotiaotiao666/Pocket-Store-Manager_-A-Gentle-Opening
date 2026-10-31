@@ -63,8 +63,8 @@
   justify-content: space-between;
   padding: 20rpx 22rpx;
   border-radius: 20rpx;
-  background: linear-gradient(120deg, #232323 0%, #3c3531 100%);
-  color: #fffaf3;
+  background: linear-gradient(120deg, var(--color-text) 0%, #3c3531 100%);
+  color: var(--color-surface);
 }
 
 .menu__banner-text {

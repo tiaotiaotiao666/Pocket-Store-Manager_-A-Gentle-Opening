@@ -29,13 +29,13 @@
 }
 
 .order-status--primary .order-status__badge {
-  background: #fde9d8;
+  background: var(--color-primary-soft);
   color: #b5530f;
 }
 
 .order-status--success .order-status__badge {
   background: #e6f2ea;
-  color: #2f7d4f;
+  color: var(--color-success);
 }
 
 .order-status--neutral .order-status__badge {
@@ -57,7 +57,7 @@
 
 .order-status__hint {
   font-size: 22rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .order-status__payment {
@@ -65,7 +65,7 @@
   padding: 2rpx 12rpx;
   border-radius: 999rpx;
   background: rgba(47, 125, 79, 0.1);
-  color: #2f7d4f;
+  color: var(--color-success);
   font-size: 20rpx;
 }
 

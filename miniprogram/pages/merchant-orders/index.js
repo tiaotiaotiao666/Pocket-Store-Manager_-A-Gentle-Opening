@@ -239,7 +239,7 @@ Page({
             id: product.id,
             name: product.name,
             description: product.description || '',
-            priceText: money.formatCents(product.priceCents),
+            amountText: money.formatCents(product.priceCents),
             available: product.available,
           };
         }),

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "manifest.v1",
+  "identity": { "id": "cart-bar", "version": "1.0.0" },
+  "kind": "ui-block",
+  "displayName": "购物车条",
+  "entry": {
+    "path": "src",
+    "files": ["index.js", "index.json", "index.wxml", "index.wxss"],
+    "assets": []
+  },
+  "interface": {
+    "props": [
+      { "name": "totalCents", "type": "number", "required": true, "description": "合计金额，整数分" },
+      { "name": "totalQuantity", "type": "number", "required": true, "description": "合计数量" },
+      { "name": "submitting", "type": "boolean", "required": false, "description": "提交中状态" }
+    ],
+    "events": [
+      { "name": "expand", "payload": [], "description": "展开购物车" },
+      { "name": "checkout", "payload": ["totalCents", "totalQuantity"], "description": "去结算" }
+    ]
+  },
+  "boundary": { "allowNetwork": false, "allowRoutes": false, "allowGlobalState": false, "allowServices": false },
+  "compatibility": { "baseRange": "^1.0.0", "minWechatLib": "3.0.0", "apiContract": "storefront.v1" },
+  "requiredPages": ["menu"],
+  "requiresSlots": [],
+  "dependencies": [],
+  "conflicts": [],
+  "preview": { "dir": "preview", "kinds": ["normal", "empty", "error", "long"] },
+  "release": {
+    "stage": "online-ready",
+    "knownLimits": ["固定在页面底部，需要页面预留 safe-area padding", "金额只展示 totalCents"],
+    "verifiedRecipes": []
+  }
+}

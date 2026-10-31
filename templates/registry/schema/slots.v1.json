@@ -1,0 +1,40 @@
+{
+  "schemaDocVersion": "schema-doc.v1",
+  "contract": "slots.v1",
+  "status": "frozen",
+  "description": "插槽声明：微信小程序不支持运行时动态组件，Composer 必须在构建期按锚点替换 WXML。插槽 ID 统一 kebab-case。",
+  "required": ["schemaVersion", "slots"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "slots.v1" },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["slotId", "pageId", "maxItems", "accepts", "required", "dataKey", "anchor"],
+        "properties": {
+          "slotId": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+          "pageId": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+          "maxItems": { "type": "integer", "minimum": 0, "maximum": 5 },
+          "accepts": { "type": "array", "minItems": 1, "items": { "type": "string", "enum": ["ui-block", "feature-pack"] } },
+          "required": { "type": "boolean" },
+          "dataKey": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+          "anchor": {
+            "type": "object",
+            "required": ["begin", "fallbackBegin", "fallbackEnd", "end"],
+            "properties": {
+              "begin": { "type": "string", "pattern": "^<!-- @slot:[a-z0-9-]+ -->$" },
+              "fallbackBegin": { "type": "string", "pattern": "^<!-- @slot-fallback:[a-z0-9-]+ -->$" },
+              "fallbackEnd": { "type": "string", "pattern": "^<!-- @slot-fallback:[a-z0-9-]+:end -->$" },
+              "end": { "type": "string", "pattern": "^<!-- @slot:[a-z0-9-]+:end -->$" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "rules": [
+    "M5-2-07：未分配插槽时保留 fallback，渲染结果必须与改造前一致。",
+    "M5-4-04：同页同插槽只允许出现一次，数量不得超过 maxItems。",
+    "M5-5-03：产物只包含构建期确定的组件标签，不允许按名称动态 require。"
+  ]
+}

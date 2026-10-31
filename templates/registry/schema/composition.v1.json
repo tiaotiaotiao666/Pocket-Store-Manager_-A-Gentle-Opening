@@ -1,0 +1,143 @@
+{
+  "schemaDocVersion": "schema-doc.v1",
+  "contract": "composition.v1",
+  "status": "frozen",
+  "description": "组合规划：唯一允许的资产选择输入。只允许白名单字段、精确版本，禁止源码、URL、密钥、脚本与任意命令。",
+  "required": [
+    "schemaVersion",
+    "planId",
+    "planVersion",
+    "baseTemplate",
+    "registryVersion",
+    "pages",
+    "features",
+    "components",
+    "themeTokens",
+    "apiBinding",
+    "storeProfile",
+    "previewOnlyAck",
+    "degradations"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "composition.v1" },
+    "planId": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$", "length": [3, 48] },
+    "planVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "baseTemplate": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      }
+    },
+    "registryVersion": { "type": "string", "pattern": "^\\d{4}\\.\\d{2}\\.\\d+$" },
+    "pages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["pageId"],
+        "properties": {
+          "pageId": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+          "path": { "type": "string", "path": "relative-posix" },
+          "enabled": { "type": "boolean" }
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "version", "slots"],
+        "properties": {
+          "id": { "type": "string" },
+          "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["slotId", "dataKey"],
+              "properties": {
+                "slotId": { "type": "string" },
+                "dataKey": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+                "props": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "version"],
+        "properties": {
+          "id": { "type": "string" },
+          "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+        }
+      }
+    },
+    "themeTokens": {
+      "type": "object",
+      "required": ["pageBackground", "primaryColor", "accentColor", "textColor"],
+      "properties": {
+        "pageBackground": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "primaryColor": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "accentColor": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+        "textColor": { "type": "string", "pattern": "^#[0-9A-F]{6}$" }
+      }
+    },
+    "apiBinding": {
+      "type": "object",
+      "required": ["contract"],
+      "properties": {
+        "contract": { "type": "string", "enum": ["storefront.v1"] },
+        "baseUrl": { "type": "string" }
+      }
+    },
+    "storeProfile": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "maxLength": 48 },
+        "category": { "type": "string", "maxLength": 48 },
+        "address": { "type": "string", "maxLength": 120 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "businessHours": { "type": "array", "items": { "type": "object" } },
+        "dishes": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "previewOnlyAck": { "type": "boolean" },
+    "degradations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["assetId", "reason"],
+        "properties": {
+          "assetId": { "type": "string" },
+          "reason": { "type": "string", "maxLength": 200 }
+        }
+      }
+    }
+  },
+  "forbiddenKeys": [
+    "source",
+    "code",
+    "script",
+    "command",
+    "url",
+    "token",
+    "secret",
+    "password",
+    "apiKey",
+    "priceText",
+    "totalCents"
+  ],
+  "rules": [
+    "M5-4-01：任何不在白名单内的键都返回 PLAN_FIELD_FORBIDDEN，并给出 JSON 路径。",
+    "M5-4-02：version 必须是精确 MAJOR.MINOR.PATCH，latest/范围/^ ~ 一律拒绝。",
+    "M5-5-05：生成前扫描 Plan/Lock/Manifest，禁止密钥、内网地址、绝对路径与外部 URL。",
+    "M5-5-07：不允许隐式补依赖或删资产；只有显式 degradations 才允许移除并必须上报降级。"
+  ]
+}

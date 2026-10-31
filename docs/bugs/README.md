@@ -21,10 +21,7 @@
 
 | 编号 | 标题 | 级别 | 状态 | 影响面 | 详情 |
 | --- | --- | --- | --- | --- | --- |
-| BUG-006 | 安装包缺少 `src/`，打包后导出功能不可用 | P0 阻断 | 待修复（待安装包实测确认） | Electron NSIS 安装包 | [详情](open/BUG-006-electron-package-missing-src.md) |
 | BUG-007 | Agent 鉴权只校验 Bearer 形式，未接入 `SessionAuthGuard` | P1 高 | 待修复 | 后端 `POST /api/v1/agent/turn` | [详情](open/BUG-007-agent-auth-guard-bearer-only.md) |
-| BUG-008 | 生成器主题色替换未命中时静默失败 | P2 中 | 待修复 | 导出工程 `app.wxss` | [详情](open/BUG-008-generator-theme-replace-silent-fail.md) |
-| BUG-009 | `test:desktop` 指向不存在的测试文件 | P3 低 | 待修复 | 根目录测试脚本 | [详情](open/BUG-009-desktop-contract-test-missing.md) |
 
 ## 3. 已修复名录
 
@@ -35,9 +32,13 @@
 | BUG-003 | 跳过开场后剩余消息未一次性展示 | P2 中 | 已修复 | 会话揭示动画 | [详情](fixed/BUG-003-skip-intro-reveal-flush.md) |
 | BUG-004 | `.env` 覆盖真实进程环境变量 | P1 高 | 已修复 | 后端配置加载 | [详情](fixed/BUG-004-dotenv-overrides-process-env.md) |
 | BUG-005 | ioredis 客户端首次连接失败后不可复用 | P2 中 | 已修复 | Redis 缓存连接 | [详情](fixed/BUG-005-ioredis-client-not-reusable.md) |
+| BUG-006 | 安装包缺少 `src/`，打包后导出功能不可用 | P0 阻断 | 已修复 · 待 L4 实测 | Electron 安装包导出 | [详情](fixed/BUG-006-electron-package-missing-src.md) |
+| BUG-008 | 生成器主题色替换未命中时静默失败 | P2 中 | 已修复 | 导出工程主题 | [详情](fixed/BUG-008-generator-theme-replace-silent-fail.md) |
+| BUG-009 | `test:desktop` 指向不存在的测试文件 | P3 低 | 已修复 | 根目录测试脚本 | [详情](fixed/BUG-009-desktop-contract-test-missing.md) |
 | BUG-010 | 旧登录请求覆盖已切换的演示身份 | P1 高 | 已修复 | 小程序登录、退出与身份切换 | [详情](fixed/BUG-010-stale-login-overrides-switched-identity.md) |
 | BUG-011 | 店主页离开后异步初始化重新启动轮询 | P2 中 | 已修复 | 店主订单台生命周期与分段加载 | [详情](fixed/BUG-011-merchant-polling-restarts-after-hide.md) |
 | BUG-012 | `cart-panel` 结算事件负载不符合组件契约 | P3 低 | 已修复 | 购物车面板组件复用 | [详情](fixed/BUG-012-cart-panel-checkout-payload-contract.md) |
+| BUG-013 | 新建项目后设置页永久停在“正在读取应用设置…” | P1 高 | 已修复 | 桌面设置与自检页面 | [详情](fixed/BUG-013-settings-slice-cleared-on-new-project.md) |
 
 ## 4. 环境类已解决（不计 bug 编号）
 
@@ -48,8 +49,8 @@
 
 ## 5. 统计
 
-- 待修复：4 条（P0 ×1、P1 ×1、P2 ×1、P3 ×1）。
-- 已修复：8 条（其中 BUG-001 尚待微信开发者工具内的实际渲染复验；BUG-010、BUG-011 的 Node 回归已通过，微信内人工复验未执行）。
+- 待修复：1 条（P1 ×1，BUG-007）。
+- 已修复：12 条（其中 BUG-001 尚待微信开发者工具内的实际渲染复验；BUG-006 待 L4 安装包实测；BUG-010、BUG-011 的微信内人工复验未执行；BUG-013 待用户在设置页点击复验）。
 - 最近更新：2026-10-31。
 
 ## 6. 与其他文档的边界

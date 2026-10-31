@@ -1,13 +1,6 @@
+@import "theme.generated.wxss";
+
 page {
-  --color-bg: #f7f3ec;
-  --color-surface: #fffdf9;
-  --color-text: #232323;
-  --color-muted: #8a8178;
-  --color-primary: #e86a17;
-  --color-primary-soft: #fde9d8;
-  --color-success: #2f7d4f;
-  --color-danger: #b23a2f;
-  --color-border: #e6ded2;
   --radius-card: 20rpx;
   background: var(--color-bg);
   color: var(--color-text);
@@ -60,7 +53,7 @@ page {
   justify-content: center;
   min-height: 92rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #f39445 0%, #e86a17 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%);
   color: #fff;
   font-size: 30rpx;
   font-weight: 700;

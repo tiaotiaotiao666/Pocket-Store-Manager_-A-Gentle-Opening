@@ -59,7 +59,7 @@
             disabled="{{item.available === false}}"
             bind:add="onProductAdd"
             bind:remove="onProductRemove"
-            bind:open-detail="onOpenDetail"
+            bind:openDetail="onOpenDetail"
           />
         </view>
       </view>

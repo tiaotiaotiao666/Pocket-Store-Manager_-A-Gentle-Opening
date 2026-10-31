@@ -3,7 +3,7 @@
 .product-card {
   display: flex;
   padding: 22rpx;
-  background: var(--color-surface, #fffdf9);
+  background: var(--color-surface);
   border-radius: 24rpx;
   box-shadow: 0 6rpx 20rpx rgba(35, 35, 35, 0.05);
 }
@@ -61,13 +61,13 @@
 .product-card__name {
   font-size: 30rpx;
   font-weight: 700;
-  color: var(--color-text, #232323);
+  color: var(--color-text);
 }
 
 .product-card__desc {
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -85,7 +85,7 @@
 .product-card__price {
   display: flex;
   align-items: baseline;
-  color: var(--color-primary, #e86a17);
+  color: var(--color-primary);
 }
 
 .product-card__currency {
@@ -112,15 +112,15 @@
   width: 52rpx;
   height: 52rpx;
   border-radius: 999rpx;
-  border: 2rpx solid var(--color-primary, #e86a17);
-  color: var(--color-primary, #e86a17);
+  border: 2rpx solid var(--color-primary);
+  color: var(--color-primary);
   font-size: 34rpx;
   line-height: 1;
 }
 
 .product-card__step--add {
-  background: var(--color-primary, #e86a17);
-  border-color: var(--color-primary, #e86a17);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   color: #fff;
 }
 

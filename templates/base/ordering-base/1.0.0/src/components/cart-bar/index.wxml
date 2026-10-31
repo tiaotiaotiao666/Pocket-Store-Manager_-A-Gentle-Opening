@@ -1,0 +1,18 @@
+<view class="cart-bar">
+  <view class="cart-bar__summary" bind:tap="onExpand">
+    <view class="cart-bar__icon">
+      <text class="cart-bar__icon-text">袋</text>
+      <view wx:if="{{totalQuantity > 0}}" class="cart-bar__badge">{{totalQuantity}}</view>
+    </view>
+    <view class="cart-bar__amount">
+      <text class="cart-bar__total">{{totalText}}</text>
+      <text class="cart-bar__hint">{{totalQuantity > 0 ? '点击查看已选菜品' : '还没有选择菜品'}}</text>
+    </view>
+  </view>
+  <view
+    class="cart-bar__action {{totalQuantity > 0 && !submitting ? '' : 'cart-bar__action--off'}}"
+    bind:tap="onCheckout"
+  >
+    {{submitting ? '处理中' : '去结算'}}
+  </view>
+</view>

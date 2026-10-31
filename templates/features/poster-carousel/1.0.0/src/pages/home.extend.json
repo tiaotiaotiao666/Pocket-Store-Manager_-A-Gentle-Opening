@@ -1,0 +1,9 @@
+{
+  "pageId": "home",
+  "slotId": "home-hero",
+  "component": "poster-carousel",
+  "hooks": {
+    "onLoad": "attachPosterCarousel"
+  },
+  "note": "仅声明插槽与钩子名；实际替换由 Composer 在构建期按锚点完成，运行时不动态加载组件。"
+}

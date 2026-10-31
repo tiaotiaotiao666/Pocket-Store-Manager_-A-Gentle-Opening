@@ -19,6 +19,9 @@
 | `order_items` | 下单商品快照 |
 | `order_status_logs` | 状态变更历史 |
 | `idempotency_keys` | 创建订单幂等记录 |
+| `store_imports` | B3 受控导入记录（幂等键、请求摘要、结果快照） |
+
+> B3 增补：`stores` 增加 `category` 与 `config_version`；新增 `store_imports`。
 
 ## 2. 字段定义
 
@@ -213,3 +216,46 @@
 - 种子：`npx tsx prisma/seed.ts`，必须可重复执行（upsert）。
 - 测试库：`DATABASE_URL` 指向独立 schema（如 `smart_store_test`），每次集成测试前迁移并清库。
 - 禁止在生产执行种子脚本；生产门店由运维流程导入。
+## 6. B3 增补字段与表（2026-10-31）
+
+### stores 增补
+
+| 字段 | 类型 | 约束 / 说明 |
+| --- | --- | --- |
+| `category` | VARCHAR(48) | NOT NULL DEFAULT ''，门店品类 |
+| `configVersion` | INT | NOT NULL DEFAULT 0，门店资料（名称/品类/地址/电话/营业时间/履约/主题）版本 |
+
+- `catalogVersion` 仍只代表分类/商品/桌号集合变化。
+- 受控导入在同一事务内同时 `configVersion+1` 与 `catalogVersion+1`。
+
+### store_imports
+
+| 字段 | 类型 | 约束 / 说明 |
+| --- | --- | --- |
+| `id` | CHAR(26) | PK，`imp_` 前缀 |
+| `storeId` | VARCHAR(64) | FK → stores.id |
+| `userId` | CHAR(26) | FK → users.id |
+| `idempotencyKey` | VARCHAR(128) | 请求头 `Idempotency-Key` |
+| `requestHash` | CHAR(64) | sha256(canonical(apply 请求体)) |
+| `sourceDraftDigest` | CHAR(64) | AgentDraft 摘要，便于追溯 |
+| `status` | VARCHAR(16) | 当前仅 `APPLIED` |
+| `previewToken` | CHAR(64) | 本次 apply 使用的 preview 摘要 |
+| `resultJson` | JSON | 首次 apply 结果快照，用于幂等重放 |
+| `createdAt` | DATETIME(3) | UTC |
+
+唯一键：`(storeId, userId, idempotencyKey)`。索引：`(storeId, createdAt)`。
+
+### 导入事务（单事务）
+
+1. 校验 `previewToken`（绑定 storeId + userId + payload + 过期时间）。
+2. 计算 diff，确认 `confirmations` 覆盖全部冲突。
+3. upsert 分类（按 name）→ 商品（按 categoryId + name）→ 桌号（按 name）；`skip` 不写。
+4. 更新门店 profile，`configVersion+1`、`catalogVersion+1`。
+5. 写 `store_imports(status='APPLIED', resultJson=...)`。
+6. 提交后失效缓存；失效失败只写 `cacheRefreshed:false`。
+
+### 不删除 / 不覆盖规则
+
+- 未声明项不删除；请求内 `skip` 项不更新既有记录。
+- 商品价格不同、上架状态不同一律进入 `conflict`，需逐项 `confirmations` 才更新。
+- 桌号唯一性由应用层校验（不在数据库加唯一约束，避免历史数据阻塞迁移）。

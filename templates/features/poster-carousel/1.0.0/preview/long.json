@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "id": "poster-long",
+      "title": "超长海报标题用于验证换行与不遮挡指示点的情况",
+      "subtitle": "这是一段同样很长的副标题，用来确认轮播高度固定时文字不会溢出容器，也不会把底部指示点挤出可视区域。",
+      "tone": "ink"
+    }
+  ],
+  "autoplay": false,
+  "interval": 4000,
+  "showIndicator": true
+}

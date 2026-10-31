@@ -30,6 +30,6 @@ export const PROMPT_INTRO = '我会根据你的店铺信息写一版生图提示
 
 export const REVIEW_INTRO = '提示词确认后，我来生成效果图；你可以指出想调整的地方，我们会在这个会话里反复修改。';
 
-export const DEPLOY_INTRO = '方案都确认好了，我现在把这套小程序部署上线（演示环境，不含真实发布）。';
+export const DEPLOY_INTRO = '方案都确认好了。接下来把小程序工程生成到你选择的目录，生成后可以用微信开发者工具导入；不会自动上传或发布。';
 
-export const DEPLOY_STEPS = ['校验店铺配置', '生成小程序工程', '上传到演示环境', '等待审核发布'];
+export const DEPLOY_STEPS = ['校验配置', '生成工程', '检查产物', '导入微信开发者工具（外部）'];

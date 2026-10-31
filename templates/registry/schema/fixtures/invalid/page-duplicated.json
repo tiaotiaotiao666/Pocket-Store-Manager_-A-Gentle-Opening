@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "composition.v1",
+  "planId": "order-classic",
+  "planVersion": "1.0.0",
+  "baseTemplate": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "registryVersion": "2026.11.0",
+  "pages": [
+    {
+      "pageId": "home"
+    },
+    {
+      "pageId": "menu"
+    },
+    {
+      "pageId": "checkout"
+    },
+    {
+      "pageId": "orders"
+    },
+    {
+      "pageId": "order-detail"
+    },
+    {
+      "pageId": "mine"
+    },
+    {
+      "pageId": "merchant-orders"
+    },
+    {
+      "pageId": "home"
+    }
+  ],
+  "features": [],
+  "components": [
+    {
+      "id": "store-header",
+      "version": "1.0.0"
+    },
+    {
+      "id": "product-card",
+      "version": "1.0.0"
+    },
+    {
+      "id": "cart-bar",
+      "version": "1.0.0"
+    }
+  ],
+  "themeTokens": {
+    "pageBackground": "#FAF7F1",
+    "primaryColor": "#1F6F54",
+    "accentColor": "#C2410C",
+    "textColor": "#1F2933"
+  },
+  "apiBinding": {
+    "contract": "storefront.v1"
+  },
+  "storeProfile": {
+    "name": "松月食堂",
+    "category": "中式简餐",
+    "businessHours": [],
+    "dishes": []
+  },
+  "previewOnlyAck": false,
+  "degradations": []
+}

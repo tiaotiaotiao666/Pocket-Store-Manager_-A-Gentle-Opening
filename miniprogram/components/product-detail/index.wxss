@@ -26,14 +26,14 @@
 .product-detail__desc {
   margin-top: 8rpx;
   font-size: 24rpx;
-  color: var(--color-muted, #8a8178);
+  color: var(--color-muted);
 }
 
 .product-detail__price {
   display: flex;
   align-items: baseline;
   padding: 8rpx 32rpx 0;
-  color: var(--color-primary, #e86a17);
+  color: var(--color-primary);
 }
 
 .product-detail__currency {
@@ -77,14 +77,14 @@
   width: 64rpx;
   height: 64rpx;
   border-radius: 999rpx;
-  border: 2rpx solid var(--color-primary, #e86a17);
-  color: var(--color-primary, #e86a17);
+  border: 2rpx solid var(--color-primary);
+  color: var(--color-primary);
   font-size: 36rpx;
   line-height: 1;
 }
 
 .product-detail__step--add {
-  background: var(--color-primary, #e86a17);
+  background: var(--color-primary);
   color: #fff;
 }
 

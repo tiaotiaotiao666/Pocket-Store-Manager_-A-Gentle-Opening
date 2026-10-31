@@ -1,0 +1,25 @@
+{
+  "lockVersion": "lock.v1",
+  "planDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "base": { "id": "ordering-base", "version": "1.0.0" },
+  "registryVersion": "2026.11.0",
+  "registryDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "features": [
+    { "id": "store-header", "version": "1.0.0", "kind": "ui-block", "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }
+  ],
+  "resolvedDependencies": [
+    { "id": "store-header", "version": "1.0.0", "requiredBy": "plan" }
+  ],
+  "composerVersion": "0.1.0",
+  "apiContract": "storefront.v1",
+  "capabilitySet": ["store-header"],
+  "sourceDigests": [
+    { "path": "templates/base/ordering-base/1.0.0/src/app.json", "digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444" }
+  ],
+  "outputDigest": {
+    "tree": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "files": []
+  },
+  "backendVersions": { "configVersion": null, "catalogVersion": null },
+  "generatedAt": "2026-11-20T00:00:00Z"
+}

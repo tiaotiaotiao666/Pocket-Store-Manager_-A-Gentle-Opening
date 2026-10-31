@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "recipe.v1",
+  "identity": { "id": "order-poster", "version": "1.0.0" },
+  "planRef": "plan.json",
+  "displayName": "海报点餐",
+  "description": "在经典点餐基线上，用海报轮播替换首页门店头部，突出当季活动与扫码点餐入口。",
+  "recipe": {
+    "stage": "candidate",
+    "verifiedAt": null,
+    "wechatCompile": "not-run",
+    "regression": "not-run",
+    "secretScan": "pass",
+    "approvals": [],
+    "knownLimits": [
+      "演示海报为色块素材，未含摄影图片",
+      "关闭轮播后首页回落到 store-header"
+    ]
+  }
+}

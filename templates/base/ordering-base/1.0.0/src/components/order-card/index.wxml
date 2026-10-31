@@ -1,0 +1,49 @@
+<view class="order-card" bind:tap="onOpen">
+  <view class="order-card__head">
+    <view class="order-card__identity">
+      <text class="order-card__no">#{{order.shortId}}</text>
+      <text class="order-card__time">{{order.createdAtText}}</text>
+    </view>
+    <view class="order-card__badge order-card__badge--{{order.statusTone}}">{{order.statusText}}</view>
+  </view>
+
+  <view class="order-card__meta">
+    <text class="order-card__mode">{{order.fulfillmentText}}</text>
+    <text wx:if="{{order.paymentText}}" class="order-card__pay">{{order.paymentText}}</text>
+  </view>
+
+  <view class="order-card__items">
+    <view wx:for="{{order.itemViews}}" wx:key="productId" class="order-card__item">
+      <text class="order-card__item-name">{{item.name}}</text>
+      <text class="order-card__item-qty">×{{item.quantity}}</text>
+      <text class="order-card__item-line">{{item.lineTotalText}}</text>
+    </view>
+    <view wx:if="{{!order.itemViews || order.itemViews.length === 0}}" class="order-card__summary">{{order.itemSummary || '暂无菜品明细'}}</view>
+  </view>
+
+  <view class="order-card__foot">
+    <view class="order-card__total">
+      <text class="order-card__total-label">合计</text>
+      <text class="order-card__total-value">{{order.totalText}}</text>
+    </view>
+    <view wx:if="{{actionable && role === 'CUSTOMER'}}" class="order-card__actions">
+      <view wx:if="{{order.canCancel}}" class="ss-btn ss-btn--ghost order-card__btn" catch:tap="onCancel">取消订单</view>
+      <view wx:if="{{order.canPay}}" class="ss-btn ss-btn--primary order-card__btn" catch:tap="onPay">演示模拟支付</view>
+    </view>
+    <view wx:if="{{actionable && role === 'MERCHANT'}}" class="order-card__actions">
+      <view
+        wx:for="{{order.actions}}"
+        wx:key="toStatus"
+        class="ss-btn order-card__btn {{item.tone === 'primary' ? 'ss-btn--primary' : item.tone === 'success' ? 'ss-btn--success' : 'ss-btn--danger'}}"
+        data-status="{{item.toStatus}}"
+        catch:tap="onAdvance"
+      >
+        {{item.label}}
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{actionable && role === 'MERCHANT' && order.unpaid}}" class="order-card__warn">
+    顾客尚未完成演示模拟支付，暂不能接单
+  </view>
+</view>

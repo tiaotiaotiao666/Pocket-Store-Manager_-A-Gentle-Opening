@@ -1,0 +1,125 @@
+.ss-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card, 20rpx);
+  box-shadow: 0 8rpx 28rpx rgba(35, 35, 35, 0.06);
+}
+
+.ss-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ss-muted {
+  color: var(--color-muted);
+  font-size: 24rpx;
+}
+
+.ss-price {
+  color: var(--color-primary);
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.ss-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64rpx;
+  padding: 0 28rpx;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ss-btn--primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.ss-btn--success {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.ss-btn--danger {
+  background: #fdeceb;
+  color: var(--color-danger);
+}
+
+.ss-btn--ghost {
+  background: rgba(255, 255, 255, 0.7);
+  border: 2rpx solid var(--color-border);
+  color: var(--color-text);
+}
+
+.ss-btn--disabled {
+  opacity: 0.45;
+}
+
+.ss-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.ss-mask {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(24, 22, 20, 0.42);
+  z-index: 40;
+}
+
+.ss-sheet {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 41;
+  background: var(--color-surface);
+  border-radius: 32rpx 32rpx 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.ss-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 32rpx 12rpx;
+}
+
+.ss-sheet__title {
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.ss-sheet__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 999rpx;
+  background: rgba(35, 35, 35, 0.06);
+  color: var(--color-muted);
+  font-size: 28rpx;
+}
+
+.ss-divider {
+  height: 2rpx;
+  background: rgba(230, 222, 210, 0.7);
+}
+
+.ss-step-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 999rpx;
+}

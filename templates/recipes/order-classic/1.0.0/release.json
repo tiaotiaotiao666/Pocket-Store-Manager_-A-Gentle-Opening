@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "recipe-release.v1",
+  "recipeId": "order-classic",
+  "recipeVersion": "1.0.0",
+  "stage": "candidate",
+  "verifiedAt": null,
+  "wechatCompile": "not-run",
+  "regression": "not-run",
+  "secretScan": "pass",
+  "approvals": [],
+  "knownLimits": [
+    "演示付款，不产生真实交易",
+    "不含外送与公开店主注册"
+  ],
+  "note": "M5 固定基线，M7 门禁通过后晋升 direct。"
+}

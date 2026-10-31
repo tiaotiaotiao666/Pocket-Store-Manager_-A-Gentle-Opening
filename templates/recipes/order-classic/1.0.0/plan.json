@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "composition.v1",
+  "planId": "order-classic",
+  "planVersion": "1.0.0",
+  "baseTemplate": { "id": "ordering-base", "version": "1.0.0" },
+  "registryVersion": "2026.11.0",
+  "pages": [
+    { "pageId": "home" },
+    { "pageId": "menu" },
+    { "pageId": "orders" },
+    { "pageId": "mine" },
+    { "pageId": "checkout" },
+    { "pageId": "order-detail" },
+    { "pageId": "merchant-orders" }
+  ],
+  "features": [],
+  "components": [],
+  "themeTokens": {
+    "pageBackground": "#F7F3EC",
+    "primaryColor": "#B34A0F",
+    "accentColor": "#9C2E12",
+    "textColor": "#232323"
+  },
+  "apiBinding": { "contract": "storefront.v1" },
+  "storeProfile": {
+    "name": "柑橘小馆",
+    "category": "中式简餐",
+    "address": "上海市静安区示例路 1 号",
+    "phone": "13800000000",
+    "notes": "扫码点餐 · 演示付款",
+    "businessHours": [
+      { "start": "10:00", "end": "21:00" }
+    ],
+    "dishes": []
+  },
+  "previewOnlyAck": false,
+  "degradations": []
+}

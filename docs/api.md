@@ -387,3 +387,208 @@
 - 缓存使用内存降级模式时：`cache: "memory"`，`status` 仍为 `ok`；Redis 连接失败并已降级时同样报告 `memory`，由服务端日志告警。
 - 不返回连接串、密钥或驱动错误细节。
 - 该接口不替代 `GET /health`；`/health` 仍保持不访问数据库与缓存。
+## 10. B3 受控导入增补（2026-10-31）
+
+> 目标：把桌面端由 Agent 收集的结构化门店资料，经**受控通道**写入后端，且不覆盖运营数据。
+> 全部接口前缀 `/api/v1`；除公开桌号外均需 `Authorization: Bearer <sessionToken>`。
+
+### 10.1 `POST /merchant/stores/:storeId/imports`
+
+店主（`OWNER`）把 AgentDraft 导入门店配置。`STAFF` 与跨店访问一律 `403 FORBIDDEN`。
+
+请求头：
+
+| 头 | 必填 | 说明 |
+| --- | --- | --- |
+| `Authorization` | 是 | Bearer 会话 Token |
+| `Idempotency-Key` | `mode=apply` 必填 | 8–128 位可见 ASCII；同一键重复提交返回首次结果 |
+| `Content-Type` | 是 | `application/json` |
+
+请求体：
+
+```json
+{
+  "mode": "preview",
+  "payload": {
+    "profile": {
+      "name": "松月食堂",
+      "category": "社区餐馆",
+      "address": "上海市静安区示例路 8 号",
+      "phone": "13800000000",
+      "notes": "社区家常菜",
+      "businessHours": [
+        { "start": "10:00", "end": "14:00" },
+        { "start": "17:00", "end": "21:00" }
+      ]
+    },
+    "categories": [
+      { "draftId": "cat-1", "name": "招牌主食", "sortOrder": 1 }
+    ],
+    "products": [
+      {
+        "draftId": "dish-1",
+        "categoryDraftId": "cat-1",
+        "name": "宫保鸡丁",
+        "priceCents": 2800,
+        "description": "微辣",
+        "available": true
+      }
+    ],
+    "tables": [
+      { "draftId": "table-1", "name": "A01", "sortOrder": 1 }
+    ],
+    "sourceDraftDigest": "64 位小写十六进制 sha256",
+    "unsupported": { "images": true, "modifiers": false, "specs": false }
+  },
+  "confirmations": []
+}
+```
+
+约束：
+
+- `profile.name` 1–48；`category` 1–48；`address` ≤120；`phone` ≤32；`notes` ≤200。
+- `businessHours` 1–3 段，`HH:MM-HH:MM`，不重叠，拼接后 ≤64 字符。
+- `categories` ≤3；`products` 3–5；`tables` ≤20。
+- `priceCents` 1–999999 的整数（分）；不得出现 `priceText/totalCents`。
+- 分类名、同分类商品名、桌号名在**请求内**不允许重复。
+- `delivery` 出现时必须为 `false`；图片/加料/规格字段一律拒绝（放入 `unsupported` 说明）。
+- 请求体上限 256 KB。
+
+`mode=preview` 响应（200）：
+
+```json
+{
+  "importId": "imp_preview_01",
+  "mode": "preview",
+  "previewToken": "1770000000000.<64hex>",
+  "expiresAt": "2026-11-01T00:10:00.000Z",
+  "diff": {
+    "profile": [
+      { "field": "name", "current": "柑橘小馆", "incoming": "松月食堂", "action": "conflict", "confirmationKey": "profile.name" }
+    ],
+    "categories": [
+      { "draftId": "cat-1", "name": "招牌主食", "action": "create", "confirmationKey": "category:cat-1" }
+    ],
+    "products": [
+      { "draftId": "dish-1", "name": "宫保鸡丁", "action": "create", "confirmationKey": "product:dish-1" }
+    ],
+    "tables": [
+      { "draftId": "table-1", "name": "A01", "action": "create", "confirmationKey": "table:table-1" }
+    ]
+  },
+  "conflicts": ["profile.name"],
+  "notImported": ["菜品图片", "加料", "规格"],
+  "summary": { "create": 4, "update": 0, "skip": 0, "conflict": 1 }
+}
+```
+
+- `preview` **不写库**、不消耗幂等键。
+- `action` 只允许 `create/update/skip/conflict`；默认动作 `skip`，不静默改价、不静默上架、不删除未声明项。
+- `previewToken` 绑定 `storeId + userId + payload`，默认 10 分钟有效。
+
+`mode=apply` 请求额外携带：
+
+```json
+{
+  "mode": "apply",
+  "previewToken": "1770000000000.<64hex>",
+  "confirmations": ["profile.name"],
+  "payload": { "...": "与 preview 完全一致" }
+}
+```
+
+`apply` 响应（200）：
+
+```json
+{
+  "importId": "imp_01",
+  "mode": "apply",
+  "status": "APPLIED",
+  "replay": false,
+  "mapping": {
+    "categories": { "cat-1": "cat_xxx" },
+    "products": { "dish-1": "prd_xxx" },
+    "tables": { "table-1": "tbl_xxx" }
+  },
+  "configVersion": 4,
+  "catalogVersion": 6,
+  "cacheRefreshed": true,
+  "notImported": ["菜品图片", "加料", "规格"],
+  "conflicts": []
+}
+```
+
+语义：
+
+- **整体事务**：分类/商品/桌号 upsert → 更新门店 profile → `configVersion+1`、`catalogVersion+1` → 写入 `store_imports(status='APPLIED')`；任一步失败整体回滚。
+- **幂等**：`(storeId, userId, idempotencyKey)` 唯一；同键同 `requestHash` 返回首次 `resultJson`（`replay: true`）；同键不同内容 → `409 IDEMPOTENCY_CONFLICT`。
+- **确认**：`confirmations` 必须覆盖全部 `conflicts`，否则 `422 CONFIRMATION_REQUIRED`。
+- **过期**：`previewToken` 过期或与 payload 不匹配 → `422 PREVIEW_STALE`。
+- **缓存**：事务提交后失效 `catalog:<storeId>`；失效失败返回 `cacheRefreshed: false`，不回滚数据。
+- **不删除**：未在请求中声明的既有分类/商品/桌号保持原样。
+- **不覆盖**：`skip` 项不更新既有记录；`update` 必须由 `confirmations` 明确允许。
+
+错误码：
+
+| HTTP | code | 场景 |
+| --- | --- | --- |
+| 400 | `BAD_REQUEST` | 缺少 storeId / 请求体为空 |
+| 401 | `AUTH_REQUIRED` | 未登录或 Token 失效 |
+| 403 | `FORBIDDEN` | 非门店成员、`STAFF`、跨店 |
+| 404 | `STORE_NOT_FOUND` | 门店不存在 |
+| 409 | `IDEMPOTENCY_CONFLICT` | 同键不同内容 |
+| 422 | `VALIDATION_ERROR` | DTO 校验失败（含价格、时段、数量） |
+| 422 | `DUPLICATE_CATEGORY` / `DUPLICATE_PRODUCT` / `DUPLICATE_TABLE` | 请求内重名 |
+| 422 | `CONFIRMATION_REQUIRED` | 冲突未逐项确认 |
+| 422 | `PREVIEW_STALE` | previewToken 过期/不匹配 |
+| 422 | `DELIVERY_NOT_SUPPORTED` | 出现 `delivery: true` |
+
+### 10.2 `GET /merchant/stores/:storeId/imports/:importId`
+
+返回导入结果（需 `OWNER`）：
+
+```json
+{
+  "importId": "imp_01",
+  "status": "APPLIED",
+  "createdAt": "2026-11-01T00:00:00.000Z",
+  "result": { "...": "与 apply 响应相同" }
+}
+```
+
+- 不存在或不属于该门店 → `404 IMPORT_NOT_FOUND`。
+
+### 10.3 `GET /stores/:storeId`
+
+公开接口增补两个版本字段（不改变其它字段与错误语义）：
+
+```json
+{
+  "id": "store-demo-001",
+  "name": "柑橘小馆",
+  "configVersion": 3,
+  "catalogVersion": 5
+}
+```
+
+### 10.4 `GET /stores/:storeId/tables`
+
+公开、只读、无需登录：
+
+```json
+{
+  "storeId": "store-demo-001",
+  "tables": [
+    { "id": "tbl_A01", "name": "A01", "sortOrder": 1 }
+  ]
+}
+```
+
+- 只返回 `id/name/sortOrder`，不返回订单、占用状态或任何顾客信息。
+- 门店不存在 → `404 STORE_NOT_FOUND`。
+- 排序稳定：`sortOrder asc, id asc`。
+
+### 10.5 与小程序导出配置的关系
+
+- 导出工程 `config/store.generated.js` 的 `meta` 写入 `storeConfigVersion/catalogVersion`；缺失写 `null` 并进入 `versionGaps`。
+- 小程序启动时对比本地 `meta.catalogVersion` 与在线 `GET /catalog.version`，落后时提示刷新，但**以在线数据为准**。

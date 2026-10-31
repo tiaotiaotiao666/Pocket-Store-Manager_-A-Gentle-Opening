@@ -1,0 +1,8 @@
+{
+  "items": [
+    { "id": "poster-broken", "title": "图片加载失败", "subtitle": "应回落到备用底色", "tone": "warm", "image": "/assets/missing.png" }
+  ],
+  "autoplay": false,
+  "interval": 9000,
+  "showIndicator": true
+}

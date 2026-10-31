@@ -1,5 +1,7 @@
 # 导出模板与配置契约
 
+> 文首更新（2026-10-31）：M5 起导出主链已切换为 `store.generated.js` **v2** + `composition.v1` + `composition.lock.json`，由 `scripts/composer/` 生成。第 1–3 节保留 v1/规划的历史口径，**当前实现以第 6 节为准**。
+
 > 本文区分“当前已实现的门店配置”与“规划中的组合规格”。两者不得混为一份配置，也不得把规划字段当作现有代码能力。
 
 ## 1. 当前实现：`store.generated.js` schemaVersion=1
@@ -63,3 +65,53 @@ B3 需要实现 `store.generated.js.schemaVersion` 到后端配置版本的受�
 生成配置只能包含公开 API Base URL、`storeId`、公开主题和资源信息，严禁写入 AppSecret、数据库密码、模型密钥、支付密钥或用户 Token。
 
 Manifest 必须声明 Base、微信基础库和后端 API 兼容范围。不兼容组合在生成前拒绝，不生成带隐式降级的工程。当前“复制并替换配置”与未来 Composer 是两种实现状态，文档和 UI 不得混称。
+## 6. 当前实现（M5–M7，2026-10-31）
+
+### 6.1 `store.generated.js` v2
+
+只允许以下顶层键：`schemaVersion`、`meta`、`store`、`api`、`catalog`、`fulfillmentOptions`、`theme`、`capabilities`、`demoPaymentDisclaimer`。
+
+`meta` 固定 12 项：`configSchemaVersion/storeConfigVersion/catalogVersion/apiContractVersion/recipeId/recipeVersion/lockDigest/generatedAt/generatorVersion/planDigest/mode/versionGaps`。
+
+- `schemaVersion` 只接受 2；v1 明确 `STORE_CONFIG_SCHEMA_UNSUPPORTED`。
+- `priceCents` 是唯一金额事实，禁止 `priceText/totalCents`。
+- `fulfillmentOptions.delivery` 固定 `false`。
+- `generatedAt` 固定 `1970-01-01T00:00:00Z`（确定性快照；真实时间只写报告）。
+- production：`api.baseUrl` 必须 HTTPS，且 `storeConfigVersion/catalogVersion` 不得为 null（`VERSION_GAP_REQUIRED`）。
+- `capabilities.onlineReady` 与 `previewOnly` 交集必须为空。
+
+完整字段与规则见 `templates/registry/schema/store.generated.v2.json`。
+
+### 6.2 `composition.v1`
+
+Plan 只允许白名单字段与精确版本；禁止 `source/code/script/command/url/token/secret/password/apiKey/priceText/totalCents`。插槽分配为：
+
+```json
+{
+  "features": [
+    {
+      "id": "poster-carousel",
+      "version": "1.0.0",
+      "slots": [
+        { "slotId": "home-hero", "pageId": "home", "dataKey": "homeHero", "props": { "items": [], "autoplay": true } }
+      ]
+    }
+  ]
+}
+```
+
+### 6.3 `composition.lock.json`
+
+14 项必填；`lockDigest = sha256(canonical(lock 去掉 generatedAt 与 lockDigest))`。相同 Plan + 相同注册表 → 相同 `lockDigest` 与 `treeSha256`。
+
+### 6.4 文件与代码位置
+
+| 契约 | 文件 |
+| --- | --- |
+| Base Manifest | `templates/base/ordering-base/1.0.0/manifest.json` |
+| 资产 Manifest | `templates/{components,features}/<id>/<version>/manifest.json` |
+| Plan / Lock Schema | `templates/registry/schema/composition.v1.json`、`lock.v1.json` |
+| 生成器 | `scripts/composer/emit.cjs` |
+| 后端版本映射 | `server/src/imports/`、`docs/api.md` 第 10 节 |
+
+> 当前状态：v2 生成与白名单测试在 M5 通过；M6 的配置 v2 测试与 M7 资产冻结因环境拒绝命令尚未验证，详见 `docs/evidence/s7-checklist.md`。

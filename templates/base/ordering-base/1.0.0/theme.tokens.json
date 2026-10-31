@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "theme.tokens.v1",
+  "tokens": [
+    {
+      "key": "pageBackground",
+      "cssVar": "--store-page-background",
+      "type": "color",
+      "required": true
+    },
+    {
+      "key": "primaryColor",
+      "cssVar": "--store-primary-color",
+      "type": "color",
+      "required": true,
+      "contrastWith": "pageBackground"
+    },
+    {
+      "key": "accentColor",
+      "cssVar": "--store-accent-color",
+      "type": "color",
+      "required": true,
+      "contrastWith": "pageBackground"
+    },
+    {
+      "key": "textColor",
+      "cssVar": "--store-text-color",
+      "type": "color",
+      "required": true,
+      "contrastWith": "pageBackground"
+    },
+    {
+      "key": "tabBarBackground",
+      "cssVar": "--store-tab-bar-background",
+      "type": "color",
+      "required": true
+    },
+    {
+      "key": "tabBarColor",
+      "cssVar": "--store-tab-bar-color",
+      "type": "color",
+      "required": true
+    },
+    {
+      "key": "tabBarSelectedColor",
+      "cssVar": "--store-tab-bar-selected-color",
+      "type": "color",
+      "required": true
+    }
+  ],
+  "presets": [
+    {
+      "id": "warm-orange",
+      "name": "暖橙",
+      "tokens": {
+        "pageBackground": "#F7F3EC",
+        "primaryColor": "#B34A0F",
+        "accentColor": "#9C2E12",
+        "textColor": "#232323",
+        "tabBarBackground": "#FFFDF9",
+        "tabBarColor": "#8A8178",
+        "tabBarSelectedColor": "#B34A0F"
+      }
+    },
+    {
+      "id": "deep-green",
+      "name": "深绿",
+      "tokens": {
+        "pageBackground": "#F3F6F1",
+        "primaryColor": "#1F6F54",
+        "accentColor": "#8A4B1E",
+        "textColor": "#16211D",
+        "tabBarBackground": "#FFFEFA",
+        "tabBarColor": "#6E7A72",
+        "tabBarSelectedColor": "#1F6F54"
+      }
+    },
+    {
+      "id": "ink-blue",
+      "name": "墨蓝",
+      "tokens": {
+        "pageBackground": "#F2F5F8",
+        "primaryColor": "#1D4E89",
+        "accentColor": "#8A5A12",
+        "textColor": "#16202B",
+        "tabBarBackground": "#FFFFFF",
+        "tabBarColor": "#6F7B87",
+        "tabBarSelectedColor": "#1D4E89"
+      }
+    },
+    {
+      "id": "night-neon",
+      "name": "夜色霓虹",
+      "tokens": {
+        "pageBackground": "#1B1B24",
+        "primaryColor": "#8B7BFF",
+        "accentColor": "#F0A24B",
+        "textColor": "#EDEDF2",
+        "tabBarBackground": "#23232E",
+        "tabBarColor": "#A8A8B8",
+        "tabBarSelectedColor": "#8B7BFF"
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+<view class="page mine">
+  <view class="mine__head">
+    <text class="mine__eyebrow">我的</text>
+    <text class="mine__title">身份与门店</text>
+  </view>
+
+  <state-view wx:if="{{loading}}" state="loading" title="正在读取身份信息" />
+
+  <block wx:else>
+    <view class="mine__profile">
+      <view class="mine__avatar">{{avatarText}}</view>
+      <view class="mine__profile-body">
+        <text class="mine__profile-name">{{user.displayName || '未登录'}}</text>
+        <text class="mine__profile-meta">{{identity.label}}{{loggedIn ? ' · 已登录' : ' · 未登录'}}</text>
+      </view>
+      <view class="mine__profile-tag">{{storeName || '门店'}}</view>
+    </view>
+
+    <view wx:if="{{error}}" class="mine__error">
+      <error-banner message="{{error}}" action="重新登录" bind:retry="onRefreshMe" bind:close="onRefreshMe" />
+    </view>
+
+    <view wx:if="{{memberships.length > 0}}" class="page__section">
+      <view class="section-head">
+        <text class="section-title">门店权限</text>
+        <text class="section-extra">来自后端 memberships</text>
+      </view>
+      <view class="surface-card mine__membership">
+        <view wx:for="{{merchantEntries}}" wx:key="storeId" class="mine__membership-row" data-store="{{item.storeId}}" bind:tap="onOpenMerchant">
+          <view class="mine__membership-main">
+            <text class="mine__membership-name">{{item.storeId}}</text>
+            <text class="mine__membership-role">{{item.roleLabel}} · 可进入订单台</text>
+          </view>
+          <text class="mine__membership-arrow">›</text>
+        </view>
+        <view wx:if="{{merchantEntries.length === 0}}" class="mine__membership-empty">
+          当前身份只有顾客权限，没有门店管理入口
+        </view>
+      </view>
+    </view>
+
+    <view class="page__section">
+      <view class="section-head">
+        <text class="section-title">演示身份</text>
+        <text class="section-extra">仅开发演示</text>
+      </view>
+      <view class="mine__identities">
+        <view
+          wx:for="{{identityOptions}}"
+          wx:key="key"
+          class="mine__identity {{identity.key === item.key ? 'mine__identity--active' : ''}}"
+          data-key="{{item.key}}"
+          bind:tap="onSwitchIdentity"
+        >
+          <view class="mine__identity-main">
+            <text class="mine__identity-label">{{item.label}}</text>
+            <text class="mine__identity-desc">{{item.description}}</text>
+          </view>
+          <view wx:if="{{identity.key === item.key}}" class="mine__identity-badge">当前</view>
+          <view wx:elif="{{switching === item.key}}" class="mine__identity-badge mine__identity-badge--busy">切换中</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="page__section">
+      <view class="section-head">
+        <text class="section-title">快捷入口</text>
+      </view>
+      <view class="surface-card mine__links">
+        <view class="mine__link" bind:tap="goOrders">
+          <text class="mine__link-label">我的订单</text>
+          <text class="mine__link-arrow">›</text>
+        </view>
+        <view class="mine__link" bind:tap="goHome">
+          <text class="mine__link-label">回到首页</text>
+          <text class="mine__link-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="mine__foot">
+      <text wx:if="{{demoMode}}">演示身份通过 demoOpenId 登录，服务端仅在开发环境允许。</text>
+      <text wx:if="{{demoMode}}">模拟支付不代表真实微信支付成功。</text>
+    </view>
+  </block>
+</view>

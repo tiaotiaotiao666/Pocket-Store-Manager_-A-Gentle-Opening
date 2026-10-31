@@ -20,7 +20,10 @@
 | `项目概览.md` | 当前事实、代码地图、风险和阅读顺序 | 持续更新 |
 | `product-scope.md` | 产品范围、AI 和信任边界 | 当前约束 |
 | `后端实现方案与套餐.md` | B0–B5 和套餐先后顺序 | 当前路线 |
-| `模板库与组合生成规划.md` | Base、Manifest、CompositionPlan、Composer、Agent 边界 | 规划，未实现 |
+| `模板库与组合生成规划.md` | Base、Manifest、CompositionPlan、Composer、Agent 边界 | 本地 Composer 已实现；云端仍规划 |
+| `M5-M7-本地Composer与模板资产扩展-需求规格.md` | 95 条可追踪需求 | 已评审，作为实现依据 |
+| `M5-M7-本地Composer与模板资产扩展-实现方案.md` | 契约、流水线、桌面/后端接线与决策 | 已评审 |
+| `M5-M7-本地Composer与模板资产扩展-编码任务清单.md` | 76 项任务与门禁 | 执行中，M7 冻结待补 |
 | `待完成目标.md` | 当前里程碑、验收和差距 | 持续更新 |
 | `bugs/README.md` | 待修复与已修复 bug 名录，详情在 `bugs/open/` 与 `bugs/fixed/` | 持续更新 |
 | `后端待实现接口清单.md` | 桌面云协作、模板平台及 B2 发现的点餐接口缺口建议 | 除 agent/turn 外多为规划；第 17 节为建议 |
@@ -47,6 +50,8 @@
 | `B2小程序实现说明.md` | B2 领域层、服务层、组件、页面、验证方法与演示排查 |
 | `2026-10-31-两轮提交验收与修复说明.md` | B1/B2 两轮提交验收、BUG-010 至 BUG-012 修复与真实复验记录 |
 | `面向AI的桌面端构建文档.md` | 当前桌面架构、状态流和扩展方式 |
+| `M5-M7-本地Composer与模板资产扩展-构建说明.md` | M5–M7 模块、契约、命令、真实结果与恢复步骤（**新会话先读**） |
+| `evidence/README.md` | 证据索引与 L1–L4/W/R 等级说明 |
 | `windows-deployment.md` | Windows 开发、打包和验收 |
 | `wechat-export-and-publish.md` | 微信开发者工具导入和发布边界 |
 | `image-model-adapter.md` | 图像/视觉模型适配和华为云验证边界 |
@@ -62,7 +67,7 @@ handoff/
 └─ archive/              已完成或 superseded 的历史摘要
 ```
 
-当前没有待执行的阶段交接；B0/B1/B2 均已完成。下一阶段（M5 本地 Composer 或 B3）需先由用户批准，再新建活动交接。
+当前活动任务：**M5–M7 收尾**。M5 代码与 L1 门禁已完成；M6 B3 测试修复后未重跑；M7 资产已落盘但注册表未冻结。第一优先级是执行 `node scripts/registry-check.cjs --write` 并补跑测试，详见 `docs/M5-M7-本地Composer与模板资产扩展-构建说明.md` 与 `handoff/当前工作区交接.md` 第 11 节。
 
 直接位于 `handoff/` 的文件必须是仍可执行的活动交接。阶段完成或出现替代交接后，将有效信息压缩到 `archive/YYYY-MM-DD-主题.md`，并更新索引；不要让新会话从多份“上一轮/本轮”中猜测当前状态。
 

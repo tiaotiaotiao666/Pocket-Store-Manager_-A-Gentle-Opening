@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "composition.v1",
+  "planId": "order-classic-candidate",
+  "planVersion": "0.1.0",
+  "baseTemplate": { "id": "ordering-base", "version": "1.0.0" },
+  "registryVersion": "2026.11.0",
+  "pages": [
+    { "pageId": "home" },
+    { "pageId": "menu" },
+    { "pageId": "orders" },
+    { "pageId": "mine" },
+    { "pageId": "checkout" },
+    { "pageId": "order-detail" },
+    { "pageId": "merchant-orders" }
+  ],
+  "features": [],
+  "components": [],
+  "themeTokens": {
+    "pageBackground": "#F3F6F1",
+    "primaryColor": "#1F6F54",
+    "accentColor": "#8A4B1E",
+    "textColor": "#16211D"
+  },
+  "apiBinding": { "contract": "storefront.v1" },
+  "storeProfile": {
+    "name": "深绿小馆",
+    "category": "轻食茶饮",
+    "address": "上海市静安区示例路 2 号",
+    "phone": "13800000001",
+    "notes": "候选方案，仅内部预览",
+    "businessHours": [{ "start": "09:00", "end": "20:00" }],
+    "dishes": []
+  },
+  "previewOnlyAck": false,
+  "degradations": []
+}

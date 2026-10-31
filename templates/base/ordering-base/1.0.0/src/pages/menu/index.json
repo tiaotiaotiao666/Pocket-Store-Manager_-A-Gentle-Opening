@@ -1,0 +1,16 @@
+{
+  "navigationBarTitleText": "菜单",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "store-header": "/components/store-header/index",
+    "fulfillment-switch": "/components/fulfillment-switch/index",
+    "category-nav": "/components/category-nav/index",
+    "product-card": "/components/product-card/index",
+    "product-detail": "/components/product-detail/index",
+    "cart-bar": "/components/cart-bar/index",
+    "cart-panel": "/components/cart-panel/index",
+    "state-view": "/components/state-view/index",
+    "error-banner": "/components/error-banner/index",
+    "loading-block": "/components/loading-block/index"
+  }
+}

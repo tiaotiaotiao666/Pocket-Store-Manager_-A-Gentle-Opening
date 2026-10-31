@@ -1,0 +1,21 @@
+<view class="fulfillment">
+  <view
+    class="fulfillment__option {{value === 'DINE_IN' ? 'fulfillment__option--active' : ''}} {{dineInEnabled ? '' : 'fulfillment__option--off'}}"
+    data-value="DINE_IN"
+    bind:tap="onSelect"
+  >
+    <text class="fulfillment__title">堂食</text>
+    <text class="fulfillment__sub">{{tableName ? tableName + ' 桌' : '需扫描桌码'}}</text>
+  </view>
+  <view
+    class="fulfillment__option {{value === 'TAKEAWAY' ? 'fulfillment__option--active' : ''}} {{takeawayEnabled ? '' : 'fulfillment__option--off'}}"
+    data-value="TAKEAWAY"
+    bind:tap="onSelect"
+  >
+    <text class="fulfillment__title">到店自取</text>
+    <text class="fulfillment__sub">做好后到店取餐</text>
+  </view>
+</view>
+<view wx:if="{{tableRequired && value === 'DINE_IN' && !tableName}}" class="fulfillment__hint">
+  堂食需要桌号，请扫描桌上的二维码；也可以先用下方演示桌号体验。
+</view>

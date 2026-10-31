@@ -129,7 +129,7 @@
                   <text wx:if="{{!product.available}}" class="merchant__product-tag">已下架</text>
                 </view>
                 <text class="merchant__product-desc">{{product.description || '暂无描述'}}</text>
-                <text class="merchant__product-price">{{product.priceText}}</text>
+                <text class="merchant__product-price">{{product.amountText}}</text>
               </view>
               <switch
                 checked="{{product.available}}"

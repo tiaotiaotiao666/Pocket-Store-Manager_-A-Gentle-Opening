@@ -301,3 +301,213 @@ test('prompt studio and image review share the visual generation session', async
   assert.equal(review.activeSessionId, visualSession);
   assert.equal(review.activeSessionId, 'session-visual');
 });
+test('DEPLOY 状态机：选择目录、真实阶段、成功/失败/冲突/取消与重置', async () => {
+  const { machine, state } = await seeded();
+  const { DEPLOY_STATUS, PHASES } = await loadConstants();
+  let next = { ...state, phase: PHASES.DEPLOY };
+
+  assert.equal(next.deploy.status, DEPLOY_STATUS.IDLE);
+  assert.deepEqual(next.deploy.previewOnly, []);
+
+  next = machine.reducer(next, { type: 'DEPLOY_START', taskId: 'task-1' });
+  assert.equal(next.deploy.status, DEPLOY_STATUS.CHOOSING);
+  assert.equal(next.deploy.taskId, 'task-1');
+
+  next = machine.reducer(next, { type: 'DEPLOY_DIRECTORY_CHOSEN', directory: 'C:\\exports', projectName: '松月食堂' });
+  assert.equal(next.deploy.status, DEPLOY_STATUS.VALIDATING);
+  assert.equal(next.deploy.busy, true);
+  assert.equal(next.deploy.step, 0);
+
+  next = machine.reducer(next, { type: 'DEPLOY_STAGE', stage: 'emit', step: 6, progress: 25, message: '生成工程' });
+  assert.equal(next.deploy.status, DEPLOY_STATUS.GENERATING);
+  assert.equal(next.deploy.step, 1);
+  assert.equal(next.deploy.progress, 25);
+  assert.equal(next.deploy.stageMessage, '生成工程');
+
+  next = machine.reducer(next, { type: 'DEPLOY_STAGE', stage: 'verify', step: 7, message: '检查产物' });
+  assert.equal(next.deploy.status, DEPLOY_STATUS.VERIFYING);
+  assert.equal(next.deploy.step, 2);
+
+  const success = machine.reducer(next, {
+    type: 'DEPLOY_SUCCESS',
+    result: { outputPath: 'C:\\exports\\松月食堂', lockDigest: 'sha256:' + 'a'.repeat(64) },
+    previewOnly: [],
+    warnings: ['提示'],
+  });
+  assert.equal(success.deploy.status, DEPLOY_STATUS.DONE);
+  assert.equal(success.deploy.step, 4);
+  assert.equal(success.deploy.progress, 100);
+  assert.equal(success.deploy.result.outputPath, 'C:\\exports\\松月食堂');
+  assert.deepEqual(success.deploy.warnings, ['提示']);
+
+  const failed = machine.reducer(next, {
+    type: 'DEPLOY_FAILURE',
+    error: { code: 'TARGET_NOT_WRITABLE', message: '导出位置不可写' },
+  });
+  assert.equal(failed.deploy.status, DEPLOY_STATUS.FAILED);
+  assert.equal(failed.deploy.error.code, 'TARGET_NOT_WRITABLE');
+
+  const conflict = machine.reducer(next, {
+    type: 'DEPLOY_CONFLICT',
+    error: { code: 'TARGET_EXISTS', message: '同名目录已存在', suggestedName: '松月食堂-2' },
+  });
+  assert.equal(conflict.deploy.status, DEPLOY_STATUS.CONFLICT);
+  assert.equal(conflict.deploy.error.suggestedName, '松月食堂-2');
+
+  const cancelled = machine.reducer(next, { type: 'DEPLOY_CANCELLED' });
+  assert.equal(cancelled.deploy.status, DEPLOY_STATUS.CANCELLED);
+  assert.equal(cancelled.deploy.progress, 0);
+  assert.equal(cancelled.deploy.busy, false);
+
+  const reset = machine.reducer(success, { type: 'DEPLOY_RESET' });
+  assert.equal(reset.deploy.status, DEPLOY_STATUS.IDLE);
+  assert.equal(reset.deploy.step, 0);
+  assert.equal(reset.deploy.result, null);
+  assert.equal(reset.deploy.directory, 'C:\\exports');
+});
+
+test('ADD_PROJECT_IMAGES 合并去重、限制 6 张，空输入不改变状态', async () => {
+  const machine = await loadMachine();
+  const base = machine.createInitialState();
+  const image = (id) => ({
+    assetId: `a_${id}`,
+    fileName: `${id}.png`,
+    originalName: `${id}.png`,
+    mime: 'image/png',
+    bytes: 1024,
+    width: 800,
+    height: 600,
+  });
+
+  const empty = machine.reducer(base, { type: 'ADD_PROJECT_IMAGES', images: [] });
+  assert.strictEqual(empty, base);
+
+  const first = machine.reducer(base, { type: 'ADD_PROJECT_IMAGES', images: [image('1'), image('2')] });
+  assert.deepStrictEqual(first.assets.images.map((item) => item.assetId), ['a_1', 'a_2']);
+
+  const dedup = machine.reducer(first, { type: 'ADD_PROJECT_IMAGES', images: [image('2'), image('3')] });
+  assert.deepStrictEqual(dedup.assets.images.map((item) => item.assetId), ['a_1', 'a_2', 'a_3']);
+
+  const same = machine.reducer(dedup, { type: 'ADD_PROJECT_IMAGES', images: [image('1')] });
+  assert.strictEqual(same, dedup);
+
+  const many = machine.reducer(base, {
+    type: 'ADD_PROJECT_IMAGES',
+    images: ['1', '2', '3', '4', '5', '6', '7'].map(image),
+  });
+  assert.strictEqual(many.assets.images.length, 6);
+  assert.deepStrictEqual(many.assets.images.map((item) => item.assetId), ['a_1', 'a_2', 'a_3', 'a_4', 'a_5', 'a_6']);
+  assert.deepStrictEqual(base.assets.images, []);
+});
+
+test('新建项目与删除当前项目不会丢失已加载的设置', async () => {
+  const machine = await loadMachine();
+  const config = {
+    apiBaseUrl: 'http://127.0.0.1:3000/api/v1',
+    autoSaveEnabled: true,
+    autoSaveDebounceMs: 800,
+  };
+  const loaded = machine.reducer(machine.createInitialState(), { type: 'SETTINGS_LOAD_SUCCESS', config });
+  assert.deepStrictEqual(loaded.settings.config, config);
+
+  const created = machine.reducer(loaded, {
+    type: 'PROJECT_NEW_SUCCESS',
+    projectId: 'p_test12345678',
+    createdAt: '2026-10-31T00:00:00Z',
+    appid: '',
+  });
+  assert.deepStrictEqual(created.settings.config, config);
+  assert.strictEqual(created.settings.status, 'ready');
+
+  const opened = machine.reducer(loaded, {
+    type: 'PROJECT_OPEN_SUCCESS',
+    projectId: 'p_active12345678',
+    doc: { schemaVersion: 1 },
+  });
+  const deleted = machine.reducer(opened, {
+    type: 'PROJECT_DELETE_SUCCESS',
+    projectId: 'p_active12345678',
+  });
+  assert.deepStrictEqual(deleted.settings.config, config);
+});
+
+test('导出与更换目录两种门禁：同名冲突不可直接导出但可换目录', async () => {
+  const machine = await loadMachine();
+  const base = machine.createInitialState();
+  const withPreflight = ({ errors = [], warns = [], acknowledged = [], status = 'done' } = {}) => ({
+    ...base,
+    project: { ...base.project, mode: 'desktop' },
+    deploy: {
+      ...base.deploy,
+      preflight: {
+        status,
+        errors,
+        warns,
+        infos: [],
+        acknowledged,
+        planDigest: null,
+        checkedAt: null,
+        error: null,
+      },
+    },
+  });
+  const conflict = { ruleId: 'E-TARGET-EXISTS', level: 'error', message: '同名目录已存在' };
+
+  const onlyConflict = withPreflight({ errors: [conflict] });
+  assert.equal(machine.selectCanExport(onlyConflict).can, false);
+  assert.equal(machine.selectCanChooseDirectory(onlyConflict).can, true);
+
+  const otherError = withPreflight({ errors: [conflict, { ruleId: 'E-PLAN-NAME', level: 'error', message: '缺店名' }] });
+  assert.equal(machine.selectCanChooseDirectory(otherError).can, false);
+
+  const unackedWarn = withPreflight({
+    errors: [conflict],
+    warns: [{ ruleId: 'W-NO-APPID', level: 'warn', message: '缺 AppID' }],
+  });
+  assert.equal(machine.selectCanChooseDirectory(unackedWarn).can, false);
+
+  const ackedWarn = withPreflight({
+    errors: [conflict],
+    warns: [{ ruleId: 'W-NO-APPID', level: 'warn', message: '缺 AppID' }],
+    acknowledged: ['W-NO-APPID'],
+  });
+  assert.equal(machine.selectCanChooseDirectory(ackedWarn).can, true);
+
+  const clean = withPreflight();
+  assert.equal(machine.selectCanExport(clean).can, true);
+  assert.equal(machine.selectCanChooseDirectory(clean).can, true);
+
+  const checking = withPreflight({ status: 'checking' });
+  assert.equal(machine.selectCanChooseDirectory(checking).can, false);
+
+  const failed = withPreflight({ status: 'failed' });
+  assert.equal(machine.selectCanChooseDirectory(failed).can, false);
+
+  const browser = { ...onlyConflict, project: { ...onlyConflict.project, mode: 'browser' } };
+  assert.equal(machine.selectCanChooseDirectory(browser).can, false);
+});
+
+test('APPROVE_IMAGE 进入部署阶段时重置部署状态', async () => {
+  const { machine, state } = await seeded();
+  const { DEPLOY_STATUS, PHASES } = await loadConstants();
+  const dirty = {
+    ...state,
+    deploy: { ...state.deploy, status: DEPLOY_STATUS.DONE, step: 4, result: { outputPath: 'old' } },
+  };
+  const next = machine.reducer(dirty, { type: 'APPROVE_IMAGE' });
+  assert.equal(next.phase, PHASES.DEPLOY);
+  assert.equal(next.deploy.status, DEPLOY_STATUS.IDLE);
+  assert.equal(next.deploy.result, null);
+});
+
+test('部署四个步骤文案对齐真实能力，不再出现上传/审核', async () => {
+  const script = await import('../src/domain/onboardingScript.mjs');
+  assert.deepEqual([...script.DEPLOY_STEPS], ['校验配置', '生成工程', '检查产物', '导入微信开发者工具（外部）']);
+  const joinedSteps = script.DEPLOY_STEPS.join(' ');
+  ['上传', '审核', '发布', '部署上线'].forEach((word) => {
+    assert.equal(joinedSteps.includes(word), false, '步骤文案不应包含 ' + word);
+  });
+  assert.equal(script.DEPLOY_INTRO.includes('上传到演示环境'), false);
+  assert.equal(script.DEPLOY_INTRO.includes('等待审核'), false);
+  assert.ok(script.DEPLOY_INTRO.includes('不会自动上传或发布'));
+});

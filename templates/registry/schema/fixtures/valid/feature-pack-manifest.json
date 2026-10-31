@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "manifest.v1",
+  "identity": { "id": "poster-carousel", "version": "1.0.0" },
+  "kind": "feature-pack",
+  "displayName": "海报轮播",
+  "entry": {
+    "path": "src",
+    "files": ["pages/home.extend.json"],
+    "assets": ["assets/poster-01.png", "assets/poster-02.png", "assets/poster-03.png"]
+  },
+  "interface": {
+    "props": [
+      { "name": "items", "type": "array", "required": true, "description": "海报列表" },
+      { "name": "autoplay", "type": "boolean", "required": false, "description": "是否自动播放" },
+      { "name": "interval", "type": "number", "required": false, "description": "切换间隔毫秒" },
+      { "name": "showIndicator", "type": "boolean", "required": false, "description": "是否显示指示点" }
+    ],
+    "events": [
+      { "name": "select", "payload": ["index"], "description": "点击海报" },
+      { "name": "error", "payload": ["index"], "description": "海报加载失败" }
+    ]
+  },
+  "boundary": { "allowNetwork": false, "allowRoutes": false, "allowGlobalState": false, "allowServices": false },
+  "compatibility": { "baseRange": "^1.0.0", "minWechatLib": "3.0.0", "apiContract": "storefront.v1" },
+  "requiredPages": ["home"],
+  "requiresSlots": ["home-hero"],
+  "dependencies": [{ "id": "hero-carousel", "version": "1.0.0" }],
+  "conflicts": [],
+  "preview": { "dir": "preview", "kinds": ["normal", "empty", "error", "long"] },
+  "release": { "stage": "online-ready", "knownLimits": ["演示素材，店主可替换"], "verifiedRecipes": [] }
+}

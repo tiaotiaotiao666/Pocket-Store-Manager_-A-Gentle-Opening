@@ -665,6 +665,11 @@
   color: var(--danger);
 }
 
+.confirm-card.is-accent .confirm-icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .confirm-head h3 {
   margin: 0;
   font-size: 16px;

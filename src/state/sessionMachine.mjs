@@ -1523,6 +1523,17 @@ export function selectCanChooseDirectory(state) {
   };
 }
 
+/**
+ * “轻启”入口的下一步：
+ * - 没有活动项目：直接进入命名引导。
+ * - 已有活动项目：必须先确认并新建项目，不能直接把当前 phase 改回引导，
+ *   否则会把正在部署/装修的项目拉回功能选择页。
+ */
+export function selectOnboardingStart(state) {
+  const project = state && state.project ? state.project : {};
+  return project.activeId ? 'confirm-create' : 'start';
+}
+
 export function selectDiagnosticsSummary(state) {
   const diagnostics = (state.settings && state.settings.diagnostics) || { status: 'idle', lines: [] };
   const lines = Array.isArray(diagnostics.lines) ? diagnostics.lines : [];

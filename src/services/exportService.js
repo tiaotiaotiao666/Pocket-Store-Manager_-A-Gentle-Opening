@@ -30,11 +30,37 @@ export function describeExportError(code) {
   return EXPORT_ERROR_TEXT[code] || '导出失败，请重试或查看日志。';
 }
 
+const DEFAULT_VALIDATE_TIMEOUT_MS = 10000;
+const DEFAULT_PREFLIGHT_TIMEOUT_MS = 5000;
+
 function bridge() {
   if (typeof window === 'undefined') return null;
   const api = window.smartStore;
   if (!api || !api.isDesktop) return null;
   return api;
+}
+
+/**
+ * IPC 调用必须有超时兜底。主进程未注册 handler、进程忙或旧版本缺少通道时，
+ * 渲染层不能把 Promise 永久挂起；超时后返回 fallback，由调用方转成可读失败。
+ */
+function withTimeout(promise, timeoutMs) {
+  const timeout = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 0;
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (outcome) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(outcome);
+    };
+    const timer = setTimeout(() => finish({ timedOut: true }), timeout);
+    if (timer && typeof timer.unref === 'function') timer.unref();
+    Promise.resolve(promise).then(
+      (value) => finish({ value }),
+      () => finish({ rejected: true }),
+    );
+  });
 }
 
 export function isDesktopExportAvailable() {
@@ -61,12 +87,35 @@ export async function chooseDirectory() {
   return { status: 'ok', path: result.path };
 }
 
-export async function validatePlan(plan) {
+export async function validatePlan(plan, options = {}) {
   const api = bridge();
   if (!api || typeof api.composerValidate !== 'function') {
     return { status: 'desktop-required', message: DESKTOP_REQUIRED_MESSAGE };
   }
-  const result = await api.composerValidate({ plan });
+  const timeoutMs = options.timeoutMs ?? DEFAULT_VALIDATE_TIMEOUT_MS;
+  let outcome;
+  try {
+    outcome = await withTimeout(api.composerValidate({ plan }), timeoutMs);
+  } catch (error) {
+    outcome = { rejected: true };
+  }
+  if (outcome.timedOut) {
+    return {
+      status: 'failed',
+      code: 'COMPOSE_TIMEOUT',
+      message: 'Composer 校验超时，已停止本次体检。请重试；体检不会写盘。',
+      warnings: [],
+    };
+  }
+  if (outcome.rejected) {
+    return {
+      status: 'failed',
+      code: 'COMPOSE_FAILED',
+      message: describeExportError('COMPOSE_FAILED'),
+      warnings: [],
+    };
+  }
+  const result = outcome.value;
   if (!result || result.ok === false) {
     return {
       status: 'failed',
@@ -87,21 +136,33 @@ export async function validatePlan(plan) {
  * - failed：检查失败，必须阻断导出，不能当作“不存在”
  * - desktop-required：浏览器模式没有主进程通道
  */
-export async function preflightTarget({ parentDir, projectName } = {}) {
+export async function preflightTarget({ parentDir, projectName } = {}, options = {}) {
   const api = bridge();
   if (!api || typeof api.composerPreflightTarget !== 'function') {
     return { status: 'desktop-required', message: DESKTOP_REQUIRED_MESSAGE };
   }
-  let result;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_PREFLIGHT_TIMEOUT_MS;
+  let outcome;
   try {
-    result = await api.composerPreflightTarget({ parentDir, projectName });
+    outcome = await withTimeout(api.composerPreflightTarget({ parentDir, projectName }), timeoutMs);
   } catch (error) {
+    outcome = { rejected: true };
+  }
+  if (outcome.timedOut) {
+    return {
+      status: 'failed',
+      code: 'TARGET_CHECK_TIMEOUT',
+      message: '检查导出位置超时，已停止本次体检。请重试。',
+    };
+  }
+  if (outcome.rejected) {
     return {
       status: 'failed',
       code: 'TARGET_CHECK_FAILED',
       message: describeExportError('TARGET_CHECK_FAILED'),
     };
   }
+  const result = outcome.value;
   if (!result || result.ok === false) {
     const code = (result && result.code) || 'TARGET_CHECK_FAILED';
     return {

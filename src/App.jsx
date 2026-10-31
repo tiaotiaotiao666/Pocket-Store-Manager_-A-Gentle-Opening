@@ -16,6 +16,7 @@ import {
   isDesktopExportAvailable,
   subscribeProgress,
   chooseDirectory,
+  validatePlan,
   preflightTarget,
   exportProject,
   cancelExport,
@@ -35,6 +36,7 @@ import {
   selectDiagnosticsSummary,
   selectCanExport,
   selectCanChooseDirectory,
+  selectOnboardingStart,
   selectHandoffProgress,
   selectUndoState,
 } from './state/sessionMachine.mjs';
@@ -57,6 +59,7 @@ import {
 } from './services/agentService.js';
 
 import AppShell from './components/layout/AppShell.jsx';
+import ConfirmDialog from './components/common/ConfirmDialog.jsx';
 import Sidebar from './components/layout/Sidebar.jsx';
 import TitleBar from './components/layout/TitleBar.jsx';
 import RightPanel from './components/layout/RightPanel.jsx';
@@ -72,6 +75,7 @@ import StoreInfoStep from './components/build/StoreInfoStep.jsx';
 import PromptStudio from './components/build/PromptStudio.jsx';
 import ImageReview from './components/build/ImageReview.jsx';
 import DeployStep from './components/build/DeployStep.jsx';
+import ImportDiffCard from './components/build/ImportDiffCard.jsx';
 import AgentIntakePanel from './components/agent/AgentIntakePanel.jsx';
 import DraftEditor from './components/agent/DraftEditor.jsx';
 import StoreInfoActionBar from './components/agent/StoreInfoActionBar.jsx';
@@ -352,6 +356,8 @@ export default function App() {
   const [draftEditorOpen, setDraftEditorOpen] = useState(false);
   const [thumbnails, setThumbnails] = useState({});
   const [storeImageBusy, setStoreImageBusy] = useState(false);
+  const [onboardingConfirmOpen, setOnboardingConfirmOpen] = useState(false);
+  const [onboardingCreating, setOnboardingCreating] = useState(false);
   const buildStarted = useRef(false);
   const promptStarted = useRef(false);
   const imageStarted = useRef(false);
@@ -746,7 +752,7 @@ export default function App() {
         type: 'PROJECT_OPEN_FAILURE',
         error: { code: result?.code || 'PROJECT_WRITE_FAILED', message: result?.message || '新建项目失败' },
       });
-      return;
+      return false;
     }
     buildStarted.current = false;
     promptStarted.current = false;
@@ -758,6 +764,7 @@ export default function App() {
       createdAt: result.createdAt,
       appid: result.appid,
     });
+    return true;
   };
 
   const handleProjectReveal = async (projectId) => {
@@ -904,7 +911,27 @@ export default function App() {
     }
   };
 
-  const startOnboarding = () => dispatch({ type: 'START_ONBOARDING' });
+  const startOnboarding = () => {
+    if (selectOnboardingStart(state) === 'confirm-create') {
+      setOnboardingConfirmOpen(true);
+      return;
+    }
+    dispatch({ type: 'START_ONBOARDING' });
+  };
+
+  const confirmStartOnboarding = async () => {
+    if (onboardingCreating) return;
+    setOnboardingCreating(true);
+    try {
+      const created = await handleProjectCreate();
+      if (!created) return;
+      setOnboardingConfirmOpen(false);
+      dispatch({ type: 'START_ONBOARDING' });
+    } finally {
+      setOnboardingCreating(false);
+    }
+  };
+
   const reset = async () => {
     await projectServiceRef.current.flush().catch(() => {});
     dispatch({ type: 'RESET_PROJECT' });
@@ -1197,42 +1224,62 @@ export default function App() {
 
   const runPreflight = async () => {
     dispatch({ type: 'PREFLIGHT_START' });
-    const local = evaluateLocal(state, {
-      devtoolsDetected: state.deploy.handoff ? state.deploy.handoff.devtoolsDetected : null,
-    });
-    let merged = { ...local, planDigest: null };
-    const desktop = projectServiceRef.current.mode === 'desktop';
-    if (desktop && local.errors.length === 0) {
-      const { plan } = buildPlanFromSession(state);
-      const result = await validatePlan(plan);
-      if (result.status === 'ok') {
-        merged = mergeComposerResult(local, result.result);
-      } else {
-        merged = mergeComposerResult(local, {
-          ok: false,
-          code: result.code || 'COMPOSE_FAILED',
-          message: result.message,
-        });
-      }
-    }
-    // 已有导出位置时提前暴露同名冲突；未选择目录不伪造目标路径。
-    const rawTargetName = String(state.deploy.projectName || state.store.name || state.agentDraft.storeName || '').trim();
-    if (desktop && state.deploy.directory && rawTargetName) {
-      const target = await preflightTarget({
-        parentDir: state.deploy.directory,
-        projectName: sanitizeProjectName(rawTargetName),
+    try {
+      const local = evaluateLocal(state, {
+        devtoolsDetected: state.deploy.handoff ? state.deploy.handoff.devtoolsDetected : null,
       });
-      merged = mergeTargetPreflight(merged, target);
+      let merged = { ...local, planDigest: null };
+      const desktop = projectServiceRef.current.mode === 'desktop';
+      if (desktop && local.errors.length === 0) {
+        const { plan } = buildPlanFromSession(state);
+        const result = await validatePlan(plan);
+        if (result.status === 'ok') {
+          merged = mergeComposerResult(local, result.result);
+        } else {
+          merged = mergeComposerResult(local, {
+            ok: false,
+            code: result.code || 'COMPOSE_FAILED',
+            message: result.message,
+          });
+        }
+      }
+      // 已有导出位置时提前暴露同名冲突；未选择目录不伪造目标路径。
+      const rawTargetName = String(state.deploy.projectName || state.store.name || state.agentDraft.storeName || '').trim();
+      if (desktop && state.deploy.directory && rawTargetName) {
+        const target = await preflightTarget({
+          parentDir: state.deploy.directory,
+          projectName: sanitizeProjectName(rawTargetName),
+        });
+        merged = mergeTargetPreflight(merged, target);
+      }
+      dispatch({
+        type: 'PREFLIGHT_RESULT',
+        errors: merged.errors,
+        warns: merged.warns,
+        infos: merged.infos,
+        planDigest: merged.planDigest,
+        checkedAt: merged.checkedAt,
+        error: merged.error || null,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
+
+      dispatch({
+        type: 'PREFLIGHT_RESULT',
+        errors: [{
+          ruleId: 'E-PREFLIGHT-FAILED',
+          level: 'error',
+          message: `体检未完成：${message}`,
+          fieldPath: null,
+          action: null,
+        }],
+        warns: [],
+        infos: [],
+        planDigest: null,
+        checkedAt: new Date().toISOString(),
+        error: { code: 'PREFLIGHT_FAILED', message },
+      });
     }
-    dispatch({
-      type: 'PREFLIGHT_RESULT',
-      errors: merged.errors,
-      warns: merged.warns,
-      infos: merged.infos,
-      planDigest: merged.planDigest,
-      checkedAt: merged.checkedAt,
-      error: merged.error || null,
-    });
   };
 
   useEffect(() => {
@@ -1788,6 +1835,18 @@ case PHASES.DEPLOY: {
         onProbeDevtools={handleProbeDevtools}
         onCopyGuide={handleCopyDevtoolsGuide}
         onFinish={handleHandoffFinish}
+      />
+      <ConfirmDialog
+        open={onboardingConfirmOpen}
+        title="开始一个新项目？"
+        description="当前项目会先保存，然后新建一个待命名项目并进入命名引导。已导出的工程不会受影响。"
+        confirmLabel="保存并新建"
+        cancelLabel="留在当前项目"
+        tone="accent"
+        confirmButtonClass="primary-button"
+        busy={onboardingCreating}
+        onConfirm={confirmStartOnboarding}
+        onCancel={() => setOnboardingConfirmOpen(false)}
       />
     </>
   );

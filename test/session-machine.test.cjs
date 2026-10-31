@@ -366,6 +366,18 @@ test('DEPLOY 状态机：选择目录、真实阶段、成功/失败/冲突/取�
   assert.equal(reset.deploy.directory, 'C:\\exports');
 });
 
+test('轻启：无活动项目直接开始，有活动项目必须先确认新建', async () => {
+  const machine = await loadMachine();
+  const base = machine.createInitialState();
+  assert.strictEqual(machine.selectOnboardingStart(base), 'start');
+
+  const withProject = { ...base, project: { ...base.project, activeId: 'p_test12345678' } };
+  assert.strictEqual(machine.selectOnboardingStart(withProject), 'confirm-create');
+
+  const deployed = { ...withProject, phase: 'deploy' };
+  assert.strictEqual(machine.selectOnboardingStart(deployed), 'confirm-create');
+});
+
 test('ADD_PROJECT_IMAGES 合并去重、限制 6 张，空输入不改变状态', async () => {
   const machine = await loadMachine();
   const base = machine.createInitialState();

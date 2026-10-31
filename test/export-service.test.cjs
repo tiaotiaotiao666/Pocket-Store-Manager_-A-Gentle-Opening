@@ -168,6 +168,43 @@ test('目标预检：IPC 抛异常时按失败处理，不当作不存在', asyn
   delete global.window;
 });
 
+test('Composer 校验：IPC 抛异常或超时都按失败返回，不永久挂起', async () => {
+  global.window = {
+    smartStore: {
+      isDesktop: true,
+      composerValidate: async () => { throw new Error('validate boom'); },
+    },
+  };
+  const service = await loadService();
+
+  const rejected = await service.validatePlan({ plan: {} });
+  assert.strictEqual(rejected.status, 'failed');
+  assert.strictEqual(rejected.code, 'COMPOSE_FAILED');
+
+  global.window.smartStore.composerValidate = () => new Promise(() => {});
+  const timedOut = await service.validatePlan({ plan: {} }, { timeoutMs: 40 });
+  assert.strictEqual(timedOut.status, 'failed');
+  assert.strictEqual(timedOut.code, 'COMPOSE_TIMEOUT');
+  delete global.window;
+});
+
+test('目标预检：IPC 无回执时超时失败，不永久挂起', async () => {
+  global.window = {
+    smartStore: {
+      isDesktop: true,
+      composerPreflightTarget: () => new Promise(() => {}),
+    },
+  };
+  const service = await loadService();
+  const result = await service.preflightTarget(
+    { parentDir: 'C:/exports', projectName: 'demo' },
+    { timeoutMs: 40 },
+  );
+  assert.strictEqual(result.status, 'failed');
+  assert.strictEqual(result.code, 'TARGET_CHECK_TIMEOUT');
+  delete global.window;
+});
+
 test('打开目录失败时给出可重试文案', async () => {
   global.window = {
     smartStore: {

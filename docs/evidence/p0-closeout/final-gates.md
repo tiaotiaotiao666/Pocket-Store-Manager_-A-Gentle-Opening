@@ -163,3 +163,52 @@ EXIT_CODE=0
 | 7 | `npm run check:packaging` | 0 | 229 文件 / 10 条规则 |
 
 图片入口的界面验证仍未执行：需要在店铺信息页实际添加图片，确认工作台出现真实缩略图、删除资产文件后回退首字。自动化只覆盖 reducer 合并去重与 6 张上限，不覆盖 Electron 文件对话框。
+## 八、BUG-014 修复后的补充复跑
+
+> 执行时间：2026-10-31 21:55（本机时间）
+> 背景：F4 人工走查发现“项目流程内点击轻启会被拉回功能选择页”。根因为 `START_ONBOARDING` 无条件改 phase，叠加已命名项目的自动跳过 effect。详见 `docs/bugs/fixed/BUG-014-light-start-resets-active-project.md`。
+
+| 序号 | 命令 | 退出码 | 结果 |
+| --- | --- | --- | --- |
+| 1 | `npm test` | 0 | 334 项：333 pass / 0 fail / 1 todo（新增轻启决策用例） |
+| 2 | `npm run build` | 0 | 1639 模块，`index-n4r2q1cp.js` 396.88 kB |
+| 3 | `npm run test:desktop` | 0 | 12 pass / 0 fail |
+| 4 | `npm run mini:check` | 0 | 0 错误 / 0 警告 |
+| 5 | `npm run mini:dup-check` | 0 | 0 错误，与 F3 一致 |
+| 6 | `npm run registry:check` | 0 | 2026.11.0 通过，未 `--write` |
+| 7 | `npm run check:packaging` | 0 | 229 文件 / 10 条规则 |
+
+七条复跑全部退出码 0，BUG-014 修复未引入回归。轻启的界面行为仍需人工复验：在部署阶段点击轻启应弹出确认框，确认后进入新的命名引导，取消则留在当前项目。
+## 九、BUG-015 修复后的补充复跑
+
+> 执行时间：2026-10-31 22:55（本机时间）
+> 背景：F4 人工走查发现部署页体检永久停在“正在体检…”。已复现“全填 1”的 Plan 能通过 `validateComposition`（`ok=true`），排除输入值；根因是体检链路缺少异常/超时兜底。详见 `docs/bugs/fixed/BUG-015-preflight-hangs-without-timeout.md`。
+
+| 序号 | 命令 | 退出码 | 结果 |
+| --- | --- | --- | --- |
+| 1 | `npm test` | 0 | 336 项：335 pass / 0 fail / 1 todo（新增校验 reject/超时与目标预检超时用例） |
+| 2 | `npm run build` | 0 | 1639 模块，`index-DkUfxuYw.js` 397.70 kB |
+| 3 | `npm run test:desktop` | 0 | 12 pass / 0 fail |
+| 4 | `npm run mini:check` | 0 | 0 错误 / 0 警告 |
+| 5 | `npm run mini:dup-check` | 0 | 0 错误，与 F3 一致 |
+| 6 | `npm run registry:check` | 0 | 2026.11.0 通过，未 `--write` |
+| 7 | `npm run check:packaging` | 0 | 229 文件 / 10 条规则 |
+
+七条复跑全部退出码 0。修复后的体检不会再永久停在 checking：Composer 校验 10 秒超时、目标预检 5 秒超时、`runPreflight` 整体异常兜底；失败时显示具体规则与消息。后续用渲染层日志定位到 BUG-015 的直接原因是 `validatePlan` 未导入；补导入后用户实机确认体检恢复正常。
+
+## 十、BUG-016 修复后的补充复跑
+
+> 执行时间：2026-10-31 23:05（本机时间）
+> 背景：用户点击导出后整页白屏，渲染层日志为 `Uncaught ReferenceError: ImportDiffCard is not defined`。根因是 `App.jsx` 使用组件但未导入，Vite 开发模式与生产构建都不会因此报错。详见 `docs/bugs/fixed/BUG-016-import-diff-card-missing-import-blank-screen.md`。
+
+| 序号 | 命令 | 退出码 | 结果 |
+| --- | --- | --- | --- |
+| 1 | `npm test` | 0 | 338 项：337 pass / 0 fail / 1 todo（新增 App 导入静态门禁 2 项） |
+| 2 | `npm run build` | 0 | 1639 模块，`index-DL-ZkuKG.js` 403.22 kB（已移除临时诊断日志） |
+| 3 | `npm run test:desktop` | 0 | 12 pass / 0 fail |
+| 4 | `npm run mini:check` | 0 | 0 错误 / 0 警告 |
+| 5 | `npm run mini:dup-check` | 0 | 0 错误，与 F3 一致 |
+| 6 | `npm run registry:check` | 0 | 2026.11.0 通过，未 `--write` |
+| 7 | `npm run check:packaging` | 0 | 229 文件 / 10 条规则 |
+
+用户实机确认：点击导出后白屏消失，进入导入差异预览；目标目录同名冲突提示正常出现。临时渲染层调试日志与主进程 `console-message` 转发已在修复后移除，代码回到无调试输出状态。

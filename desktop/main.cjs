@@ -62,6 +62,7 @@ function createWindow() {
       sandbox: true,
     },
   });
+
   if (app.isPackaged) window.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   else window.loadURL('http://127.0.0.1:5173');
 }

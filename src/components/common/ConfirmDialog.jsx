@@ -15,6 +15,7 @@ export default function ConfirmDialog({
   cancelLabel = '取消',
   busy = false,
   tone = 'danger',
+  confirmButtonClass = 'danger-button',
   onConfirm,
   onCancel,
 }) {
@@ -65,7 +66,7 @@ export default function ConfirmDialog({
           </button>
           <button
             type="button"
-            className="danger-button"
+            className={confirmButtonClass}
             onClick={onConfirm}
             disabled={busy || (expectedText ? !matched : false)}
           >

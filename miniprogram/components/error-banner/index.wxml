@@ -1,0 +1,9 @@
+<view wx:if="{{message}}" class="error-banner">
+  <view class="error-banner__icon">!</view>
+  <view class="error-banner__body">
+    <text class="error-banner__message">{{message}}</text>
+    <text wx:if="{{requestId}}" class="error-banner__request">请求号 {{requestId}}</text>
+  </view>
+  <view wx:if="{{action}}" class="error-banner__action" bind:tap="onRetry">{{action}}</view>
+  <view class="error-banner__close" bind:tap="onClose">✕</view>
+</view>

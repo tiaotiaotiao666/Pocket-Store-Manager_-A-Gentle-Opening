@@ -1,0 +1,92 @@
+@import "../../styles/component.wxss";
+
+.cart-bar {
+  position: fixed;
+  right: 24rpx;
+  bottom: calc(24rpx + env(safe-area-inset-bottom));
+  left: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 16rpx 16rpx 24rpx;
+  border-radius: 999rpx;
+  background: #2f2a25;
+  box-shadow: 0 18rpx 40rpx rgba(47, 42, 37, 0.3);
+  z-index: 30;
+}
+
+.cart-bar__summary {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.cart-bar__icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  margin-top: -34rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(140deg, #f39a4c 0%, #e86a17 100%);
+  box-shadow: 0 8rpx 18rpx rgba(232, 106, 23, 0.4);
+}
+
+.cart-bar__icon-text {
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.cart-bar__badge {
+  position: absolute;
+  top: -10rpx;
+  right: -12rpx;
+  min-width: 34rpx;
+  height: 34rpx;
+  padding: 0 8rpx;
+  border-radius: 999rpx;
+  background: #fffaf3;
+  color: #2f2a25;
+  font-size: 20rpx;
+  font-weight: 700;
+  line-height: 34rpx;
+  text-align: center;
+}
+
+.cart-bar__amount {
+  margin-left: 18rpx;
+  min-width: 0;
+}
+
+.cart-bar__total {
+  display: block;
+  color: #fffaf3;
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cart-bar__hint {
+  display: block;
+  color: rgba(255, 250, 243, 0.55);
+  font-size: 20rpx;
+}
+
+.cart-bar__action {
+  flex: none;
+  padding: 22rpx 40rpx;
+  border-radius: 999rpx;
+  background: #e86a17;
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.cart-bar__action--off {
+  background: rgba(255, 250, 243, 0.16);
+  color: rgba(255, 250, 243, 0.45);
+}

@@ -1,0 +1,16 @@
+<view class="store-header {{compact ? 'store-header--compact' : ''}}">
+  <view class="store-header__glow"></view>
+  <view class="store-header__body">
+    <view class="store-header__eyebrow">
+      <text class="store-header__dot"></text>
+      <text>{{mode === 'DINE_IN' ? '堂食点餐' : '到店自取'}}</text>
+      <text wx:if="{{mode === 'DINE_IN' && tableName}}" class="store-header__table">{{tableName}} 桌</text>
+    </view>
+    <view class="store-header__name">{{storeName || '欢迎光临'}}</view>
+    <view class="store-header__meta">
+      <text wx:if="{{businessHours}}">营业 {{businessHours}}</text>
+      <text wx:if="{{businessHours && address}}" class="store-header__sep">·</text>
+      <text wx:if="{{address}}">{{address}}</text>
+    </view>
+  </view>
+</view>

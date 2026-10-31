@@ -1,0 +1,258 @@
+.detail {
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
+}
+
+.detail__error {
+  margin-top: 20rpx;
+}
+
+.detail__retry {
+  margin-top: 22rpx;
+}
+
+.detail__hero {
+  padding: 30rpx 28rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #232323 0%, #3b352f 100%);
+  color: #fffaf3;
+  box-shadow: 0 16rpx 36rpx rgba(35, 35, 35, 0.22);
+}
+
+.detail__hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail__hero-id {
+  display: flex;
+  align-items: baseline;
+}
+
+.detail__hero-label {
+  font-size: 20rpx;
+  color: rgba(255, 250, 243, 0.55);
+}
+
+.detail__hero-number {
+  margin-left: 10rpx;
+  font-size: 34rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+
+.detail__hero-time {
+  font-size: 21rpx;
+  color: rgba(255, 250, 243, 0.55);
+}
+
+.detail__hero-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 20rpx;
+}
+
+.detail__hero-mode {
+  flex: 1;
+  min-width: 0;
+  font-size: 22rpx;
+  color: rgba(255, 250, 243, 0.72);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.detail__hero-dot {
+  margin: 0 8rpx;
+}
+
+.detail__hero-total {
+  flex: none;
+  margin-left: 16rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #f3a55f;
+}
+
+.detail__pay-hint {
+  margin-top: 22rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #fdf0e4;
+  border: 2rpx solid rgba(232, 106, 23, 0.18);
+}
+
+.detail__pay-hint-title {
+  display: block;
+  font-size: 27rpx;
+  font-weight: 700;
+  color: #8a4c17;
+}
+
+.detail__pay-hint-text {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #9a6b3b;
+}
+
+.detail__card {
+  margin-top: 24rpx;
+  padding: 26rpx;
+}
+
+.detail__card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.detail__card-title {
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.detail__card-extra {
+  font-size: 21rpx;
+  color: var(--color-muted);
+}
+
+.detail__divider {
+  height: 2rpx;
+  margin: 16rpx 0;
+  background: rgba(230, 222, 210, 0.62);
+}
+
+.detail__item {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 0;
+}
+
+.detail__item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail__item-name {
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.detail__item-unit {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: var(--color-muted);
+}
+
+.detail__item-line {
+  min-width: 120rpx;
+  text-align: right;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.detail__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.detail__total-label {
+  font-size: 23rpx;
+  color: var(--color-muted);
+}
+
+.detail__total-value {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.detail__note {
+  margin-top: 18rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 14rpx;
+  background: rgba(35, 35, 35, 0.04);
+}
+
+.detail__note-label {
+  font-size: 21rpx;
+  color: var(--color-muted);
+}
+
+.detail__note-text {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 24rpx;
+}
+
+.detail__merchant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 18rpx;
+}
+
+.detail__merchant-btn {
+  margin: 0 14rpx 14rpx 0;
+  padding: 16rpx 30rpx;
+  border-radius: 999rpx;
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.detail__merchant-btn--primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.detail__merchant-btn--success {
+  background: #2f7d4f;
+  color: #fff;
+}
+
+.detail__merchant-btn--danger {
+  background: #fdeceb;
+  color: var(--color-danger);
+}
+
+.detail__bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 253, 249, 0.97);
+  border-top: 2rpx solid rgba(230, 222, 210, 0.8);
+  box-shadow: 0 -12rpx 30rpx rgba(35, 35, 35, 0.06);
+  z-index: 30;
+}
+
+.detail__bar-ghost {
+  flex: none;
+  margin-right: 18rpx;
+  padding: 24rpx 34rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.detail__bar-primary {
+  flex: 1;
+  padding: 24rpx 20rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #f39445 0%, #e86a17 100%);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 12rpx 26rpx rgba(232, 106, 23, 0.26);
+}

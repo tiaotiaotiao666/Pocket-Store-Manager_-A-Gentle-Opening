@@ -1,0 +1,9 @@
+<view class="order-status order-status--{{tone}} {{compact ? 'order-status--compact' : ''}}">
+  <view class="order-status__badge">
+    <text class="order-status__label">{{label}}</text>
+  </view>
+  <view wx:if="{{!compact}}" class="order-status__detail">
+    <text class="order-status__hint">{{hint}}</text>
+    <text wx:if="{{paymentLabel}}" class="order-status__payment">{{paymentLabel}}</text>
+  </view>
+</view>

@@ -23,7 +23,7 @@
 | `模板库与组合生成规划.md` | Base、Manifest、CompositionPlan、Composer、Agent 边界 | 规划，未实现 |
 | `待完成目标.md` | 当前里程碑、验收和差距 | 持续更新 |
 | `bugs/README.md` | 待修复与已修复 bug 名录，详情在 `bugs/open/` 与 `bugs/fixed/` | 持续更新 |
-| `后端待实现接口清单.md` | 桌面云协作及后续模板平台接口 | 除 agent/turn 外多为规划 |
+| `后端待实现接口清单.md` | 桌面云协作、模板平台及 B2 发现的点餐接口缺口建议 | 除 agent/turn 外多为规划；第 17 节为建议 |
 
 ### 冻结或稳定契约
 
@@ -44,6 +44,7 @@
 | --- | --- |
 | `backend-local-dev.md` | Windows 本机 MySQL/Redis/NestJS 复现 |
 | `B1业务后端实现说明.md` | B1 六模块结构、事务、幂等、测试架构与扩展指引 |
+| `B2小程序实现说明.md` | B2 领域层、服务层、组件、页面、验证方法与演示排查 |
 | `面向AI的桌面端构建文档.md` | 当前桌面架构、状态流和扩展方式 |
 | `windows-deployment.md` | Windows 开发、打包和验收 |
 | `wechat-export-and-publish.md` | 微信开发者工具导入和发布边界 |
@@ -57,9 +58,10 @@
 handoff/
 ├─ README.md             交接索引和编写规则
 ├─ 当前工作区交接.md      跨工作线的最新接续事实
-├─ 小程序B2交接.md        当前阶段执行入口
 └─ archive/              已完成或 superseded 的历史摘要
 ```
+
+当前没有待执行的阶段交接；B0/B1/B2 均已完成。下一阶段（M5 本地 Composer 或 B3）需先由用户批准，再新建活动交接。
 
 直接位于 `handoff/` 的文件必须是仍可执行的活动交接。阶段完成或出现替代交接后，将有效信息压缩到 `archive/YYYY-MM-DD-主题.md`，并更新索引；不要让新会话从多份“上一轮/本轮”中猜测当前状态。
 

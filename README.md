@@ -51,14 +51,14 @@ npm run start:dev
 - `desktop/`：Electron 主进程与有限 IPC。
 - `scripts/`：当前本地模板复制和配置导出脚本。
 - `templates/mini-program/`：当前静态展示导出模板。
-- `miniprogram/`：B2 在线点餐参考工程，目前仍是骨架。
+- `miniprogram/`：微信原生点餐参考工程（B2 已完成，服务层/组件/页面齐全；渲染层待微信编译器验收）。
 - `server/`：NestJS 后端、DeepSeek Agent、模型适配和 Prisma 数据层。
 - `docs/`：项目概览、规划、契约和操作指引。
 - `docs/handoff/`：活动交接与历史摘要。
 
 ## 当前边界
 
-- B0 已完成；B1 点餐业务模块和 B2 在线小程序尚未完成。
+- B0、B1、B2 已完成；B2 的顾客/店主闭环已用真实后端冒烟验证，微信开发者工具编译与点击走查待补。
 - DeepSeek 开店资料收集已实现并做过真实调用验证；ModelArts/盘古未接入。
 - 导出脚本和 IPC 已存在，但当前会话 UI 未接真实导出。
 - Manifest、CompositionPlan、Composer、组件注册表和云端模板库均为规划，尚未实现。

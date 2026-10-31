@@ -1,4 +1,11 @@
 {
-  "navigationBarTitleText": "柑橘小馆",
-  "enablePullDownRefresh": false
+  "navigationBarTitleText": "扫码点餐",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "store-header": "/components/store-header/index",
+    "fulfillment-switch": "/components/fulfillment-switch/index",
+    "state-view": "/components/state-view/index",
+    "error-banner": "/components/error-banner/index",
+    "order-card": "/components/order-card/index"
+  }
 }

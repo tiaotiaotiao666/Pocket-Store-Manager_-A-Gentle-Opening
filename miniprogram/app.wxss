@@ -16,6 +16,82 @@ page {
   line-height: 1.5;
 }
 
+.page {
+  min-height: 100vh;
+  padding: 24rpx 24rpx calc(48rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.page--fixed-action {
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
+}
+
+.page__section {
+  margin-top: 30rpx;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 4rpx 16rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+}
+
+.section-extra {
+  font-size: 22rpx;
+  color: var(--color-muted);
+}
+
+.surface-card {
+  background: var(--color-surface);
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 26rpx rgba(35, 35, 35, 0.06);
+}
+
+.primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 92rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #f39445 0%, #e86a17 100%);
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+  box-shadow: 0 14rpx 30rpx rgba(232, 106, 23, 0.28);
+}
+
+.primary-button--off {
+  background: rgba(35, 35, 35, 0.12);
+  box-shadow: none;
+  color: rgba(35, 35, 35, 0.38);
+}
+
+.ghost-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 84rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.muted-text {
+  color: var(--color-muted);
+  font-size: 24rpx;
+}
+
 .placeholder {
   margin: 48rpx 32rpx;
   padding: 48rpx 32rpx;

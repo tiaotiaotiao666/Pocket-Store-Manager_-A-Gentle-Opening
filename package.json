@@ -13,7 +13,10 @@
     "test": "node --test test/*.test.cjs",
     "test:generator": "node --test test/generator.test.cjs",
     "test:desktop": "node --test test/desktop-contract.test.cjs",
-    "mini:example": "node scripts/generate-mini-program.cjs"
+    "mini:example": "node scripts/generate-mini-program.cjs",
+    "mini:check": "node scripts/validate-miniprogram.cjs",
+    "mini:smoke": "node scripts/miniprogram-smoke.cjs",
+    "mini:pages": "node scripts/miniprogram-pages-smoke.cjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

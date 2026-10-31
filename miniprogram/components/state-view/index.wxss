@@ -1,0 +1,82 @@
+@import "../../styles/component.wxss";
+
+.state-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 72rpx 48rpx;
+  text-align: center;
+}
+
+.state-view__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96rpx;
+  height: 96rpx;
+  margin-bottom: 24rpx;
+  border-radius: 999rpx;
+  background: rgba(232, 106, 23, 0.1);
+  color: var(--color-primary, #e86a17);
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.state-view__icon--error {
+  background: #fdeceb;
+  color: var(--color-danger, #b23a2f);
+}
+
+.state-view__title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--color-text, #232323);
+}
+
+.state-view__desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--color-muted, #8a8178);
+}
+
+.state-view__action {
+  margin-top: 28rpx;
+  min-height: 72rpx;
+  padding: 0 44rpx;
+}
+
+.state-view__skeleton {
+  width: 100%;
+  margin-bottom: 32rpx;
+}
+
+.state-view__bar {
+  height: 24rpx;
+  width: 86%;
+  margin: 16rpx auto 0;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, rgba(232, 106, 23, 0.06) 0%, rgba(232, 106, 23, 0.14) 50%, rgba(232, 106, 23, 0.06) 100%);
+  animation: state-view-shimmer 1.4s ease-in-out infinite;
+}
+
+.state-view__bar--wide {
+  width: 100%;
+  height: 32rpx;
+}
+
+.state-view__bar--short {
+  width: 58%;
+}
+
+@keyframes state-view-shimmer {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}

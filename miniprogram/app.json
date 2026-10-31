@@ -5,6 +5,7 @@
     "pages/orders/index",
     "pages/mine/index",
     "pages/checkout/index",
+    "pages/order-detail/index",
     "pages/merchant-orders/index"
   ],
   "window": {

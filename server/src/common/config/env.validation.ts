@@ -76,7 +76,15 @@ class EnvironmentVariables {
 }
 
 export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
-  const normalized: Record<string, unknown> = { ...config };
+  // 真实环境变量（容器/CI/测试注入）优先于 .env 文件，符合 dotenv 默认语义。
+  // 否则部署平台注入的 CACHE_DRIVER、NODE_ENV 会被仓库里的 .env 静默覆盖。
+  const processOverrides: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (typeof value === 'string' && value.trim() !== '') {
+      processOverrides[key] = value;
+    }
+  }
+  const normalized: Record<string, unknown> = { ...config, ...processOverrides };
 
   // 空值/空白值回落到安全默认值，避免把空串当成合法 URL 或模型名。
   if (typeof normalized.DEEPSEEK_API_BASE_URL !== 'string' || !normalized.DEEPSEEK_API_BASE_URL.trim()) {

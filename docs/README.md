@@ -6,7 +6,8 @@
 
 1. [`项目概览.md`](项目概览.md)：项目目标、代码现状、工作线和当前顺序。
 2. [`handoff/README.md`](handoff/README.md)：选择仍然有效的活动交接。
-3. 按任务阅读下表的规划、契约或操作指引。
+3. 排查或登记缺陷时读 [`bugs/README.md`](bugs/README.md)。
+4. 按任务阅读下表的规划、契约或操作指引。
 
 根目录长文件名需求文档是唯一权威需求来源，保持只读。根目录 `README.md` 只负责项目快速启动，不再承载逐轮构建历史。
 
@@ -21,6 +22,7 @@
 | `后端实现方案与套餐.md` | B0–B5 和套餐先后顺序 | 当前路线 |
 | `模板库与组合生成规划.md` | Base、Manifest、CompositionPlan、Composer、Agent 边界 | 规划，未实现 |
 | `待完成目标.md` | 当前里程碑、验收和差距 | 持续更新 |
+| `bugs/README.md` | 待修复与已修复 bug 名录，详情在 `bugs/open/` 与 `bugs/fixed/` | 持续更新 |
 | `后端待实现接口清单.md` | 桌面云协作及后续模板平台接口 | 除 agent/turn 外多为规划 |
 
 ### 冻结或稳定契约
@@ -41,6 +43,7 @@
 | 文档 | 用途 |
 | --- | --- |
 | `backend-local-dev.md` | Windows 本机 MySQL/Redis/NestJS 复现 |
+| `B1业务后端实现说明.md` | B1 六模块结构、事务、幂等、测试架构与扩展指引 |
 | `面向AI的桌面端构建文档.md` | 当前桌面架构、状态流和扩展方式 |
 | `windows-deployment.md` | Windows 开发、打包和验收 |
 | `wechat-export-and-publish.md` | 微信开发者工具导入和发布边界 |
@@ -54,7 +57,7 @@
 handoff/
 ├─ README.md             交接索引和编写规则
 ├─ 当前工作区交接.md      跨工作线的最新接续事实
-├─ 后端B1交接.md          当前后端阶段执行入口
+├─ 小程序B2交接.md        当前阶段执行入口
 └─ archive/              已完成或 superseded 的历史摘要
 ```
 

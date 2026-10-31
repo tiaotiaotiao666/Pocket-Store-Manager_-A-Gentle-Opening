@@ -68,6 +68,7 @@ async function copyTemplate(sourceRoot, destinationRoot, payload) {
   };
 
   await fs.cp(sourceRoot, destinationRoot, { recursive: true, filter: (source) => !source.endsWith('project-template.json') && !source.endsWith('sitemap-template.json') });
+  await fs.rm(path.join(destinationRoot, 'config', 'store.generated.json'), { force: true });
   const wxssPath = path.join(destinationRoot, 'app.wxss');
   let wxss = await fs.readFile(wxssPath, 'utf8');
   const colors = payload.theme?.colors || themes[0].preview;
@@ -78,7 +79,7 @@ async function copyTemplate(sourceRoot, destinationRoot, payload) {
   await fs.writeFile(wxssPath, wxss, 'utf8');
   await writeJson(destinationRoot, 'app.json', appJson);
   await writeJson(destinationRoot, 'project.config.json', project);
-  await writeJson(destinationRoot, 'config/store.generated.json', rendererData);
+  await writeStoreConfig(destinationRoot, rendererData);
   await writeExportReadme(destinationRoot, rendererData);
   await fs.mkdir(path.join(destinationRoot, 'assets', 'icons'), { recursive: true });
   for (const icon of payload.icons || []) {
@@ -90,11 +91,11 @@ async function copyTemplate(sourceRoot, destinationRoot, payload) {
     const config = rendererData.icons.find((item) => item.label === icon.label);
     if (config) config.asset = `assets/icons/${targetName}`;
   }
-  await writeJson(destinationRoot, 'config/store.generated.json', rendererData);
+  await writeStoreConfig(destinationRoot, rendererData);
 }
 
 async function writeExportReadme(root, config) {
-  const contents = `# ${config.store.name} 微信小程序工程\n\n这是由“智能开店”Windows 生成器导出的独立微信原生小程序工程。\n\n## 导入预览\n\n1. 安装并打开微信开发者工具。\n2. 选择“导入项目”，项目目录选本文件所在目录。\n3. 当前工程使用游客 AppID 作为预览配置。正式开发时，请在微信开发者工具中使用店主自己的小程序账号和 AppID。\n4. 点击编译，检查首页、菜单、订单和我的页面。\n\n## 门店配置\n\n- 门店名称、地址、营业时间、公告、示例菜单和所选功能位于 \`config/store.generated.json\`。\n- 商品价格以整数分保存，\`priceText\` 用于页面展示。\n- 页面文件位于 \`pages/\`，全局样式位于 \`app.wxss\`。\n- 页面订单目前是演示占位。修改商品配置不会创建真实订单或后端接口。\n\n## 当前范围\n\n这是可导入预览的前端模板，不含线上订单后端、登录、真实微信支付、外送或店主订单管理服务。请勿将演示数据当作真实营业数据。\n\n正式发布需要店主使用自己的微信小程序账号与合法主体，配置 AppID、HTTPS 服务域名和业务后端，使用微信开发者工具上传代码，并自行提交平台审核。生成器不会代办注册、认证、审核或发布。\n\n演示支付说明：${config.demoPaymentDisclaimer}\n`;
+  const contents = `# ${config.store.name} 微信小程序工程\n\n这是由“智能开店”Windows 生成器导出的独立微信原生小程序工程。\n\n## 导入预览\n\n1. 安装并打开微信开发者工具。\n2. 选择“导入项目”，项目目录选本文件所在目录。\n3. 当前工程使用游客 AppID 作为预览配置。正式开发时，请在微信开发者工具中使用店主自己的小程序账号和 AppID。\n4. 点击编译，检查首页、菜单、订单和我的页面。\n\n## 门店配置\n\n- 门店名称、地址、营业时间、公告、示例菜单和所选功能位于 \`config/store.generated.js\`。\n- 商品价格以整数分保存，\`priceText\` 用于页面展示。\n- 页面文件位于 \`pages/\`，全局样式位于 \`app.wxss\`。\n- 页面订单目前是演示占位。修改商品配置不会创建真实订单或后端接口。\n\n## 当前范围\n\n这是可导入预览的前端模板，不含线上订单后端、登录、真实微信支付、外送或店主订单管理服务。请勿将演示数据当作真实营业数据。\n\n正式发布需要店主使用自己的微信小程序账号与合法主体，配置 AppID、HTTPS 服务域名和业务后端，使用微信开发者工具上传代码，并自行提交平台审核。生成器不会代办注册、认证、审核或发布。\n\n演示支付说明：${config.demoPaymentDisclaimer}\n`;
   await fs.writeFile(path.join(root, 'README.md'), contents, 'utf8');
 }
 
@@ -102,6 +103,12 @@ async function writeJson(root, relative, data) {
   const output = path.join(root, relative);
   await fs.mkdir(path.dirname(output), { recursive: true });
   await fs.writeFile(output, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+}
+
+async function writeStoreConfig(root, data) {
+  const output = path.join(root, 'config', 'store.generated.js');
+  await fs.mkdir(path.dirname(output), { recursive: true });
+  await fs.writeFile(output, `module.exports = ${JSON.stringify(data, null, 2)};\n`, 'utf8');
 }
 
 async function main() {

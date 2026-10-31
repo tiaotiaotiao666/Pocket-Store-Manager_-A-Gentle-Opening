@@ -25,10 +25,18 @@ test('export creates an independently importable mini-program with store configu
   const requiredFiles = [
     'app.js', 'app.json', 'app.wxss', 'project.config.json', 'sitemap.json',
     'pages/home/index.js', 'pages/menu/index.wxml', 'pages/orders/index.js', 'pages/mine/index.wxml',
-    'config/store.generated.json', 'README.md',
+    'config/store.generated.js', 'README.md',
   ];
   for (const relative of requiredFiles) await fs.access(path.join(output, relative));
-  const config = JSON.parse(await fs.readFile(path.join(output, 'config/store.generated.json'), 'utf8'));
+  const configPath = path.join(output, 'config/store.generated.js');
+  t.after(() => { delete require.cache[require.resolve(configPath)]; });
+  const config = require(configPath);
+  await assert.rejects(fs.access(path.join(output, 'config/store.generated.json')));
+  for (const relative of ['app.js', 'pages/home/index.js', 'pages/menu/index.js', 'pages/mine/index.js']) {
+    const source = await fs.readFile(path.join(output, relative), 'utf8');
+    assert.match(source, /require\('[^']*store\.generated'\)/);
+    assert.doesNotMatch(source, /store\.generated\.json/);
+  }
   assert.equal(config.store.name, '测试小馆');
   assert.equal(config.theme.id, 'jade');
   const wxss = await fs.readFile(path.join(output, 'app.wxss'), 'utf8');

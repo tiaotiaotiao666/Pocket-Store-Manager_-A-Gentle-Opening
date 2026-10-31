@@ -2,7 +2,7 @@
 
 > 本文是 B 套餐（A + B2）的数据层契约。字段以 `docs/api.md` 为准，订单规则以 `docs/order-state.md` 为准。
 > 数据库目标：MySQL 8（生产映射华为云 RDS）；本地开发使用 MySQL 8 ZIP 免安装实例。
-> 金额一律整数分；时间存 UTC；主键使用应用侧生成的 ULID 风格字符串（`<prefix>_<26位>`）。
+> 金额一律整数分；时间存 UTC；主键总长 26 字符，格式为 `<3字母前缀>_<22位>`（前 10 位时间戳 + 12 位随机，Crockford Base32），由应用侧生成，见 `server/src/common/ids.ts`。
 
 ## 1. 表清单
 

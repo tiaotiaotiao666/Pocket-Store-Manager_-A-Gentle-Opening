@@ -76,6 +76,7 @@ ALLOW_DEMO_PAYMENT=true
 - `CACHE_DRIVER=redis`：Redis 不可用时启动失败（用于确认缓存链路）。
 - `CACHE_DRIVER=memory`：强制内存，不尝试 Redis。
 - 生产环境必须 `ALLOW_DEMO_LOGIN=false`、`ALLOW_DEMO_PAYMENT=false`，并配置微信凭据，否则启动失败。
+- 真实进程环境变量优先于 `.env` 文件（2026-10-31 起）。容器、CI 或 `CACHE_DRIVER=memory npm run start:prod` 这类注入不会被仓库里的 `.env` 覆盖。
 
 ## 4. 安装依赖
 
@@ -135,7 +136,20 @@ curl http://127.0.0.1:3000/api/v1/readyz
 
 `cache` 为 `memory` 表示 Redis 未运行并已降级；安装 Redis 后重新启动应变为 `redis`。
 
-## 8. 生产配置红线验证
+## 8. 服务端测试（真实 MySQL 测试库）
+
+```bash
+cd server
+npm test
+```
+
+- 测试使用 `TEST_DATABASE_URL`（默认 `mysql://root@127.0.0.1:3306/smart_store_test`），不 mock Prisma。
+- 测试辅助会自动创建测试库、执行 `prisma migrate deploy`、清库并写入固定演示数据；测试库名必须包含 `test`。
+- 测试强制 `CACHE_DRIVER=memory`，不需要 Redis。
+- 多个测试文件共用同一测试库，`vitest.config.mts` 已设 `fileParallelism: false`，不要改为并行。
+- 仅运行某个用例：`npx vitest run test/b1-orders.test.ts`。
+
+## 9. 生产配置红线验证
 
 ```bash
 cd server
@@ -148,7 +162,7 @@ node -e "require('reflect-metadata');require('dotenv').config();const{validateEn
 REJECTED: 生产环境禁止开启 ALLOW_DEMO_LOGIN / ALLOW_DEMO_PAYMENT
 ```
 
-## 9. Redis（WSL 本地实例，已验收）
+## 10. Redis（WSL 本地实例，已验收）
 
 当前机器无 Windows 管理员权限，Redis 通过 **WSL Ubuntu 24.04 + mirrored 网络** 提供，已在 Windows 侧以 `CACHE_DRIVER=redis` 验收通过。
 
@@ -207,7 +221,7 @@ WSL Redis 只用于本地开发验收。生产使用华为云 DCS，设置 `REDI
 - ioredis 的 client 首次连接失败后不可复用，`CacheService` 改为每次重试新建 client，最多 5 次 × 1 秒。
 - Redis 默认只监听 `127.0.0.1`，需把 `/etc/redis/redis.conf` 的 `bind` 改为 `0.0.0.0`（mirrored 下也可保留 `127.0.0.1`，按实际验证为准）。
 
-## 10. 常见问题
+## 11. 常见问题
 
 | 现象 | 处理 |
 | --- | --- |

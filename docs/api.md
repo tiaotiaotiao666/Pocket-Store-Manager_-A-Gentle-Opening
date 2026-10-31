@@ -307,6 +307,8 @@
 | 422 | `VALIDATION_ERROR` | 字段校验失败 |
 | 429 | `RATE_LIMITED` | 请求过于频繁 |
 | 500 | `INTERNAL_ERROR` | 服务端错误（不返回内部细节） |
+| 502 | `WECHAT_UPSTREAM_ERROR` | 微信登录上游暂时不可用（B1 实现，2026-10-31 增补） |
+| 503 | `WECHAT_NOT_CONFIGURED` | 服务端未配置微信小程序凭据（B1 实现，2026-10-31 增补） |
 
 ## 8. 前端调用约束
 

@@ -12,12 +12,28 @@
     "minified": true,
     "minifyWXML": true,
     "minifyWXSS": true,
-    "showShadowRootInWxmlPanel": true
+    "showShadowRootInWxmlPanel": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
   },
   "compileType": "miniprogram",
   "libVersion": "3.6.4",
-  "appid": "touristappid",
+  "appid": "wx3b1c04f63cf6cfd0",
   "projectname": "smart-store-miniprogram",
   "miniprogramRoot": "./",
-  "condition": {}
+  "condition": {},
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
 }

@@ -2,11 +2,13 @@
 
 > 本文区分“当前已实现的门店配置”与“规划中的组合规格”。两者不得混为一份配置，也不得把规划字段当作现有代码能力。
 
-## 1. 当前实现：`store.generated.json` schemaVersion=1
+## 1. 当前实现：`store.generated.js` schemaVersion=1
 
-当前模板位于 `templates/mini-program/`。`scripts/generate-mini-program.cjs` 复制模板后写入 `app.json`、`project.config.json` 和 `config/store.generated.json`，页面使用微信原生 WXML/WXSS/JavaScript。
+当前模板位于 `templates/mini-program/`。`scripts/generate-mini-program.cjs` 复制模板后写入 `app.json`、`project.config.json` 和 `config/store.generated.js`，页面使用微信原生 WXML/WXSS/JavaScript。
 
-`store.generated.json` 当前主要字段：
+配置文件必须是 `.js` 模块并由 `module.exports` 导出，原因是微信小程序 `require` 只解析 `.js`：`require('./config/store.generated')` 会被补成 `config/store.generated.js`，若磁盘上是 `.json` 会直接抛 `module 'config/store.generated.js' is not defined`，`App()` 不注册、四个页面全部白屏。禁止再把门店配置写成 JSON 文件或让页面 `require` 任何 `.json` 路径。
+
+`store.generated.js` 当前主要字段：
 
 - `store`：门店名称、地址、电话、营业时间和公告。
 - `catalog`：分类及商品；`priceCents` 是金额事实，现有 `priceText` 仅是旧版展示副本。
@@ -54,7 +56,7 @@ Composer 解析 CompositionPlan 后生成 Lock，固定：
 | Lock | 精确版本和可复现依据 | 用户业务数据、Token |
 | 后端业务数据 | 门店、商品、订单和权限事实 | 由前端自行计算的总价 |
 
-B3 需要实现 `store.generated.json.schemaVersion` 到后端配置版本的受控映射。重复导入必须防重，不得覆盖既有运营数据。
+B3 需要实现 `store.generated.js.schemaVersion` 到后端配置版本的受控映射。重复导入必须防重，不得覆盖既有运营数据。
 
 ## 5. 安全与兼容
 

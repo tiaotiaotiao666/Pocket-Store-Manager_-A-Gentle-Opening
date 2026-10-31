@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
+import { nextRevealCount } from './revealTransition.mjs';
 
-export function useSequentialReveal(messages, { revealKey = 'default', interval = 720 } = {}) {
+export function useSequentialReveal(
+  messages,
+  { revealKey = 'default', flushKey = 0, interval = 720 } = {},
+) {
   const [visibleCount, setVisibleCount] = useState(0);
-  const lastKey = useRef(revealKey);
+  const tracker = useRef({ revealKey, flushKey });
 
   useEffect(() => {
-    if (lastKey.current !== revealKey) {
-      lastKey.current = revealKey;
-      setVisibleCount(0);
-    }
-  }, [revealKey]);
+    const count = nextRevealCount(tracker.current, {
+      revealKey,
+      flushKey,
+      messageCount: messages.length,
+    });
+    tracker.current = { revealKey, flushKey };
+    if (count !== null) setVisibleCount(count);
+  }, [revealKey, flushKey, messages.length]);
 
   useEffect(() => {
     if (visibleCount >= messages.length) return undefined;

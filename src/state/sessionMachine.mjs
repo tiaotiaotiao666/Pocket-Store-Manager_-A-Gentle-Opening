@@ -104,6 +104,7 @@ export function createInitialState() {
     status: 'active',
     messages: [],
     handoff: null,
+    revealFlush: 0,
   };
   return {
     seq: 0,
@@ -171,6 +172,7 @@ function createStepSession(state, { id, title, summary, payload, phase, intro, f
     status: 'active',
     messages: [],
     handoff,
+    revealFlush: 0,
   };
   const opening = intro ?? (title === '店铺装修' ? STORE_INTRO : DEPLOY_INTRO);
   const after = followUp ?? (
@@ -215,7 +217,18 @@ export function reducer(state, action) {
       };
     }
 
-    case 'SKIP_INTRO':
+    case 'SKIP_INTRO': {
+      const flushed = {
+        ...state,
+        sessions: state.sessions.map((session) => (
+          session.id === state.activeSessionId
+            ? { ...session, revealFlush: (session.revealFlush ?? 0) + 1 }
+            : session
+        )),
+      };
+      return enterFeatures(flushed);
+    }
+
     case 'ENTER_FEATURES':
       return enterFeatures(state);
 

@@ -6,7 +6,7 @@
 2. 在项目目录打开 PowerShell，运行 `npm install`。
 3. 运行 `npm run desktop:dev`，桌面应用启动后按向导操作。
 4. 如需真实模型服务，在服务端部署兼容代理并配置 `.env.example` 中的模型变量；不要把密钥填入 React/Vite 的 `VITE_*` 变量。模型未配置时可继续体验本地占位流程。
-5. 通过“导出独立小程序”选择输出目录。运行 `npm run mini:example` 可生成示例工程。
+5. 运行 `npm run mini:example` 可生成示例工程。本地导出 IPC 已存在，但当前会话式 UI 尚未接入；部署动画不能作为导出验收。
 
 ## 打包
 

@@ -186,3 +186,43 @@ Page({
 - 组件事件 detail 只含契约定义字段。
 - 所有金额展示来自 `priceCents`/`totalCents`，无组件内价格计算。
 - 页面切换门店后组件重新渲染，不保留上一门店数据。
+## 8. 模板库中的组件分类（规划）
+
+模板库将可插拔资产分为两类，不能把复杂业务都塞进纯组件：
+
+| 类型 | 允许内容 | API 边界 |
+| --- | --- | --- |
+| UI Block | 展示组件、properties、events、纯 UI 状态 | 禁止 API |
+| Feature Pack | 页面、UI Block、服务层、Manifest 和测试 | 仅页面或服务层 |
+
+例如 `hero-carousel` 是纯 UI Block；优惠券中心是 Feature Pack，因为其还包含页面状态、领取服务和后端契约。组件分类不改变第 1–7 节的通信铁律。
+
+## 9. Manifest 与版本（规划）
+
+每个可组合资产必须提供机器可读 Manifest，声明：
+
+- `id`、`version`、`kind` 和注册表版本；
+- Base、最低微信基础库和后端 API 兼容范围；
+- 可信入口、允许的插槽、依赖、冲突和容量；
+- properties/events Schema、主题 Token 和预览数据；
+- `preview-only` / `online-ready` 发布状态和已验证 Recipe。
+
+Agent 只能读取 Manifest 摘要并选择已登记资产，不能通过阅读或生成源码绕过这些约束。
+
+## 10. 页面插槽（规划）
+
+页面拥有稳定的命名插槽，例如 `home.hero`、`home.marketing`。插槽必须声明允许的组件类型、数量和顺序语义。
+
+组件不能假设自己一定位于某个页面；页面不能依赖组件内部私有状态。未分配插槽时，Base 页面仍应完整运行。禁止通过全局 WXSS 选择器或 `globalData` 形成隐式插槽依赖。
+
+## 11. 构建期组合（规划）
+
+CompositionPlan 由确定性 Composer 在构建期解析，生成静态 WXML、页面 JSON、`usingComponents`、`app.json` 和主题 WXSS。
+
+不得运行时根据模型输出任意加载组件路径。组件版本由 Lock 固定；相同 Lock 应生成可复现工程。组件被删除时，其页面引用、服务绑定和资源注册应一并由 Composer 移除，而不是留下手工维护的隐式依赖。
+
+## 12. 发布状态（规划）
+
+- `preview-only`：允许桌面或示例数据预览，不具备真实在线后端能力，不得正式发布为在线功能。
+- `online-ready`：后端契约、权限、异常路径和微信编译均已验证，可进入在线 Recipe。
+- 候选 Recipe 不等于正式模板；必须经过组合测试、核心链路回归和发布审核。

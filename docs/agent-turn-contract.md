@@ -4,7 +4,7 @@
 > 桌面端默认仍为**本地 Mock**（规则解析、固定文案、零网络请求）；设置 `VITE_AGENT_TRANSPORT=http` 后走 NestJS 后端 → DeepSeek。
 > **ModelArts / 盘古尚未接入**；当前没有 Skill、工具调用、多 Agent、自主规划和自动发布。
 > 适用阶段：桌面端 `STORE_INFO`（店铺装修）阶段内的开店资料收集。
-> 设计依据：[`agent-turn-design.md`](agent-turn-design.md)；任务清单：[`tasks-agent-turn.md`](tasks-agent-turn.md)；本轮交接：[`本轮DeepSeek接入交接.md`](本轮DeepSeek接入交接.md)。
+> 当前设计、配置和验证摘要：[`handoff/archive/2026-10-31-Agent资料收集与DeepSeek接入.md`](handoff/archive/2026-10-31-Agent资料收集与DeepSeek接入.md)（历史追溯）；文档导航：[`README.md`](README.md)。
 
 ---
 
@@ -365,6 +365,6 @@ confirmed → reviewing（再次编辑）→ confirmed（重新确认）
   - CORS 预检 → 204，允许 `X-Agent-Contract`，暴露 `X-Request-Id`。
 - 测试运行期间无真实 DeepSeek 请求。
 
-> **真实 DeepSeek 调用未验证**：本机 `server/.env` 与仓库均未配置 `DEEPSEEK_API_KEY`。填入 Key 后按 [`本轮DeepSeek接入交接.md`](本轮DeepSeek接入交接.md) 第 9 节完成首次真实调用。
+> **真实 DeepSeek 调用已于 2026-10-31 验证通过**：完整资料返回 `reviewing`，缺项资料返回 `collecting` 和营业时间追问；经 Vite 代理到 NestJS 的链路也已验证。临时测试 Key 未进入仓库，验证后由用户销毁。后续换 Key 或环境仍需重新联调。
 >
-> **ModelArts / 盘古仍未接入**；本轮交付的是 DeepSeek 真实链路 + 可替换的 Provider 边界。
+> **ModelArts / 盘古仍未接入**；当前交付的是 DeepSeek 真实链路 + 可替换的 Provider 边界。历史细节见 [`handoff/archive/2026-10-31-Agent资料收集与DeepSeek接入.md`](handoff/archive/2026-10-31-Agent资料收集与DeepSeek接入.md)。

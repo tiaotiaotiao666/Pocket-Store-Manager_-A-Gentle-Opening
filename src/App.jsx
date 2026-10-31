@@ -695,7 +695,11 @@ export default function App() {
             ) : (
               <>
                 <div className={`workspace-conversation${phase === PHASES.BUILDING ? ' is-building' : ''}`}>
-                  <ChatStream messages={activeSession.messages} revealKey={activeSession.id}>
+                  <ChatStream
+                    messages={activeSession.messages}
+                    revealKey={activeSession.id}
+                    flushKey={activeSession.revealFlush ?? 0}
+                  >
                     {phase !== PHASES.BUILDING ? renderStage() : null}
                   </ChatStream>
                   {phase === PHASES.BUILDING ? (

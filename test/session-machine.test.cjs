@@ -68,6 +68,25 @@ test('SKIP_INTRO and ENTER_FEATURES both land on the features phase', async () =
   assert.equal(entered.phase, PHASES.FEATURES);
 });
 
+test('SKIP_INTRO flushes queued reveals while keeping every message', async () => {
+  const machine = await loadMachine();
+  let state = machine.reducer(machine.createInitialState(), { type: 'START_ONBOARDING' });
+  state = machine.reducer(state, { type: 'SUBMIT_NAME', name: '松月食堂' });
+  const before = state.sessions.find((item) => item.id === state.activeSessionId);
+  assert.equal(before.revealFlush, 0);
+  const queued = before.messages.length;
+
+  const skipped = machine.reducer(state, { type: 'SKIP_INTRO' });
+  const flushed = skipped.sessions.find((item) => item.id === skipped.activeSessionId);
+  assert.equal(flushed.revealFlush, 1);
+  assert.equal(flushed.messages.length, queued + 1);
+  assert.ok(flushed.messages.some((message) => message.meta?.kind === 'feature-intro'));
+  assert.ok(flushed.messages.some((message) => message.text.includes('轻启')));
+
+  const entered = machine.reducer(state, { type: 'ENTER_FEATURES' });
+  assert.equal(entered.sessions.find((item) => item.id === entered.activeSessionId).revealFlush, 0);
+});
+
 test('TOGGLE_FEATURE keeps required features locked and toggles optional ones', async () => {
   const { machine, state } = await seeded();
   const locked = machine.reducer(state, { type: 'TOGGLE_FEATURE', id: 'scan-order' });

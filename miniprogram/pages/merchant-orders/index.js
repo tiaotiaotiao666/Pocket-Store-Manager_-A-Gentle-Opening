@@ -47,11 +47,14 @@ Page({
   onLoad(options) {
     const input = options || {};
     this.timer = null;
+    this.pageActive = true;
+    this.ordersRequestSerial = 0;
     this.setData({ storeId: input.storeId ? decodeURIComponent(input.storeId) : '' });
     this.bootstrap();
   },
 
   onShow() {
+    this.pageActive = true;
     if (!this.data.allowed) {
       return;
     }
@@ -64,10 +67,14 @@ Page({
   },
 
   onHide() {
+    this.pageActive = false;
+    this.ordersRequestSerial += 1;
     this.stopPolling();
   },
 
   onUnload() {
+    this.pageActive = false;
+    this.ordersRequestSerial += 1;
     this.stopPolling();
   },
 
@@ -113,6 +120,9 @@ Page({
         roleLabel: membership.role === 'OWNER' ? '店主' : '店员',
         error: '',
       });
+      if (!this.pageActive) {
+        return;
+      }
       this.loadStoreName(storeId);
       await this.loadOrders(false);
       if (this.data.polling) {
@@ -141,7 +151,7 @@ Page({
 
   startPolling() {
     this.stopPolling();
-    if (!this.data.polling || this.data.tab !== 'orders') {
+    if (!this.pageActive || !this.data.polling || this.data.tab !== 'orders') {
       return;
     }
     this.timer = setInterval(() => {
@@ -163,15 +173,20 @@ Page({
       }
       return;
     }
+    const requestSerial = ++this.ordersRequestSerial;
+    const segment = SEGMENTS.filter((item) => item.key === this.data.segment)[0] || SEGMENTS[0];
+    const storeId = this.data.storeId;
     if (!silent) {
       this.setData({ ordersLoading: true });
     }
     try {
-      const segment = SEGMENTS.filter((item) => item.key === this.data.segment)[0] || SEGMENTS[0];
-      const payload = await merchantService.listOrders(this.data.storeId, {
+      const payload = await merchantService.listOrders(storeId, {
         status: segment.status,
         pageSize: 50,
       });
+      if (requestSerial !== this.ordersRequestSerial) {
+        return;
+      }
       const list = orderView.toOrderListView(payload);
       const orders = list.items.map((order) => orderView.toMerchantOrderView(order));
       const now = new Date();
@@ -183,6 +198,9 @@ Page({
         lastUpdated: orderView.formatTime(now) + ' 更新',
       });
     } catch (error) {
+      if (requestSerial !== this.ordersRequestSerial) {
+        return;
+      }
       const described = errorText.describeError(error);
       this.setData({
         ordersLoading: false,
@@ -254,6 +272,7 @@ Page({
     }
     this.setData({ tab, error: '' });
     if (tab === 'products') {
+      this.ordersRequestSerial += 1;
       this.stopPolling();
       this.loadProducts();
     } else {

@@ -45,6 +45,7 @@
 | `backend-local-dev.md` | Windows 本机 MySQL/Redis/NestJS 复现 |
 | `B1业务后端实现说明.md` | B1 六模块结构、事务、幂等、测试架构与扩展指引 |
 | `B2小程序实现说明.md` | B2 领域层、服务层、组件、页面、验证方法与演示排查 |
+| `2026-10-31-两轮提交验收与修复说明.md` | B1/B2 两轮提交验收、BUG-010 至 BUG-012 修复与真实复验记录 |
 | `面向AI的桌面端构建文档.md` | 当前桌面架构、状态流和扩展方式 |
 | `windows-deployment.md` | Windows 开发、打包和验收 |
 | `wechat-export-and-publish.md` | 微信开发者工具导入和发布边界 |

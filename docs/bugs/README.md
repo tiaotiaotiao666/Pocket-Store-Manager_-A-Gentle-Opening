@@ -35,6 +35,9 @@
 | BUG-003 | 跳过开场后剩余消息未一次性展示 | P2 中 | 已修复 | 会话揭示动画 | [详情](fixed/BUG-003-skip-intro-reveal-flush.md) |
 | BUG-004 | `.env` 覆盖真实进程环境变量 | P1 高 | 已修复 | 后端配置加载 | [详情](fixed/BUG-004-dotenv-overrides-process-env.md) |
 | BUG-005 | ioredis 客户端首次连接失败后不可复用 | P2 中 | 已修复 | Redis 缓存连接 | [详情](fixed/BUG-005-ioredis-client-not-reusable.md) |
+| BUG-010 | 旧登录请求覆盖已切换的演示身份 | P1 高 | 已修复 | 小程序登录、退出与身份切换 | [详情](fixed/BUG-010-stale-login-overrides-switched-identity.md) |
+| BUG-011 | 店主页离开后异步初始化重新启动轮询 | P2 中 | 已修复 | 店主订单台生命周期与分段加载 | [详情](fixed/BUG-011-merchant-polling-restarts-after-hide.md) |
+| BUG-012 | `cart-panel` 结算事件负载不符合组件契约 | P3 低 | 已修复 | 购物车面板组件复用 | [详情](fixed/BUG-012-cart-panel-checkout-payload-contract.md) |
 
 ## 4. 环境类已解决（不计 bug 编号）
 
@@ -46,7 +49,7 @@
 ## 5. 统计
 
 - 待修复：4 条（P0 ×1、P1 ×1、P2 ×1、P3 ×1）。
-- 已修复：5 条（其中 BUG-001 尚待微信开发者工具内的实际渲染复验）。
+- 已修复：8 条（其中 BUG-001 尚待微信开发者工具内的实际渲染复验；BUG-010、BUG-011 的 Node 回归已通过，微信内人工复验未执行）。
 - 最近更新：2026-10-31。
 
 ## 6. 与其他文档的边界

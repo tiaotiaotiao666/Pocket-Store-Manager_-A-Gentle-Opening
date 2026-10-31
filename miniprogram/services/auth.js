@@ -10,6 +10,7 @@ async function login(options) {
   const settings = options || {};
   const identityKey = settings.identity || session.getIdentity() || config.DEFAULT_IDENTITY;
   const preset = config.DEMO_IDENTITIES[identityKey] || config.DEMO_IDENTITIES[config.DEFAULT_IDENTITY];
+  const loginRevision = session.getIdentityRevision();
 
   let payload;
   if (settings.code) {
@@ -29,7 +30,10 @@ async function login(options) {
     retryAuth: false,
   });
 
-  session.saveLogin(result, preset.key);
+  const saved = session.saveLogin(result, preset.key, loginRevision);
+  if (!saved) {
+    throw ApiError.client('SESSION_SUPERSEDED', '登录状态已切换，请重试当前操作');
+  }
   return result;
 }
 

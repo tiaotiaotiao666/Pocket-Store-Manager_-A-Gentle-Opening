@@ -63,6 +63,7 @@ function demoRelogin() {
   }
   const identityKey = session.getIdentity();
   const preset = config.DEMO_IDENTITIES[identityKey] || config.DEMO_IDENTITIES[config.DEFAULT_IDENTITY];
+  const loginRevision = session.getIdentityRevision();
 
   reloginPromise = (async () => {
     let payload;
@@ -78,7 +79,10 @@ function demoRelogin() {
       data: payload,
       auth: false,
     });
-    session.saveLogin(response.data, preset.key);
+    const saved = session.saveLogin(response.data, preset.key, loginRevision);
+    if (!saved) {
+      throw ApiError.client('SESSION_SUPERSEDED', '登录状态已切换，请重试当前操作');
+    }
     return response.data;
   })();
 

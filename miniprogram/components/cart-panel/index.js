@@ -64,7 +64,7 @@ Component({
       }
       this.triggerEvent('checkout', {
         totalCents: this.data.totalCents,
-        totalQuantity: this.data.totalQuantity,
+        items: this.data.items,
       });
     },
   },

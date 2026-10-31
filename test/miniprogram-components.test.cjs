@@ -125,6 +125,15 @@ test('cart-panel 组件：行金额格式化与事件 detail 只含契约字段'
   assert.deepEqual(events[0], { name: 'add', detail: { productId: 'prd_tea' } });
   instance.onRemove({ currentTarget: { dataset: { id: 'prd_tea' } } });
   assert.deepEqual(events[1], { name: 'remove', detail: { productId: 'prd_tea' } });
+  setProperty('totalQuantity', 2);
+  instance.onCheckout();
+  assert.deepEqual(events[2], {
+    name: 'checkout',
+    detail: {
+      totalCents: 2000,
+      items: [{ productId: 'prd_tea', name: '自选鲜泡茶', unitPriceCents: 1000, quantity: 2, lineTotalCents: 2000 }],
+    },
+  });
 });
 
 test('order-status 组件：六态文案来自领域层', () => {

@@ -6,6 +6,7 @@ const EXPIRY_GUARD_MS = 60 * 1000;
 
 let cache = null;
 let cacheLoaded = false;
+let identityRevision = 0;
 
 function load() {
   if (cacheLoaded) {
@@ -36,9 +37,17 @@ function persist(next) {
   platform.storage.set(STORAGE_KEY, next);
 }
 
-function saveLogin(loginResult, identity) {
+function saveLogin(loginResult, identity, expectedIdentityRevision) {
   const result = loginResult && typeof loginResult === 'object' ? loginResult : {};
   if (!result.token) {
+    return null;
+  }
+  const targetIdentity = identity || config.DEFAULT_IDENTITY;
+  const current = load();
+  if (
+    (typeof expectedIdentityRevision === 'number' && expectedIdentityRevision !== identityRevision) ||
+    (current && current.identity && current.identity !== targetIdentity)
+  ) {
     return null;
   }
   const expiresIn = Number(result.expiresIn) || 0;
@@ -46,7 +55,7 @@ function saveLogin(loginResult, identity) {
     token: result.token,
     expiresAt: expiresIn > 0 ? Date.now() + expiresIn * 1000 : 0,
     user: result.user && typeof result.user === 'object' ? result.user : null,
-    identity: identity || config.DEFAULT_IDENTITY,
+    identity: targetIdentity,
   };
   persist(next);
   return next;
@@ -62,6 +71,7 @@ function saveUser(user) {
 }
 
 function clear() {
+  identityRevision += 1;
   persist(null);
 }
 
@@ -98,6 +108,7 @@ function setIdentity(identityKey) {
   if (current && current.identity === identityKey) {
     return current;
   }
+  identityRevision += 1;
   persist(null);
   const preset = config.DEMO_IDENTITIES[identityKey] || config.DEMO_IDENTITIES[config.DEFAULT_IDENTITY];
   persist({
@@ -134,6 +145,10 @@ function getExpiresAt() {
   return current ? current.expiresAt : 0;
 }
 
+function getIdentityRevision() {
+  return identityRevision;
+}
+
 module.exports = {
   STORAGE_KEY,
   load,
@@ -149,4 +164,5 @@ module.exports = {
   findMembership,
   isMerchantOf,
   getExpiresAt,
+  getIdentityRevision,
 };

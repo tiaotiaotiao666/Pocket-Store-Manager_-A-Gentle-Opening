@@ -212,3 +212,44 @@ EXIT_CODE=0
 | 7 | `npm run check:packaging` | 0 | 229 文件 / 10 条规则 |
 
 用户实机确认：点击导出后白屏消失，进入导入差异预览；目标目录同名冲突提示正常出现。临时渲染层调试日志与主进程 `console-message` 转发已在修复后移除，代码回到无调试输出状态。
+## 十一、微信开发者工具运行时验收（F5，2026-11-01）
+
+> 证据等级：W/GUI（微信开发者工具 2.02.2609240，基础库 3.17.6）
+> 说明：本项目的渲染层无法脚本化验证，以下结果均来自用户在微信开发者工具中的真实点击与截图确认。
+
+### 11.1 运行时链路修复
+
+| 问题 | 处理 | 结果 |
+| --- | --- | --- |
+| `GET /api/v1/stores/store-demo-001` 报 `ERR_CONNECTION_REFUSED` | 启动 MySQL（3306）、启动 Redis、补跑 Prisma 迁移 `20261101090000_add_imports_and_config_version` 与种子 | `store` 与 `catalog` 均返回 200；门店“柑橘小馆”数据完整 |
+| `store-header` 的 `address` / `businessHours` 为 null 警告 | 后端数据加载后消失 | 用户刷新后确认 |
+| `event.stopPropagation is not a function`（加购崩溃） | 删除 5 处多余调用，WXML 已用 `catch:tap`；同步 Base / 镜像 / UI Block；测试改用真实事件对象；注册表重冻结 | `miniprogram-components` 14/14、`mini:check` 0、`mini:dup-check` 0、`registry:check` 通过 |
+
+### 11.2 点击级验收
+
+| 编号 | 内容 | 状态 |
+| --- | --- | --- |
+| M10 | 微信开发者工具真实导入与编译，四个 tab 可切换 | PASS（用户 2026-11-01 确认） |
+| M11 | 支付结果 loading / success / pending / error 四态 | PASS（用户确认四态均出现） |
+| M12 | 店主身份不展示支付结果页，接单操作正常 | PASS（用户确认） |
+
+### 11.3 本轮结束后的边界
+
+- **已打通**：桌面端轻启→装修→体检→导出→导入预览；后端门店/菜单/订单闭环；微信工具内小程序主流程与店主流程。
+- **仍未验证**：真机 HTTPS 与合法域名、安全区与滚动性能、L2 的“删除任一组件后仍可编译”、`build:win` 安装包、真实 DeepSeek 调用、生图 Provider。
+- **环境降级**：WSL mirrored 未生效，后端本次以 `CACHE_DRIVER=memory` 启动；Redis 真实链路仍标“待验收”。
+- **答辩前清理**：冒烟测试写入的演示订单需要清理。
+
+### 11.4 复跑结果
+
+| 命令 | 退出码 | 结果 |
+| --- | --- | --- |
+| `npm test` | 0 | 338 项：337 pass / 0 fail / 1 todo |
+| `npm run build` | 0 | 1639 模块，`index-DL-ZkuKG.js` 403.22 kB |
+| `npm run mini:check` | 0 | 0 错误 / 0 警告 |
+| `npm run mini:dup-check` | 0 | 0 错误 |
+| `npm run registry:check` | 0 | 2026.11.0 通过（重冻结后） |
+| `npm run test:desktop` | 0 | 12 pass |
+| `npm run check:packaging` | 0 | 229 文件 / 10 条规则 |
+
+**结论**：批次 A 的桌面端与微信主流程验收已收口；项目仍不能宣称“可直接上架”，L3 在线可用与安装包验收未执行。

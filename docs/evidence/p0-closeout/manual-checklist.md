@@ -226,15 +226,17 @@ npm run composer:verify -- --root "<导出工程绝对路径>" --mode developmen
 
 ---
 
-## 六、F5 待执行项（不在 F4 范围内）
+## 六、F5 微信运行时验收（2026-11-01 已完成）
 
-以下三项需要微信开发者工具 GUI / 真机，单独在 F5 执行：
+以下三项需要微信开发者工具 GUI，已在 2026-11-01 由用户点击确认：
 
-| 编号 | 内容 | 状态 |
-| --- | --- | --- |
-| M10 | 微信开发者工具真实导入与编译，四个 tab 可切换 | NOT_RUN |
-| M11 | 支付结果 loading / success / pending / error 四态 | NOT_RUN |
-| M12 | 店主身份不展示支付结果页，原有接单操作正常 | NOT_RUN |
+| 编号 | 内容 | 状态 | 证据 |
+| --- | --- | --- | --- |
+| M10 | 微信开发者工具真实导入与编译，四个 tab 可切换 | PASS | 用户 2026-11-01 在微信工具实测并确认；6 张页面截图覆盖主流程 |
+| M11 | 支付结果 loading / success / pending / error 四态 | PASS | 用户确认全部四态均出现 |
+| M12 | 店主身份不展示支付结果页，原有接单操作正常 | PASS | 用户确认店主侧不展示支付结果页，接单正常 |
+
+**本轮同时确认的运行时修复**：后端未启动导致的 `ERR_CONNECTION_REFUSED` 已通过启动 MySQL + 迁移 + 种子 + NestJS 解决；`product-card` / `order-card` 的 `event.stopPropagation` 运行时错误已修复（BUG-017），用户复测加购、结算、支付、接单全流程通过。
 
 **注意**：不要尝试开启开发者工具 CLI 服务端口，也不要修改 User Data / localstorage 配置；渲染层是否可见只能以 IDE 实际画面为准。
 

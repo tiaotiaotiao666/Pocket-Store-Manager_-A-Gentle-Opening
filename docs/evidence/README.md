@@ -37,8 +37,9 @@
 | 证据 | 内容 | 等级 | 状态 |
 | --- | --- | --- | --- |
 | `p0-closeout/baseline.md` | F0 七条基线门禁复跑 | L1 | 已完成（七条退出码均为 0） |
-| `p0-closeout/final-gates.md` | F3 F1/F2 改动后全量门禁复跑 | L1 | 已完成（七条退出码均为 0，331 项测试） |
-| `p0-closeout/manual-checklist.md` | F4 人工验收操作单与记录表 | W/GUI | 待人工执行（状态均为 NOT_RUN） |
+| `p0-closeout/final-gates.md` | F3 及后续六次补充复跑、微信运行时验收 | L1 + W/GUI | 已完成（最终 338 项测试；M10–M12 PASS） |
+| `p0-closeout/manual-checklist.md` | F4/F5 人工验收操作单与记录表 | W/GUI | F5 已完成；F4 桌面项部分 NOT_RUN |
+| `../2026-10-31-P0验收报告.md` | 批次 A + 微信运行时验收报告 | 汇总 | 已完成 |
 
 ## 收尾
 

@@ -55,6 +55,8 @@
 | `windows-deployment.md` | Windows 开发、打包和验收 |
 | `wechat-export-and-publish.md` | 微信开发者工具导入和发布边界 |
 | `image-model-adapter.md` | 图像/视觉模型适配和华为云验证边界 |
+| `2026-11-01-开源餐饮小程序参考调研.md` | GitHub 原生餐饮小程序调研、拉取记录、可借鉴/不可借鉴清单与后续路线 |
+| `2026-11-01-人工复验清单.md` | 6 组待人工点击复验项的操作步骤、判定口径与回填表（BUG-018/014、A-UI-1/2/3、M8、M9） |
 
 ## 3. 交接区域
 
@@ -67,7 +69,7 @@ handoff/
 └─ archive/              已完成或 superseded 的历史摘要
 ```
 
-当前活动任务：**M5–M7 收尾**。M5 代码与 L1 门禁已完成；M6 B3 测试修复后未重跑；M7 资产已落盘但注册表未冻结。第一优先级是执行 `node scripts/registry-check.cjs --write` 并补跑测试，详见 `docs/M5-M7-本地Composer与模板资产扩展-构建说明.md` 与 `handoff/当前工作区交接.md` 第 11 节。
+当前活动任务：**P0 验收收尾 + 6 组人工复验**。M5–M7 代码与 L1 门禁已完成；2026-11-01 复跑根目录 339 项（338 pass / 1 todo）与服务端 164 项均通过，注册表已冻结（`base 1 / ui-block 3 / feature-pack 1 / recipe 3`，`direct 0`）。下一步按 `docs/2026-11-01-人工复验清单.md` 完成 6 组点击复验，并回填 `docs/evidence/p0-closeout/manual-checklist.md`。
 
 直接位于 `handoff/` 的文件必须是仍可执行的活动交接。阶段完成或出现替代交接后，将有效信息压缩到 `archive/YYYY-MM-DD-主题.md`，并更新索引；不要让新会话从多份“上一轮/本轮”中猜测当前状态。
 

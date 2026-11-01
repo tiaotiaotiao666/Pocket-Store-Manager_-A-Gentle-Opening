@@ -42,6 +42,8 @@
 | BUG-014 | 项目流程内点击“轻启”会被拉回功能选择页 | P1 高 | 已修复 | 侧边栏轻启、现有项目流程 | [详情](fixed/BUG-014-light-start-resets-active-project.md) |
 | BUG-015 | 体检链路缺少失败兜底，IPC 无回执时永久“正在体检…” | P1 高 | 已修复 | 部署页导出前体检 | [详情](fixed/BUG-015-preflight-hangs-without-timeout.md) |
 | BUG-016 | `ImportDiffCard` 未导入，点击导出后整页白屏 | P0 阻断 | 已修复 | 导出后的导入预览 | [详情](fixed/BUG-016-import-diff-card-missing-import-blank-screen.md) |
+| BUG-017 | 小程序组件调用 `event.stopPropagation`，微信运行时报错阻断加购 | P1 高 | 已修复 | 商品加购、订单操作 | [详情](fixed/BUG-017-wechat-event-stop-propagation.md) |
+| BUG-018 | 空项目也会弹出「开始一个新项目？」确认框 | P2 中 | 已修复 · 待人工点击复验 | 侧边栏轻启、新建/复用项目流程 | [详情](fixed/BUG-018-blank-project-triggers-new-project-confirm.md) |
 
 ## 4. 环境类已解决（不计 bug 编号）
 
@@ -53,8 +55,8 @@
 ## 5. 统计
 
 - 待修复：1 条（P1 ×1，BUG-007）。
-- 已修复：15 条（其中 BUG-001 尚待微信开发者工具内的实际渲染复验；BUG-006 待 L4 安装包实测；BUG-010、BUG-011 的微信内人工复验未执行；BUG-013 待用户在设置页点击复验；BUG-014 待用户在部署阶段点击轻启复验；BUG-015、BUG-016 已由用户实机确认，体检与导出流程恢复）。
-- 最近更新：2026-10-31。
+- 已修复：17 条（其中 BUG-001 尚待微信开发者工具内的实际渲染复验；BUG-006 待 L4 安装包实测；BUG-010、BUG-011 的微信内人工复验未执行；BUG-013 待用户在设置页点击复验；BUG-014 待用户在部署阶段点击轻启复验；BUG-018 待用户人工点击轻启复验；BUG-015、BUG-016、BUG-017 已由用户实机确认，体检、导出与微信点餐/支付/接单流程恢复）。
+- 最近更新：2026-11-01。
 
 ## 6. 与其他文档的边界
 

@@ -70,6 +70,16 @@ class EnvironmentVariables {
   @Max(120000)
   DEEPSEEK_TIMEOUT_MS = 30000;
 
+  @IsOptional()
+  @IsIn(['low', 'medium', 'high', 'max'])
+  DEEPSEEK_REASONING_EFFORT?: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(100)
+  @Max(4000)
+  DEEPSEEK_MAX_TOKENS = 1200;
+
   /** 未认证联调开关：只允许 development/test 使用，production 必须为 true。 */
   @IsIn(['true', 'false'])
   AGENT_REQUIRE_AUTH = 'false';

@@ -15,7 +15,7 @@
       "version": "1.0.0",
       "kind": "base",
       "path": "templates/base/ordering-base/1.0.0",
-      "integrity": "sha256:67edc8be863b3675d393dc01eab1949ff1f6bcb3fe07991a1c051de87b98137d"
+      "integrity": "sha256:02dcc6b0ed8ba40cc1432ab76067ead0b6a5ef83ebc302e51b66b175b8af7bdf"
     },
     {
       "id": "store-header",
@@ -29,7 +29,7 @@
       "version": "1.0.0",
       "kind": "ui-block",
       "path": "templates/components/product-card/1.0.0",
-      "integrity": "sha256:c24c58d3372123aca28b74dd839effff2dc86ef08e9f00842bfdc1d21e5d6b1c"
+      "integrity": "sha256:2d94b502bb2537eafc9fbfcb494e1405d9a09120b1384a187a27539329f09226"
     },
     {
       "id": "cart-bar",

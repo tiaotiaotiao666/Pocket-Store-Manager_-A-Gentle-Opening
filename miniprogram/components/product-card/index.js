@@ -41,8 +41,7 @@ Component({
       this.triggerEvent('openDetail', { productId: this.data.product.id || '' });
     },
 
-    onAdd(event) {
-      event.stopPropagation();
+    onAdd() {
       const productId = this.data.product.id || '';
       if (!productId || this.data.disabled) {
         return;
@@ -50,8 +49,7 @@ Component({
       this.triggerEvent('add', { productId });
     },
 
-    onRemove(event) {
-      event.stopPropagation();
+    onRemove() {
       const productId = this.data.product.id || '';
       if (!productId || this.data.quantity <= 0) {
         return;

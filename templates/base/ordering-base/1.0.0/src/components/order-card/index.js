@@ -27,8 +27,7 @@ Component({
       this.triggerEvent('open', { orderId });
     },
 
-    onPay(event) {
-      event.stopPropagation();
+    onPay() {
       const orderId = this.orderId();
       if (!orderId) {
         return;
@@ -36,8 +35,7 @@ Component({
       this.triggerEvent('pay', { orderId });
     },
 
-    onCancel(event) {
-      event.stopPropagation();
+    onCancel() {
       const orderId = this.orderId();
       if (!orderId) {
         return;
@@ -46,7 +44,6 @@ Component({
     },
 
     onAdvance(event) {
-      event.stopPropagation();
       const orderId = this.orderId();
       const toStatus = event.currentTarget.dataset.status;
       if (!orderId || !toStatus) {

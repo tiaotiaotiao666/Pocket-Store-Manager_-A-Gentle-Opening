@@ -74,14 +74,14 @@ test('product-card 组件：金额格式化、加购与详情事件', () => {
   assert.equal(instance.data.display.amount, '28.00');
   assert.equal(instance.data.display.initial, '柑');
 
-  instance.onAdd({ stopPropagation() {} });
+  instance.onAdd({});
   assert.deepEqual(events[0], { name: 'add', detail: { productId: 'prd_beef_rice' } });
 
   instance.onOpen();
   assert.deepEqual(events[1], { name: 'openDetail', detail: { productId: 'prd_beef_rice' } });
 
   instance.data.disabled = true;
-  instance.onAdd({ stopPropagation() {} });
+  instance.onAdd({});
   assert.equal(events.length, 2, '停售商品不应派发 add');
 });
 
@@ -90,7 +90,7 @@ test('product-card 组件：缺省数据不抛异常', () => {
   assert.doesNotThrow(runObservers);
   assert.equal(instance.data.display.amount, '0.00');
   assert.equal(instance.data.display.initial, '菜');
-  assert.doesNotThrow(() => instance.onAdd({ stopPropagation() {} }));
+  assert.doesNotThrow(() => instance.onAdd({}));
   assert.equal(events.length, 0);
 });
 
@@ -178,13 +178,13 @@ test('category-nav 组件：分类选择事件', () => {
 test('order-card 组件：顾客操作与店主推进事件', () => {
   const { instance, events } = loadComponent('order-card');
   instance.data.order = { id: 'ord_001', canPay: true, canCancel: true, actions: [] };
-  instance.onPay({ stopPropagation() {} });
+  instance.onPay({});
   assert.deepEqual(events[0], { name: 'pay', detail: { orderId: 'ord_001' } });
 
-  instance.onCancel({ stopPropagation() {} });
+  instance.onCancel({});
   assert.deepEqual(events[1], { name: 'cancel', detail: { orderId: 'ord_001', reason: '' } });
 
-  instance.onAdvance({ stopPropagation() {}, currentTarget: { dataset: { status: 'PREPARING' } } });
+  instance.onAdvance({ currentTarget: { dataset: { status: 'PREPARING' } } });
   assert.deepEqual(events[2], { name: 'advance', detail: { orderId: 'ord_001', toStatus: 'PREPARING' } });
 
   instance.onOpen();

@@ -38,6 +38,7 @@ test('START_ONBOARDING enters onboarding and appends an agent prompt', async () 
   const { PHASES, ROLES } = await loadConstants();
   const state = reducer(createInitialState(), { type: 'START_ONBOARDING' });
   assert.equal(state.phase, PHASES.ONBOARDING);
+  assert.equal(state.view, 'flow');
   assert.equal(state.sessions[0].messages.length, 1);
   assert.equal(state.sessions[0].messages[0].role, ROLES.AGENT);
   assert.ok(state.sessions[0].messages[0].text.includes('命名'));
@@ -366,16 +367,46 @@ test('DEPLOY 状态机：选择目录、真实阶段、成功/失败/冲突/取�
   assert.equal(reset.deploy.directory, 'C:\\exports');
 });
 
-test('轻启：无活动项目直接开始，有活动项目必须先确认新建', async () => {
+test('轻启：无活动项目直接开始，空项目复用，有内容必须先确认新建', async () => {
   const machine = await loadMachine();
   const base = machine.createInitialState();
   assert.strictEqual(machine.selectOnboardingStart(base), 'start');
 
-  const withProject = { ...base, project: { ...base.project, activeId: 'p_test12345678' } };
-  assert.strictEqual(machine.selectOnboardingStart(withProject), 'confirm-create');
+  const blankOpened = { ...base, project: { ...base.project, activeId: 'p_test12345678' } };
+  assert.strictEqual(machine.selectOnboardingStart(blankOpened), 'start');
 
-  const deployed = { ...withProject, phase: 'deploy' };
-  assert.strictEqual(machine.selectOnboardingStart(deployed), 'confirm-create');
+  const startedOnboarding = { ...blankOpened, phase: 'onboarding' };
+  assert.strictEqual(machine.selectOnboardingStart(startedOnboarding), 'start');
+
+  const named = { ...blankOpened, store: { ...blankOpened.store, name: '松月食堂' } };
+  assert.strictEqual(machine.selectOnboardingStart(named), 'confirm-create');
+
+  const exported = {
+    ...blankOpened,
+    deploy: { ...blankOpened.deploy, status: 'done', directory: 'C:\\exports\\松月食堂-v1' },
+  };
+  assert.strictEqual(machine.selectOnboardingStart(exported), 'confirm-create');
+
+  const visual = { ...blankOpened, visual: { ...blankOpened.visual, image: { dataUrl: 'data:image/png;base64,x' } } };
+  assert.strictEqual(machine.selectOnboardingStart(visual), 'confirm-create');
+
+  const draft = { ...blankOpened, agentDraft: { ...blankOpened.agentDraft, storeName: '松月食堂' } };
+  assert.strictEqual(machine.selectOnboardingStart(draft), 'confirm-create');
+});
+
+test('轻启：空项目直接开始会切到会话流并复用当前项目', async () => {
+  const machine = await loadMachine();
+  const base = machine.createInitialState();
+  const blankOpened = {
+    ...base,
+    view: 'workbench',
+    project: { ...base.project, activeId: 'p_test12345678' },
+  };
+  const started = machine.reducer(blankOpened, { type: 'START_ONBOARDING' });
+  assert.equal(started.view, 'flow');
+  assert.equal(started.phase, 'onboarding');
+  assert.equal(started.project.activeId, 'p_test12345678');
+  assert.equal(started.sessions[0].messages.length, 1);
 });
 
 test('ADD_PROJECT_IMAGES 合并去重、限制 6 张，空输入不改变状态', async () => {

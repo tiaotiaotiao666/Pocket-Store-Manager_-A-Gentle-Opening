@@ -687,9 +687,9 @@ function baseReducer(state, action) {
       return createInitialState();
 
     case 'START_ONBOARDING': {
-      if (state.phase !== PHASES.HOME) return { ...state, phase: PHASES.ONBOARDING };
+      if (state.phase !== PHASES.HOME) return { ...state, phase: PHASES.ONBOARDING, view: 'flow' };
       const next = appendMessages(state, state.activeSessionId, [{ text: NAMING_GUIDANCE.title, meta: { kind: 'naming' } }]);
-      return { ...next, phase: PHASES.ONBOARDING };
+      return { ...next, phase: PHASES.ONBOARDING, view: 'flow' };
     }
 
     case 'SUBMIT_NAME': {
@@ -1524,14 +1524,56 @@ export function selectCanChooseDirectory(state) {
 }
 
 /**
+ * 项目是否已经有实质内容。
+ * 只看业务数据，不用 activeId 或消息条数代理：刚创建、刚打开的空项目不算有内容。
+ */
+export function hasProjectContent(state) {
+  if (!state) return false;
+  const store = state.store || {};
+  if (typeof store.name === 'string' && store.name.trim()) return true;
+  if (typeof store.notes === 'string' && store.notes.trim()) return true;
+  if (typeof store.address === 'string' && store.address.trim()) return true;
+  if (typeof store.phone === 'string' && store.phone.trim()) return true;
+  if (store.logoAssetId) return true;
+  if (Array.isArray(store.imageAssetIds) && store.imageAssetIds.length > 0) return true;
+
+  const build = state.build || {};
+  if (build.selectedId) return true;
+
+  const visual = state.visual || {};
+  if (typeof visual.prompt === 'string' && visual.prompt.trim()) return true;
+  if (visual.image) return true;
+  if (visual.imageAssetId) return true;
+  if (Array.isArray(visual.promptRounds) && visual.promptRounds.length > 0) return true;
+  if (Array.isArray(visual.imageRounds) && visual.imageRounds.length > 0) return true;
+
+  const draft = state.agentDraft || {};
+  if (typeof draft.storeName === 'string' && draft.storeName.trim()) return true;
+  if (typeof draft.category === 'string' && draft.category.trim()) return true;
+  if (typeof draft.businessHours === 'string' && draft.businessHours.trim()) return true;
+  if (Array.isArray(draft.dishes) && draft.dishes.length > 0) return true;
+  const fulfillment = draft.fulfillment || {};
+  if (fulfillment.dineIn || fulfillment.takeaway) return true;
+
+  const deploy = state.deploy || {};
+  if (deploy.result) return true;
+  if (deploy.directory) return true;
+  if (deploy.status && deploy.status !== DEPLOY_STATUS.IDLE) return true;
+
+  return false;
+}
+
+/**
  * “轻启”入口的下一步：
  * - 没有活动项目：直接进入命名引导。
- * - 已有活动项目：必须先确认并新建项目，不能直接把当前 phase 改回引导，
+ * - 有活动项目但没有实质内容：直接进入命名引导并复用该空项目，不弹确认、不新建。
+ * - 已有内容：必须先确认并新建项目，不能直接把当前 phase 改回引导，
  *   否则会把正在部署/装修的项目拉回功能选择页。
  */
 export function selectOnboardingStart(state) {
   const project = state && state.project ? state.project : {};
-  return project.activeId ? 'confirm-create' : 'start';
+  if (!project.activeId) return 'start';
+  return hasProjectContent(state) ? 'confirm-create' : 'start';
 }
 
 export function selectDiagnosticsSummary(state) {

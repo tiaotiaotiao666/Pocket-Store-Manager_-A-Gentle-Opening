@@ -55,6 +55,7 @@
 | `windows-deployment.md` | Windows 开发、打包和验收 |
 | `wechat-export-and-publish.md` | 微信开发者工具导入和发布边界 |
 | `image-model-adapter.md` | 图像/视觉模型适配和华为云验证边界 |
+| `生图模型接入说明.md` | imagelfk 配置、项目端点、Agent 调用示例、错误与成本边界 |
 
 ## 3. 交接区域
 

@@ -172,8 +172,10 @@ export class DeepseekAgentProvider implements AgentProvider {
         body: JSON.stringify({
           model: settings.model,
           messages: [
-            { role: 'system', content: DEEPSEEK_SYSTEM_PROMPT },
-            { role: 'user', content: buildUserPrompt(input.utterance, input.draft) },
+            {
+              role: 'user',
+              content: `${DEEPSEEK_SYSTEM_PROMPT}\n\n${buildUserPrompt(input.utterance, input.draft)}`,
+            },
           ],
           temperature: 0.2,
           max_tokens: 1200,

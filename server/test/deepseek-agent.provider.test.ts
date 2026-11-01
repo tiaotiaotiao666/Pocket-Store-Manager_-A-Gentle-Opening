@@ -67,7 +67,7 @@ async function expectHttpFailure(
 }
 
 describe('DeepseekAgentProvider 请求构造', () => {
-  it('按 OpenAI 兼容协议调用 /chat/completions，携带 Bearer 与 system prompt', async () => {
+  it('按 OpenAI 兼容协议调用 /chat/completions，携带 Bearer 与并入用户消息的结构约束', async () => {
     let captured: { url: string; init: RequestInit } | null = null;
     const fetchImpl = async (url: string, init?: RequestInit): Promise<Response> => {
       captured = { url, init: init ?? {} };
@@ -96,10 +96,12 @@ describe('DeepseekAgentProvider 请求构造', () => {
     };
     expect(body.model).toBe('deepseek-chat');
     expect(body.response_format).toEqual({ type: 'json_object' });
-    expect(body.messages[0]).toEqual({ role: 'system', content: DEEPSEEK_SYSTEM_PROMPT });
+    expect(body.messages).toHaveLength(1);
+    expect(body.messages[0].role).toBe('user');
+    expect(body.messages[0].content).toContain(DEEPSEEK_SYSTEM_PROMPT);
     expect(body.messages[0].content).toContain('不得臆造价格、营业时间、菜品或取餐方式');
     expect(body.messages[0].content).toContain('只输出 JSON');
-    expect(body.messages[1].content).toContain('店名叫松月食堂');
+    expect(body.messages[0].content).toContain('店名叫松月食堂');
   });
 
   it('允许通过环境变量覆盖 baseUrl 与 model', async () => {

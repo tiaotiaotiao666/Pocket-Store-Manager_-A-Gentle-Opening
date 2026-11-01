@@ -40,6 +40,19 @@
 | `p0-closeout/final-gates.md` | F3 F1/F2 改动后全量门禁复跑 | L1 | 已完成（七条退出码均为 0，331 项测试） |
 | `p0-closeout/manual-checklist.md` | F4 人工验收操作单与记录表 | W/GUI | 待人工执行（状态均为 NOT_RUN） |
 
+## 生图 Provider
+
+| 证据 | 内容 | 等级 | 状态 |
+| --- | --- | --- | --- |
+| `image-provider/probe.md` | imagelfk 经项目 GenerationModule 的文生图与小参考图编辑真实调用 | 本机 HTTP + 真实上游 | 两条链路通过；数据库阻塞已由 Kali 部署解除，完整 UI 未验收 |
+
+## 本地联调部署
+
+| 证据 | 内容 | 等级 | 状态 |
+| --- | --- | --- | --- |
+| `kali-local-deployment.md` | Windows 前端连接 Kali 后端、MariaDB/Redis、迁移种子和运行时检查 | 本机 + 局域网 VM | 后端运行正常；服务端 164 项全通过；首页无运行错误 |
+| `kali-deepseek-agent.md` | Kali 后端调用局域网模型，真实回复、店铺字段提取、显示名与回归 | 真实模型 + 本机/VM | `mock=false`；资料提取完整；前后端全量回归通过 |
+
 ## 收尾
 
 - `s7-checklist.md`：全量命令矩阵与真实结果

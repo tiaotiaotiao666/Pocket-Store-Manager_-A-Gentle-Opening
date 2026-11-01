@@ -73,13 +73,19 @@ export function resolveAgentTransportConfig(overrides = {}) {
   const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout >= 1000
     ? Math.floor(rawTimeout)
     : fallbackTimeout;
+  const modelLabel = String(firstDefined(
+    overrides.modelLabel,
+    viteEnv.VITE_AGENT_MODEL_LABEL,
+    readProcessEnv('VITE_AGENT_MODEL_LABEL'),
+    HTTP_LABEL,
+  )).trim() || HTTP_LABEL;
 
   return {
     mode,
     endpoint,
     timeoutMs,
     contractVersion: DEFAULT_CONTRACT_VERSION,
-    label: mode === 'http' ? HTTP_LABEL : MOCK_LABEL,
+    label: mode === 'http' ? modelLabel : MOCK_LABEL,
   };
 }
 

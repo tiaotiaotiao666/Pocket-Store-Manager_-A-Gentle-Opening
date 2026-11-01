@@ -39,6 +39,9 @@ test('C2 resolveAgentTransportConfig 支持 http 覆盖与 endpoint/timeout 覆�
   assert.equal(custom.endpoint, 'http://127.0.0.1:3000/api/v1/agent/turn');
   assert.equal(custom.timeoutMs, 45000);
 
+  const labelled = config.resolveAgentTransportConfig({ transport: 'http', modelLabel: 'Deepseek-V4.1-Flash' });
+  assert.equal(labelled.label, 'Deepseek-V4.1-Flash');
+
   // 非法模式回落 mock；非法超时回落该模式默认值。
   assert.equal(config.resolveAgentTransportConfig({ transport: 'grpc' }).mode, 'mock');
   assert.equal(config.resolveAgentTransportConfig({ transport: 'http', timeoutMs: 10 }).timeoutMs, 30000);

@@ -7,6 +7,8 @@ import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 import { AgentAuthGuard } from '../src/agent/agent-auth.guard';
 import { AgentController } from '../src/agent/agent.controller';
+import { hashSessionToken, SessionAuthGuard } from '../src/common/auth/session-auth.guard';
+import { PrismaService } from '../src/database/prisma.service';
 import { AgentService } from '../src/agent/agent.service';
 import { AGENT_FETCH, AGENT_PROVIDER, AGENT_TURN_CONTRACT_VERSION } from '../src/agent/agent.types';
 import { DeepseekAgentProvider } from '../src/agent/provider/deepseek-agent.provider';
@@ -62,13 +64,30 @@ const apps: INestApplication[] = [];
 async function createApp(options: {
   config: Record<string, unknown>;
   provider?: unknown;
+  session?: { token: string; expiresAt?: Date };
 }): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
     controllers: [AgentController],
     providers: [
       AgentService,
+      SessionAuthGuard,
       AgentAuthGuard,
       { provide: ConfigService, useValue: new ConfigService(options.config) },
+      {
+        provide: PrismaService,
+        useValue: {
+          session: {
+            findUnique: async ({ where }: { where: { tokenHash: string } }) => {
+              if (!options.session || where.tokenHash !== hashSessionToken(options.session.token)) return null;
+              return {
+                id: 'session-1',
+                expiresAt: options.session.expiresAt ?? new Date(Date.now() + 60_000),
+                user: { id: 'user-1', displayName: '店主' },
+              };
+            },
+          },
+        },
+      },
       { provide: AGENT_PROVIDER, useValue: options.provider ?? stubProvider },
       { provide: AGENT_FETCH, useValue: unexpectedFetch },
     ],
@@ -131,13 +150,39 @@ describe('POST /api/v1/agent/turn', () => {
     expect(response.body.code).toBe('AUTH_REQUIRED');
   });
 
-  it('production 带 Bearer 时放行（本轮仅校验 Bearer 形式，不做真实身份解析）', async () => {
+  it('production 伪造 Bearer 返回 401 AUTH_INVALID', async () => {
     const app = await createApp({
       config: { NODE_ENV: 'production', AGENT_REQUIRE_AUTH: 'true' },
     });
     const response = await request(app.getHttpServer())
       .post('/api/v1/agent/turn')
       .set('Authorization', 'Bearer local-placeholder-token')
+      .send(makeRequest());
+    expect(response.status).toBe(401);
+    expect(response.body.code).toBe('AUTH_INVALID');
+  });
+
+  it('production 过期会话返回 401 AUTH_INVALID', async () => {
+    const app = await createApp({
+      config: { NODE_ENV: 'production', AGENT_REQUIRE_AUTH: 'true' },
+      session: { token: 'expired-session-token', expiresAt: new Date(Date.now() - 1000) },
+    });
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/agent/turn')
+      .set('Authorization', 'Bearer expired-session-token')
+      .send(makeRequest());
+    expect(response.status).toBe(401);
+    expect(response.body.code).toBe('AUTH_INVALID');
+  });
+
+  it('production 有效会话返回 200', async () => {
+    const app = await createApp({
+      config: { NODE_ENV: 'production', AGENT_REQUIRE_AUTH: 'true' },
+      session: { token: 'valid-session-token' },
+    });
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/agent/turn')
+      .set('Authorization', 'Bearer valid-session-token')
       .send(makeRequest());
     expect(response.status).toBe(200);
   });

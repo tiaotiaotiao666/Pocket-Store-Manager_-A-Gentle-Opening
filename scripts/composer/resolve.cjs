@@ -58,6 +58,10 @@ function resolvePlan(planInput, loaded, options) {
   const opts = options || {};
   const planValidation = validatePlan(planInput);
   if (!planValidation.ok) return planValidation;
+  const role = opts.role === 'combined' ? undefined : opts.role;
+  if (role !== undefined && role !== 'customer' && role !== 'merchant') {
+    return fail('ROLE_INVALID', 'role', 'role 仅支持 customer、merchant 或 combined', { role: opts.role });
+  }
   const plan = planInput;
 
   if (!loaded || !loaded.ok) {
@@ -214,7 +218,7 @@ function resolvePlan(planInput, loaded, options) {
   const basePages = new Map(base.manifest.pages.map((page) => [page.pageId, page]));
   const planPageIds = plan.pages.map((page) => page.pageId);
   for (const page of base.manifest.pages) {
-    if (page.required && !planPageIds.includes(page.pageId)) {
+    if (page.required && (role === undefined || page.audience === role) && !planPageIds.includes(page.pageId)) {
       return fail('BASE_REQUIRED_PAGE_MISSING', 'pages', '缺少 Base 必选页面：' + page.pageId, { pageId: page.pageId });
     }
   }

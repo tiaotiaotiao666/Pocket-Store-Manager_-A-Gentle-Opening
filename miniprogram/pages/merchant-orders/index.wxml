@@ -80,8 +80,8 @@
       <state-view
         wx:elif="{{orders.length === 0}}"
         state="empty"
-        title="{{segment === 'pending' ? '暂时没有待处理订单' : '暂时没有制作中的订单'}}"
-        description="新订单会自动出现在这里，也可以下拉刷新"
+        title="{{emptyText}}"
+        description="{{segment === 'history' ? '历史订单按最新下单时间排列' : '新订单会自动出现在这里，也可以下拉刷新'}}"
       />
 
       <view wx:else class="merchant__orders">
@@ -90,9 +90,18 @@
             order="{{item}}"
             role="MERCHANT"
             actionable="{{true}}"
+            acting-id="{{orderActingIds[item.id] ? item.id : ''}}"
+            acting-status="{{orderActingIds[item.id] || ''}}"
             bind:open="onOpenOrder"
             bind:advance="onAdvance"
           />
+        </view>
+      </view>
+
+      <view wx:if="{{orders.length > 0}}" class="merchant__pagination">
+        <text class="merchant__total">已加载 {{orders.length}} / {{total}} 单</text>
+        <view wx:if="{{hasMore}}" class="merchant__more {{ordersLoading ? 'merchant__more--disabled' : ''}}" bind:tap="onLoadMore">
+          {{ordersLoading ? '正在加载…' : '加载更多'}}
         </view>
       </view>
     </block>
@@ -104,17 +113,79 @@
         <text class="merchant__product-stat merchant__product-stat--off">下架 {{productCount - availableCount}}</text>
       </view>
 
+      <view wx:if="{{isOwner}}" class="merchant__owner-actions">
+        <button class="merchant__owner-button" size="mini" disabled="{{productWriting}}" bind:tap="onOpenCategoryForm">新建分类</button>
+        <button class="merchant__owner-button" size="mini" disabled="{{productWriting}}" bind:tap="onOpenProductForm">新建商品</button>
+      </view>
+
+      <view wx:if="{{isOwner && showCategoryForm}}" class="surface-card merchant__editor">
+        <view class="merchant__editor-title">新建分类</view>
+        <view class="merchant__field">
+          <text class="merchant__field-label">分类名称</text>
+          <input class="merchant__input" value="{{categoryName}}" placeholder="例如：招牌主食" bindinput="onCategoryNameInput" />
+        </view>
+        <view class="merchant__editor-actions">
+          <button class="merchant__primary-button" size="mini" loading="{{productWriting && productAction === 'create-category'}}" disabled="{{productWriting}}" bind:tap="onCreateCategory">保存分类</button>
+          <button class="merchant__secondary-button" size="mini" disabled="{{productWriting}}" bind:tap="onCloseCategoryForm">取消</button>
+        </view>
+      </view>
+
+      <view wx:if="{{isOwner && showProductForm}}" class="surface-card merchant__editor">
+        <view class="merchant__editor-title">新建商品</view>
+        <view class="merchant__field">
+          <text class="merchant__field-label">商品名称</text>
+          <input class="merchant__input" value="{{productName}}" placeholder="请输入商品名称" data-field="name" bindinput="onProductFieldInput" />
+        </view>
+        <view wx:if="{{categories.length > 0}}" class="merchant__field">
+          <text class="merchant__field-label">商品分类</text>
+          <picker mode="selector" range="{{categories}}" range-key="name" value="{{productCategoryIndex}}" bindchange="onProductCategoryChange">
+            <view class="merchant__picker">{{categories[productCategoryIndex].name}}</view>
+          </picker>
+        </view>
+        <view wx:else class="merchant__quick-category">
+          <text class="merchant__field-label">还没有分类，请先创建分类</text>
+          <input class="merchant__input" value="{{productCategoryName}}" placeholder="输入第一个分类名称" bindinput="onProductCategoryNameInput" />
+          <button class="merchant__secondary-button merchant__quick-button" size="mini" loading="{{productWriting && productAction === 'create-product-category'}}" disabled="{{productWriting}}" bind:tap="onCreateProductCategory">创建并选用分类</button>
+        </view>
+        <view class="merchant__field">
+          <text class="merchant__field-label">价格（元）</text>
+          <input class="merchant__input" type="digit" value="{{productPrice}}" placeholder="例如：28 或 28.50" data-field="price" bindinput="onProductFieldInput" />
+        </view>
+        <view class="merchant__field">
+          <text class="merchant__field-label">商品描述</text>
+          <textarea class="merchant__input merchant__textarea" value="{{productDescription}}" placeholder="选填" data-field="description" bindinput="onProductFieldInput" />
+        </view>
+        <view class="merchant__switch-field">
+          <text>创建后立即上架</text>
+          <switch checked="{{productAvailable}}" color="#E86A17" disabled="{{productWriting}}" bindchange="onProductAvailableChange" />
+        </view>
+        <view class="merchant__editor-actions">
+          <button class="merchant__primary-button" size="mini" loading="{{productWriting && productAction === 'create-product'}}" disabled="{{productWriting || categories.length === 0}}" bind:tap="onCreateProduct">保存商品</button>
+          <button class="merchant__secondary-button" size="mini" disabled="{{productWriting}}" bind:tap="onCloseProductForm">取消</button>
+        </view>
+      </view>
+
       <loading-block wx:if="{{productsLoading}}" text="正在加载商品" />
 
       <view wx:elif="{{categories.length === 0}}" class="merchant__empty">
-        <state-view state="empty" title="没有商品数据" description="请确认门店目录已完成初始化" />
+        <state-view state="empty" title="没有商品数据" description="{{isOwner ? '可新建分类，或打开新建商品表单先创建分类' : '请确认门店目录已完成初始化'}}" />
       </view>
 
       <view wx:else class="merchant__products">
         <view wx:for="{{categories}}" wx:key="id" wx:for-item="category" class="merchant__category">
           <view class="merchant__category-head">
             <text class="merchant__category-name">{{category.name}}</text>
-            <text class="merchant__category-count">{{category.products.length}} 项</text>
+            <view class="merchant__category-actions">
+              <text class="merchant__category-count">{{category.products.length}} 项</text>
+              <button wx:if="{{isOwner && categoryEditorId !== category.id}}" class="merchant__text-button" size="mini" data-id="{{category.id}}" disabled="{{productWriting}}" bind:tap="onOpenCategoryEditor">重命名</button>
+            </view>
+          </view>
+          <view wx:if="{{isOwner && categoryEditorId === category.id}}" class="merchant__category-editor">
+            <input class="merchant__input" value="{{categoryEditorName}}" bindinput="onCategoryEditorNameInput" />
+            <view class="merchant__editor-actions">
+              <button class="merchant__primary-button" size="mini" loading="{{productWriting && productAction === 'rename-category'}}" disabled="{{productWriting}}" bind:tap="onRenameCategory">保存名称</button>
+              <button class="merchant__secondary-button" size="mini" disabled="{{productWriting}}" bind:tap="onCloseCategoryEditor">取消</button>
+            </view>
           </view>
           <view class="surface-card merchant__product-list">
             <view
@@ -130,10 +201,19 @@
                 </view>
                 <text class="merchant__product-desc">{{product.description || '暂无描述'}}</text>
                 <text class="merchant__product-price">{{product.amountText}}</text>
+                <button wx:if="{{isOwner && priceEditorId !== product.id}}" class="merchant__text-button merchant__price-button" size="mini" data-id="{{product.id}}" disabled="{{productWriting}}" bind:tap="onOpenPriceEditor">改价</button>
+                <view wx:if="{{isOwner && priceEditorId === product.id}}" class="merchant__price-editor">
+                  <input class="merchant__input" type="digit" value="{{priceValue}}" bindinput="onPriceValueInput" />
+                  <view class="merchant__editor-actions">
+                    <button class="merchant__primary-button" size="mini" loading="{{productWriting && productAction === 'update-price'}}" disabled="{{productWriting}}" bind:tap="onSavePrice">保存价格</button>
+                    <button class="merchant__secondary-button" size="mini" disabled="{{productWriting}}" bind:tap="onClosePriceEditor">取消</button>
+                  </view>
+                </view>
               </view>
               <switch
                 checked="{{product.available}}"
                 color="#E86A17"
+                disabled="{{productWriting}}"
                 data-id="{{product.id}}"
                 data-name="{{product.name}}"
                 bindchange="onToggleProduct"
@@ -145,7 +225,7 @@
     </block>
 
     <view class="merchant__foot">
-      <text>演示环境 · 订单状态推进与商品上下架会真实写入本地后端</text>
+      <text>演示环境 · 订单状态推进与商品运营会真实写入本地后端</text>
     </view>
   </block>
 </view>

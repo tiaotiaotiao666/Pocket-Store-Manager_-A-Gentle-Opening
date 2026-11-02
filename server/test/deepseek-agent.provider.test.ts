@@ -67,7 +67,7 @@ async function expectHttpFailure(
 }
 
 describe('DeepseekAgentProvider 请求构造', () => {
-  it('按 OpenAI 兼容协议调用 /chat/completions，携带 Bearer 与 system prompt', async () => {
+  it('按 OpenAI 兼容协议调用 /chat/completions，携带 Bearer 与并入用户消息的结构约束', async () => {
     let captured: { url: string; init: RequestInit } | null = null;
     const fetchImpl = async (url: string, init?: RequestInit): Promise<Response> => {
       captured = { url, init: init ?? {} };
@@ -93,13 +93,17 @@ describe('DeepseekAgentProvider 请求构造', () => {
       model: string;
       messages: Array<{ role: string; content: string }>;
       response_format: { type: string };
+      stream: boolean;
     };
     expect(body.model).toBe('deepseek-chat');
     expect(body.response_format).toEqual({ type: 'json_object' });
-    expect(body.messages[0]).toEqual({ role: 'system', content: DEEPSEEK_SYSTEM_PROMPT });
+    expect(body.stream).toBe(false);
+    expect(body.messages).toHaveLength(1);
+    expect(body.messages[0].role).toBe('user');
+    expect(body.messages[0].content).toContain(DEEPSEEK_SYSTEM_PROMPT);
     expect(body.messages[0].content).toContain('不得臆造价格、营业时间、菜品或取餐方式');
     expect(body.messages[0].content).toContain('只输出 JSON');
-    expect(body.messages[1].content).toContain('店名叫松月食堂');
+    expect(body.messages[0].content).toContain('店名叫松月食堂');
   });
 
   it('允许通过环境变量覆盖 baseUrl 与 model', async () => {
@@ -119,6 +123,29 @@ describe('DeepseekAgentProvider 请求构造', () => {
 
     expect(capturedUrl).toBe('https://example.internal/deepseek/chat/completions');
     expect(JSON.parse(capturedBody).model).toBe('deepseek-reasoner');
+  });
+
+  it('按配置发送思考档位与输出上限，缺省不附加思考档位', async () => {
+    let capturedBody = '';
+    const fetchImpl = async (url: string, init?: RequestInit): Promise<Response> => {
+      capturedBody = String(init?.body ?? '');
+      return responseStub(modelBody(JSON.stringify({ reply: '好的', draftPatch: {} })));
+    };
+    const provider = new DeepseekAgentProvider(makeConfig({
+      DEEPSEEK_REASONING_EFFORT: 'low',
+      DEEPSEEK_MAX_TOKENS: '1000',
+    }), fetchImpl);
+    await provider.extractTurn({ utterance: '你好', draft: emptyDraft() });
+
+    const body = JSON.parse(capturedBody);
+    expect(body.reasoning_effort).toBe('low');
+    expect(body.max_tokens).toBe(1000);
+
+    const defaultProvider = new DeepseekAgentProvider(makeConfig(), fetchImpl);
+    await defaultProvider.extractTurn({ utterance: '你好', draft: emptyDraft() });
+    const defaultBody = JSON.parse(capturedBody);
+    expect(defaultBody.reasoning_effort).toBeUndefined();
+    expect(defaultBody.max_tokens).toBe(1200);
   });
 });
 

@@ -22,6 +22,7 @@ const DEFAULT_BASE_URL = 'https://api.deepseek.com';
 const DEFAULT_MODEL = 'deepseek-chat';
 const DEFAULT_TIMEOUT_MS = 30000;
 const MAX_TIMEOUT_MS = 120000;
+const DEFAULT_MAX_TOKENS = 1200;
 const MAX_REPLY_LENGTH = 500;
 
 export const DEEPSEEK_SYSTEM_PROMPT = [
@@ -49,6 +50,8 @@ interface DeepseekSettings {
   apiKey: string;
   model: string;
   timeoutMs: number;
+  reasoningEffort: string;
+  maxTokens: number;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -124,11 +127,17 @@ export class DeepseekAgentProvider implements AgentProvider {
     const rawBaseUrl = String(this.config.get('DEEPSEEK_API_BASE_URL') ?? DEFAULT_BASE_URL).trim();
     const baseUrl = (rawBaseUrl || DEFAULT_BASE_URL).replace(/\/+$/, '');
     const rawModel = String(this.config.get('DEEPSEEK_MODEL') ?? DEFAULT_MODEL).trim();
+    const rawMaxTokens = Number(this.config.get('DEEPSEEK_MAX_TOKENS') ?? DEFAULT_MAX_TOKENS);
+    const maxTokens = Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
+      ? Math.min(4000, Math.max(100, Math.floor(rawMaxTokens)))
+      : DEFAULT_MAX_TOKENS;
     return {
       baseUrl,
       apiKey: String(this.config.get('DEEPSEEK_API_KEY') ?? '').trim(),
       model: rawModel || DEFAULT_MODEL,
       timeoutMs: toTimeout(this.config.get('DEEPSEEK_TIMEOUT_MS') ?? DEFAULT_TIMEOUT_MS),
+      reasoningEffort: String(this.config.get('DEEPSEEK_REASONING_EFFORT') ?? '').trim(),
+      maxTokens,
     };
   }
 
@@ -172,11 +181,14 @@ export class DeepseekAgentProvider implements AgentProvider {
         body: JSON.stringify({
           model: settings.model,
           messages: [
-            { role: 'system', content: DEEPSEEK_SYSTEM_PROMPT },
-            { role: 'user', content: buildUserPrompt(input.utterance, input.draft) },
+            {
+              role: 'user',
+              content: `${DEEPSEEK_SYSTEM_PROMPT}\n\n${buildUserPrompt(input.utterance, input.draft)}`,
+            },
           ],
           temperature: 0.2,
-          max_tokens: 1200,
+          ...(settings.reasoningEffort ? { reasoning_effort: settings.reasoningEffort } : {}),
+          max_tokens: settings.maxTokens,
           stream: false,
           response_format: { type: 'json_object' },
         }),

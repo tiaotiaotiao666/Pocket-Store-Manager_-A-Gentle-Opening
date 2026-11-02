@@ -1709,9 +1709,7 @@ case PHASES.DEPLOY: {
           currentStoreName={state.store.name}
           saveLabel={selectSaveLabel(state)}
           mode={state.project.mode}
-          agentLabel={state.settings.config
-            ? (state.settings.config.agentTransport === 'http' ? 'DeepSeek 后端（真实模型）' : '本地 Mock（未接入真实模型）')
-            : describeAgentTransport().label}
+          agentLabel={describeAgentTransport().label}
           onStartOnboarding={startOnboarding}
           onSelectSession={selectSession}
           onOpenWorkbench={handleOpenWorkbench}

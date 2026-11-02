@@ -1,4 +1,5 @@
 const CURRENCY_SYMBOL = '¥';
+const MAX_PRICE_CENTS = 999999;
 
 function toSafeCents(value) {
   const number = Number(value);
@@ -29,10 +30,24 @@ function sumCents(values) {
   return values.reduce((total, value) => total + toSafeCents(value), 0);
 }
 
+function parseYuanToCents(value) {
+  if (typeof value !== 'string' || !/^\d+(?:\.\d{1,2})?$/.test(value)) {
+    return null;
+  }
+  const parts = value.split('.');
+  const cents = Number(parts[0]) * 100 + Number((parts[1] || '').padEnd(2, '0'));
+  if (!Number.isSafeInteger(cents) || cents < 1 || cents > MAX_PRICE_CENTS) {
+    return null;
+  }
+  return cents;
+}
+
 module.exports = {
   CURRENCY_SYMBOL,
+  MAX_PRICE_CENTS,
   toSafeCents,
   formatAmount,
   formatCents,
   sumCents,
+  parseYuanToCents,
 };

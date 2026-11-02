@@ -289,3 +289,42 @@ test('Plan 页面不在 Base 被拒绝', () => {
   const result = resolvePlan(plan, loadedWith([]));
   assert.strictEqual(result.code, 'PAGE_NOT_IN_BASE');
 });
+test('customer 只要求顾客必选页面', () => {
+  const plan = basePlan();
+  plan.pages = plan.pages.filter((page) => page.pageId !== 'merchant-orders');
+  const result = resolvePlan(plan, loadedWith([]), { role: 'customer' });
+  assert.strictEqual(result.ok, true, JSON.stringify(result));
+  assert.deepStrictEqual(result.pageIds, ['home', 'menu', 'checkout', 'orders', 'order-detail', 'mine']);
+
+  const missing = basePlan();
+  missing.pages = missing.pages.filter((page) => page.pageId !== 'merchant-orders' && page.pageId !== 'home');
+  const rejected = resolvePlan(missing, loadedWith([]), { role: 'customer' });
+  assert.strictEqual(rejected.code, 'BASE_REQUIRED_PAGE_MISSING');
+  assert.strictEqual(rejected.details.pageId, 'home');
+});
+
+test('merchant 只要求店主必选页面', () => {
+  const plan = basePlan();
+  plan.pages = plan.pages.filter((page) => page.pageId === 'merchant-orders');
+  const result = resolvePlan(plan, loadedWith([]), { role: 'merchant' });
+  assert.strictEqual(result.ok, true, JSON.stringify(result));
+  assert.deepStrictEqual(result.pageIds, ['merchant-orders']);
+
+  const missing = basePlan();
+  missing.pages = missing.pages.filter((page) => page.pageId === 'home');
+  const rejected = resolvePlan(missing, loadedWith([]), { role: 'merchant' });
+  assert.strictEqual(rejected.code, 'BASE_REQUIRED_PAGE_MISSING');
+  assert.strictEqual(rejected.details.pageId, 'merchant-orders');
+});
+
+test('combined 保持全量必选页校验，非法 role 明确拒绝', () => {
+  const plan = basePlan();
+  plan.pages = plan.pages.filter((page) => page.pageId !== 'merchant-orders');
+  assert.strictEqual(resolvePlan(plan, loadedWith([])).code, 'BASE_REQUIRED_PAGE_MISSING');
+  assert.strictEqual(resolvePlan(plan, loadedWith([]), { role: 'combined' }).code, 'BASE_REQUIRED_PAGE_MISSING');
+
+  const invalid = resolvePlan(basePlan(), loadedWith([]), { role: 'owner' });
+  assert.strictEqual(invalid.code, 'ROLE_INVALID');
+  assert.strictEqual(invalid.path, 'role');
+  assert.ok(invalid.message.includes('customer'));
+});

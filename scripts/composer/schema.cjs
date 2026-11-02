@@ -60,7 +60,7 @@ const STORE_CONFIG_ALLOWED = {
     'mode',
     'versionGaps',
   ],
-  store: ['name', 'category', 'address', 'phone', 'notes', 'businessHours'],
+  store: ['id', 'name', 'category', 'address', 'phone', 'notes', 'businessHours'],
   api: ['baseUrl', 'contract', 'timeoutMs'],
   catalog: ['mode', 'version', 'categories', 'products'],
   fulfillmentOptions: ['dineIn', 'takeaway', 'delivery'],
@@ -819,6 +819,17 @@ function validateStoreConfig(config, options) {
     if (value !== null && !Number.isInteger(value)) {
       return fail('FIELD_TYPE', 'meta.versionGaps.' + field, '版本必须是整数或 null');
     }
+  }
+
+  const storeId = config.store.id;
+  if (config.meta.mode === 'production' && (typeof storeId !== 'string' || !storeId.trim())) {
+    return fail('STORE_ID_REQUIRED', 'store.id', '生产导出必须提供真实 storeId');
+  }
+  if (storeId !== undefined && (typeof storeId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(storeId))) {
+    return fail('STORE_ID_INVALID', 'store.id', 'storeId 只能包含字母、数字、下划线与连字符');
+  }
+  if (config.meta.mode === 'production' && storeId === 'store-demo-001') {
+    return fail('STORE_ID_DEMO_FORBIDDEN', 'store.id', '生产导出不能使用演示 storeId');
   }
 
   if (typeof config.api.baseUrl !== 'string' || !config.api.baseUrl) {

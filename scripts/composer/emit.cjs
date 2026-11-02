@@ -21,6 +21,7 @@ const { walk, relativePosix, fileSha256 } = require('./digest.cjs');
 const { fail, ok, validateStoreConfig, detectForbiddenKeysWithCode } = require('./schema.cjs');
 const { COMPOSER_VERSION, OUTPUT_SCHEMA_VERSION } = require('./version.cjs');
 const { sanitizeProjectName } = require('./atomic.cjs');
+const { MEDIA_IDS, MEDIA_OUTPUTS, validateMedia, buildMediaManifest } = require('./media.cjs');
 
 const DETERMINISTIC_TIMESTAMP = '1970-01-01T00:00:00Z';
 const DEFAULT_DISCLAIMER = '演示付款，不产生真实扣款';
@@ -70,7 +71,7 @@ function buildAppJson(graph, options, theme, storeName) {
     .filter((tab) => graph.pageIds.includes(tab.pageId))
     .map((tab) => ({ pagePath: (basePages.get(tab.pageId).path) + '/index', text: tab.text }));
 
-  return {
+  const appJson = {
     pages,
     window: {
       navigationBarBackgroundColor: theme.pageBackground,
@@ -89,6 +90,8 @@ function buildAppJson(graph, options, theme, storeName) {
     style: 'v2',
     sitemapLocation: 'sitemap.json',
   };
+  if (options && options.role === 'merchant') delete appJson.tabBar;
+  return appJson;
 }
 
 function buildThemeWxss(theme) {
@@ -153,7 +156,7 @@ function buildStoreConfig(graph, options) {
     storeConfigVersion: backendVersions.storeConfigVersion === undefined ? null : backendVersions.storeConfigVersion,
     catalogVersion: backendVersions.catalogVersion === undefined ? null : backendVersions.catalogVersion,
   };
-  return {
+  const config = {
     schemaVersion: OUTPUT_SCHEMA_VERSION,
     meta: {
       configSchemaVersion: OUTPUT_SCHEMA_VERSION,
@@ -200,6 +203,9 @@ function buildStoreConfig(graph, options) {
     },
     demoPaymentDisclaimer: DEFAULT_DISCLAIMER,
   };
+  const storeId = typeof options.storeId === 'string' ? options.storeId.trim() : '';
+  if (storeId) config.store.id = storeId;
+  return config;
 }
 
 function buildProjectConfig(graph, options) {
@@ -214,6 +220,24 @@ function buildProjectConfig(graph, options) {
   return json(config);
 }
 
+function buildMediaReadmeLines(media) {
+  if (!media) return [];
+  const lines = [
+    '## 首页媒体来源',
+    '',
+    '以下来源按导出时 media.json 的声明记录，不代表 Composer 发起了模型调用。',
+    '',
+  ];
+  MEDIA_IDS.forEach((id) => {
+    if (!media[id]) return;
+    const item = media[id];
+    const model = item.source.model ? '；模型 `' + item.source.model + '`' : '';
+    lines.push('- `' + id + '`：声明来源 `' + item.source.kind + '`；提供方 `' + item.source.provider + '`' + model + '；本地文件 `' + MEDIA_OUTPUTS[id].path + '`；摘要 `' + item.sha256 + '`。');
+  });
+  lines.push('');
+  return lines;
+}
+
 function buildReadme(graph, options) {
   const previewLines = graph.previewOnly.length === 0
     ? ['本轮不含仅预览资产，全部能力可在线使用。']
@@ -223,6 +247,12 @@ function buildReadme(graph, options) {
       ...graph.previewOnly.map((id) => '- `' + id + '`：仅可预览，未接入线上能力，请勿对外宣称已上线。'),
     ];
   const gaps = graph.updatesAvailable.map((item) => '- `' + item.id + '` 当前 ' + item.current + '，可用 ' + item.available + '（本工程按 Plan 精确版本生成，不自动升级）');
+  const connectionLines = options.mode === 'production'
+    ? ['3. 生产工程使用 `config/store.generated.js` 中的 HTTPS API 与真实 storeId，并通过微信 code 登录。']
+    : [
+      '3. 本地联调时在 `config/store.generated.js` 的 `api.baseUrl` 指向后端，或在开发模式使用默认 `http://127.0.0.1:3000/api/v1`。',
+      '4. 生产导出必须使用 HTTPS 地址，否则生成会被拒绝。',
+    ];
   return [
     '# ' + String((graph.plan.storeProfile && graph.plan.storeProfile.name) || '我的餐馆') + ' · 小程序工程',
     '',
@@ -237,8 +267,7 @@ function buildReadme(graph, options) {
     '',
     '1. 打开微信开发者工具 → 导入项目 → 选择本目录。',
     '2. AppID 使用测试号（工程内为 `touristappid`）。',
-    '3. 本地联调时在 `config/store.generated.js` 的 `api.baseUrl` 指向后端，或在开发模式使用默认 `http://127.0.0.1:3000/api/v1`。',
-    '4. 生产导出必须使用 HTTPS 地址，否则生成会被拒绝。',
+    ...connectionLines,
     '',
     '## 能力边界',
     '',
@@ -247,6 +276,7 @@ function buildReadme(graph, options) {
     '',
     ...previewLines,
     '',
+    ...buildMediaReadmeLines(options.media),
     '## 版本提示',
     '',
     ...(gaps.length ? gaps : ['未发现可用升级。']),
@@ -298,6 +328,7 @@ function copyDirectoryToFiles(sourceDir, targetPrefix, files) {
 }
 
 function buildEnvModule(graph, options) {
+  const production = options.mode === 'production';
   return [
     '// 由 Composer 生成，勿手改。导出工程不得读取宿主环境变量。',
     "const storeConfig = require('./store.generated.js');",
@@ -307,11 +338,15 @@ function buildEnvModule(graph, options) {
     '  return path.split(\'.\').reduce((value, key) => (value && typeof value === \'object\' ? value[key] : \'\'), storeConfig) || \'\';',
     '}',
     '',
-    "const API_BASE_URL = readConfig('api.baseUrl') || 'http://127.0.0.1:3000/api/v1';",
-    "const DEFAULT_STORE_ID = readConfig('store.id') || 'store-demo-001';",
+    production
+      ? "const API_BASE_URL = readConfig('api.baseUrl');"
+      : "const API_BASE_URL = readConfig('api.baseUrl') || 'http://127.0.0.1:3000/api/v1';",
+    production
+      ? "const DEFAULT_STORE_ID = readConfig('store.id');"
+      : "const DEFAULT_STORE_ID = readConfig('store.id') || 'store-demo-001';",
     "const REQUEST_TIMEOUT_MS = Number(readConfig('api.timeoutMs')) || 10000;",
     "const STORAGE_PREFIX = 'smart_store_v1';",
-    'const USE_WECHAT_CODE_LOGIN = false;',
+    'const USE_WECHAT_CODE_LOGIN = ' + production + ';',
     '',
     'const DEMO_IDENTITIES = {',
     "  customer: { key: 'customer', label: '演示顾客', demoOpenId: 'demo-customer-001', description: '浏览菜单、下单与模拟支付' },",
@@ -346,12 +381,184 @@ function buildEnvModule(graph, options) {
   ].join('\n');
 }
 
+function applyRoleOutput(files, graph, role) {
+  if (role !== 'customer' && role !== 'merchant') return;
+  const selectedPages = new Set(graph.pageIds);
+  [...files.keys()].forEach((file) => {
+    const match = /^pages\/([^/]+)\//.exec(file);
+    if (match && !selectedPages.has(match[1])) files.delete(file);
+  });
+
+  if (role === 'merchant') {
+    const file = 'pages/merchant-orders/index.js';
+    const buffer = files.get(file);
+    if (!buffer) return;
+    const openOrder = [
+      '  onOpenOrder(event) {',
+      '    const orderId = event.detail.orderId;',
+      "    if (!orderId || typeof wx === 'undefined' || !wx.navigateTo) {",
+      '      return;',
+      '    }',
+      "    wx.navigateTo({ url: '/pages/order-detail/index?id=' + encodeURIComponent(orderId) });",
+      '  },',
+    ].join('\n');
+    const modalOrder = [
+      '  onOpenOrder(event) {',
+      '    const orderId = event.detail.orderId;',
+      '    const order = this.data.orders.filter((item) => item.id === orderId)[0];',
+      '    if (!order) {',
+      '      return;',
+      '    }',
+      "    const items = (order.itemViews || []).map((item) => item.name + ' ×' + item.quantity + ' ' + item.lineTotalText).join('\\n');",
+      '    const content = [',
+      '      order.statusText,',
+      '      order.fulfillmentText,',
+      "      items || order.itemSummary || '暂无菜品明细',",
+      "      '合计 ' + order.totalText,",
+      "    ].join('\\n');",
+      '    platform.modal({',
+      "      title: '订单 #' + order.shortId,",
+      '      content,',
+      "      confirmText: '关闭',",
+      '    });',
+      '  },',
+    ].join('\n');
+    const retry = [
+      "    if (this.data.errorAction === '切换身份') {",
+      "      if (typeof wx !== 'undefined' && wx.switchTab) {",
+      "        wx.switchTab({ url: '/pages/mine/index' });",
+      '      }',
+      '      return;',
+      '    }',
+    ].join('\n');
+    const bootstrapRetry = [
+      "    if (this.data.errorAction === '切换身份') {",
+      '      this.bootstrap();',
+      '      return;',
+      '    }',
+    ].join('\n');
+    const source = buffer.toString('utf8').replace(openOrder, modalOrder).replace(retry, bootstrapRetry);
+    files.set(file, Buffer.from(source, 'utf8'));
+    return;
+  }
+
+  const file = 'pages/mine/index.wxml';
+  const buffer = files.get(file);
+  if (!buffer) return;
+  const source = buffer.toString('utf8');
+  const start = source.indexOf('    <view wx:if="{{memberships.length > 0}}" class="page__section">');
+  const end = source.indexOf('    <view wx:if="{{demoMode}}" class="page__section">', start);
+  if (start >= 0 && end > start) {
+    files.set(file, Buffer.from(source.slice(0, start) + source.slice(end), 'utf8'));
+  }
+}
+
+function applyMediaOutput(files, media) {
+  if (!media) return ok();
+  MEDIA_IDS.forEach((id) => {
+    if (media[id]) files.set(MEDIA_OUTPUTS[id].path, media[id].data);
+  });
+  files.set('assets/media/manifest.json', Buffer.from(json(buildMediaManifest(media)), 'utf8'));
+  const homeFile = 'pages/home/index.wxml';
+  if (!files.has(homeFile)) return ok();
+  const home = files.get(homeFile).toString('utf8');
+  const rootStart = home.indexOf('<view class="page home">');
+  if (rootStart < 0) return fail('MEDIA_HOME_ANCHOR_MISSING', homeFile, '首页缺少媒体注入位置');
+  const insertAt = rootStart + '<view class="page home">'.length;
+  const lines = ['  <view class="home-media">'];
+  if (media.homeBackground) {
+    lines.push('    <image class="home-media__background" src="/assets/media/home-background.png" mode="aspectFill" />');
+  }
+  lines.push('    <view class="home-media__content">');
+  if (media.homeMark) {
+    lines.push('      <image class="home-media__mark" src="/assets/media/home-mark.svg" mode="aspectFit" />');
+  }
+  lines.push(
+    '      <view class="home-media__copy">',
+    '        <text class="home-media__title">{{store.name}}</text>',
+    '        <text class="home-media__subtitle">欢迎到店，扫码点餐</text>',
+    '      </view>',
+    '    </view>',
+    '  </view>',
+  );
+  files.set(homeFile, Buffer.from(home.slice(0, insertAt) + '\n' + lines.join('\n') + home.slice(insertAt), 'utf8'));
+  const style = [
+    '',
+    '.home-media {',
+    '  position: relative;',
+    '  min-height: 260rpx;',
+    '  margin-bottom: 28rpx;',
+    '  overflow: hidden;',
+    '  border-radius: 24rpx;',
+    '  background: var(--color-primary-soft);',
+    '}',
+    '',
+    '.home-media__background {',
+    '  position: absolute;',
+    '  top: 0;',
+    '  right: 0;',
+    '  bottom: 0;',
+    '  left: 0;',
+    '  width: 100%;',
+    '  height: 100%;',
+    '}',
+    '',
+    '.home-media__content {',
+    '  position: relative;',
+    '  display: flex;',
+    '  align-items: center;',
+    '  min-height: 260rpx;',
+    '  padding: 32rpx;',
+    '  box-sizing: border-box;',
+    '  background: rgba(255, 253, 249, 0.38);',
+    '}',
+    '',
+    '.home-media__mark {',
+    '  flex: none;',
+    '  width: 144rpx;',
+    '  height: 144rpx;',
+    '  margin-right: 28rpx;',
+    '}',
+    '',
+    '.home-media__copy {',
+    '  display: flex;',
+    '  flex-direction: column;',
+    '  padding: 20rpx 24rpx;',
+    '  border-radius: 18rpx;',
+    '  background: rgba(255, 253, 249, 0.88);',
+    '}',
+    '',
+    '.home-media__title {',
+    '  font-size: 38rpx;',
+    '  font-weight: 700;',
+    '  color: var(--color-text);',
+    '}',
+    '',
+    '.home-media__subtitle {',
+    '  margin-top: 10rpx;',
+    '  font-size: 24rpx;',
+    '  color: var(--color-muted);',
+    '}',
+    '',
+  ].join('\n');
+  const wxssFile = 'pages/home/index.wxss';
+  const currentStyle = files.has(wxssFile) ? files.get(wxssFile).toString('utf8') : '';
+  files.set(wxssFile, Buffer.from(currentStyle + style, 'utf8'));
+  return ok();
+}
+
 function buildProjectFiles(graph, options) {
   const opts = { mode: 'development', ...options };
+  if (opts.media !== undefined) {
+    const mediaValidation = validateMedia(opts.media);
+    if (!mediaValidation.ok) return mediaValidation;
+    opts.media = mediaValidation.media;
+  }
   const theme = fillThemeDefaults(opts.theme || graph.themeTokens);
   opts.theme = theme;
   const storeName = (graph.plan.storeProfile && graph.plan.storeProfile.name) || '我的餐馆';
   const files = readBaseFiles(graph, opts);
+  applyRoleOutput(files, graph, opts.role);
 
   files.set('app.json', Buffer.from(json(buildAppJson(graph, opts, theme, storeName)), 'utf8'));
   files.set('theme.generated.wxss', Buffer.from(buildThemeWxss(theme), 'utf8'));
@@ -360,6 +567,8 @@ function buildProjectFiles(graph, options) {
   files.set('config/env.js', Buffer.from(buildEnvModule(graph, opts), 'utf8'));
   files.set('project.config.json', Buffer.from(buildProjectConfig(graph, opts), 'utf8'));
   files.set('README.md', Buffer.from(buildReadme(graph, opts), 'utf8'));
+  const mediaOutput = applyMediaOutput(files, opts.media);
+  if (!mediaOutput.ok) return mediaOutput;
 
   const copiedTags = new Map();
   graph.assignments.forEach((items, key) => {

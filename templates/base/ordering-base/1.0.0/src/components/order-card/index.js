@@ -12,6 +12,14 @@ Component({
       type: Boolean,
       value: false,
     },
+    actingId: {
+      type: String,
+      value: '',
+    },
+    actingStatus: {
+      type: String,
+      value: '',
+    },
   },
 
   methods: {
@@ -46,7 +54,7 @@ Component({
     onAdvance(event) {
       const orderId = this.orderId();
       const toStatus = event.currentTarget.dataset.status;
-      if (!orderId || !toStatus) {
+      if (!orderId || !toStatus || this.data.actingId) {
         return;
       }
       this.triggerEvent('advance', { orderId, toStatus });

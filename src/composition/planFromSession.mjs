@@ -58,7 +58,12 @@ export function mapDishes(dishes) {
     }));
 }
 
-export function buildPlanFromSession(state) {
+export function buildPlanFromSession(state, options = {}) {
+  const pages = options.role === 'customer'
+    ? PAGES.filter((page) => page.pageId !== 'merchant-orders')
+    : options.role === 'merchant'
+      ? PAGES.filter((page) => page.pageId === 'merchant-orders')
+      : PAGES;
   const warnings = [];
   const unmappedCapabilities = [];
 
@@ -99,7 +104,7 @@ export function buildPlanFromSession(state) {
     planVersion: '1.0.0',
     baseTemplate: { id: 'ordering-base', version: '1.0.0' },
     registryVersion: '2026.11.0',
-    pages: PAGES.map((page) => ({ ...page })),
+    pages: pages.map((page) => ({ ...page })),
     features: [],
     components: [],
     themeTokens: { ...theme.tokens },

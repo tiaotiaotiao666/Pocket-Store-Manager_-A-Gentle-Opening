@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SessionAuthGuard } from '../common/auth/session-auth.guard';
 import { AgentAuthGuard } from './agent-auth.guard';
 import { AgentController } from './agent.controller';
 import { AgentService } from './agent.service';
@@ -14,6 +15,7 @@ const defaultAgentFetch: AgentFetch = (input, init) => fetch(input, init);
   providers: [
     AgentService,
     DeepseekAgentProvider,
+    SessionAuthGuard,
     AgentAuthGuard,
     { provide: AGENT_PROVIDER, useExisting: DeepseekAgentProvider },
     { provide: AGENT_FETCH, useValue: defaultAgentFetch },

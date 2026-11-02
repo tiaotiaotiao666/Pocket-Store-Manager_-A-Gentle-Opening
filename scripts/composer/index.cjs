@@ -18,6 +18,7 @@ const { planDigest } = require('./digest.cjs');
 const { buildLock, finalizeLock } = require('./lock.cjs');
 const { buildProjectFiles } = require('./emit.cjs');
 const { verifyOutput } = require('./verify.cjs');
+const { validateMedia } = require('./media.cjs');
 const { preflight, createStaging, cleanupStale, writeFiles, commitStaging, removeStaging, estimateSize, sanitizeProjectName } = require('./atomic.cjs');
 const { buildReport, writeReport } = require('./report.cjs');
 const { COMPOSER_VERSION } = require('./version.cjs');
@@ -67,6 +68,12 @@ async function compose(options) {
   emitProgress(opts.onProgress, 0);
   const planValidation = validatePlan(opts.plan);
   if (!planValidation.ok) return planValidation;
+  let media;
+  if (opts.media !== undefined) {
+    const mediaValidation = validateMedia(opts.media);
+    if (!mediaValidation.ok) return mediaValidation;
+    media = mediaValidation.media;
+  }
   mark('validate');
 
   await idle();
@@ -77,7 +84,7 @@ async function compose(options) {
 
   await idle();
   emitProgress(opts.onProgress, 2);
-  const graph = resolvePlan(opts.plan, loaded, { onlineRecipe: opts.recipeStage === 'direct' });
+  const graph = resolvePlan(opts.plan, loaded, { onlineRecipe: opts.recipeStage === 'direct', role: opts.role });
   if (!graph.ok) return graph;
   mark('resolve');
 
@@ -104,6 +111,9 @@ async function compose(options) {
     planDigest: planHash,
     lockDigest: lockResult.lockDigest,
     backendVersions: opts.backendVersions,
+    storeId: opts.storeId,
+    role: opts.role,
+    media,
   });
   if (!emitted.ok) return emitted;
 
@@ -227,7 +237,7 @@ function validateComposition(plan, options) {
   if (!planValidation.ok) return planValidation;
   const loaded = opts.loaded || loadRegistry({ verifyFreeze: true });
   if (!loaded.ok) return loaded;
-  const graph = resolvePlan(plan, loaded, { onlineRecipe: opts.recipeStage === 'direct' });
+  const graph = resolvePlan(plan, loaded, { onlineRecipe: opts.recipeStage === 'direct', role: opts.role });
   if (!graph.ok) return graph;
   return {
     ...ok(),

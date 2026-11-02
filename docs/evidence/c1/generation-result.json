@@ -1,0 +1,27 @@
+{
+  "status": "success",
+  "route": "/api/v1/generation/images",
+  "attempts": 1,
+  "usage": null,
+  "svg": {
+    "status": "agent-local-svg",
+    "bytes": 657,
+    "sha256": "sha256:48543ffb49ac764590c493344cad643fdafe8ab5b542ca2d615f2cb246d4ac76"
+  },
+  "health": {
+    "httpStatus": 200,
+    "configured": true,
+    "imageModel": true,
+    "provider": "imagelfk",
+    "message": ""
+  },
+  "httpStatus": 201,
+  "durationMs": 38271,
+  "provider": "imagelfk",
+  "background": {
+    "width": 1254,
+    "height": 1254,
+    "bytes": 2334962,
+    "sha256": "sha256:baab441f135f917180a1260e230f6973b6c1159233f3157ac3a72388337e72c7"
+  }
+}

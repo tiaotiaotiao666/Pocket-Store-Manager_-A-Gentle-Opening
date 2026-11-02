@@ -166,6 +166,17 @@
   font-size: 24rpx;
 }
 
+.order-card__btn--disabled {
+  opacity: 0.55;
+}
+
+.order-card__acting {
+  margin-top: 14rpx;
+  color: var(--color-primary);
+  font-size: 21rpx;
+  text-align: right;
+}
+
 .order-card__warn {
   margin-top: 14rpx;
   padding: 12rpx 16rpx;

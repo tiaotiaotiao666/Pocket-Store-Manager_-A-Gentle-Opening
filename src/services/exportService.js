@@ -93,9 +93,11 @@ export async function validatePlan(plan, options = {}) {
     return { status: 'desktop-required', message: DESKTOP_REQUIRED_MESSAGE };
   }
   const timeoutMs = options.timeoutMs ?? DEFAULT_VALIDATE_TIMEOUT_MS;
+  const payload = { plan };
+  if (options.role !== undefined) payload.role = options.role;
   let outcome;
   try {
-    outcome = await withTimeout(api.composerValidate({ plan }), timeoutMs);
+    outcome = await withTimeout(api.composerValidate(payload), timeoutMs);
   } catch (error) {
     outcome = { rejected: true };
   }
@@ -179,12 +181,14 @@ export async function preflightTarget({ parentDir, projectName } = {}, options =
   };
 }
 
-export async function exportProject({ parentDir, plan, projectName, mode = 'development' }) {
+export async function exportProject({ parentDir, plan, projectName, mode = 'development', storeId, backendVersions, role }) {
   const api = bridge();
   if (!api || typeof api.composerExport !== 'function') {
     return { status: 'desktop-required', message: DESKTOP_REQUIRED_MESSAGE };
   }
-  const result = await api.composerExport({ parentDir, plan, projectName, mode });
+  const payload = { parentDir, plan, projectName, mode, storeId, backendVersions };
+  if (role !== undefined) payload.role = role;
+  const result = await api.composerExport(payload);
   if (!result || result.ok === false) {
     const code = (result && result.code) || 'COMPOSE_FAILED';
     return {

@@ -1,0 +1,18 @@
+{
+  "status": "success",
+  "command": "node scripts/composer/cli.cjs --plan .arts/a2-plan-customer.json --out generated-projects-test --project-name c1-customer-ai-media --role customer --media docs/evidence/c1/media.json --json",
+  "outputPath": "generated-projects-test/c1-customer-ai-media",
+  "treeSha256": "sha256:513c4fb7ddb92224b5dac632bf3f2bd2f846c010dccab910719b6bdf87acf517",
+  "lockDigest": "sha256:2fe1b4de8cc968f836aa2a79895ead081789d74dc3b50cfd15b4f5e34be89c09",
+  "fileCount": 123,
+  "previewOnly": [],
+  "degraded": [],
+  "warnings": [],
+  "checks": {
+    "composeWrite": "pass",
+    "securityScan": "pass",
+    "mediaManifestAndHashes": "pass",
+    "miniProgramStaticCheck": "pass-0-errors-0-warnings",
+    "wechatDevtoolsVisualCheck": "not-run"
+  }
+}

@@ -4,21 +4,31 @@ import {
   Get,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../common/auth/current-user.decorator';
 import { SessionAuthGuard } from '../common/auth/session-auth.guard';
 import { StoreMemberGuard } from '../common/auth/store-member.guard';
+import { StoreOwnerGuard } from '../common/auth/store-owner.guard';
 import type { AuthenticatedUser } from '../common/http/request-context';
 import type { OrderView, PaginatedOrders } from '../orders/order.mapper';
 import {
+  CreateCategoryDto,
+  CreateProductDto,
   MerchantOrdersQueryDto,
+  UpdateCategoryDto,
   UpdateOrderStatusDto,
   UpdateProductAvailabilityDto,
+  UpdateProductPriceDto,
 } from './merchant.dto';
 import { MerchantService } from './merchant.service';
-import type { MerchantCatalogView, MerchantProductView } from './merchant.service';
+import type {
+  MerchantCatalogView,
+  MerchantCategoryView,
+  MerchantProductView,
+} from './merchant.service';
 
 @Controller('merchant')
 export class MerchantController {
@@ -44,6 +54,26 @@ export class MerchantController {
     return this.merchantService.updateOrderStatus(user, orderId, dto);
   }
 
+  @Post('stores/:storeId/products')
+  @UseGuards(SessionAuthGuard, StoreOwnerGuard)
+  createProduct(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId') storeId: string,
+    @Body() dto: CreateProductDto,
+  ): Promise<MerchantProductView> {
+    return this.merchantService.createProduct(user, storeId, dto);
+  }
+
+  @Patch('products/:id/price')
+  @UseGuards(SessionAuthGuard)
+  updatePrice(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') productId: string,
+    @Body() dto: UpdateProductPriceDto,
+  ): Promise<MerchantProductView> {
+    return this.merchantService.updateProductPrice(user, productId, dto);
+  }
+
   @Patch('products/:id/availability')
   @UseGuards(SessionAuthGuard)
   updateAvailability(
@@ -52,6 +82,26 @@ export class MerchantController {
     @Body() dto: UpdateProductAvailabilityDto,
   ): Promise<MerchantProductView> {
     return this.merchantService.updateProductAvailability(user, productId, dto);
+  }
+
+  @Post('stores/:storeId/categories')
+  @UseGuards(SessionAuthGuard, StoreOwnerGuard)
+  createCategory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId') storeId: string,
+    @Body() dto: CreateCategoryDto,
+  ): Promise<MerchantCategoryView> {
+    return this.merchantService.createCategory(user, storeId, dto);
+  }
+
+  @Patch('categories/:id')
+  @UseGuards(SessionAuthGuard)
+  updateCategory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') categoryId: string,
+    @Body() dto: UpdateCategoryDto,
+  ): Promise<MerchantCategoryView> {
+    return this.merchantService.updateCategory(user, categoryId, dto);
   }
 
   @Get('stores/:storeId/products')

@@ -15,6 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { compose } = require('./index.cjs');
+const { loadMedia } = require('./media.cjs');
 
 function parseArgs(argv) {
   const args = { mode: 'development', json: false };
@@ -24,7 +25,7 @@ function parseArgs(argv) {
       args.json = true;
       continue;
     }
-    if (token === '--plan' || token === '--out' || token === '--mode' || token === '--project-name' || token === '--store-profile') {
+    if (token === '--plan' || token === '--out' || token === '--mode' || token === '--project-name' || token === '--store-profile' || token === '--store-id' || token === '--backend-versions' || token === '--role' || token === '--media') {
       const value = argv[index + 1];
       if (!value || value.startsWith('--')) throw new Error('参数 ' + token + ' 缺少值');
       args[token.slice(2).replace(/-([a-z])/g, (_, char) => char.toUpperCase())] = value;
@@ -58,7 +59,7 @@ async function main() {
     return;
   }
   if (args.help) {
-    console.log('用法：node scripts/composer/cli.cjs --plan <plan.json> --out <父目录> [--mode development|production] [--project-name 名称] [--store-profile profile.json] [--json]');
+    console.log('用法：node scripts/composer/cli.cjs --plan <plan.json> --out <父目录> [--mode development|production] [--project-name 名称] [--store-profile profile.json] [--store-id 真实门店ID] [--backend-versions versions.json] [--role customer|merchant|combined] [--media media.json] [--json]');
     return;
   }
   if (!args.plan || !args.out) {
@@ -68,11 +69,21 @@ async function main() {
   }
 
   let plan;
+  let backendVersions;
+  let media;
   try {
     plan = readJson(path.resolve(args.plan), 'Plan');
     if (args.storeProfile) {
       const profile = readJson(path.resolve(args.storeProfile), 'StoreProfile');
       plan = { ...plan, storeProfile: { ...plan.storeProfile, ...profile } };
+    }
+    if (args.backendVersions) {
+      backendVersions = readJson(path.resolve(args.backendVersions), 'BackendVersions');
+    }
+    if (args.media) {
+      const loadedMedia = loadMedia(path.resolve(args.media));
+      if (!loadedMedia.ok) throw new Error(loadedMedia.code + '：' + loadedMedia.message);
+      media = loadedMedia.media;
     }
   } catch (error) {
     console.error('参数错误：' + error.message);
@@ -85,6 +96,10 @@ async function main() {
     parentDir: path.resolve(args.out),
     mode: args.mode,
     projectName: args.projectName,
+    storeId: args.storeId,
+    backendVersions,
+    role: args.role,
+    media,
     onProgress: args.json ? undefined : (event) => console.log('[' + event.step + '/' + event.total + '] ' + event.message),
   });
 

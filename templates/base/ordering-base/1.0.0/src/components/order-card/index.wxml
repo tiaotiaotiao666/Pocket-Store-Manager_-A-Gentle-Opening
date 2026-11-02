@@ -34,13 +34,17 @@
       <view
         wx:for="{{order.actions}}"
         wx:key="toStatus"
-        class="ss-btn order-card__btn {{item.tone === 'primary' ? 'ss-btn--primary' : item.tone === 'success' ? 'ss-btn--success' : 'ss-btn--danger'}}"
+        class="ss-btn order-card__btn {{item.tone === 'primary' ? 'ss-btn--primary' : item.tone === 'success' ? 'ss-btn--success' : 'ss-btn--danger'}} {{actingId ? 'order-card__btn--disabled' : ''}}"
         data-status="{{item.toStatus}}"
         catch:tap="onAdvance"
       >
-        {{item.label}}
+        {{actingId && actingStatus === item.toStatus ? '处理中…' : item.label}}
       </view>
     </view>
+  </view>
+
+  <view wx:if="{{actionable && role === 'MERCHANT' && actingId}}" class="order-card__acting">
+    订单处理中，请稍候
   </view>
 
   <view wx:if="{{actionable && role === 'MERCHANT' && order.unpaid}}" class="order-card__warn">

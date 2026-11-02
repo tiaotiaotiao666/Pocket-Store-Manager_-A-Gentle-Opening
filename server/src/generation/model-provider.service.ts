@@ -4,6 +4,9 @@ type ProviderConfig = { baseUrl: string; apiKey: string; imageModel: string; vis
 
 const supportedTemplates = new Set(['warm-bistro', 'modern-coffee', 'signature-kitchen']);
 const supportedThemes = new Set(['citrus', 'jade', 'cherry', 'ink']);
+const supportedImageSizes = new Set(['512x512', '1024x1024', '1536x1024', '1024x1536']);
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const validBase64 = /^[A-Za-z0-9+/]*={0,2}$/;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_REFERENCES = 5;
 const ALLOWED_IMAGE = /^data:image\/(?:png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/i;
@@ -60,6 +63,33 @@ export class ModelProviderService {
       if (!response.ok) throw new ServiceUnavailableException({ code: 'IMAGE_PROVIDER_FAILED', message: '图像模型请求失败。请检查模型服务配置和服务端日志。' });
       const image = payload?.data?.[0]?.b64_json;
       if (typeof image !== 'string' || image.length > Math.ceil(10 * 1024 * 1024 / 3) * 4) throw new ServiceUnavailableException({ code: 'IMAGE_RESPONSE_INVALID', message: '图像模型没有返回大小合适的 PNG 图片。' });
+      return { dataUrl: `data:image/png;base64,${image}`, provider: process.env.IMAGE_PROVIDER_NAME || 'configured-image-api', disclaimer: '该图像由已配置的图像模型生成。' };
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException) throw error;
+      throw new ServiceUnavailableException({ code: 'IMAGE_PROVIDER_UNAVAILABLE', message: '图像模型暂时不可访问，请稍后重试。' });
+    } finally { clearTimeout(timer); }
+  }
+
+  async generateImage(input: { prompt?: string; size?: string }) {
+    const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
+    if (!prompt || prompt.length > 1200) throw new UnprocessableEntityException({ code: 'IMAGE_PROMPT_INVALID', message: '生图提示词去除首尾空白后应为 1 至 1200 个字符。' });
+    const size = input.size === undefined ? '1024x1024' : input.size;
+    if (!supportedImageSizes.has(size)) throw new UnprocessableEntityException({ code: 'IMAGE_SIZE_INVALID', message: '生图尺寸仅支持 512x512、1024x1024、1536x1024、1024x1536。' });
+    const config = this.requireProvider('image');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), config.timeoutMs);
+    try {
+      const response = await fetch(`${config.baseUrl}/images/generations`, {
+        method: 'POST', signal: controller.signal,
+        headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: config.imageModel, prompt, size, n: 1, response_format: 'b64_json', quality: 'low' }),
+      });
+      const payload = await this.readResponse(response);
+      if (!response.ok) throw new ServiceUnavailableException({ code: 'IMAGE_PROVIDER_FAILED', message: '图像模型请求失败。请检查模型服务配置和服务端日志。' });
+      const image = payload?.data?.[0]?.b64_json;
+      if (typeof image !== 'string' || image.length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4 || image.length % 4 !== 0 || !validBase64.test(image)) throw new ServiceUnavailableException({ code: 'IMAGE_RESPONSE_INVALID', message: '图像模型没有返回有效的 PNG 图片。' });
+      const data = Buffer.from(image, 'base64');
+      if (data.length < 1 || data.length > MAX_IMAGE_BYTES || data.length < pngSignature.length || !data.subarray(0, pngSignature.length).equals(pngSignature)) throw new ServiceUnavailableException({ code: 'IMAGE_RESPONSE_INVALID', message: '图像模型没有返回有效的 PNG 图片。' });
       return { dataUrl: `data:image/png;base64,${image}`, provider: process.env.IMAGE_PROVIDER_NAME || 'configured-image-api', disclaimer: '该图像由已配置的图像模型生成。' };
     } catch (error) {
       if (error instanceof ServiceUnavailableException) throw error;

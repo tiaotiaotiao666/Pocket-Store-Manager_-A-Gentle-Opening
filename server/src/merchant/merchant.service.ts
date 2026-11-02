@@ -9,10 +9,20 @@ import { orderBaseInclude, toOrderView } from '../orders/order.mapper';
 import type { OrderView, PaginatedOrders } from '../orders/order.mapper';
 import { MERCHANT_DEFAULT_STATUSES, assertTransition, parseStatusList } from '../orders/order-state';
 import type {
+  CreateCategoryDto,
+  CreateProductDto,
   MerchantOrdersQueryDto,
+  UpdateCategoryDto,
   UpdateOrderStatusDto,
   UpdateProductAvailabilityDto,
+  UpdateProductPriceDto,
 } from './merchant.dto';
+
+export interface MerchantCategoryView {
+  id: string;
+  name: string;
+  sortOrder: number;
+}
 
 export interface MerchantProductView {
   id: string;
@@ -53,12 +63,13 @@ export class MerchantService {
     const statuses = requested.length > 0 ? requested : [...MERCHANT_DEFAULT_STATUSES];
 
     const where = { storeId, status: { in: statuses } };
+    const order = query.order || 'asc';
     const [total, items] = await this.prisma.$transaction([
       this.prisma.order.count({ where }),
       this.prisma.order.findMany({
         where,
         include: orderBaseInclude,
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        orderBy: [{ createdAt: order }, { id: order }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
       }),
@@ -171,6 +182,158 @@ export class MerchantService {
     return this.toProductView(saved);
   }
 
+  async createProduct(
+    user: AuthenticatedUser,
+    storeId: string,
+    dto: CreateProductDto,
+  ): Promise<MerchantProductView> {
+    await this.assertOwner(user.id, storeId);
+
+    const category = await this.prisma.category.findFirst({
+      where: { id: dto.categoryId, storeId },
+      select: { id: true },
+    });
+    if (!category) {
+      throw new AppError(404, 'CATEGORY_NOT_FOUND', '分类不存在。', {
+        categoryId: dto.categoryId,
+      });
+    }
+
+    const now = new Date();
+    const saved = await this.prisma.$transaction(async (tx) => {
+      const createdProduct = await tx.product.create({
+        data: {
+          id: createId('prd'),
+          storeId,
+          categoryId: category.id,
+          name: dto.name,
+          description: dto.description ?? '',
+          priceCents: dto.priceCents,
+          imageUrl: '',
+          available: dto.available ?? true,
+          sortOrder: dto.sortOrder ?? 0,
+          createdAt: now,
+          updatedAt: now,
+        },
+      });
+      await tx.store.update({
+        where: { id: storeId },
+        data: { catalogVersion: { increment: 1 }, updatedAt: now },
+      });
+      return createdProduct;
+    });
+
+    await this.catalog.invalidate(storeId);
+    return this.toProductView(saved);
+  }
+
+  async updateProductPrice(
+    user: AuthenticatedUser,
+    productId: string,
+    dto: UpdateProductPriceDto,
+  ): Promise<MerchantProductView> {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) {
+      throw new AppError(404, 'PRODUCT_NOT_FOUND', ErrorMessages.PRODUCT_NOT_FOUND, { productId });
+    }
+
+    await this.assertOwner(user.id, product.storeId);
+
+    const expectedUpdatedAt = new Date(dto.expectedUpdatedAt);
+    if (product.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+      throw new AppError(409, 'PRODUCT_CONFLICT', '商品已被其他操作更新，请刷新后重试。', {
+        expectedUpdatedAt: dto.expectedUpdatedAt,
+        currentUpdatedAt: product.updatedAt.toISOString(),
+      });
+    }
+
+    const now = new Date(Math.max(Date.now(), product.updatedAt.getTime() + 1));
+    const saved = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.product.updateMany({
+        where: { id: product.id, updatedAt: product.updatedAt },
+        data: { priceCents: dto.priceCents, updatedAt: now },
+      });
+      if (result.count === 0) return null;
+
+      await tx.store.update({
+        where: { id: product.storeId },
+        data: { catalogVersion: { increment: 1 }, updatedAt: now },
+      });
+      return tx.product.findUniqueOrThrow({ where: { id: product.id } });
+    });
+
+    if (!saved) {
+      throw new AppError(409, 'PRODUCT_CONFLICT', '商品已被其他操作更新，请刷新后重试。');
+    }
+
+    await this.catalog.invalidate(product.storeId);
+    return this.toProductView(saved);
+  }
+
+  async createCategory(
+    user: AuthenticatedUser,
+    storeId: string,
+    dto: CreateCategoryDto,
+  ): Promise<MerchantCategoryView> {
+    await this.assertOwner(user.id, storeId);
+
+    const now = new Date();
+    const saved = await this.prisma.$transaction(async (tx) => {
+      const createdCategory = await tx.category.create({
+        data: {
+          id: createId('cat'),
+          storeId,
+          name: dto.name,
+          sortOrder: dto.sortOrder ?? 0,
+          createdAt: now,
+        },
+      });
+      await tx.store.update({
+        where: { id: storeId },
+        data: { catalogVersion: { increment: 1 }, updatedAt: now },
+      });
+      return createdCategory;
+    });
+
+    await this.catalog.invalidate(storeId);
+    return this.toCategoryView(saved);
+  }
+
+  async updateCategory(
+    user: AuthenticatedUser,
+    categoryId: string,
+    dto: UpdateCategoryDto,
+  ): Promise<MerchantCategoryView> {
+    const category = await this.prisma.category.findUnique({ where: { id: categoryId } });
+    if (!category) {
+      throw new AppError(404, 'CATEGORY_NOT_FOUND', '分类不存在。', { categoryId });
+    }
+
+    await this.assertOwner(user.id, category.storeId);
+    if (dto.name === undefined && dto.sortOrder === undefined) {
+      throw new AppError(422, 'VALIDATION_ERROR', '至少提供分类名称或排序。');
+    }
+
+    const now = new Date();
+    const saved = await this.prisma.$transaction(async (tx) => {
+      const updatedCategory = await tx.category.update({
+        where: { id: category.id },
+        data: {
+          ...(dto.name !== undefined ? { name: dto.name } : {}),
+          ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
+        },
+      });
+      await tx.store.update({
+        where: { id: category.storeId },
+        data: { catalogVersion: { increment: 1 }, updatedAt: now },
+      });
+      return updatedCategory;
+    });
+
+    await this.catalog.invalidate(category.storeId);
+    return this.toCategoryView(saved);
+  }
+
   async listProducts(user: AuthenticatedUser, storeId: string): Promise<MerchantCatalogView> {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
@@ -201,6 +364,16 @@ export class MerchantService {
     };
   }
 
+  private async assertOwner(userId: string, storeId: string): Promise<void> {
+    const member = await this.prisma.storeMember.findUnique({
+      where: { storeId_userId: { storeId, userId } },
+      select: { role: true },
+    });
+    if (!member || member.role !== 'OWNER') {
+      throw new AppError(403, 'FORBIDDEN', ErrorMessages.FORBIDDEN, { storeId });
+    }
+  }
+
   private async assertMember(userId: string, storeId: string): Promise<void> {
     const member = await this.prisma.storeMember.findUnique({
       where: { storeId_userId: { storeId, userId } },
@@ -209,6 +382,18 @@ export class MerchantService {
     if (!member) {
       throw new AppError(403, 'FORBIDDEN', ErrorMessages.FORBIDDEN, { storeId });
     }
+  }
+
+  private toCategoryView(category: {
+    id: string;
+    name: string;
+    sortOrder: number;
+  }): MerchantCategoryView {
+    return {
+      id: category.id,
+      name: category.name,
+      sortOrder: category.sortOrder,
+    };
   }
 
   private toProductView(product: {

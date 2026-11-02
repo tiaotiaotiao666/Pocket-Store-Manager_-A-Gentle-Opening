@@ -1,0 +1,25 @@
+{
+  "homeBackground": {
+    "file": "home-background.png",
+    "mime": "image/png",
+    "width": 1254,
+    "height": 1254,
+    "sha256": "sha256:baab441f135f917180a1260e230f6973b6c1159233f3157ac3a72388337e72c7",
+    "source": {
+      "kind": "ai-generated",
+      "provider": "imagelfk",
+      "model": "gpt-image-2"
+    }
+  },
+  "homeMark": {
+    "file": "home-mark.svg",
+    "mime": "image/svg+xml",
+    "width": 256,
+    "height": 256,
+    "sha256": "sha256:48543ffb49ac764590c493344cad643fdafe8ab5b542ca2d615f2cb246d4ac76",
+    "source": {
+      "kind": "agent-local-svg",
+      "provider": "codearts"
+    }
+  }
+}

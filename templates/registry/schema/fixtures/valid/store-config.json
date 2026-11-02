@@ -15,6 +15,7 @@
     "versionGaps": { "storeConfigVersion": 3, "catalogVersion": 5 }
   },
   "store": {
+    "id": "store-prod-001",
     "name": "松月食堂",
     "category": "中式简餐",
     "address": "上海市静安区示例路 1 号",

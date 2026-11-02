@@ -40,7 +40,7 @@
       "mode",
       "versionGaps"
     ],
-    "store": ["name", "category", "address", "phone", "notes", "businessHours"],
+    "store": ["id", "name", "category", "address", "phone", "notes", "businessHours"],
     "api": ["baseUrl", "contract", "timeoutMs"],
     "catalog": ["mode", "version", "categories", "products"],
     "fulfillmentOptions": ["dineIn", "takeaway", "delivery"],
@@ -93,6 +93,7 @@
       "type": "object",
       "required": ["name", "category", "address", "phone", "notes", "businessHours"],
       "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$" },
         "name": { "type": "string", "maxLength": 48 },
         "category": { "type": "string", "maxLength": 48 },
         "address": { "type": "string", "maxLength": 120 },

@@ -12,10 +12,15 @@ const { buildProjectFiles } = require(path.join(REPO, 'scripts', 'composer', 'em
 
 const PLAN = JSON.parse(fs.readFileSync(path.join(REPO, 'templates', 'recipes', 'order-classic', '1.0.0', 'plan.json'), 'utf8'));
 
-function buildGraph() {
+function buildGraph(role) {
   const loaded = loadRegistry();
   assert.strictEqual(loaded.ok, true, JSON.stringify(loaded.errors));
-  const graph = resolvePlan(PLAN, loaded);
+  const plan = role === 'customer'
+    ? { ...PLAN, pages: PLAN.pages.filter((page) => page.pageId !== 'merchant-orders') }
+    : role === 'merchant'
+      ? { ...PLAN, pages: PLAN.pages.filter((page) => page.pageId === 'merchant-orders') }
+      : PLAN;
+  const graph = resolvePlan(plan, loaded, role === undefined ? {} : { role });
   assert.strictEqual(graph.ok, true, JSON.stringify(graph));
   return graph;
 }
@@ -36,6 +41,51 @@ test('端到端生成完整工程并注册全部页面', () => {
   ['app.js', 'app.wxss', 'theme.generated.wxss', 'config/store.generated.js', 'config/slots.generated.js', 'config/env.js', 'project.config.json', 'sitemap.json', 'README.md'].forEach((file) => {
     assert.ok(result.files.has(file), '缺少 ' + file);
   });
+});
+
+test('customer 产物移除店主页面并隐藏店主入口', () => {
+  const result = buildProjectFiles(buildGraph('customer'), { mode: 'development', projectName: 'emit-check', role: 'customer' });
+  assert.strictEqual(result.ok, true, JSON.stringify(result));
+  assert.strictEqual(result.stats.pages, 6);
+  const pageFiles = [...result.files.keys()].filter((file) => file.startsWith('pages/'));
+  assert.ok(pageFiles.length > 0);
+  assert.ok(pageFiles.every((file) => !file.startsWith('pages/merchant-orders/')));
+  const appJson = JSON.parse(result.files.get('app.json').toString('utf8'));
+  assert.strictEqual(appJson.pages.length, 6);
+  assert.strictEqual(appJson.tabBar.list.length, 4);
+  assert.ok(!appJson.pages.includes('pages/merchant-orders/index'));
+  const mine = result.files.get('pages/mine/index.wxml').toString('utf8');
+  assert.ok(!mine.includes('merchantEntries'));
+  assert.ok(!mine.includes('onOpenMerchant'));
+});
+
+test('merchant 产物只保留工作台且消除跨端路由', () => {
+  const result = buildProjectFiles(buildGraph('merchant'), { mode: 'development', projectName: 'emit-check', role: 'merchant' });
+  assert.strictEqual(result.ok, true, JSON.stringify(result));
+  assert.strictEqual(result.stats.pages, 1);
+  const pageFiles = [...result.files.keys()].filter((file) => file.startsWith('pages/'));
+  assert.ok(pageFiles.length > 0);
+  assert.ok(pageFiles.every((file) => file.startsWith('pages/merchant-orders/')));
+  const appJson = JSON.parse(result.files.get('app.json').toString('utf8'));
+  assert.deepStrictEqual(appJson.pages, ['pages/merchant-orders/index']);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(appJson, 'tabBar'), false);
+  const source = result.files.get('pages/merchant-orders/index.js').toString('utf8');
+  assert.ok(!source.includes('wx.navigateTo'));
+  assert.ok(!source.includes('wx.switchTab'));
+  assert.ok(!source.includes('/pages/order-detail/index'));
+  assert.ok(!source.includes('/pages/mine/index'));
+  assert.ok(source.includes('platform.modal'));
+  assert.ok(source.includes('order.itemViews'));
+  assert.doesNotThrow(() => new (require('node:vm').Script)(source));
+});
+
+test('combined 与缺省生成结果逐字节一致', () => {
+  const first = buildProjectFiles(buildGraph(), { mode: 'development', projectName: 'emit-check' });
+  const second = buildProjectFiles(buildGraph('combined'), { mode: 'development', projectName: 'emit-check', role: 'combined' });
+  assert.deepStrictEqual([...first.files.keys()].sort(), [...second.files.keys()].sort());
+  for (const [file, content] of first.files.entries()) {
+    assert.ok(Buffer.compare(content, second.files.get(file)) === 0, file + ' combined 与缺省生成不一致');
+  }
 });
 
 test('导出配置只含白名单字段且金额唯一事实为 priceCents', () => {
@@ -114,7 +164,12 @@ test('相同输入两次生成逐字节一致', () => {
 
 test('production 模式缺 HTTPS Base URL 被拒绝', () => {
   const graph = buildGraph();
-  const result = buildProjectFiles(graph, { mode: 'production', projectName: 'emit-check' });
+  const result = buildProjectFiles(graph, {
+    mode: 'production',
+    projectName: 'emit-check',
+    storeId: 'store-real-001',
+    backendVersions: { storeConfigVersion: 1, catalogVersion: 1 },
+  });
   assert.strictEqual(result.ok, false);
   assert.ok(['FIELD_MISSING', 'API_BASE_URL_NOT_HTTPS'].includes(result.code), result.code);
 });

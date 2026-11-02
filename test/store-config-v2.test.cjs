@@ -52,13 +52,18 @@ test('production：必须 HTTPS 且必须提供后端版本', () => {
   const withUrl = JSON.parse(JSON.stringify(PLAN));
   withUrl.apiBinding.baseUrl = 'https://api.example.com';
   const productionGraph = resolvePlan(withUrl, loadRegistry());
-  const missingVersions = buildProjectFiles(productionGraph, { mode: 'production', projectName: 'cfg' });
+  const missingStoreId = buildProjectFiles(productionGraph, { mode: 'production', projectName: 'cfg' });
+  assert.strictEqual(missingStoreId.ok, false);
+  assert.strictEqual(missingStoreId.code, 'STORE_ID_REQUIRED');
+
+  const missingVersions = buildProjectFiles(productionGraph, { mode: 'production', projectName: 'cfg', storeId: 'store-prod-001' });
   assert.strictEqual(missingVersions.ok, false);
   assert.strictEqual(missingVersions.code, 'VERSION_GAP_REQUIRED');
 
   const withVersions = buildProjectFiles(productionGraph, {
     mode: 'production',
     projectName: 'cfg',
+    storeId: 'store-prod-001',
     backendVersions: { storeConfigVersion: 3, catalogVersion: 7 },
   });
   assert.strictEqual(withVersions.ok, true, JSON.stringify(withVersions));
@@ -66,7 +71,14 @@ test('production：必须 HTTPS 且必须提供后端版本', () => {
   assert.strictEqual(config.meta.storeConfigVersion, 3);
   assert.strictEqual(config.meta.catalogVersion, 7);
   assert.strictEqual(config.meta.mode, 'production');
+  assert.strictEqual(config.store.id, 'store-prod-001');
   assert.match(config.api.baseUrl, /^https:\/\//);
+  const env = withVersions.files.get('config/env.js').toString('utf8');
+  const readme = withVersions.files.get('README.md').toString('utf8');
+  assert.match(env, /USE_WECHAT_CODE_LOGIN = true/);
+  assert.ok(!env.includes('http://127.0.0.1'));
+  assert.ok(!env.includes("|| 'store-demo-001'"));
+  assert.ok(!readme.includes('http://127.0.0.1'));
 });
 
 test('旧 v1 配置与 capabilities 交集被拒绝', () => {

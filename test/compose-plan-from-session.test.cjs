@@ -54,6 +54,20 @@ test('同一 state 两次调用深相等（纯函数）', async () => {
   assert.deepStrictEqual(first, second);
 });
 
+test('按角色过滤页面，combined 与缺省一致且不修改 state', async () => {
+  const { buildPlanFromSession } = await import('../src/composition/planFromSession.mjs');
+  const state = sessionState();
+  const snapshot = JSON.stringify(state);
+  const customer = buildPlanFromSession(state, { role: 'customer' });
+  const merchant = buildPlanFromSession(state, { role: 'merchant' });
+  assert.deepStrictEqual(customer.plan.pages.map((page) => page.pageId), ['home', 'menu', 'orders', 'mine', 'checkout', 'order-detail']);
+  assert.deepStrictEqual(merchant.plan.pages.map((page) => page.pageId), ['merchant-orders']);
+  assert.strictEqual(validatePlan(customer.plan).ok, true);
+  assert.strictEqual(validatePlan(merchant.plan).ok, true);
+  assert.deepStrictEqual(buildPlanFromSession(state, { role: 'combined' }), buildPlanFromSession(state));
+  assert.strictEqual(JSON.stringify(state), snapshot);
+});
+
 test('未知模板回落 order-classic 并告警', async () => {
   const { buildPlanFromSession } = await import('../src/composition/planFromSession.mjs');
   const result = buildPlanFromSession(sessionState({ build: { selectedId: 'not-a-template' } }));

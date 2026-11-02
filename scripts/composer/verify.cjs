@@ -12,9 +12,79 @@ const { runChecks } = require('../validate-miniprogram.cjs');
 const { scanOutput } = require('./safety.cjs');
 const { treeSha256, listTree, fileSha256 } = require('./digest.cjs');
 const { ok, fail } = require('./schema.cjs');
+const { MEDIA_IDS, MEDIA_OUTPUTS, validateMedia } = require('./media.cjs');
 
 function check(id, result, message) {
   return { id, result, message: message || '' };
+}
+
+function verifyMediaOutput(stagingDir) {
+  const manifestFile = path.join(stagingDir, 'assets', 'media', 'manifest.json');
+  if (!fs.existsSync(manifestFile)) {
+    const hasMediaFile = MEDIA_IDS.some((id) => fs.existsSync(path.join(stagingDir, ...MEDIA_OUTPUTS[id].path.split('/'))));
+    const homeFile = path.join(stagingDir, 'pages', 'home', 'index.wxml');
+    const home = fs.existsSync(homeFile) ? fs.readFileSync(homeFile, 'utf8') : '';
+    const hasMediaReference = MEDIA_IDS.some((id) => home.includes('src="/' + MEDIA_OUTPUTS[id].path + '"'));
+    if (hasMediaFile || hasMediaReference) return fail('MEDIA_MANIFEST_MISSING', 'assets/media/manifest.json', '媒体产物缺少 media.v1 清单');
+    return { ...ok(), present: false };
+  }
+  let document;
+  try {
+    document = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+  } catch (error) {
+    return fail('MEDIA_MANIFEST_INVALID', 'assets/media/manifest.json', '媒体清单解析失败：' + error.message);
+  }
+  const allowedRoot = ['schemaVersion', 'items'];
+  const allowedItem = ['id', 'path', 'mime', 'bytes', 'sha256', 'width', 'height', 'source'];
+  if (!document || typeof document !== 'object' || Array.isArray(document)
+    || Object.keys(document).some((key) => !allowedRoot.includes(key))
+    || document.schemaVersion !== 'media.v1' || !Array.isArray(document.items)) {
+    return fail('MEDIA_MANIFEST_INVALID', 'assets/media/manifest.json', '媒体清单必须为 media.v1 且字段合法');
+  }
+  const media = {};
+  for (const item of document.items) {
+    if (!item || typeof item !== 'object' || Array.isArray(item) || Object.keys(item).some((key) => !allowedItem.includes(key))) {
+      return fail('MEDIA_MANIFEST_INVALID', 'assets/media/manifest.json', '媒体清单项字段不合法');
+    }
+    if (!MEDIA_IDS.includes(item.id) || media[item.id]) {
+      return fail('MEDIA_MANIFEST_INVALID', 'assets/media/manifest.json', '媒体 id 不受支持或重复');
+    }
+    if (item.path !== MEDIA_OUTPUTS[item.id].path) {
+      return fail('MEDIA_PATH_INVALID', 'assets/media/manifest.json', '媒体输出路径必须与 id 匹配');
+    }
+    const outputFile = path.join(stagingDir, ...item.path.split('/'));
+    if (!fs.existsSync(outputFile) || !fs.statSync(outputFile).isFile()) {
+      return fail('MEDIA_FILE_MISSING', item.path, '媒体清单对应文件不存在');
+    }
+    const data = fs.readFileSync(outputFile);
+    if (!Number.isInteger(item.bytes) || item.bytes !== data.length) {
+      return fail('MEDIA_SIZE_MISMATCH', item.path, '媒体清单 bytes 与文件大小不一致');
+    }
+    media[item.id] = {
+      mime: item.mime,
+      sha256: item.sha256,
+      width: item.width,
+      height: item.height,
+      source: item.source,
+      data,
+    };
+  }
+  const validated = validateMedia(media);
+  if (!validated.ok) return validated;
+  const homeFile = path.join(stagingDir, 'pages', 'home', 'index.wxml');
+  if (fs.existsSync(homeFile)) {
+    const home = fs.readFileSync(homeFile, 'utf8');
+    for (const id of MEDIA_IDS) {
+      const reference = 'src="/' + MEDIA_OUTPUTS[id].path + '"';
+      if (validated.media[id] && !home.includes(reference)) {
+        return fail('MEDIA_HOME_REFERENCE_MISSING', 'pages/home/index.wxml', '首页缺少本地媒体引用：' + id);
+      }
+      if (!validated.media[id] && home.includes(reference)) {
+        return fail('MEDIA_HOME_REFERENCE_UNKNOWN', 'pages/home/index.wxml', '首页引用了未登记的媒体：' + id);
+      }
+    }
+  }
+  return { ...ok(), present: true, count: document.items.length };
 }
 
 function verifyOutput(stagingDir, options) {
@@ -136,6 +206,13 @@ function verifyOutput(stagingDir, options) {
   }
   checks.push(check('security-scan', 'pass'));
 
+  const mediaResult = verifyMediaOutput(stagingDir);
+  if (!mediaResult.ok) {
+    checks.push(check('media-output', 'fail', mediaResult.message));
+    return { ...mediaResult, checks };
+  }
+  if (mediaResult.present) checks.push(check('media-output', 'pass', mediaResult.count + ' 项媒体'));
+
   const tree = treeSha256(stagingDir);
   const files = listTree(stagingDir).map((file) => ({ path: file, digest: fileSha256(path.join(stagingDir, file)) }));
   if (opts.expectedTree && opts.expectedTree !== tree) {
@@ -150,4 +227,4 @@ function verifyOutput(stagingDir, options) {
   return { ...ok(), checks, tree, files, stats: staticResult.stats };
 }
 
-module.exports = { verifyOutput };
+module.exports = { verifyOutput, verifyMediaOutput };

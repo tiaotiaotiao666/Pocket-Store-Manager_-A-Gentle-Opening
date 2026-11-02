@@ -33,7 +33,7 @@ function makeContext(options) {
     dialog: createDialogStub(parent),
     shell: { openPath: async () => '' },
     compose,
-    validateComposition: () => ({ ok: true, warnings: [] }),
+    validateComposition: opts.validateComposition || (() => ({ ok: true, warnings: [] })),
   });
   return { parent, created, compose };
 }
@@ -105,6 +105,37 @@ test('系统对话框确认后才允许导出并生成报告', async () => {
 
   const denied = await created.handlers['composer:read-report'](senderEvent('file:///x'), { outputPath: parent });
   assert.strictEqual(denied.code, 'TARGET_NOT_WRITABLE');
+});
+
+test('角色参数经 IPC 透传到组合校验与导出', async () => {
+  const seen = {};
+  const { created, parent } = makeContext({
+    validateComposition: (plan, options) => {
+      seen.validateOptions = options;
+      return { ok: true };
+    },
+    compose: async (payload) => {
+      seen.exportRole = payload.role;
+      return { ok: true, outputPath: path.join(payload.parentDir, payload.projectName) };
+    },
+  });
+  const validated = await created.handlers['composer:validate'](senderEvent('file:///x'), {
+    plan: { planId: 'order-classic' },
+    role: 'customer',
+  });
+  assert.strictEqual(validated.ok, true);
+  assert.deepStrictEqual(seen.validateOptions, { role: 'customer' });
+
+  const chosen = await created.handlers['composer:choose-directory'](senderEvent('file:///x'), {});
+  const exported = await created.handlers['composer:export'](senderEvent('file:///x'), {
+    parentDir: chosen.path,
+    plan: { planId: 'order-classic' },
+    projectName: 'demo',
+    role: 'merchant',
+  });
+  assert.strictEqual(exported.ok, true);
+  assert.strictEqual(seen.exportRole, 'merchant');
+  assert.ok(fs.existsSync(parent));
 });
 
 test('超体积 payload 被拒绝', async () => {

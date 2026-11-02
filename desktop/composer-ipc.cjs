@@ -63,7 +63,10 @@ function createComposerIpc(options) {
   async function validate(event, payload) {
     if (payloadSize(payload) > MAX_PAYLOAD_BYTES) return resultError('PAYLOAD_TOO_LARGE', '配置内容超过 256 KB');
     if (payloadSize(payload && payload.plan) > MAX_PLAN_BYTES) return resultError('PAYLOAD_TOO_LARGE', 'Plan 超过 64 KB');
-    const result = validateComposition(payload && payload.plan);
+    const role = payload && payload.role;
+    const result = role === undefined
+      ? validateComposition(payload && payload.plan)
+      : validateComposition(payload && payload.plan, { role });
     return result;
   }
 
@@ -90,6 +93,9 @@ function createComposerIpc(options) {
         parentDir,
         projectName: payload.projectName,
         mode: payload.mode,
+        storeId: payload.storeId,
+        backendVersions: payload.backendVersions,
+        ...(payload.role === undefined ? {} : { role: payload.role }),
         signal,
         onProgress: (progress) => {
           const now = Date.now();

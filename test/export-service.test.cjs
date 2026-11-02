@@ -28,7 +28,10 @@ test('桌面桥接导出成功并透传参数', async () => {
     smartStore: {
       isDesktop: true,
       chooseExportDirectory: async () => ({ cancelled: false, path: 'C:/exports' }),
-      composerValidate: async (payload) => ({ ok: true, warnings: [], payload }),
+      composerValidate: async (payload) => {
+        calls.validatePayload = payload;
+        return { ok: true, warnings: [], payload };
+      },
       composerExport: async (payload) => {
         calls.exportPayload = payload;
         return {
@@ -57,14 +60,16 @@ test('桌面桥接导出成功并透传参数', async () => {
   const chosen = await service.chooseDirectory();
   assert.deepStrictEqual(chosen, { status: 'ok', path: 'C:/exports' });
 
-  const exported = await service.exportProject({ parentDir: 'C:/exports', plan: { planId: 'order-classic' }, projectName: 'demo', mode: 'development' });
+  const exported = await service.exportProject({ parentDir: 'C:/exports', plan: { planId: 'order-classic' }, projectName: 'demo', mode: 'development', role: 'merchant' });
   assert.strictEqual(exported.status, 'ok');
   assert.strictEqual(exported.result.outputPath, 'C:/exports/demo');
   assert.deepStrictEqual(calls.exportPayload.plan, { planId: 'order-classic' });
   assert.strictEqual(calls.exportPayload.mode, 'development');
+  assert.strictEqual(calls.exportPayload.role, 'merchant');
 
-  const validated = await service.validatePlan({ planId: 'order-classic' });
+  const validated = await service.validatePlan({ planId: 'order-classic' }, { role: 'customer' });
   assert.strictEqual(validated.status, 'ok');
+  assert.strictEqual(calls.validatePayload.role, 'customer');
 
   const unsubscribe = service.subscribeProgress(() => {});
   assert.strictEqual(typeof calls.listener, 'function');

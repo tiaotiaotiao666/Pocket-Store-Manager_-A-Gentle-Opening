@@ -120,6 +120,30 @@ describe('店主订单台', () => {
     expect(response.body.items[0].status).toBe('PENDING_PAYMENT');
   });
 
+  it('订单台 order=desc 按 createdAt 与 id 同向倒序', async () => {
+    await createPaidOrder();
+    await createPaidOrder();
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/merchant/stores/${STORE_ID}/orders?status=PENDING_ACCEPT&order=desc&pageSize=50`)
+      .set(authHeader(ownerToken));
+
+    expect(response.status).toBe(200);
+    const items = response.body.items as Array<{ id: string; createdAt: string }>;
+    const sorted = [...items].sort((left, right) => {
+      const created = new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+      return created || right.id.localeCompare(left.id);
+    });
+    expect(items).toEqual(sorted);
+  });
+
+  it('订单台非法 order 返回 422', async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/merchant/stores/${STORE_ID}/orders?order=ascending`)
+      .set(authHeader(ownerToken));
+    expect(response.status).toBe(422);
+    expect(response.body.code).toBe('VALIDATION_ERROR');
+  });
+
   it('订单台非法状态返回 422', async () => {
     const response = await request(app.getHttpServer())
       .get(`/api/v1/merchant/stores/${STORE_ID}/orders?status=WRONG`)
@@ -354,5 +378,129 @@ describe('店主商品管理', () => {
       .set(authHeader(staffToken))
       .send({ available: true });
     expect(response.status).toBe(200);
+  });
+
+  it('OWNER 可新建分类与商品、改价，旧版本冲突且不改变目录版本', async () => {
+    const category = await request(app.getHttpServer())
+      .post(`/api/v1/merchant/stores/${STORE_ID}/categories`)
+      .set(authHeader(ownerToken))
+      .send({ name: '  今日推荐  ', sortOrder: 3 });
+    expect(category.status).toBe(201);
+    expect(category.body).toMatchObject({ name: '今日推荐', sortOrder: 3 });
+
+    const created = await request(app.getHttpServer())
+      .post(`/api/v1/merchant/stores/${STORE_ID}/products`)
+      .set(authHeader(ownerToken))
+      .send({
+        categoryId: category.body.id,
+        name: '  新菜品  ',
+        description: '现做',
+        priceCents: 3200,
+        available: true,
+      });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({ name: '新菜品', priceCents: 3200, available: true });
+
+    const repriced = await request(app.getHttpServer())
+      .patch(`/api/v1/merchant/products/${created.body.id}/price`)
+      .set(authHeader(ownerToken))
+      .send({ priceCents: 3500, expectedUpdatedAt: created.body.updatedAt });
+    expect(repriced.status).toBe(200);
+    expect(repriced.body.priceCents).toBe(3500);
+    expect(new Date(repriced.body.updatedAt).getTime()).toBeGreaterThan(
+      new Date(created.body.updatedAt).getTime(),
+    );
+
+    const beforeConflict = await request(app.getHttpServer()).get(`/api/v1/stores/${STORE_ID}/catalog`);
+    const stale = await request(app.getHttpServer())
+      .patch(`/api/v1/merchant/products/${created.body.id}/price`)
+      .set(authHeader(ownerToken))
+      .send({ priceCents: 3900, expectedUpdatedAt: created.body.updatedAt });
+    expect(stale.status).toBe(409);
+    expect(stale.body.code).toBe('PRODUCT_CONFLICT');
+
+    const afterConflict = await request(app.getHttpServer()).get(`/api/v1/stores/${STORE_ID}/catalog`);
+    expect(afterConflict.body.version).toBe(beforeConflict.body.version);
+    const products = afterConflict.body.categories.flatMap(
+      (item: { products: Array<{ id: string; priceCents: number }> }) => item.products,
+    );
+    expect(products.find((item: { id: string }) => item.id === created.body.id).priceCents).toBe(3500);
+  });
+
+  it('STAFF 不能新建商品、改价或维护分类', async () => {
+    const createProduct = await request(app.getHttpServer())
+      .post(`/api/v1/merchant/stores/${STORE_ID}/products`)
+      .set(authHeader(staffToken))
+      .send({ categoryId: 'cat_sig', name: '越权商品', priceCents: 1000 });
+    expect(createProduct.status).toBe(403);
+
+    const updatePrice = await request(app.getHttpServer())
+      .patch(`/api/v1/merchant/products/${PRODUCT_SECOND_ID}/price`)
+      .set(authHeader(staffToken))
+      .send({ priceCents: 3000, expectedUpdatedAt: new Date().toISOString() });
+    expect(updatePrice.status).toBe(403);
+
+    const createCategory = await request(app.getHttpServer())
+      .post(`/api/v1/merchant/stores/${STORE_ID}/categories`)
+      .set(authHeader(staffToken))
+      .send({ name: '越权分类' });
+    expect(createCategory.status).toBe(403);
+
+    const updateCategory = await request(app.getHttpServer())
+      .patch('/api/v1/merchant/categories/cat_sig')
+      .set(authHeader(staffToken))
+      .send({ name: '越权改名' });
+    expect(updateCategory.status).toBe(403);
+  });
+
+  it('新建商品拒绝跨店分类与非法价格', async () => {
+    const crossStore = await request(app.getHttpServer())
+      .post(`/api/v1/merchant/stores/${STORE_ID}/products`)
+      .set(authHeader(ownerToken))
+      .send({ categoryId: 'cat_other', name: '错误分类商品', priceCents: 1000 });
+    expect(crossStore.status).toBe(404);
+    expect(crossStore.body.code).toBe('CATEGORY_NOT_FOUND');
+
+    for (const priceCents of [0, -1, 1.5, 1000000, '2800']) {
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/merchant/stores/${STORE_ID}/products`)
+        .set(authHeader(ownerToken))
+        .send({ categoryId: 'cat_sig', name: '非法价格商品', priceCents });
+      expect(response.status).toBe(422);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    }
+  });
+
+  it('改价不影响历史订单价格快照', async () => {
+    const orderId = await request(app.getHttpServer())
+      .post('/api/v1/orders')
+      .set(authHeader(customerToken))
+      .set('Idempotency-Key', uniqueKey('price-history'))
+      .send(createOrderPayload({ items: [{ productId: PRODUCT_SECOND_ID, quantity: 1 }] }));
+    expect(orderId.status).toBe(201);
+
+    const catalog = await request(app.getHttpServer())
+      .get(`/api/v1/merchant/stores/${STORE_ID}/products`)
+      .set(authHeader(ownerToken));
+    const product = catalog.body.categories
+      .flatMap((category: { products: Array<{ id: string; updatedAt: string }> }) => category.products)
+      .find((item: { id: string }) => item.id === PRODUCT_SECOND_ID);
+
+    const repriced = await request(app.getHttpServer())
+      .patch(`/api/v1/merchant/products/${PRODUCT_SECOND_ID}/price`)
+      .set(authHeader(ownerToken))
+      .send({ priceCents: 2999, expectedUpdatedAt: product.updatedAt });
+    expect(repriced.status).toBe(200);
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/orders/${orderId.body.id}`)
+      .set(authHeader(customerToken));
+    expect(detail.body.items[0]).toMatchObject({ productId: PRODUCT_SECOND_ID, unitPriceCents: 2600 });
+
+    const restored = await request(app.getHttpServer())
+      .patch(`/api/v1/merchant/products/${PRODUCT_SECOND_ID}/price`)
+      .set(authHeader(ownerToken))
+      .send({ priceCents: 2600, expectedUpdatedAt: repriced.body.updatedAt });
+    expect(restored.status).toBe(200);
   });
 });

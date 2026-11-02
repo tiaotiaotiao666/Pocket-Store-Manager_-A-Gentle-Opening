@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
 import { ModelProviderService } from './model-provider.service';
 
 interface IconGenerationRequest {
@@ -15,9 +15,14 @@ interface StyleRecommendationRequest {
   referenceImages?: string[];
 }
 
+interface ImageGenerationRequest {
+  prompt?: string;
+  size?: string;
+}
+
 @Controller('generation')
 export class GenerationController {
-  constructor(private readonly modelProvider: ModelProviderService) {}
+  constructor(@Inject(ModelProviderService) private readonly modelProvider: ModelProviderService) {}
 
   @Get('health')
   status(): { provider: string; configured: boolean; imageModel: boolean; visionModel: boolean; disclaimer: string } {
@@ -32,5 +37,10 @@ export class GenerationController {
   @Post('recommend-style')
   recommendStyle(@Body() request: StyleRecommendationRequest): Promise<{ templateId: string; reason: string; disclaimer: string }> {
     return this.modelProvider.recommendStyle(request);
+  }
+
+  @Post('images')
+  generateImage(@Body() request: ImageGenerationRequest): Promise<{ dataUrl: string; provider: string; disclaimer: string }> {
+    return this.modelProvider.generateImage(request);
   }
 }

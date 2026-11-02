@@ -39,7 +39,7 @@
       </view>
     </view>
 
-    <view class="page__section">
+    <view wx:if="{{demoMode}}" class="page__section">
       <view class="section-head">
         <text class="section-title">演示身份</text>
         <text class="section-extra">仅开发演示</text>

@@ -23,6 +23,22 @@ test('money: 非法与负数输入不产生 NaN', () => {
   assert.equal(money.toSafeCents('2800'), 2800);
 });
 
+test('money: 元字符串严格转换为整数分', () => {
+  assert.equal(money.parseYuanToCents('0.01'), 1);
+  assert.equal(money.parseYuanToCents('0.05'), 5);
+  assert.equal(money.parseYuanToCents('28'), 2800);
+  assert.equal(money.parseYuanToCents('28.50'), 2850);
+  assert.equal(money.parseYuanToCents('9999.99'), 999999);
+});
+
+test('money: 元输入拒绝负数、多余小数、非数字与超上限价格', () => {
+  ['0', '0.00', '-1', '1.234', 'NaN', '10000', '1e2', ' 1', '1.', '', '.5', 'Infinity'].forEach((value) => {
+    assert.equal(money.parseYuanToCents(value), null, value);
+  });
+  assert.equal(money.parseYuanToCents(28), null);
+  assert.equal(money.parseYuanToCents(null), null);
+});
+
 test('cart: 同商品合并、数量累加、总额为整数分', () => {
   const product = { id: 'prd_beef_rice', name: '柑橘牛肉饭', priceCents: 2800, available: true };
   const first = cart.addItem({}, product);

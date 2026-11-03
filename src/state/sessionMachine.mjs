@@ -196,11 +196,19 @@ function appendMessages(state, sessionId, drafts) {
   };
 }
 
-function appendMessagesWithSeq(state, sessionId, handoffText, drafts) {
+function appendMessagesWithSeq(state, sessionId, handoffText, drafts, handoffMeta = null) {
   const nextSeq = state.seq + 1;
   const session = state.sessions.find((item) => item.id === sessionId);
   if (!session) return state;
-  const handoffMessage = { id: `m${nextSeq}`, role: ROLES.SYSTEM, text: handoffText, staged: false, delay: 0, instant: true, meta: { kind: 'handoff' } };
+  const handoffMessage = {
+    id: `m${nextSeq}`,
+    role: ROLES.SYSTEM,
+    text: handoffText,
+    staged: false,
+    delay: 0,
+    instant: true,
+    meta: { kind: 'handoff', ...(handoffMeta || {}) },
+  };
   const withHandoff = {
     ...state,
     seq: nextSeq,
@@ -213,7 +221,7 @@ function markAllDone(sessions) {
   return sessions.map((session) => ({ ...session, status: 'done' }));
 }
 
-function createStepSession(state, { id, title, summary, payload, phase, intro, followUp }) {
+function createStepSession(state, { id, title, summary, payload, phase, intro, followUp, fields = [] }) {
   const from = state.store.name || NEW_PROJECT_LABEL;
   const handoff = buildHandoff({ from, to: title, summary, payload });
   const session = {
@@ -237,7 +245,7 @@ function createStepSession(state, { id, title, summary, payload, phase, intro, f
   return appendMessagesWithSeq({ ...base, sessions: base.sessions.map((item) => item.id === id ? { ...item, messages: [] } : item) }, id, handoff, [
     { text: opening, staged: true },
     ...(after ? [{ text: after, staged: false, instant: true, meta: { kind: 'muted' } }] : []),
-  ]);
+  ], { to: title, fields });
 }
 
 function enterFeatures(state) {
@@ -759,6 +767,10 @@ function baseReducer(state, action) {
           state.features.custom ? `定制要求：${state.features.custom}` : '未提出额外定制要求',
         ],
         payload: { template: chosen?.id ?? null, features: state.features.selected, custom: state.features.custom || null },
+        fields: [
+          { label: '店铺名', value: state.store.name || NEW_PROJECT_LABEL },
+          { label: '页面风格', value: chosen?.name ?? '默认骨架', note: '已确认的页面骨架' },
+        ],
       });
       return withAgentStoreName(entered, entered.store.name);
     }
@@ -989,6 +1001,10 @@ function baseReducer(state, action) {
           `装修风格：${style.name}`,
         ],
         payload: { styleId: style.id, store: state.store, agentDraft: toContractDraft(state.agentDraft) },
+        fields: [
+          { label: '店铺名', value: state.store.name || NEW_PROJECT_LABEL },
+          { label: '装修风格', value: style.name, note: style.caption },
+        ],
       });
     }
 
@@ -1037,17 +1053,22 @@ function baseReducer(state, action) {
     }
 
     case 'APPROVE_IMAGE': {
+      const deployStyle = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
       const entered = createStepSession(state, {
         phase: PHASES.DEPLOY,
         id: 'session-deploy',
         title: '部署小程序',
         summary: [
           `店铺名称：${state.store.name || NEW_PROJECT_LABEL}`,
-          `装修风格：${(STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0]).name}`,
+          `装修风格：${deployStyle.name}`,
           `生图提示词已确认，共 ${state.visual.promptRounds.length + 1} 轮打磨`,
           `效果图审核已通过，共 ${state.visual.imageRounds.length} 轮修改`,
         ],
         payload: { styleId: state.visual.styleId, prompt: state.visual.prompt },
+        fields: [
+          { label: '店铺名', value: state.store.name || NEW_PROJECT_LABEL },
+          { label: '装修风格', value: deployStyle.name, note: deployStyle.caption },
+        ],
       });
       return { ...entered, deploy: createInitialDeploySlice() };
     }

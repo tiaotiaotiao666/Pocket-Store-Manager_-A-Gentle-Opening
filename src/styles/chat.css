@@ -72,6 +72,114 @@
   box-shadow: var(--shadow-accent);
 }
 
+.handoff-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-xs);
+  animation: pop-in 0.36s var(--ease-spring) both;
+}
+
+.handoff-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.handoff-card-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.handoff-card-to {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.handoff-card-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.handoff-card-fact {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-xs);
+  background: var(--bg);
+}
+
+.handoff-card-fact dt {
+  margin: 0 0 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.handoff-card-fact dd {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.handoff-card-value {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.handoff-card-note {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.handoff-card-more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  transition: color 0.18s var(--ease-soft);
+}
+
+.handoff-card-more > summary:hover {
+  color: var(--ink-soft);
+}
+
+.handoff-card-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.handoff-card-more > summary::before {
+  content: '+';
+  font-size: 12px;
+  line-height: 1;
+}
+
+.handoff-card-more[open] > summary::before {
+  content: '−';
+}
+
+.handoff-card-more .bubble-system-text {
+  margin-top: 8px;
+}
+
 .bubble-system {
   width: 100%;
   padding: 14px 16px;
@@ -282,4 +390,9 @@
 
 .skip-action:active {
   transform: translateY(0);
+}
+@media (max-width: 640px) {
+  .handoff-card-facts {
+    grid-template-columns: 1fr;
+  }
 }

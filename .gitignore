@@ -76,6 +76,10 @@ $RECYCLE.BIN/
 # 注意：generated-projects-test/ 是仓库内回归样例，不受此规则影响，继续提交
 generated-projects/
 
+# ---------- 本机环境缓存 ----------
+# 本地 WSL / 依赖快照，供一键恢复，不入库
+.local-env-cache/
+
 # ---------- AI 工具本地状态 ----------
 .codeartsdoer/
 .merkle-snapshot.json

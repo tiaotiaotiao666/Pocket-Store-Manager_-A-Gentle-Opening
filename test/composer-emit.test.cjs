@@ -130,6 +130,41 @@ test('未分配插槽时 fallback 原样保留且锚点仍在', () => {
   assert.ok(slotsModule.includes('"homeHero": []'));
 });
 
+test('order-poster 注入自闭合组件标签，属性必须落在标签内部', () => {
+  const POSTER_PLAN = JSON.parse(fs.readFileSync(
+    path.join(REPO, 'templates', 'recipes', 'order-poster', '1.0.0', 'plan.json'),
+    'utf8',
+  ));
+  const loaded = loadRegistry();
+  assert.strictEqual(loaded.ok, true, JSON.stringify(loaded.errors));
+  const graph = resolvePlan(POSTER_PLAN, loaded, {});
+  assert.strictEqual(graph.ok, true, JSON.stringify(graph));
+
+  const result = buildProjectFiles(graph, { mode: 'development', projectName: 'emit-poster' });
+  assert.strictEqual(result.ok, true, JSON.stringify(result));
+
+  const home = result.files.get('pages/home/index.wxml').toString('utf8');
+  // 属性要贴在开标签内部——历史实现把属性写到标签外，微信 WXML 会当成裸文本。
+  assert.match(home, /<poster-carousel\s+autoplay="\{\{slotProps\.homeHero\[0\]\.props\.autoplay\}\}"/);
+  assert.ok(home.includes('items="{{slotProps.homeHero[0].props.items}}"'));
+  assert.match(home, /<poster-carousel[\s\S]*?\/>/);
+  assert.doesNotMatch(home, /<poster-carousel>\s*\n\s+[a-z-]+="\{\{/);
+  assert.doesNotMatch(home, /<poster-carousel><\/poster-carousel>/);
+
+  const homeJson = JSON.parse(result.files.get('pages/home/index.json').toString('utf8'));
+  assert.strictEqual(homeJson.usingComponents['poster-carousel'], '/components/poster-carousel/index');
+  assert.ok(result.files.has('components/poster-carousel/index.wxml'));
+
+  const slotsModule = result.files.get('config/slots.generated.js').toString('utf8');
+  assert.ok(slotsModule.includes('"assetId": "poster-carousel"'));
+  assert.ok(slotsModule.includes('"homeHero"'));
+
+  // 反向断言：经典配方首页不得出现海报组件，否则「选模板」就失去意义。
+  const classic = buildProjectFiles(buildGraph(), { mode: 'development', projectName: 'emit-classic' });
+  assert.strictEqual(classic.ok, true, JSON.stringify(classic));
+  assert.ok(!classic.files.get('pages/home/index.wxml').toString('utf8').includes('poster-carousel'));
+});
+
 test('usingComponents 只保留实际使用的组件', () => {
   const graph = buildGraph();
   const result = buildProjectFiles(graph, { mode: 'development', projectName: 'emit-check' });

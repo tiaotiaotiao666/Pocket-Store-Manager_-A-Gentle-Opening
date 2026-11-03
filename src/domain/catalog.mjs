@@ -13,9 +13,9 @@ const features = [
 ];
 
 const templates = [
-  { id: 'warm-bistro', name: '街巷食集', category: '日常餐饮', badge: '人气样板', summary: '菜单优先，适合家常菜、轻食和社区餐馆。', layout: 'menu', features: ['scan-order', 'product-catalog', 'cart-checkout', 'order-tracking', 'table-dining', 'takeaway', 'merchant-orders', 'product-availability', 'store-profile'] },
-  { id: 'modern-coffee', name: '一杯日常', category: '咖啡茶饮', badge: '简洁清单', summary: '高效选购与轻量分类，适合咖啡、烘焙和茶饮。', layout: 'catalog', features: ['scan-order', 'product-catalog', 'cart-checkout', 'order-tracking', 'takeaway', 'merchant-orders', 'product-availability', 'store-profile'] },
-  { id: 'signature-kitchen', name: '主厨推荐', category: '特色餐馆', badge: '推荐精选', summary: '大幅菜单主图和门店故事，适合有招牌菜的店铺。', layout: 'editorial', features: ['scan-order', 'product-catalog', 'cart-checkout', 'order-tracking', 'table-dining', 'takeaway', 'merchant-orders', 'store-profile', 'store-gallery'] },
+  { id: 'warm-bistro', name: '街巷食集', category: '日常餐饮', badge: '人气样板', summary: '菜单优先，适合家常菜、轻食和社区餐馆。', layout: 'menu', features: ['scan-order', 'product-catalog', 'cart-checkout', 'order-tracking', 'table-dining', 'takeaway', 'merchant-orders', 'product-availability', 'store-profile'], keywords: ['家常', '家常菜', '社区', '街坊', '街巷', '小吃', '小馆', '菜单', '平价', '实惠', '烟火', '盖饭', '快餐', '分量', '下饭', '早餐', '面馆'] },
+  { id: 'modern-coffee', name: '一杯日常', category: '咖啡茶饮', badge: '简洁清单', summary: '高效选购与轻量分类，适合咖啡、烘焙和茶饮。', layout: 'catalog', features: ['scan-order', 'product-catalog', 'cart-checkout', 'order-tracking', 'takeaway', 'merchant-orders', 'product-availability', 'store-profile'], keywords: ['咖啡', '咖啡厅', '茶饮', '奶茶', '烘焙', '面包', '甜品', '轻食', '简洁', '清爽', '高效', '快取', '外带', '自取', '清单', '极简'] },
+  { id: 'signature-kitchen', name: '主厨推荐', category: '特色餐馆', badge: '推荐精选', summary: '大幅菜单主图和门店故事，适合有招牌菜的店铺。', layout: 'editorial', features: ['scan-order', 'product-catalog', 'cart-checkout', 'order-tracking', 'table-dining', 'takeaway', 'merchant-orders', 'store-profile', 'store-gallery'], keywords: ['招牌', '招牌菜', '主厨', '大图', '大片', '故事', '门店故事', '精致', '特色', '高级', '宴请', '品牌', '摄影', '氛围', '图片'] },
 ];
 
 const themes = [
@@ -37,6 +37,53 @@ const templateModel = {
   baseFeatures: ['scan-order', 'product-catalog', 'cart-checkout', 'order-tracking'],
   moduleCoverage: { dining: ['table-dining'], pickup: ['takeaway'], merchant: ['merchant-orders', 'product-availability'], storeProfile: ['store-profile'], storeGallery: ['store-gallery'], membership: ['loyalty-membership'] },
 };
+
+/**
+ * 找出自然语言描述里命中的模板关键词。
+ * 长词优先去重：描述含「家常菜」时不再重复计「家常」。
+ */
+function matchedKeywordsFor(source, template) {
+  const found = (template.keywords || []).filter((keyword) => source.includes(keyword));
+  return found.filter((keyword) => !found.some((other) => (
+    other !== keyword && other.length > keyword.length && other.includes(keyword)
+  )));
+}
+
+/**
+ * 按自然语言描述给模板关键词打分。
+ *
+ * 作用范围仅是「排序提示」：命中越多越靠前，未识别到任何关键词时
+ * 返回 recognized=false，调用方应退回按功能清单匹配的顺序，不要假装理解了描述。
+ *
+ * @param {string} brief 用户的自然语言描述
+ * @returns {{ recognized:boolean, order:string[], hits:Record<string,number>, matchedKeywords:Record<string,string[]>, topKeywords:string[] }}
+ */
+function rankTemplatesByBrief(brief) {
+  const source = String(brief ?? '').trim();
+  const hits = {};
+  const matchedKeywords = {};
+  templates.forEach((template) => {
+    const matched = source ? matchedKeywordsFor(source, template) : [];
+    hits[template.id] = matched.length;
+    matchedKeywords[template.id] = matched;
+  });
+  const recognized = templates.some((template) => hits[template.id] > 0);
+  const order = [...templates]
+    .sort((a, b) => {
+      const diff = hits[b.id] - hits[a.id];
+      if (diff !== 0) return diff;
+      return templates.indexOf(a) - templates.indexOf(b);
+    })
+    .map((template) => template.id);
+  const topId = order[0];
+  return {
+    recognized,
+    order: recognized ? order : templates.map((template) => template.id),
+    hits,
+    matchedKeywords,
+    topKeywords: recognized && topId ? matchedKeywords[topId] : [],
+  };
+}
 
 function matchTemplate(selectedFeatureIds) {
   const requested = new Set([...templateModel.baseFeatures, ...selectedFeatureIds]);
@@ -83,4 +130,4 @@ function makeProjectConfig({ storeName, selectedFeatures, templateId, themeId, s
   };
 }
 
-export { features, templates, themes, iconCatalog, templateModel, matchTemplate, makeProjectConfig };
+export { features, templates, themes, iconCatalog, templateModel, matchTemplate, makeProjectConfig, rankTemplatesByBrief };

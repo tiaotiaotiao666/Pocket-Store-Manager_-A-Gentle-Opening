@@ -18,13 +18,74 @@ const path = require('node:path');
 
 const { fillThemeDefaults } = require('./resolve.cjs');
 const { walk, relativePosix, fileSha256 } = require('./digest.cjs');
-const { fail, ok, validateStoreConfig, detectForbiddenKeysWithCode } = require('./schema.cjs');
+const {
+  fail,
+  ok,
+  validateStoreConfig,
+  detectForbiddenKeysWithCode,
+  normalizePresentationTokens,
+  presentationSlotDataKey,
+} = require('./schema.cjs');
 const { COMPOSER_VERSION, OUTPUT_SCHEMA_VERSION } = require('./version.cjs');
 const { sanitizeProjectName } = require('./atomic.cjs');
 const { MEDIA_IDS, MEDIA_OUTPUTS, validateMedia, buildMediaManifest } = require('./media.cjs');
 
 const DETERMINISTIC_TIMESTAMP = '1970-01-01T00:00:00Z';
 const DEFAULT_DISCLAIMER = '演示付款，不产生真实扣款';
+
+/** 尺寸唯一事实：`preview-size-tokens.v1`（px 只给 React 预览，rpx 只给小程序导出）。 */
+const SIZE_TOKENS_PATH = path.join(__dirname, '..', '..', 'templates', 'presentation', 'size-tokens.v1.json');
+/** 尺寸表缺失时的内置基线，与 `size-tokens.v1.json` 的 md 档完全一致。 */
+const SIZE_TOKEN_FALLBACK = Object.freeze({
+  homeHero: Object.freeze({ sm: 150, md: 190, lg: 250 }),
+  productCard: Object.freeze({ sm: 110, md: 140, lg: 180 }),
+});
+const SIZE_TOKEN_DEFAULT_STEP = 'md';
+
+/** 导出侧配置键的固定顺序；顺序即产物字节顺序，必须保持稳定。 */
+const SLOT_DATA_KEYS = Object.freeze(['homeHero', 'homeMarketing', 'menuAside', 'menuHero']);
+
+let cachedSizeTokens;
+function loadSizeTokens() {
+  if (cachedSizeTokens !== undefined) return cachedSizeTokens;
+  try {
+    const doc = JSON.parse(fs.readFileSync(SIZE_TOKENS_PATH, 'utf8'));
+    cachedSizeTokens = {
+      sizes: doc && typeof doc.sizes === 'object' && doc.sizes ? doc.sizes : null,
+      defaults: doc && typeof doc.defaults === 'object' && doc.defaults ? doc.defaults : null,
+    };
+  } catch (error) {
+    cachedSizeTokens = null;
+  }
+  return cachedSizeTokens;
+}
+
+/**
+ * 取尺寸档位的 rpx 值。
+ *
+ * 优先级：合法档位 → 尺寸表 defaults → `md`；尺寸表不可用时回落到内置 md 基线，
+ * 保证尺寸表缺失不会中断导出。
+ */
+function sizeTokenRpx(group, size) {
+  const fallback = SIZE_TOKEN_FALLBACK[group];
+  if (!fallback) return 0;
+  const tokens = loadSizeTokens();
+  const sizes = tokens && tokens.sizes && tokens.sizes[group];
+  const defaultStep = (tokens && tokens.defaults && tokens.defaults[group]) || SIZE_TOKEN_DEFAULT_STEP;
+  const safeDefaultStep = fallback[defaultStep] === undefined ? SIZE_TOKEN_DEFAULT_STEP : defaultStep;
+  const requested = typeof size === 'string' && fallback[size] !== undefined ? size : safeDefaultStep;
+  if (sizes && sizes[requested] && typeof sizes[requested].rpx === 'number') {
+    return sizes[requested].rpx;
+  }
+  return fallback[requested];
+}
+
+/** 取（可能来自 slotOrder 覆盖的）插槽配置键；缺失时回落到固定映射，再回落到 slotId。 */
+function slotDataKeyOf(item) {
+  if (item && typeof item.dataKey === 'string' && item.dataKey) return item.dataKey;
+  const mapped = presentationSlotDataKey(item && item.slotId);
+  return mapped || (item && item.slotId) || '';
+}
 
 function json(value) {
   return JSON.stringify(value, null, 2) + '\n';
@@ -94,9 +155,19 @@ function buildAppJson(graph, options, theme, storeName) {
   return appJson;
 }
 
-function buildThemeWxss(theme) {
+/**
+ * 生成主题样式表。
+ *
+ * `presentationTokens` 为可选（C-PLAN-PRESENTATION@1）：缺省时按 `md` 输出，
+ * 旧 Plan 因此得到与尺寸表基线一致的结果。尺寸值一律取 `size-tokens.v1.json` 的 rpx。
+ */
+function buildThemeWxss(theme, presentationTokens) {
+  const sizes = normalizePresentationTokens(presentationTokens);
+  const homeHeroRpx = sizeTokenRpx('homeHero', sizes.homeHeroSize);
+  const productCardRpx = sizeTokenRpx('productCard', sizes.productCardSize);
   return [
     '/* 由 Composer 生成，勿手改。主题唯一事实来自 CompositionPlan.themeTokens。 */',
+    '/* 尺寸唯一事实来自 templates/presentation/size-tokens.v1.json（导出只使用 rpx）。 */',
     'page {',
     '  --store-page-background: ' + theme.pageBackground + ';',
     '  --store-primary-color: ' + theme.primaryColor + ';',
@@ -105,6 +176,8 @@ function buildThemeWxss(theme) {
     '  --store-tab-bar-background: ' + theme.tabBarBackground + ';',
     '  --store-tab-bar-color: ' + theme.tabBarColor + ';',
     '  --store-tab-bar-selected-color: ' + theme.tabBarSelectedColor + ';',
+    '  --store-home-hero-min-height: ' + homeHeroRpx + 'rpx;',
+    '  --store-product-card-min-height: ' + productCardRpx + 'rpx;',
     '',
     '  --color-bg: var(--store-page-background);',
     '  --color-surface: #FFFDF9;',
@@ -121,16 +194,22 @@ function buildThemeWxss(theme) {
   ].join('\n');
 }
 
+/**
+ * 生成插槽配置模块。
+ *
+ * 配置键一律取 `assignment.dataKey`（resolve 已把 `slotOrder` 目标插槽映射成固定键，
+ * 例如 `menu-hero` → `menuHero`），不得再用 slotId 三元表达式。
+ * Feature 声明的 props（含 `size`）原样透传，emit 不做任何解释或改写。
+ */
 function buildSlotsModule(graph) {
-  const slots = {
-    homeHero: [],
-    homeMarketing: [],
-    menuAside: [],
-  };
-  graph.assignments.forEach((items, key) => {
-    const [, slotId] = key.split('#');
-    const dataKey = slotId === 'home-hero' ? 'homeHero' : slotId === 'home-marketing' ? 'homeMarketing' : 'menuAside';
+  const slots = {};
+  SLOT_DATA_KEYS.forEach((key) => {
+    slots[key] = [];
+  });
+  graph.assignments.forEach((items) => {
     items.forEach((item) => {
+      const dataKey = slotDataKeyOf(item);
+      if (!Object.prototype.hasOwnProperty.call(slots, dataKey)) slots[dataKey] = [];
       slots[dataKey].push({
         assetId: item.asset.id,
         version: item.asset.version,
@@ -139,7 +218,15 @@ function buildSlotsModule(graph) {
       });
     });
   });
-  return configModule(slots);
+  // 固定键先输出并保持声明顺序，未知键按字典序追加，确保重复导出字节一致。
+  const ordered = {};
+  SLOT_DATA_KEYS.forEach((key) => {
+    ordered[key] = slots[key];
+  });
+  Object.keys(slots).sort().forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(ordered, key)) ordered[key] = slots[key];
+  });
+  return configModule(ordered);
 }
 
 function componentTagOf(asset) {
@@ -299,7 +386,12 @@ function replaceSlotAnchors(wxml, items, dataKey) {
       const binding = '{{slotProps.' + dataKey + '[' + index + '].props.' + prop + '}}';
       return '      ' + toKebab(prop) + '="' + binding + '"';
     });
-    return '    <' + tag + '>\n' + attrs.map((line) => line + '\n').join('') + '    </' + tag + '>';
+    // 属性必须写在标签内部。自闭合标签对空组件与只有 props 的 Feature Pack 组件都合法，
+    // 且不会被微信 WXML 解析器当成裸文本。
+    const open = attrs.length
+      ? '    <' + tag + '\n' + attrs.join('\n') + '\n    '
+      : '    <' + tag + ' ';
+    return open + '/>';
   });
   const replacement = fallbackBegin + '\n' + (tags.length ? tags.join('\n') + '\n' : '') + '    ' + fallbackEnd;
   return {
@@ -556,12 +648,14 @@ function buildProjectFiles(graph, options) {
   }
   const theme = fillThemeDefaults(opts.theme || graph.themeTokens);
   opts.theme = theme;
+  // 尺寸来源优先级：显式 options → resolve 归一化结果；两者都缺省时 buildThemeWxss 按 md 兜底。
+  const presentationTokens = opts.presentationTokens === undefined ? graph.presentationTokens : opts.presentationTokens;
   const storeName = (graph.plan.storeProfile && graph.plan.storeProfile.name) || '我的餐馆';
   const files = readBaseFiles(graph, opts);
   applyRoleOutput(files, graph, opts.role);
 
   files.set('app.json', Buffer.from(json(buildAppJson(graph, opts, theme, storeName)), 'utf8'));
-  files.set('theme.generated.wxss', Buffer.from(buildThemeWxss(theme), 'utf8'));
+  files.set('theme.generated.wxss', Buffer.from(buildThemeWxss(theme, presentationTokens), 'utf8'));
   files.set('config/slots.generated.js', Buffer.from(buildSlotsModule(graph), 'utf8'));
   files.set('config/store.generated.js', Buffer.from(configModule(buildStoreConfig(graph, opts)), 'utf8'));
   files.set('config/env.js', Buffer.from(buildEnvModule(graph, opts), 'utf8'));
@@ -576,7 +670,8 @@ function buildProjectFiles(graph, options) {
     const wxmlFile = 'pages/' + pageId + '/index.wxml';
     const wxml = files.get(wxmlFile);
     if (!wxml) return;
-    const dataKey = slotId === 'home-hero' ? 'homeHero' : slotId === 'home-marketing' ? 'homeMarketing' : 'menuAside';
+    // 配置键跟随 assignment.dataKey（slotOrder 覆盖后可能是 menuHero），与 slots.generated.js 保持一致。
+    const dataKey = items.length > 0 ? slotDataKeyOf(items[0]) : (presentationSlotDataKey(slotId) || slotId);
     const replaced = replaceSlotAnchors(wxml.toString('utf8'), { slotId, items }, dataKey);
     if (!replaced.ok) return replaced;
     files.set(wxmlFile, Buffer.from(replaced.content, 'utf8'));

@@ -1,6 +1,9 @@
 const MIN_INTERVAL = 3000;
 const MAX_INTERVAL = 8000;
 const DEFAULT_INTERVAL = 4000;
+/** 尺寸档位与 `preview-size-tokens.v1` 的 carousel 组一致；未知值按 md 处理。 */
+const SIZE_STEPS = ['sm', 'md', 'lg'];
+const DEFAULT_SIZE = 'md';
 
 Component({
   properties: {
@@ -20,11 +23,16 @@ Component({
       type: Boolean,
       value: true,
     },
+    size: {
+      type: String,
+      value: DEFAULT_SIZE,
+    },
   },
 
   data: {
     slides: [],
     safeInterval: DEFAULT_INTERVAL,
+
     failedIndex: -1,
   },
 

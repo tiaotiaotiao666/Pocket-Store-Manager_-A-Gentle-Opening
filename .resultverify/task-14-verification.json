@@ -1,0 +1,124 @@
+{
+  "taskId": 14,
+  "recheckOfTask": 10,
+  "plan": ".codeartsdoer/plans/agent-realtime-preview/plan.md",
+  "verdict": "PASS",
+  "previousVerdict": "FAIL",
+  "reason": "任务 12 的 compact 营业时间最小修复经真实 Vite + Chrome/CDP 复验有效：部分 turn、完整 turn、reopen 手动编辑及空草稿回落均在 STORE_INFO compact DOM 精确可见；同一生产 ViewModel 下 compact/full 五类事实一致。既有交互、独立晚响应/快照探针、根全量测试、Vite build 和任务 13 文档真实性均通过。",
+  "failedAcceptanceCases": [],
+  "runtimeEvidence": {
+    "command": "node .resultverify/cdp-runtime-recheck.mjs",
+    "exitCode": 0,
+    "result": "PASS",
+    "driver": "真实 Vite 页面 + Headless Chrome 156.0.8078.74 + Chrome DevTools Protocol；主流程未向 App reducer 注入状态；营业时间同时断言精确文本、非 none/hidden 计算样式及非零可见尺寸",
+    "url": "http://127.0.0.1:5187/",
+    "runtimeErrors": [],
+    "initialFallback": {
+      "businessHours": "营业时间待完善",
+      "businessHoursVisible": true
+    },
+    "partialTurn": {
+      "status": "collecting / 还差 1 项",
+      "storeName": "夜航食堂",
+      "subtitle": "深夜家常菜 · 堂食",
+      "businessHours": "18:00-23:00",
+      "businessHoursVisible": true,
+      "products": [{ "name": "夜航炒饭", "price": "¥23.45" }]
+    },
+    "completeTurn": {
+      "status": "reviewing",
+      "storeName": "夜航食堂总店",
+      "subtitle": "社区餐馆 · 堂食 · 到店自取",
+      "businessHours": "08:30-21:30",
+      "businessHoursVisible": true,
+      "products": [
+        { "name": "夜航炒饭", "price": "¥23.45" },
+        { "name": "番茄炒蛋", "price": "¥16.00" },
+        { "name": "米饭", "price": "¥3.00" }
+      ]
+    },
+    "reopenManualEdit": {
+      "storeName": "重开未确认新店",
+      "businessHours": "07:00-08:00",
+      "businessHoursVisible": true
+    },
+    "compactFullParity": {
+      "method": "在同一浏览器页动态导入生产 buildSessionPreviewViewModels 与 MiniProgramPreview，以同一个 preview-view-model.v1 对象挂载 compact/full；full 切到‘我的’核对营业时间，再切‘菜单’核对商品；未修改 App state",
+      "storeName": "夜航食堂总店 / 两侧一致",
+      "subtitle": "社区餐馆 · 堂食 · 到店自取 / 两侧一致",
+      "businessHours": "08:30-21:30 / 两侧一致且可见",
+      "products": "三道菜名称与 ¥23.45、¥16.00、¥3.00 两侧深相等"
+    },
+    "regressions": {
+      "layouts": ["menu", "catalog", "editorial"],
+      "candidateCount": 3,
+      "tabs": ["home", "menu", "orders", "mine"],
+      "tabRetainedAfterTemplateViewModelUpdate": "我的",
+      "failureRetainsAcceptedPreview": true,
+      "manualRetryUpdatesDom": true,
+      "confirmReopenFlow": true,
+      "xssProbe": "HTML 仅作为文本，未注入 img，未执行 onerror"
+    }
+  },
+  "commands": [
+    {
+      "command": "node --test test/mini-program-preview-structure.test.cjs test/agent-preview-integration.test.cjs test/app-imports.test.cjs",
+      "exitCode": 0,
+      "tests": 19,
+      "pass": 19,
+      "fail": 0,
+      "todo": 0
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "tests": 420,
+      "pass": 419,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 1,
+      "durationMs": 6818.2949
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "vite": "6.4.5",
+      "modulesTransformed": 1643,
+      "duration": "3.63s",
+      "artifacts": {
+        "dist/index.html": "0.60 kB / gzip 0.44 kB",
+        "CSS": "93.41 kB / gzip 14.40 kB",
+        "JS": "410.72 kB / gzip 128.87 kB"
+      }
+    }
+  ],
+  "independentAdversarialProbe": {
+    "result": "PASS",
+    "duplicateCompletionSameReference": true,
+    "resetLateSuccessIgnored": true,
+    "resetLateFailureIgnored": true,
+    "snapshotDraftRoundTrip": true,
+    "activeRequestIdPersisted": false
+  },
+  "requirementVerdicts": {
+    "R1": "PASS：collecting/reviewing 的五类草稿字段真实进入 STORE_INFO compact DOM；三个目标营业时间可见；compact/full 门店、营业时间、履约与商品事实一致",
+    "R2": "PASS：唯一生产 ViewModel 驱动，三布局、四 tab、tab 切换和 VM 更新后的 tab 保留通过",
+    "R3": "PASS：失败保留旧预览、重试更新、reopen 手动编辑、重复完成和 reset 后晚 success/failure 防护通过",
+    "R4": "PASS：confirm/reopen 流程、快照草稿恢复、activeRequestId transient 及既有导出/确认门禁保持；本次生产修复未触及这些边界",
+    "R5": "PASS（范围内）：仅验收 Web React DOM 近似预览；P95≤150ms 仍为 commit→paint 目标且未实测；未宣称真实微信运行时或 v2",
+    "R6": "PASS：局部 19/19、根 420 项全量测试和 build 真实通过；任务 13 文档如实记录首次 FAIL、任务 12 最小修复及局部证据，未预称独立复验 PASS，最终结论由本报告补充"
+  },
+  "documents": {
+    "docs/2026-11-03-Agent草稿实时预览-构建说明.md": "一致：首次 FAIL、修复文件、9/9 与 10/10 局部证据、未重跑全量和未预称复验 PASS 的口径真实",
+    "docs/agent-turn-contract.md": "本轮未改变 v1 wire contract、requestId 或持久化边界",
+    "docs/后端待实现接口清单.md": "v2 仍为建议，未在本轮实现"
+  },
+  "outOfScopeOrOpen": [
+    "P95 commit→paint 未实测，只保留目标，未虚构通过",
+    "真实微信运行时、WXML/WXSS、agent-turn.v2 不在本轮范围",
+    "Node MODULE_TYPELESS_PACKAGE_JSON 警告仍存在，但根测试退出码为 0",
+    "scenario-recognition/new-feature-verification skills 在当前环境不可用；沿用已有 new-feature 场景文件并手工执行等价复验"
+  ],
+  "modificationBoundary": "未修改业务代码、项目测试、项目文档或桌面文件；仅新增/更新 .resultverify 验收驱动、日志和本机器可读报告。build 产生正常 dist 产物。"
+}

@@ -27,10 +27,11 @@
 
 | 证据 | 内容 | 等级 | 状态 |
 | --- | --- | --- | --- |
-| `m7/s6.md` | 资产目录、Manifest、四类预览、恢复步骤 | L1 | 资产落盘；注册表未冻结 |
-| `m7/s6-final.md` | M7 门禁汇总 | L1 + W | 未通过（未运行） |
-| `m7/assets.md` | 逐资产记录 | L1 | 未验证 |
-| `m7/recipes.md` | 三份 Recipe 与晋升状态 | L1 | 全部 candidate |
+| `m7/s6.md` | 生成、可删除性、关闭海报与微信编译实测 | L1 + W | 已完成（5 份工程编译通过） |
+| `m7/s6-final.md` | M7 门禁汇总 | L1 + W | 通过（`direct 2`）；R 未执行 |
+| `m7/assets.md` | 逐资产记录 | L1 + W | 已验证 |
+| `m7/recipes.md` | 三份 Recipe 与晋升状态 | L1 + W | 2 direct / 1 candidate |
+| `m7/wechat/*.png` | 五份工程首页/菜单截图 | W | 已归档，视觉待人工确认 |
 
 ## P0 验收收口（批次 A）
 

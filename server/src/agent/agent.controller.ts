@@ -14,13 +14,16 @@ import { resolveRequestId } from '../common/request-id';
 import { AgentAuthGuard } from './agent-auth.guard';
 import { AgentExceptionFilter } from './agent-exception.filter';
 import { AgentService } from './agent.service';
-import type { AgentTurnResponse } from './agent.types';
+import type { AgentTurnV1Response, AgentTurnV2Response } from './agent.types';
 
 /**
  * POST /api/v1/agent/turn
  *
  * 路由前缀由 main.ts 的 setGlobalPrefix('api/v1') 统一添加。
  * 返回 200；错误体统一为 { code, message, requestId }。
+ *
+ * 契约分派在 AgentService 内按 `contractVersion` 完成：
+ * v1 响应不含 `vision`，v2 响应追加 `vision`。
  */
 @Controller('agent')
 @UseGuards(AgentAuthGuard)
@@ -34,7 +37,7 @@ export class AgentController {
     @Body() body: unknown,
     @Req() request: Request & { requestId?: string },
     @Res({ passthrough: true }) response: Response,
-  ): Promise<AgentTurnResponse> {
+  ): Promise<AgentTurnV1Response | AgentTurnV2Response> {
     const requestId = resolveRequestId(
       request.headers as unknown as Record<string, unknown>,
       request.requestId,

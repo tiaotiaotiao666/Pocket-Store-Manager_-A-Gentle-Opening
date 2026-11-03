@@ -87,6 +87,25 @@
   opacity: 0.45;
 }
 
+/* 门店口号（Plan 的 storeProfile.notes）：有值才渲染，单行省略，不挤占 subtitle。
+   选择器带上头部容器，覆盖 `.mini-phone-head small` / `.mini-compact-head small` 的通用字号。 */
+.mini-phone-head .mini-tagline,
+.mini-compact-head .mini-compact-tagline {
+  display: block;
+  margin-top: 1px;
+  max-width: 168px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 8px;
+  opacity: 0.5;
+}
+
+.mini-compact-head .mini-compact-tagline {
+  max-width: 118px;
+  font-size: 6.5px;
+}
+
 .mini-phone-body {
   flex: 1;
   min-height: 0;
@@ -593,4 +612,149 @@
   .template-detail {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+/* ── poster-carousel 预览块 ──────────────────────────────────────────────
+   对齐 templates/features/poster-carousel/1.0.0/src/components/poster-carousel：
+   三档语气渐变与组件 wxss 同源，结构对应 wxml 的 swiper / poster-empty 分支。 */
+
+.mini-poster {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(20, 20, 20, 0.16);
+}
+
+.mini-poster-slide {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 3px;
+  height: 118px;
+  padding: 14px;
+  box-sizing: border-box;
+  color: #fffaf3;
+  cursor: default;
+}
+
+.mini-poster-slide[role='button'] {
+  cursor: pointer;
+}
+
+.mini-poster-slide[role='button']:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: -3px;
+}
+
+.mini-poster-slide.is-warm {
+  background: linear-gradient(135deg, #8c3310 0%, #c2410c 55%, #e9a04a 100%);
+}
+
+.mini-poster-slide.is-green {
+  background: linear-gradient(135deg, #123f31 0%, #1f6f54 58%, #7fae8f 100%);
+}
+
+.mini-poster-slide.is-ink {
+  background: linear-gradient(135deg, #10192b 0%, #1d4e89 62%, #5b86b8 100%);
+}
+
+.mini-poster-eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.6px;
+  opacity: 0.82;
+}
+
+.mini-poster-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.5px;
+}
+
+.mini-poster-sub {
+  font-size: 8.5px;
+  line-height: 1.4;
+  opacity: 0.86;
+}
+
+.mini-poster-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 7px;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.mini-poster-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  transition: background 0.2s ease, width 0.2s ease;
+}
+
+.mini-poster-dot.is-active {
+  width: 9px;
+  background: #ffffff;
+}
+
+.mini-poster-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  background: rgba(127, 127, 127, 0.09);
+  color: inherit;
+  font-size: 8px;
+  letter-spacing: 3px;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+/* 缩略图卡片里的紧凑尺寸：高度压到与 mini-compact-hero 同量级 */
+.mini-poster.is-compact {
+  border-radius: 9px;
+  box-shadow: 0 3px 10px rgba(20, 20, 20, 0.14);
+}
+
+.mini-poster.is-compact .mini-poster-slide {
+  height: 56px;
+  padding: 8px;
+  gap: 1px;
+}
+
+.mini-poster.is-compact .mini-poster-eyebrow {
+  font-size: 6px;
+  letter-spacing: 1px;
+}
+
+.mini-poster.is-compact .mini-poster-title {
+  font-size: 9.5px;
+  letter-spacing: 0.2px;
+}
+
+.mini-poster.is-compact .mini-poster-sub {
+  font-size: 6.5px;
+}
+
+.mini-poster.is-compact .mini-poster-dots {
+  bottom: 3px;
+  gap: 2.5px;
+}
+
+.mini-poster.is-compact .mini-poster-dot {
+  width: 2.5px;
+  height: 2.5px;
+}
+
+.mini-poster.is-compact .mini-poster-dot.is-active {
+  width: 6px;
+}
+
+.mini-poster.is-compact.mini-poster-empty {
+  height: 34px;
+  font-size: 6px;
+  letter-spacing: 2px;
 }

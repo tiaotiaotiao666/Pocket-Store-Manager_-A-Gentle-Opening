@@ -108,6 +108,8 @@ async function compose(options) {
     mode,
     projectName,
     theme,
+    // 展示声明（C-PLAN-PRESENTATION@1）：resolve 归一化后的尺寸档位，交给 emit 输出 CSS 变量。
+    presentationTokens: graph.presentationTokens,
     planDigest: planHash,
     lockDigest: lockResult.lockDigest,
     backendVersions: opts.backendVersions,

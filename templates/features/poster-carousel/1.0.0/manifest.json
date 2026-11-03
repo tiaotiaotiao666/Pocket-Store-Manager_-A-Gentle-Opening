@@ -13,7 +13,8 @@
       { "name": "items", "type": "array", "required": true, "description": "海报列表：title/subtitle/tone/optional image" },
       { "name": "autoplay", "type": "boolean", "required": false, "description": "是否自动播放" },
       { "name": "interval", "type": "number", "required": false, "description": "切换间隔，3000–8000ms，越界取 4000" },
-      { "name": "showIndicator", "type": "boolean", "required": false, "description": "是否显示指示点" }
+      { "name": "showIndicator", "type": "boolean", "required": false, "description": "是否显示指示点" },
+      { "name": "size", "type": "string", "required": false, "description": "尺寸档位 sm|md|lg，与 preview-size-tokens.v1 的 carousel 档一致，缺省 md" }
     ],
     "events": [
       { "name": "select", "payload": ["index"], "description": "点击海报" },

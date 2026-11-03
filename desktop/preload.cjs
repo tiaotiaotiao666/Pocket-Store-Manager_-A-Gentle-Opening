@@ -59,6 +59,11 @@ contextBridge.exposeInMainWorld('smartStore', Object.freeze({
   diagnosticsSaveSnapshot: (payload) => ipcRenderer.invoke('diagnostics:save-snapshot', payload),
   applyAppid: (payload) => ipcRenderer.invoke('composer:apply-appid', payload),
   probeDevtools: () => ipcRenderer.invoke('devtools:probe'),
+
+  // 真实渲染截图回传（C-REAL-PREVIEW@1）
+  // 只打开已导出工程目录 / 读取本地截图；不上传、不写入导出工程。
+  openPreviewProject: (payload) => ipcRenderer.invoke('preview:open-project', payload),
+  pickPreviewScreenshot: () => ipcRenderer.invoke('preview:pick-screenshot'),
   onProjectFlushRequest: (listener) => {
     if (typeof listener !== 'function') return () => {};
     flushRequestListeners.add(listener);

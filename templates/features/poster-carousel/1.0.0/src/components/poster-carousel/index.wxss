@@ -5,11 +5,26 @@
   margin-bottom: 20rpx;
 }
 
+/* 尺寸档位来自 `preview-size-tokens.v1` 的 carousel 组（rpx）：
+   sm 200rpx / md 240rpx / lg 310rpx。组件根类 `poster-carousel--{{size}}` 决定档位。
+   基础高度保留原硬编码 300rpx，未传 size 的旧工程视觉不回归。 */
 .poster-swiper {
   height: 300rpx;
   border-radius: 28rpx;
   overflow: hidden;
   box-shadow: 0 14rpx 34rpx rgba(35, 35, 35, 0.16);
+}
+
+.poster-carousel--sm .poster-swiper {
+  height: 200rpx;
+}
+
+.poster-carousel--md .poster-swiper {
+  height: 240rpx;
+}
+
+.poster-carousel--lg .poster-swiper {
+  height: 310rpx;
 }
 
 .poster-slide {

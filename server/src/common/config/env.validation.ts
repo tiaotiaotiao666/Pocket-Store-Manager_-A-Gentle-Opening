@@ -64,6 +64,13 @@ class EnvironmentVariables {
   @Matches(/^[A-Za-z0-9._:-]{1,64}$/)
   DEEPSEEK_MODEL = 'deepseek-chat';
 
+  /**
+   * 视觉模型：agent v2 请求携带图片时使用，纯文本请求仍走 DEEPSEEK_MODEL。
+   * 默认值与 C-SERVER-ENV@1 一致；留空回落到 deepseek-flash。
+   */
+  @Matches(/^[A-Za-z0-9._:-]{1,64}$/)
+  DEEPSEEK_VISION_MODEL = 'deepseek-flash';
+
   @Type(() => Number)
   @IsInt()
   @Min(1000)
@@ -83,6 +90,16 @@ class EnvironmentVariables {
   /** 未认证联调开关：只允许 development/test 使用，production 必须为 true。 */
   @IsIn(['true', 'false'])
   AGENT_REQUIRE_AUTH = 'false';
+
+  /**
+   * Agent JSON 请求体上限（字节），只对 /api/v1/agent 前缀生效。
+   * v2 图片以 base64 传输，express 默认 100kb 不够用；默认 2 MiB。
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(262144)
+  @Max(8388608)
+  AGENT_MAX_BODY_BYTES = 2097152;
 }
 
 export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
@@ -102,6 +119,15 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
   }
   if (typeof normalized.DEEPSEEK_MODEL !== 'string' || !normalized.DEEPSEEK_MODEL.trim()) {
     normalized.DEEPSEEK_MODEL = 'deepseek-chat';
+  }
+  if (
+    typeof normalized.DEEPSEEK_VISION_MODEL !== 'string' ||
+    !normalized.DEEPSEEK_VISION_MODEL.trim()
+  ) {
+    normalized.DEEPSEEK_VISION_MODEL = 'deepseek-flash';
+  }
+  if (normalized.AGENT_MAX_BODY_BYTES === undefined || normalized.AGENT_MAX_BODY_BYTES === '') {
+    normalized.AGENT_MAX_BODY_BYTES = 2097152;
   }
   if (normalized.DEEPSEEK_TIMEOUT_MS === undefined || normalized.DEEPSEEK_TIMEOUT_MS === '') {
     normalized.DEEPSEEK_TIMEOUT_MS = 30000;

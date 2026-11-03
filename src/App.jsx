@@ -12,6 +12,7 @@ import {
   DEPLOY_STATUS,
 } from './state/constants.mjs';
 import { buildPlanFromSession } from './composition/planFromSession.mjs';
+import { buildSessionPreviewViewModels } from './composition/previewViewModel.mjs';
 import {
   isDesktopExportAvailable,
   subscribeProgress,
@@ -39,6 +40,7 @@ import {
   selectOnboardingStart,
   selectHandoffProgress,
   selectUndoState,
+  selectPresentationState,
 } from './state/sessionMachine.mjs';
 import { formatCents } from './domain/agentDraft.mjs';
 import { toDocument, fromDocument } from './domain/projectSnapshot.mjs';
@@ -49,7 +51,12 @@ import { createSettingsService } from './services/settingsService.js';
 import { createDiagnosticsService } from './services/diagnosticsService.js';
 import { createAppidService } from './services/appidService.js';
 import { createDevtoolsService } from './services/devtoolsService.js';
-import { requestAgentTurn, describeAgentTransport } from './services/agentTurn/agentTurnService.js';
+import { requestAgentTurn, describeAgentTransport, configureAgentRuntime, getAgentTransportConfig } from './services/agentTurn/agentTurnService.js';
+import {
+  requestTemplateRevise,
+  createReviseRequestId,
+  describeTemplateReviseTransport,
+} from './services/agentTurn/templateReviseService.js';
 import {
   buildTemplateCandidates,
   composePrompt,
@@ -71,12 +78,14 @@ import FeaturePicker from './components/flow/FeaturePicker.jsx';
 import BuildLoading from './components/flow/BuildLoading.jsx';
 import TemplateGallery from './components/flow/TemplateGallery.jsx';
 import MiniProgramPreview from './components/preview/MiniProgramPreview.jsx';
+import RealPreviewPanel from './components/preview/RealPreviewPanel.jsx';
 import StoreInfoStep from './components/build/StoreInfoStep.jsx';
 import PromptStudio from './components/build/PromptStudio.jsx';
 import ImageReview from './components/build/ImageReview.jsx';
 import DeployStep from './components/build/DeployStep.jsx';
 import ImportDiffCard from './components/build/ImportDiffCard.jsx';
 import AgentIntakePanel from './components/agent/AgentIntakePanel.jsx';
+import VisionImageUploader from './components/agent/VisionImageUploader.jsx';
 import DraftEditor from './components/agent/DraftEditor.jsx';
 import StoreInfoActionBar from './components/agent/StoreInfoActionBar.jsx';
 import AgentDraftSummary from './components/agent/AgentDraftSummary.jsx';
@@ -89,7 +98,23 @@ const FEATURE_GROUPS = [...new Set(catalogFeatures.map((feature) => feature.grou
 const REQUIRED_IDS = catalogFeatures.filter((feature) => feature.required).map((feature) => feature.id);
 const BUILD_STEPS = ['解析功能清单', '匹配页面骨架', '拼装门店页面', '准备预览'];
 const INTRO_AUTO_ADVANCE_MS = 5200;
-const COMPOSER_PHASES = [PHASES.ONBOARDING, PHASES.STORE_INFO, PHASES.PROMPT_STUDIO, PHASES.IMAGE_REVIEW];
+// 模板页也开放输入框：一句话走「对话修改当前模板」，与「重新描述候选」是两个入口。
+const COMPOSER_PHASES = [PHASES.ONBOARDING, PHASES.STORE_INFO, PHASES.TEMPLATE_PICK, PHASES.PROMPT_STUDIO, PHASES.IMAGE_REVIEW];
+
+/** 全局 composer 文案表没有模板页条目，这里单独补上，避免改 constants 造成跨任务冲突。 */
+const TEMPLATE_PICK_COMPOSER = Object.freeze({
+  placeholder: '用一句话描述想怎么改当前模板，例如：主色换成墨绿，首屏再大一点…',
+  submitLabel: '修改这版模板',
+  hint: '这里改的是当前模板的展示；“重新描述候选”会重新匹配整套骨架。',
+});
+
+// 计数器位于模块作用域，RESET、项目切换和 App 重挂载都不会复用请求身份。
+let agentRequestSequence = 0;
+
+function createAgentRequestId() {
+  agentRequestSequence += 1;
+  return `agent-request-${agentRequestSequence}`;
+}
 
 function fulfillmentLabel(fulfillment) {
   if (fulfillment.dineIn && fulfillment.takeaway) return '堂食 + 自取';
@@ -104,11 +129,62 @@ const COMPOSER_HINTS = {
   [PHASES.IMAGE_REVIEW]: '满意后点下方「效果满意，去部署」。',
 };
 
-function buildPanelCards(state, tips, imageBusy) {
+/**
+ * 把当前 Plan 的真实落位压成 `agent-template-revise.v1` 允许的 `planFeatures`。
+ *
+ * 契约（plan.md 2.2.8）当前只允许 `poster-carousel`，且同一 feature 只能出现一次；
+ * 因此优先取顶层 `slotOrder`（补丁落位），没有时退回 `features[].slots[0]`。
+ */
+function collectRevisePlanFeatures(plan) {
+  const features = Array.isArray(plan?.features) ? plan.features : [];
+  const slotOrder = Array.isArray(plan?.slotOrder) ? plan.slotOrder : [];
+  const featureIds = new Set(
+    features
+      .filter((feature) => feature && feature.id === 'poster-carousel')
+      .map((feature) => feature.id),
+  );
+  const result = [];
+  const push = (entry) => {
+    if (!entry || !entry.featureId || !featureIds.has(entry.featureId)) return;
+    if (typeof entry.pageId !== 'string' || typeof entry.slotId !== 'string') return;
+    if (result.some((item) => item.featureId === entry.featureId)) return;
+    result.push({ featureId: entry.featureId, pageId: entry.pageId, slotId: entry.slotId });
+  };
+  slotOrder.forEach(push);
+  features.forEach((feature) => {
+    const slot = Array.isArray(feature?.slots) ? feature.slots[0] : null;
+    if (!slot) return;
+    push({ featureId: feature.id, pageId: slot.pageId, slotId: slot.slotId });
+  });
+  return result.slice(0, 3);
+}
+
+/**
+ * `AgentImageDraft` → 现有 `state.assets.images` 条目形状。
+ *
+ * 只保留 `projectSnapshot.pickImages` 认识的白名单字段，不把 base64 写进持久化文档。
+ */
+function toVisionAsset(draft) {
+  return {
+    assetId: draft.id,
+    fileName: draft.name,
+    originalName: draft.name,
+    mime: draft.mediaType,
+    bytes: draft.bytes,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+/** 导出完成后可回传真实截图的工程目录（Composer 的 `outputPath`）。 */
+function readExportedProjectPath(result) {
+  if (!result || typeof result !== 'object') return null;
+  const value = result.outputPath;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function buildPanelCards(state, tips, imageBusy, previewViewModel) {
   const cards = [];
   const style = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
-  const selectedTemplate = state.build.candidates.find((item) => item.id === state.build.selectedId)
-    ?? state.build.candidates[0];
 
   switch (state.phase) {
     case PHASES.HOME:
@@ -175,7 +251,8 @@ function buildPanelCards(state, tips, imageBusy) {
         type: 'preview',
         icon: 'list',
         tone: 'accent',
-        title: '候选页面骨架',
+        title: state.build.status === 'building' ? '正在按你的描述重新排骨架' : '候选页面骨架',
+        body: state.build.status === 'building' ? '这会覆盖当前候选列表，完成后自动刷新。' : undefined,
         items: state.build.candidates.map((item) => `${item.name} · ${item.score}%`),
       });
       cards.push({
@@ -186,10 +263,7 @@ function buildPanelCards(state, tips, imageBusy) {
         body: '点选骨架后，这里会按模板结构重新渲染。',
         node: (
           <MiniProgramPreview
-            template={selectedTemplate}
-            theme={style}
-            storeName={state.store.name || '我的餐馆'}
-            features={state.features.selected}
+            viewModel={previewViewModel}
             size="compact"
           />
         ),
@@ -218,10 +292,7 @@ function buildPanelCards(state, tips, imageBusy) {
         body: '切换风格后，预览会立即重新渲染。',
         node: (
           <MiniProgramPreview
-            template={selectedTemplate}
-            theme={style}
-            storeName={state.store.name || '我的餐馆'}
-            features={state.features.selected}
+            viewModel={previewViewModel}
             size="compact"
           />
         ),
@@ -310,6 +381,19 @@ function sanitizeProjectName(value) {
   return cleaned || 'smart-store';
 }
 
+// 设置文件不存在时，用当前实际生效的 transport 回填表单，避免显示值与真实请求不一致。
+function withRuntimeAgentConfig(config) {
+  if (!config || typeof config !== 'object') return config;
+  const current = getAgentTransportConfig();
+  return {
+    ...config,
+    apiBaseUrl: current.baseUrl,
+    agentTransport: current.mode,
+    agentEndpoint: current.endpoint,
+    agentTimeoutMs: current.timeoutMs,
+  };
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(reducer, undefined, createInitialState);
   const projectServiceRef = useRef(null);
@@ -358,7 +442,17 @@ export default function App() {
   const [storeImageBusy, setStoreImageBusy] = useState(false);
   const [onboardingConfirmOpen, setOnboardingConfirmOpen] = useState(false);
   const [onboardingCreating, setOnboardingCreating] = useState(false);
+  const [templateRefineText, setTemplateRefineText] = useState('');
+  // 模板并排对比：只在模板页有效，最多 2 个模板 id。
+  const [compareIds, setCompareIds] = useState(null);
+  // 多模态上传的本地状态：只存在于内存，随请求透传给 agent turn。
+  const [agentImages, setAgentImages] = useState({ menu: [], store: [] });
+  const [agentImageError, setAgentImageError] = useState(null);
+  // 真实截图回传面板状态（工程目录来自 deploy.result，不复制到持久化文档）。
+  const [realPreview, setRealPreview] = useState({ screenshot: null, busy: false, error: null });
+  const templateReviseBusy = useRef(false);
   const buildStarted = useRef(false);
+  const templateRefineStarted = useRef(false);
   const promptStarted = useRef(false);
   const imageStarted = useRef(false);
   const deployStarted = useRef(false);
@@ -375,6 +469,15 @@ export default function App() {
     ?? state.build.candidates[0];
   const currentTheme = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
   const styleName = currentTheme.name;
+  const selectedLayout = selectedTemplate?.layout ?? null;
+  // 选择器只暴露渲染字段；`lastUtterance` 供 TemplateRevisePanel 在成功后清空输入框。
+  const presentationState = {
+    ...selectPresentationState(state),
+    lastUtterance: state.presentation?.lastUtterance ?? '',
+  };
+  const templateReviseTransport = describeTemplateReviseTransport();
+  const exportedProjectPath = readExportedProjectPath(state.deploy?.result);
+  const previewViewModels = useMemo(() => buildSessionPreviewViewModels(state), [state]);
   const storeTypesForForm = useMemo(() => {
     const category = state.agentDraft.category;
     if (!category) return STORE_TYPES;
@@ -421,13 +524,14 @@ export default function App() {
     settingsServiceRef.current.load()
       .then((loaded) => {
         if (!alive) return;
-        dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: loaded.config });
+        if (loaded.source === 'file') configureAgentRuntime(loaded.config);
+        dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: withRuntimeAgentConfig(loaded.config) });
         projectServiceRef.current.setDebounce(loaded.config.autoSaveDebounceMs);
         if (loaded.warning) setNotice(loaded.warning);
       })
       .catch(() => {
         if (!alive) return;
-        dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: settingsServiceRef.current.defaults });
+        dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: withRuntimeAgentConfig(settingsServiceRef.current.defaults) });
         setNotice('设置读取失败，已使用默认值');
       });
     return () => { alive = false; };
@@ -443,12 +547,13 @@ export default function App() {
     settingsServiceRef.current.load()
       .then((loaded) => {
         if (!alive) return;
-        dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: loaded.config });
+        if (loaded.source === 'file') configureAgentRuntime(loaded.config);
+        dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: withRuntimeAgentConfig(loaded.config) });
         projectServiceRef.current.setDebounce(loaded.config.autoSaveDebounceMs);
         if (loaded.warning) setNotice(loaded.warning);
       })
       .catch(() => {
-        if (alive) dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: settingsServiceRef.current.defaults });
+        if (alive) dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: withRuntimeAgentConfig(settingsServiceRef.current.defaults) });
       })
       .finally(() => { settingsFallbackLoading.current = false; });
     return () => { alive = false; };
@@ -547,7 +652,17 @@ export default function App() {
 
   useEffect(() => {
     setDraft('');
+    setTemplateRefineText('');
+    if (phase !== PHASES.TEMPLATE_PICK) setCompareIds(null);
   }, [phase]);
+
+  // 回到起跑线（新项目/重置）时丢弃上一轮图片与会话级错误，避免把旧图片带进新门店。
+  useEffect(() => {
+    if (phase !== PHASES.ONBOARDING) return;
+    setAgentImages({ menu: [], store: [] });
+    setAgentImageError(null);
+    setRealPreview({ screenshot: null, busy: false, error: null });
+  }, [phase, state.project.activeId]);
 
   useEffect(() => {
     if (phase !== PHASES.STORE_INFO) {
@@ -593,6 +708,38 @@ export default function App() {
   }, [phase, state.features.selected, state.features.custom]);
 
   useEffect(() => {
+    const isRefining = phase === PHASES.TEMPLATE_PICK && state.build.status === 'building';
+    if (!isRefining) {
+      templateRefineStarted.current = false;
+      return undefined;
+    }
+    if (templateRefineStarted.current) return undefined;
+    templateRefineStarted.current = true;
+    let alive = true;
+    const brief = (state.build.feedback || []).join('；');
+    buildTemplateCandidates({
+      selectedFeatures: state.features.selected,
+      customPrompt: brief,
+    })
+      .then((candidates) => {
+        if (alive) dispatch({ type: 'TEMPLATE_REBUILD_READY', candidates });
+      })
+      .catch((error) => {
+        if (!alive) return;
+        dispatch({
+          type: 'TEMPLATE_REBUILD_FAILED',
+          error: {
+            code: 'TEMPLATE_REBUILD_FAILED',
+            message: error instanceof Error ? error.message : '重新匹配失败',
+          },
+        });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [phase, state.build.status, state.build.feedback, state.features.selected]);
+
+  useEffect(() => {
     if (phase !== PHASES.PROMPT_STUDIO) {
       promptStarted.current = false;
       return undefined;
@@ -600,7 +747,8 @@ export default function App() {
     if (promptStarted.current) return undefined;
     promptStarted.current = true;
     let alive = true;
-    composePrompt({ store: state.store, styleId: state.visual.styleId }).then((result) => {
+    // layout 取当前选中候选的版式，提示词里的构图约束才会与模板一致。
+    composePrompt({ store: state.store, styleId: state.visual.styleId, layout: selectedLayout }).then((result) => {
       if (!alive) return;
       setPromptTips(result.tips);
       dispatch({ type: 'SET_PROMPT', prompt: result.prompt });
@@ -608,7 +756,7 @@ export default function App() {
     return () => {
       alive = false;
     };
-  }, [phase, state.store, state.visual.styleId]);
+  }, [phase, state.store, state.visual.styleId, selectedLayout]);
 
   useEffect(() => {
     if (phase !== PHASES.IMAGE_REVIEW) {
@@ -650,8 +798,8 @@ export default function App() {
   }, [phase, state.store.name]);
 
   const panelCards = useMemo(
-    () => buildPanelCards(state, promptTips, imageBusy),
-    [state, promptTips, imageBusy],
+    () => buildPanelCards(state, promptTips, imageBusy, previewViewModels.selected),
+    [state, promptTips, imageBusy, previewViewModels.selected],
   );
 
   const refreshProjectList = async () => {
@@ -863,7 +1011,9 @@ export default function App() {
     }));
     setSettingsSaving(false);
     if (result.status === 'ok') {
-      dispatch({ type: 'SETTINGS_SAVE_SUCCESS', config: result.config || config });
+      const saved = result.config || config;
+      dispatch({ type: 'SETTINGS_SAVE_SUCCESS', config: saved });
+      configureAgentRuntime(saved);
       projectService.setDebounce(config.autoSaveDebounceMs);
       setNotice('设置已保存');
       return;
@@ -941,7 +1091,9 @@ export default function App() {
   const handlePromptFeedback = async (text) => {
     if (promptBusy) return;
     setPromptBusy(true);
-    const nextPrompt = await revisePrompt({ base: state.visual.prompt, feedback: text });
+    // T13 之后 `revisePrompt` 可能返回结构化对象；两种形状都兼容。
+    const revised = await revisePrompt({ base: state.visual.prompt, feedback: text });
+    const nextPrompt = typeof revised === 'string' ? revised : (revised?.prompt ?? state.visual.prompt);
     setPromptBusy(false);
     dispatch({
       type: 'ADD_PROMPT_ROUND',
@@ -967,23 +1119,210 @@ export default function App() {
     });
   };
 
+  /**
+   * 模板页「对话修改当前模板」。
+   *
+   * 单飞 + 晚响应丢弃：`requestId` 先写入状态机，结果必须带同一个 id 回来；
+   * 用户切模板或发起第二轮后，旧响应会被 reducer 整包忽略（plan.md 2.2.3）。
+   */
+  const handleTemplateReviseSubmit = async (utterance) => {
+    const text = String(utterance ?? '').trim();
+    if (!text) return;
+    if (phase !== PHASES.TEMPLATE_PICK) return;
+    if (templateReviseBusy.current) return;
+    if (!presentationState.canRevise) return;
+    const templateId = state.build.selectedId;
+    const candidate = state.build.candidates.find((item) => item?.id === templateId);
+    if (!templateId || !candidate) return;
+
+    const requestId = createReviseRequestId();
+    templateReviseBusy.current = true;
+    dispatch({ type: 'TEMPLATE_REVISE_REQUEST', utterance: text, requestId });
+    try {
+      let planFeatures = [];
+      try {
+        planFeatures = collectRevisePlanFeatures(buildPlanFromSession(state).plan);
+      } catch (error) {
+        // Plan 推导失败不应阻塞对话修改；服务端会按 0..3 条 planFeatures 处理。
+        planFeatures = [];
+      }
+      const result = await requestTemplateRevise({
+        utterance: text,
+        requestId,
+        candidate: { templateId, layout: candidate.layout },
+        planFeatures,
+        basePatch: presentationState.patch,
+        baseDraft: state.agentDraft,
+      });
+      dispatch({
+        type: 'TEMPLATE_REVISE_SUCCESS',
+        requestId,
+        templateId: result.templateId,
+        patch: result.patch,
+        changes: result.changes,
+        reply: result.reply,
+      });
+    } catch (error) {
+      dispatch({ type: 'TEMPLATE_REVISE_FAILURE', requestId, error });
+    } finally {
+      templateReviseBusy.current = false;
+    }
+  };
+
+  /** VisionImageUploader 已压缩完成，这里只负责写入本地状态（plan.md 2.2.6 行为 5）。 */
+  const handleVisionImagesAdd = (kind, drafts) => {
+    const incoming = Array.isArray(drafts)
+      ? drafts.filter((item) => item && typeof item.id === 'string' && item.id)
+      : [];
+    if (!incoming.length) return;
+    setAgentImageError(null);
+    setAgentImages((prev) => {
+      const current = Array.isArray(prev[kind]) ? prev[kind] : [];
+      const limit = kind === 'store' ? 1 : 2;
+      const seen = new Set(current.map((item) => item.id));
+      const merged = [...current];
+      incoming.forEach((item) => {
+        if (seen.has(item.id)) return;
+        seen.add(item.id);
+        merged.push(item);
+      });
+      return { ...prev, [kind]: merged.slice(0, limit) };
+    });
+    // 门店环境照同时进入现有 assets 写入通道；只保存白名单字段，不持久化 base64。
+    if (kind === 'store') {
+      dispatch({ type: 'ADD_PROJECT_IMAGES', images: incoming.slice(0, 1).map(toVisionAsset) });
+    }
+  };
+
+  const handleVisionImageRemove = (kind, id) => {
+    setAgentImageError(null);
+    setAgentImages((prev) => ({
+      ...prev,
+      [kind]: (Array.isArray(prev[kind]) ? prev[kind] : []).filter((item) => item.id !== id),
+    }));
+  };
+
+  const handleOpenPreviewProject = async () => {
+    const api = typeof window !== 'undefined' ? window.smartStore : null;
+    if (!api || typeof api.openPreviewProject !== 'function') {
+      setRealPreview((prev) => ({
+        ...prev,
+        error: {
+          code: 'PREVIEW_BRIDGE_UNAVAILABLE',
+          message: '浏览器模式下无法打开工程目录，请在桌面应用中操作；下方人工步骤仍可照做。',
+        },
+      }));
+      return;
+    }
+    if (!exportedProjectPath) {
+      setRealPreview((prev) => ({
+        ...prev,
+        error: { code: 'PATH_MISSING', message: '还没有可打开的导出工程，请先完成导出。' },
+      }));
+      return;
+    }
+    setRealPreview((prev) => ({ ...prev, busy: true, error: null }));
+    try {
+      const result = await api.openPreviewProject({ projectPath: exportedProjectPath });
+      if (result && result.ok) {
+        setRealPreview((prev) => ({ ...prev, busy: false, error: null }));
+        if (typeof result.message === 'string' && result.message) setNotice(result.message);
+        return;
+      }
+      setRealPreview((prev) => ({
+        ...prev,
+        busy: false,
+        error: {
+          code: (result && result.code) || 'PATH_INVALID',
+          message: (result && result.message) || '打开工程目录失败。',
+        },
+      }));
+    } catch (error) {
+      setRealPreview((prev) => ({
+        ...prev,
+        busy: false,
+        error: { code: 'PATH_INVALID', message: error?.message || '打开工程目录失败。' },
+      }));
+    }
+  };
+
+  const handlePickPreviewScreenshot = async () => {
+    const api = typeof window !== 'undefined' ? window.smartStore : null;
+    if (!api || typeof api.pickPreviewScreenshot !== 'function') {
+      setRealPreview((prev) => ({
+        ...prev,
+        error: {
+          code: 'PREVIEW_BRIDGE_UNAVAILABLE',
+          message: '浏览器模式下不能选择本地截图，请在桌面应用中操作。',
+        },
+      }));
+      return;
+    }
+    setRealPreview((prev) => ({ ...prev, busy: true, error: null }));
+    try {
+      const result = await api.pickPreviewScreenshot();
+      if (result && result.cancelled) {
+        // 取消不是错误：保留上一张截图，只结束忙碌态。
+        setRealPreview((prev) => ({ ...prev, busy: false }));
+        return;
+      }
+      if (result && typeof result.dataUrl === 'string' && result.dataUrl) {
+        setRealPreview({
+          busy: false,
+          error: null,
+          screenshot: {
+            dataUrl: result.dataUrl,
+            name: typeof result.name === 'string' && result.name ? result.name : '未命名截图',
+            bytes: Number.isFinite(result.bytes) ? result.bytes : undefined,
+          },
+        });
+        return;
+      }
+      setRealPreview((prev) => ({
+        ...prev,
+        busy: false,
+        error: { code: 'SCREENSHOT_INVALID', message: '没有读到有效截图，请重新选择 PNG / JPEG 文件。' },
+      }));
+    } catch (error) {
+      setRealPreview((prev) => ({
+        ...prev,
+        busy: false,
+        error: { code: 'SCREENSHOT_INVALID', message: error?.message || '选择截图失败。' },
+      }));
+    }
+  };
+
+  const handleClearPreviewScreenshot = () => {
+    setRealPreview({ screenshot: null, busy: false, error: null });
+  };
+
   const handleAgentTurn = async (utterance, { retry = false } = {}) => {
     if (agentBusy.current) return;
     if (phase !== PHASES.STORE_INFO) return;
     const text = String(utterance ?? '').trim();
     if (!text) return;
     agentBusy.current = true;
-    dispatch(retry ? { type: 'AGENT_TURN_RETRY' } : { type: 'AGENT_TURN_REQUEST', utterance: text });
+    const requestId = createAgentRequestId();
+    // 空数组不传，保持 v1 请求形状；有图片时服务层自动升级到 agent-turn.v2。
+    const images = [...agentImages.menu, ...agentImages.store];
+    dispatch(retry
+      ? { type: 'AGENT_TURN_RETRY', requestId }
+      : { type: 'AGENT_TURN_REQUEST', utterance: text, requestId });
     try {
       const result = await requestAgentTurn({
         utterance: text,
         draft: state.agentDraft,
+        ...(images.length ? { images } : {}),
         simulateFailureOnce: state.agent.simulateFailure,
       });
-      dispatch({ type: 'AGENT_TURN_SUCCESS', ...result });
+      dispatch({ type: 'AGENT_TURN_SUCCESS', ...result, requestId });
       setDraft('');
+      setAgentImageError(null);
     } catch (error) {
-      dispatch({ type: 'AGENT_TURN_FAILURE', error });
+      if (error && typeof error.code === 'string' && error.code.startsWith('AGENT_IMAGE')) {
+        setAgentImageError({ code: error.code, message: error.message || '图片不可用，请重新选择。' });
+      }
+      dispatch({ type: 'AGENT_TURN_FAILURE', requestId, error });
     } finally {
       agentBusy.current = false;
     }
@@ -1008,6 +1347,12 @@ export default function App() {
     if (!text) return;
     if (phase === PHASES.STORE_INFO) {
       handleAgentTurn(text);
+      return;
+    }
+    if (phase === PHASES.TEMPLATE_PICK) {
+      // 模板页的输入不再静默落空：走「对话修改当前模板」，不触发重新匹配候选。
+      handleTemplateReviseSubmit(text);
+      setDraft('');
       return;
     }
     if (phase === PHASES.ONBOARDING) {
@@ -1465,9 +1810,21 @@ export default function App() {
             selectedId={state.build.selectedId}
             onSelect={(id) => dispatch({ type: 'SELECT_TEMPLATE', id })}
             onConfirm={() => dispatch({ type: 'CONFIRM_TEMPLATE' })}
-            theme={currentTheme}
-            storeName={state.store.name || '我的餐馆'}
-            features={state.features.selected}
+            viewModelsByTemplateId={previewViewModels.byTemplateId}
+            refineText={templateRefineText}
+            onRefineChange={setTemplateRefineText}
+            onRefine={(value) => {
+              dispatch({ type: 'SUBMIT_TEMPLATE_FEEDBACK', value });
+              setTemplateRefineText('');
+            }}
+            refining={state.build.status === 'building'}
+            refineError={state.build.refineError}
+            presentation={presentationState}
+            onRevise={handleTemplateReviseSubmit}
+            onClearReviseError={() => dispatch({ type: 'TEMPLATE_REVISE_CLEAR' })}
+            compareIds={compareIds}
+            onCompareChange={setCompareIds}
+            mockRevise={templateReviseTransport.mock}
           />
         );
       case PHASES.STORE_INFO: {
@@ -1490,6 +1847,18 @@ export default function App() {
             onSubmit={handleStoreSubmit}
           />
         );
+        // 图片识别入口（C-VISION-UPLOADER@1）：菜单照 / 门店环境照分开上传，
+        // 组件内部已完成压缩，这里只保存 AgentImageDraft 并在下一次对话时透传。
+        const visionUploader = (
+          <VisionImageUploader
+            images={agentImages}
+            busy={agent.status === 'requesting'}
+            disabled={agent.status === 'confirmed'}
+            error={agentImageError}
+            onAdd={handleVisionImagesAdd}
+            onRemove={handleVisionImageRemove}
+          />
+        );
         if (agent.status === 'confirmed') {
           return (
             <>
@@ -1506,6 +1875,7 @@ export default function App() {
                 }))}
                 onReopen={handleAgentReopen}
               />
+              {visionUploader}
               {storeForm}
             </>
           );
@@ -1526,6 +1896,7 @@ export default function App() {
               onRetry={handleAgentRetry}
               onToggleSimulateFailure={handleSimulateFailure}
             />
+            {visionUploader}
             <DraftEditor
               draft={state.agentDraft}
               validation={{
@@ -1624,6 +1995,17 @@ case PHASES.DEPLOY: {
                 onApply={handleImportApply}
               />
             ) : null}
+            {state.deploy.status === 'done' ? (
+              <RealPreviewPanel
+                projectPath={exportedProjectPath}
+                screenshot={realPreview.screenshot}
+                busy={realPreview.busy}
+                error={realPreview.error}
+                onOpen={handleOpenPreviewProject}
+                onPickScreenshot={handlePickPreviewScreenshot}
+                onClear={handleClearPreviewScreenshot}
+              />
+            ) : null}
           </>
         );
       }
@@ -1638,6 +2020,22 @@ case PHASES.DEPLOY: {
     ? agentComposer.visible
     : COMPOSER_PHASES.includes(phase);
   const skipVisible = phase === PHASES.ONBOARDING && Boolean(state.store.name);
+  // 模板页复用主输入框；文案独立，避免和「重新描述候选」混为一谈。
+  const composerPlaceholder = phase === PHASES.STORE_INFO
+    ? agentComposer.placeholder
+    : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.placeholder : (COMPOSER_PLACEHOLDER[phase] ?? ''));
+  const composerSubmitLabel = phase === PHASES.STORE_INFO
+    ? agentComposer.submitLabel
+    : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.submitLabel : (COMPOSER_SUBMIT_LABEL[phase] ?? '发送'));
+  const composerHint = phase === PHASES.STORE_INFO
+    ? agentComposer.hint
+    : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.hint : COMPOSER_HINTS[phase]);
+  const composerDisabled = phase === PHASES.STORE_INFO
+    ? !agentComposer.editable
+    : (phase === PHASES.TEMPLATE_PICK ? !presentationState.canRevise : false);
+  const composerSubmitDisabled = phase === PHASES.STORE_INFO
+    ? agentComposer.submitDisabled
+    : (phase === PHASES.TEMPLATE_PICK ? (!presentationState.canRevise || presentationState.status === 'revising') : false);
 
   if (state.view === 'workbench') {
     return (
@@ -1783,15 +2181,11 @@ case PHASES.DEPLOY: {
                   <div className="workspace-composer">
                     <Composer
                       value={draft}
-                      placeholder={phase === PHASES.STORE_INFO
-                        ? agentComposer.placeholder
-                        : COMPOSER_PLACEHOLDER[phase]}
-                      submitLabel={phase === PHASES.STORE_INFO
-                        ? agentComposer.submitLabel
-                        : (COMPOSER_SUBMIT_LABEL[phase] ?? '发送')}
-                      hint={phase === PHASES.STORE_INFO ? agentComposer.hint : COMPOSER_HINTS[phase]}
-                      disabled={phase === PHASES.STORE_INFO ? !agentComposer.editable : false}
-                      submitDisabled={phase === PHASES.STORE_INFO ? agentComposer.submitDisabled : false}
+                      placeholder={composerPlaceholder}
+                      submitLabel={composerSubmitLabel}
+                      hint={composerHint}
+                      disabled={composerDisabled}
+                      submitDisabled={composerSubmitDisabled}
                       onChange={setDraft}
                       onSubmit={handleComposerSubmit}
                     />

@@ -2,15 +2,21 @@
   "schemaVersion": "recipe-release.v1",
   "recipeId": "order-classic",
   "recipeVersion": "1.0.0",
-  "stage": "candidate",
-  "verifiedAt": null,
-  "wechatCompile": "not-run",
-  "regression": "not-run",
+  "stage": "direct",
+  "verifiedAt": "2026-11-03T19:49:13+08:00",
+  "wechatCompile": "pass",
+  "regression": "pass",
   "secretScan": "pass",
-  "approvals": [],
+  "approvals": [
+    {
+      "reviewer": "project-owner",
+      "reviewedAt": "2026-11-03T19:49:13+08:00",
+      "note": "用户批准继续完成 M7；本机微信开发者工具编译与自动化渲染验证通过，证据 docs/evidence/m7/wechat/order-classic-home.png"
+    }
+  ],
   "knownLimits": [
     "演示付款，不产生真实交易",
     "不含外送与公开店主注册"
   ],
-  "note": "M5 固定基线，M7 门禁通过后晋升 direct。"
+  "note": "M7 门禁通过后晋升 direct：微信编译 pass、回归 pass、密钥扫描 pass、审核记录齐全。"
 }

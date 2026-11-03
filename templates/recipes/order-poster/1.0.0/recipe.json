@@ -5,12 +5,18 @@
   "displayName": "海报点餐",
   "description": "在经典点餐基线上，用海报轮播替换首页门店头部，突出当季活动与扫码点餐入口。",
   "recipe": {
-    "stage": "candidate",
-    "verifiedAt": null,
-    "wechatCompile": "not-run",
-    "regression": "not-run",
+    "stage": "direct",
+    "verifiedAt": "2026-11-03T19:49:13+08:00",
+    "wechatCompile": "pass",
+    "regression": "pass",
     "secretScan": "pass",
-    "approvals": [],
+    "approvals": [
+      {
+        "reviewer": "project-owner",
+        "reviewedAt": "2026-11-03T19:49:13+08:00",
+        "note": "用户批准继续完成 M7；本机微信开发者工具编译与自动化渲染验证通过，证据 docs/evidence/m7/wechat/order-poster-home.png"
+      }
+    ],
     "knownLimits": [
       "演示海报为色块素材，未含摄影图片",
       "关闭轮播后首页回落到 store-header"

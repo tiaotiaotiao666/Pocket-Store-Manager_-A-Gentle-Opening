@@ -175,7 +175,7 @@ test('T7 一次性失败开关在请求结束后复位，第二次请求成功',
   assert.equal(result.meta.mock, true);
 });
 
-test('T8 HTTP transport 按契约发送 URL、method、headers 与请求体', async () => {
+test('T8 HTTP transport 按契约发送绝对 URL、method、headers 与请求体', async () => {
   const http = await loadModule('../src/services/agentTurn/httpAgentTransport.js');
   let captured = null;
   const transport = http.createHttpTransport({
@@ -195,7 +195,7 @@ test('T8 HTTP transport 按契约发送 URL、method、headers 与请求体', as
     projectId: null,
   };
   await transport.send(request);
-  assert.equal(captured.url, '/api/v1/agent/turn');
+  assert.equal(captured.url, 'http://127.0.0.1:3000/api/v1/agent/turn');
   assert.equal(captured.init.method, 'POST');
   assert.equal(captured.init.headers['Content-Type'], 'application/json; charset=utf-8');
   assert.equal(captured.init.headers.Accept, 'application/json');
@@ -205,6 +205,26 @@ test('T8 HTTP transport 按契约发送 URL、method、headers 与请求体', as
   assert.equal(body.contractVersion, CONTRACT);
   assert.equal(body.projectId, null);
   assert.deepEqual(body.draft, emptyContractDraft());
+});
+
+test('T8b HTTP transport 不重复拼接已经是绝对地址的 endpoint', async () => {
+  const http = await loadModule('../src/services/agentTurn/httpAgentTransport.js');
+  const endpoint = 'https://agent.example.com/api/v1/agent/turn';
+  let capturedUrl = null;
+  const transport = http.createHttpTransport({
+    endpoint,
+    fetchImpl: async (url) => {
+      capturedUrl = url;
+      return responseStub(validResponse());
+    },
+  });
+
+  await transport.send({
+    contractVersion: CONTRACT,
+    utterance: '店名叫松月食堂',
+    draft: emptyContractDraft(),
+  });
+  assert.equal(capturedUrl, endpoint);
 });
 
 test('T9 HTTP transport 返回合法响应并只调用一次 fetch', async () => {

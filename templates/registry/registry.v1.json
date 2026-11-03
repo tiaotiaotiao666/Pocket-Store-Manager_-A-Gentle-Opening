@@ -8,14 +8,14 @@
       "version": "1.0.0",
       "kind": "recipe",
       "path": "templates/recipes/order-classic/1.0.0",
-      "integrity": "sha256:49f314c46ee62bcfbf806ade9f42c8af4ceef108f292929542cf7dd375a6b198"
+      "integrity": "sha256:2ff120280eab87b95450d4ca7d3dd2b4dbe9eb551c1105ed78e5c24c064cfa5f"
     },
     {
       "id": "ordering-base",
       "version": "1.0.0",
       "kind": "base",
       "path": "templates/base/ordering-base/1.0.0",
-      "integrity": "sha256:aa7bc0bc119ac5df85682e9be8c1b91f8941c3af5d608095a7425cb04524ec24"
+      "integrity": "sha256:dcf4b8e516834dd66d0a71b3f92fd4bda036a1e72f30aa3ecb9464f6f5f091f8"
     },
     {
       "id": "store-header",
@@ -43,14 +43,14 @@
       "version": "1.0.0",
       "kind": "feature-pack",
       "path": "templates/features/poster-carousel/1.0.0",
-      "integrity": "sha256:46dbb583f3db6a8fcc20993ad25ddf6c0184740d7c4014daf4331e5398ad6dce"
+      "integrity": "sha256:d5b668c245f1cca47aea5cacba1a685627ff57bf74c0d07afc5e7636d967f35a"
     },
     {
       "id": "order-poster",
       "version": "1.0.0",
       "kind": "recipe",
       "path": "templates/recipes/order-poster/1.0.0",
-      "integrity": "sha256:593f5d1b69c9b8a8df8c0acc27bad09cc09bac8c090175b603a1fc97471e1d49"
+      "integrity": "sha256:9fb7e3e2b7af525cb06a1769ef3bd7780cf6f9f63c46f3c873b1f10fd0d2600a"
     },
     {
       "id": "order-classic-candidate",

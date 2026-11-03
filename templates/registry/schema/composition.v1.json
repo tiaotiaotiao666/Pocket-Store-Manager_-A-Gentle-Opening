@@ -119,6 +119,27 @@
           "reason": { "type": "string", "maxLength": 200 }
         }
       }
+    },
+    "presentationTokens": {
+      "type": "object",
+      "description": "可选。三档组件尺寸 token；缺省等价于 md。尺寸不得写入 themeTokens。",
+      "properties": {
+        "homeHeroSize": { "type": "string", "enum": ["sm", "md", "lg"] },
+        "productCardSize": { "type": "string", "enum": ["sm", "md", "lg"] }
+      }
+    },
+    "slotOrder": {
+      "type": "array",
+      "description": "可选。当前已占用 Feature 的完整落位排列；缺省沿用 features[].slots[] 的声明落位。",
+      "items": {
+        "type": "object",
+        "required": ["featureId", "pageId", "slotId"],
+        "properties": {
+          "featureId": { "type": "string" },
+          "pageId": { "type": "string", "enum": ["home", "menu"] },
+          "slotId": { "type": "string", "enum": ["home-hero", "home-marketing", "menu-aside", "menu-hero"] }
+        }
+      }
     }
   },
   "forbiddenKeys": [
@@ -138,6 +159,9 @@
     "M5-4-01：任何不在白名单内的键都返回 PLAN_FIELD_FORBIDDEN，并给出 JSON 路径。",
     "M5-4-02：version 必须是精确 MAJOR.MINOR.PATCH，latest/范围/^ ~ 一律拒绝。",
     "M5-5-05：生成前扫描 Plan/Lock/Manifest，禁止密钥、内网地址、绝对路径与外部 URL。",
-    "M5-5-07：不允许隐式补依赖或删资产；只有显式 degradations 才允许移除并必须上报降级。"
+    "M5-5-07：不允许隐式补依赖或删资产；只有显式 degradations 才允许移除并必须上报降级。",
+    "CPP-01：presentationTokens 可选，不进入 required；存在时 homeHeroSize/productCardSize 只能是 sm|md|lg，缺省按 md 处理。",
+    "CPP-02：slotOrder 可选；存在时必须是当前已占用 Feature 的完整排列（每个 featureId 恰好一次），目标 pageId+slotId 必须合法且不重复。",
+    "CPP-03：slotOrder 只作为导出落位的 assignment key；features[].slots[] 保持 Recipe 原样，requiresSlots 仍按原始声明校验。"
   ]
 }

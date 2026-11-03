@@ -1,7 +1,7 @@
 # M5–M7 构建说明（面向下一位 AI / 开发者）
 
-日期：2026-10-31（验收轮更新）
-状态：**M5–M7 代码与 L1 自动化验收已闭环；微信编译、点击导出、安装包等 W/L2/L3/L4 证据仍未执行。**
+日期：2026-11-03（M7 收口更新）
+状态：**M5–M7 代码与 L1 + W 验收已闭环；`direct 2`；真机 R、点击导出 L2、安装包 L3/L4 仍未执行。**
 
 > 阅读顺序：本文件 → `docs/evidence/s7-checklist.md` → `docs/M5-M7-本地Composer与模板资产扩展-实现方案.md` → 需求规格 → 编码任务清单。
 
@@ -11,7 +11,7 @@
 
 - **M5**：Composer（契约 → 解析 → Lock → 确定性生成 → 产物校验 → 原子提交）、Base 提炼、桌面 IPC/服务层、打包资源断言全部落地并通过验收。
 - **M6**：后端受控导入与桌面导入服务/UI 落地；服务端 164 项测试、根目录 246 项测试（245 pass / 1 todo）全绿。
-- **M7**：1 Base + 3 UI Block + 1 Feature Pack + 3 Recipe 已全部登记并冻结（`base 1 / ui-block 3 / feature-pack 1 / recipe 3（direct 0）`）；`order-classic` 与 `order-poster` 双工程 CLI 生成成功、静态校验 0 错 0 警，poster 插槽替换断言通过。
+- **M7**：1 Base + 3 UI Block + 1 Feature Pack + 3 Recipe 已全部登记并冻结（`base 1 / ui-block 3 / feature-pack 1 / recipe 3（direct 2）`）；2026-11-03 三份工程已生成、静态校验 0 错 0 警，并完成微信开发者工具编译与渲染验证；`order-classic`、`order-poster` 已晋升 `direct`。证据见 `docs/evidence/m7/`。
 - **验收轮修复 11 类问题**（事件名契约、样式导入越界、`priceText` 违规、校验顺序、导入文案、5 处测试断言等），明细见 `docs/evidence/s7-checklist.md` §2。
 
 ---
@@ -100,13 +100,36 @@ order-poster  → 124 文件，静态校验 0 错 0 警；
 注意：CLI `--out` 语义是**父目录**，工程名用 `--project-name` 指定：
 `node scripts/composer/cli.cjs --plan <plan.json> --out <父目录> --project-name <名称>`。
 
-### 3.2 未验证（仍需人工/环境）
+### 3.1.1 2026-11-03 M7 收口复跑（真实执行）
 
 ```text
-微信开发者工具导入编译（W）      # CLI 端口关闭，需人工 GUI
+npm test                                  → 623 项，623 pass / 0 fail / 0 todo
+npm run registry:check                    → base 1 / ui-block 3 / feature-pack 1 / recipe 3（direct 2）
+node scripts/registry-check.cjs --write   → 8 资产摘要重算，registryVersion 仍 2026.11.0
+M7 组合门禁（5 个测试文件）                → 34 项 34 pass
+三份 Recipe CLI 生成                       → 125 / 129 / 125 文件
+validate-miniprogram（三份 + 两个对照）    → 全部 0 错 0 警
+cli auto 编译                              → 5 份工程 ✔ auto（9420–9424）
+```
+
+对照实验：
+
+```text
+含 3 个可选 Block   → 125 文件、7 页、0 错
+删 product-card     → 125 文件、7 页、0 错、编译通过
+关闭 poster-carousel→ 首页无 poster-carousel、回落 store-header、编译通过
+```
+
+已知偏差：`Plan.components` 只参与引用校验，不覆盖 Base 同名组件实现（`emit.cjs:654-701`）。
+证据：`docs/evidence/m7/s6.md`、`s6-final.md`。
+
+### 3.2 仍未验证（需人工/环境）
+
+```text
 npm run desktop 点击导出（L2）   # 无人工点击证据
 npm run build:win（L3）          # electron-builder 缓存为空
 干净机安装（L4）/ 真机（R）      # 无验收机与真机
+海报轮播视觉目视                 # AI 无法读图，截图已归档待人工确认
 ```
 
 环境受限（非代码缺陷）：验收时 `E:\智能开店app` 工作区内新建多文件目录 rename 持续 EPERM（对照实验证实该目录被本机环境锁定；`E:\tmp-m5` 与 C 盘临时目录正常）。**生成验收请输出到工作区外目录**。`commitStaging` 已加 EPERM/EBUSY/EACCES 退避重试作为常规增强。
@@ -125,8 +148,8 @@ Composer：
 
 ## 5. 已知限制与红线
 
-1. **没有 direct Recipe**：微信编译/回归/审核未产生，三份 Recipe 全部 candidate，不得进入店主可选列表。
-2. **微信编译、真机、NSIS、干净机均未执行**；`M5-7-02` 保持未勾选。
+1. **只有 2 份 direct Recipe**：`order-classic`、`order-poster` 已晋升，`order-classic-candidate` 仅候选样本，不得进入店主可选列表。
+2. **微信编译已执行（2026-11-03）；真机、NSIS、干净机仍未执行**；`M5-7-02` 保持未勾选。
 3. **Electron 点击级导出未执行**：代码与契约测试完成，但无人工点击证据。
 4. **海报无 PNG 素材**：使用主题渐变色块，`knownLimits` 已声明；若产品要求摄影图，需补素材并重新冻结。
 5. **桌面导入身份**：demo 登录仅开发环境；`ALLOW_DEMO_LOGIN=false` 时入口禁用并提示到小程序端导入。
@@ -146,7 +169,7 @@ Composer：
 
 ## 6. 下一位执行者的最小闭环
 
-1. 微信开发者工具人工导入 `order-classic` 与 `order-poster` 产物并编译，记录截图；通过后才可把 Recipe 改 `direct`（需四类证据）。
+1. 微信编译已完成并晋升 `direct`（证据 `docs/evidence/m7/`）。下一步是人工目视海报截图 + 真机扫码/安全区。
 2. 补 L2 点击导出、L3/L4 安装包证据，再更新 `docs/待完成目标.md`。
 3. 同步 `domain/versionGuard.js` 到 miniprogram 镜像（或按迁移声明推进镜像退出）。
 4. 任何资产内容变更后：`node scripts/registry-check.cjs --write` 重新冻结，再跑 `npm test`。

@@ -120,11 +120,124 @@ test('C4 前端 HTTP transport 默认不携带 Authorization（绝不携带 Deep
   assert.equal(JSON.stringify(capturedHeaders).toLowerCase().includes('deepseek_api_key'), false);
 });
 
-test('C5 service 在 http 配置下创建 createHttpTransport，不写死 mock', () => {
+test('C5 service 按运行时配置创建 transport，不写死 mock', () => {
   const source = readFileSync(join(projectRoot, 'src/services/agentTurn/agentTurnService.js'), 'utf8');
-  assert.equal(source.includes("AGENT_TRANSPORT === 'http'"), true);
+  assert.equal(source.includes("config.mode === 'http'"), true);
+  assert.equal(source.includes("config.mode === 'mock'"), true);
+  assert.equal(source.includes('getAgentTransportConfig'), true);
   assert.equal(source.includes('createHttpTransport'), true);
-  assert.equal(source.includes('AGENT_TRANSPORT === \'mock\''), true);
   // 前端不得出现任何读取 DeepSeek Key 的代码。
   assert.equal(source.toLowerCase().includes('deepseek_api_key'), false);
+});
+
+test('C6 设置页保存的模型配置可在运行时覆盖，并丢弃旧 transport 缓存', async () => {
+  const config = await loadModule('../src/services/agentTurn/agentServiceConfig.js');
+  const serviceModule = await loadModule('../src/services/agentTurn/agentTurnService.js');
+
+  config.resetAgentRuntimeConfig();
+  serviceModule.resetAgentTurnService();
+  assert.equal(config.getAgentTransportConfig().mode, 'mock');
+  assert.equal(serviceModule.createAgentTurnService().transportName, 'mock');
+
+  serviceModule.configureAgentRuntime({
+    agentTransport: 'http',
+    agentEndpoint: '/api/v1/agent/turn',
+    agentTimeoutMs: 45000,
+  });
+
+  assert.equal(config.getAgentTransportConfig().mode, 'http');
+  assert.equal(config.getAgentTransportConfig().timeoutMs, 45000);
+  assert.deepEqual(config.describeAgentTransport(), {
+    mode: 'http',
+    label: 'DeepSeek 后端（真实模型）',
+  });
+  assert.equal(serviceModule.createAgentTurnService().transportName, 'http');
+
+  serviceModule.configureAgentRuntime({
+    agentTransport: 'mock',
+    agentEndpoint: '/api/v1/agent/turn',
+    agentTimeoutMs: 30000,
+  });
+  assert.equal(serviceModule.createAgentTurnService().transportName, 'mock');
+
+  config.resetAgentRuntimeConfig();
+  serviceModule.resetAgentTurnService();
+});
+test('C7 相对端点按 apiBaseUrl 拼成绝对地址，且不重复路径前缀', async () => {
+  const config = await loadModule('../src/services/agentTurn/agentServiceConfig.js');
+
+  assert.equal(
+    config.buildAgentRequestUrl('http://127.0.0.1:3000/api/v1', '/api/v1/agent/turn'),
+    'http://127.0.0.1:3000/api/v1/agent/turn',
+  );
+  assert.equal(
+    config.buildAgentRequestUrl('http://127.0.0.1:3000/api/v1/', '/agent/turn'),
+    'http://127.0.0.1:3000/api/v1/agent/turn',
+  );
+  assert.equal(
+    config.buildAgentRequestUrl('', '/api/v1/agent/turn'),
+    '/api/v1/agent/turn',
+  );
+  assert.equal(
+    config.buildAgentRequestUrl('http://127.0.0.1:3000/api/v1', 'http://10.0.0.5:9000/agent/turn'),
+    'http://10.0.0.5:9000/agent/turn',
+  );
+});
+
+test('C8 运行时 apiBaseUrl 覆盖后，HTTP transport 请求绝对地址', async () => {
+  const config = await loadModule('../src/services/agentTurn/agentServiceConfig.js');
+  const serviceModule = await loadModule('../src/services/agentTurn/agentTurnService.js');
+  const http = await loadModule('../src/services/agentTurn/httpAgentTransport.js');
+  const draft = {
+    storeName: '',
+    category: '',
+    businessHours: '',
+    fulfillment: { dineIn: false, takeaway: false },
+    dishes: [],
+  };
+
+  config.resetAgentRuntimeConfig();
+  serviceModule.resetAgentTurnService();
+  serviceModule.configureAgentRuntime({
+    agentTransport: 'http',
+    agentEndpoint: '/api/v1/agent/turn',
+    agentTimeoutMs: 30000,
+    apiBaseUrl: 'http://127.0.0.1:3000/api/v1',
+  });
+  assert.equal(config.getAgentTransportConfig().baseUrl, 'http://127.0.0.1:3000/api/v1');
+
+  let capturedUrl = null;
+  const transport = http.createHttpTransport({
+    fetchImpl: async (url) => {
+      capturedUrl = url;
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          contractVersion: 'agent-turn.v1',
+          turnId: 'turn-http-10',
+          status: 'collecting',
+          reply: '已记录。',
+          draft,
+          missingFields: [],
+          errors: [],
+          nextQuestion: null,
+          meta: { transport: 'http', provider: 'deepseek', mock: false, model: 'deepseek-chat', latencyMs: 10 },
+        }),
+      };
+    },
+  });
+
+  await transport.send({
+    contractVersion: 'agent-turn.v1',
+    utterance: '你好',
+    draft,
+    client: { surface: 'desktop', phase: 'store-info' },
+    projectId: null,
+  });
+
+  assert.equal(capturedUrl, 'http://127.0.0.1:3000/api/v1/agent/turn');
+
+  config.resetAgentRuntimeConfig();
+  serviceModule.resetAgentTurnService();
 });

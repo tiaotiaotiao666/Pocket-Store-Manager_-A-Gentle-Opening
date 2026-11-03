@@ -413,3 +413,122 @@ test('F18 确认前 editing 不会写 store；SET_STORE_FIELD 只在 confirmed �
   assert.equal(edited.store.name, '另一个名字');
   assert.equal(edited.agentDraft.storeName, '松月食堂');
 });
+test('F19 success/failure 只接受当前 requestId，晚响应严格返回原 state', async () => {
+  const machine = await loadMachine();
+  const { state } = await seededStoreInfo();
+  const requested = machine.reducer(state, {
+    type: 'AGENT_TURN_REQUEST',
+    utterance: '更新门店资料',
+    requestId: 'agent-request-1',
+  });
+  assert.equal(requested.agent.activeRequestId, 'agent-request-1');
+
+  const staleSuccess = machine.reducer(requested, {
+    type: 'AGENT_TURN_SUCCESS',
+    requestId: 'agent-request-0',
+    reply: '过期响应不应出现',
+    draft: { ...requested.agentDraft, storeName: '过期门店' },
+  });
+  assert.equal(staleSuccess, requested);
+  const staleFailure = machine.reducer(requested, {
+    type: 'AGENT_TURN_FAILURE',
+    requestId: 'agent-request-0',
+    error: { code: 'AGENT_NETWORK', message: '过期失败不应出现' },
+  });
+  assert.equal(staleFailure, requested);
+  assert.equal(requested.agentDraft.storeName, '松月食堂');
+  assert.equal(requested.agent.lastError, null);
+  assert.equal(requested.agent.activeRequestId, 'agent-request-1');
+
+  const succeeded = machine.reducer(requested, {
+    type: 'AGENT_TURN_SUCCESS',
+    requestId: 'agent-request-1',
+    reply: '已接受当前响应',
+    draft: { ...requested.agentDraft, storeName: '当前门店' },
+  });
+  assert.equal(succeeded.agentDraft.storeName, '当前门店');
+  assert.equal(succeeded.agent.activeRequestId, null);
+  const lateFailure = machine.reducer(succeeded, {
+    type: 'AGENT_TURN_FAILURE',
+    requestId: 'agent-request-1',
+    error: { code: 'AGENT_NETWORK', message: '完成后到的失败' },
+  });
+  assert.equal(lateFailure, succeeded);
+});
+
+test('F20 旧 Node 调用使用 null 身份兼容，retry 切换到新的 requestId', async () => {
+  const machine = await loadMachine();
+  const { state } = await seededStoreInfo();
+  const legacyRequested = machine.reducer(state, {
+    type: 'AGENT_TURN_REQUEST',
+    utterance: '旧调用',
+  });
+  assert.equal(legacyRequested.agent.activeRequestId, null);
+  const identifiedResponse = machine.reducer(legacyRequested, {
+    type: 'AGENT_TURN_FAILURE',
+    requestId: 'agent-request-external',
+    error: { code: 'AGENT_NETWORK', message: '身份不符' },
+  });
+  assert.equal(identifiedResponse, legacyRequested);
+
+  const legacyFailed = machine.reducer(legacyRequested, {
+    type: 'AGENT_TURN_FAILURE',
+    error: { code: 'AGENT_NETWORK', message: '旧调用失败', retryable: true },
+  });
+  assert.equal(legacyFailed.agent.status, 'failed');
+  assert.equal(legacyFailed.agent.activeRequestId, null);
+
+  const retried = machine.reducer(legacyFailed, {
+    type: 'AGENT_TURN_RETRY',
+    requestId: 'agent-request-2',
+  });
+  assert.equal(retried.agent.activeRequestId, 'agent-request-2');
+  const staleLegacyFailure = machine.reducer(retried, {
+    type: 'AGENT_TURN_FAILURE',
+    error: { code: 'AGENT_NETWORK', message: '旧 null 响应' },
+  });
+  assert.equal(staleLegacyFailure, retried);
+
+  const succeeded = machine.reducer(retried, {
+    type: 'AGENT_TURN_SUCCESS',
+    requestId: 'agent-request-2',
+    draft: retried.agentDraft,
+  });
+  assert.equal(succeeded.agent.status, 'collecting');
+  assert.equal(succeeded.agent.activeRequestId, null);
+});
+
+test('F21 RESET_PROJECT 后新请求不会接受 reset 前的 success/failure', async () => {
+  const machine = await loadMachine();
+  const { state } = await seededStoreInfo();
+  const oldRequest = machine.reducer(state, {
+    type: 'AGENT_TURN_REQUEST',
+    utterance: 'reset 前请求',
+    requestId: 'agent-request-old',
+  });
+  const reset = machine.reducer(oldRequest, { type: 'RESET_PROJECT' });
+  assert.equal(reset.agent.status, 'idle');
+  assert.equal(reset.agent.activeRequestId, null);
+
+  const newRequest = machine.reducer(reset, {
+    type: 'AGENT_TURN_REQUEST',
+    utterance: 'reset 后新请求',
+    requestId: 'agent-request-new',
+  });
+  const staleSuccess = machine.reducer(newRequest, {
+    type: 'AGENT_TURN_SUCCESS',
+    requestId: 'agent-request-old',
+    reply: '旧成功',
+    draft: { ...newRequest.agentDraft, storeName: '旧响应门店' },
+  });
+  assert.equal(staleSuccess, newRequest);
+  const staleFailure = machine.reducer(newRequest, {
+    type: 'AGENT_TURN_FAILURE',
+    requestId: 'agent-request-old',
+    error: { code: 'AGENT_NETWORK', message: '旧失败' },
+  });
+  assert.equal(staleFailure, newRequest);
+  assert.equal(newRequest.agent.activeRequestId, 'agent-request-new');
+  assert.equal(newRequest.agent.lastUtterance, 'reset 后新请求');
+  assert.equal(newRequest.agentDraft.storeName, '');
+});

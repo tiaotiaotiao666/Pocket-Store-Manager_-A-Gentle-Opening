@@ -15,6 +15,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
+const { normalizePresentationTokens, normalizeSlotOrder } = require('./schema.cjs');
+
 function canonical(value) {
   if (value === null) return 'null';
   const type = typeof value;
@@ -87,6 +89,15 @@ function listTree(dir) {
   return walk(dir).map((file) => relativePosix(dir, file));
 }
 
+/**
+ * Plan 摘要。
+ *
+ * `presentationTokens` 与 `slotOrder` 必须纳入摘要（C-PLAN-PRESENTATION@1）：
+ * - 两者都先归一化：缺省尺寸按 `md` 补齐、缺省落位为空数组，避免“字段存在与否”造成的
+ *   语义等价 Plan 摘要不一致；
+ * - 归一化只影响摘要口径，不回写 `plan` 本身（Composer 不修改调用方输入）。
+ * - 相同输入重复导出必然得到相同摘要；改变任一声明都会改变摘要。
+ */
 function planDigest(plan) {
   return canonicalDigest({
     schemaVersion: plan.schemaVersion,
@@ -102,6 +113,8 @@ function planDigest(plan) {
     storeProfile: plan.storeProfile || {},
     previewOnlyAck: Boolean(plan.previewOnlyAck),
     degradations: plan.degradations || [],
+    presentationTokens: normalizePresentationTokens(plan.presentationTokens),
+    slotOrder: normalizeSlotOrder(plan.slotOrder),
   });
 }
 

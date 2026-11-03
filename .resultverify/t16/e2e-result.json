@@ -1,0 +1,329 @@
+{
+  "ok": true,
+  "total": 41,
+  "passed": 41,
+  "failed": [],
+  "exportPath": "C:\\Users\\leiji\\AppData\\Local\\Temp\\t16-verify\\composer-out\\t16-e2e-store",
+  "exportPath2": "C:\\Users\\leiji\\AppData\\Local\\Temp\\t16-verify\\composer-out-2\\t16-e2e-store",
+  "planWarnings": [],
+  "results": [
+    {
+      "name": "状态机：BUILD_READY 后候选就绪",
+      "pass": true,
+      "expected": true,
+      "actual": {
+        "status": "ready",
+        "count": 3
+      }
+    },
+    {
+      "name": "状态机：选择主厨推荐",
+      "pass": true,
+      "expected": "signature-kitchen",
+      "actual": "signature-kitchen"
+    },
+    {
+      "name": "状态机：改模板请求进入 revising",
+      "pass": true,
+      "expected": "revising",
+      "actual": "revising"
+    },
+    {
+      "name": "状态机：补丁状态回到 idle",
+      "pass": true,
+      "expected": "idle",
+      "actual": "idle"
+    },
+    {
+      "name": "状态机：copy.tagline 写入 store.notes",
+      "pass": true,
+      "expected": "每天现做，只做当天",
+      "actual": "每天现做，只做当天"
+    },
+    {
+      "name": "状态机：补丁保留 slotOrder",
+      "pass": true,
+      "expected": [
+        {
+          "featureId": "poster-carousel",
+          "pageId": "menu",
+          "slotId": "menu-hero"
+        }
+      ],
+      "actual": [
+        {
+          "featureId": "poster-carousel",
+          "pageId": "menu",
+          "slotId": "menu-hero"
+        }
+      ]
+    },
+    {
+      "name": "状态机：最后一条 agent 消息是可读回复",
+      "pass": true,
+      "expected": "已经把主色改成墨绿、商品卡缩小并把海报挪到菜单页了。",
+      "actual": "已经把主色改成墨绿、商品卡缩小并把海报挪到菜单页了。"
+    },
+    {
+      "name": "Plan：recipe 为 order-poster",
+      "pass": true,
+      "expected": "order-poster",
+      "actual": "order-poster"
+    },
+    {
+      "name": "Plan：themeTokens.primaryColor = 墨绿 #0E4D3A",
+      "pass": true,
+      "expected": "#0E4D3A",
+      "actual": "#0E4D3A"
+    },
+    {
+      "name": "Plan：presentationTokens = {md, sm}（仅商品卡变小）",
+      "pass": true,
+      "expected": {
+        "homeHeroSize": "md",
+        "productCardSize": "sm"
+      },
+      "actual": {
+        "homeHeroSize": "md",
+        "productCardSize": "sm"
+      }
+    },
+    {
+      "name": "Plan：slotOrder 把海报落到 menu#menu-hero",
+      "pass": true,
+      "expected": [
+        {
+          "featureId": "poster-carousel",
+          "pageId": "menu",
+          "slotId": "menu-hero"
+        }
+      ],
+      "actual": [
+        {
+          "featureId": "poster-carousel",
+          "pageId": "menu",
+          "slotId": "menu-hero"
+        }
+      ]
+    },
+    {
+      "name": "Plan：features[].slots[] 保持 Recipe 声明不变",
+      "pass": true,
+      "expected": [
+        "home-hero"
+      ],
+      "actual": [
+        "home-hero"
+      ]
+    },
+    {
+      "name": "Plan：carousel 未指定档位时保留 Recipe 默认 md",
+      "pass": true,
+      "expected": "md",
+      "actual": "md"
+    },
+    {
+      "name": "Plan：storeProfile.notes = tagline",
+      "pass": true,
+      "expected": "每天现做，只做当天",
+      "actual": "每天现做，只做当天"
+    },
+    {
+      "name": "对抗：非法颜色回落预设、非法档位回落 md",
+      "pass": true,
+      "expected": [
+        "#B34A0F",
+        {
+          "homeHeroSize": "md",
+          "productCardSize": "md"
+        }
+      ],
+      "actual": [
+        "#B34A0F",
+        {
+          "homeHeroSize": "md",
+          "productCardSize": "md"
+        }
+      ]
+    },
+    {
+      "name": "对抗：pageId 与 slotId 不匹配的 slotOrder 被忽略，海报留在 home",
+      "pass": true,
+      "expected": [
+        {
+          "featureId": "poster-carousel",
+          "pageId": "home",
+          "slotId": "home-hero"
+        }
+      ],
+      "actual": [
+        {
+          "featureId": "poster-carousel",
+          "pageId": "home",
+          "slotId": "home-hero"
+        }
+      ]
+    },
+    {
+      "name": "预览：blocks 中海报块数量为 1",
+      "pass": true,
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "name": "预览：海报块 pageId = menu",
+      "pass": true,
+      "expected": "menu",
+      "actual": "menu"
+    },
+    {
+      "name": "预览：海报块 slotId = menu-hero",
+      "pass": true,
+      "expected": "menu-hero",
+      "actual": "menu-hero"
+    },
+    {
+      "name": "预览：海报块 size = md",
+      "pass": true,
+      "expected": "md",
+      "actual": "md"
+    },
+    {
+      "name": "预览：sizes px = {92, 52}",
+      "pass": true,
+      "expected": {
+        "homeHeroPx": 92,
+        "productCardPx": 52
+      },
+      "actual": {
+        "homeHeroPx": 92,
+        "productCardPx": 52
+      }
+    },
+    {
+      "name": "预览：store.tagline 来自 Plan notes",
+      "pass": true,
+      "expected": "每天现做，只做当天",
+      "actual": "每天现做，只做当天"
+    },
+    {
+      "name": "预览：theme.primaryColor = 墨绿",
+      "pass": true,
+      "expected": "#0E4D3A",
+      "actual": "#0E4D3A"
+    },
+    {
+      "name": "预览：recipe 显示为 海报点餐",
+      "pass": true,
+      "expected": "order-poster",
+      "actual": "order-poster"
+    },
+    {
+      "name": "Composer：导出 ok",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "name": "Composer：导出目录存在",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "name": "导出 theme.generated.wxss 含 --store-home-hero-min-height",
+      "pass": true,
+      "expected": "contains: --store-home-hero-min-height",
+      "actual": "found"
+    },
+    {
+      "name": "导出 theme.generated.wxss 含 --store-product-card-min-height",
+      "pass": true,
+      "expected": "contains: --store-product-card-min-height",
+      "actual": "found"
+    },
+    {
+      "name": "导出 theme.generated.wxss 主色变量为墨绿",
+      "pass": true,
+      "expected": "contains: --store-primary-color: #0E4D3A;",
+      "actual": "found"
+    },
+    {
+      "name": "导出 theme.generated.wxss homeHero 缺省 md → 190rpx",
+      "pass": true,
+      "expected": "contains: --store-home-hero-min-height: 190rpx;",
+      "actual": "found"
+    },
+    {
+      "name": "导出 theme.generated.wxss productCard sm → 110rpx",
+      "pass": true,
+      "expected": "contains: --store-product-card-min-height: 110rpx;",
+      "actual": "found"
+    },
+    {
+      "name": "导出 slots.generated.js 含 menuHero 键",
+      "pass": true,
+      "expected": "contains: menuHero",
+      "actual": "found"
+    },
+    {
+      "name": "导出 slots.generated.js 含 poster-carousel 组件",
+      "pass": true,
+      "expected": "contains: poster-carousel",
+      "actual": "found"
+    },
+    {
+      "name": "导出 slots.generated.js 中 homeHero 为空数组、menuHero 承载海报",
+      "pass": true,
+      "expected": true,
+      "actual": {
+        "homeHeroEmpty": true,
+        "menuHeroFilled": true
+      }
+    },
+    {
+      "name": "导出 pages/menu/index.wxml 注入海报组件标签",
+      "pass": true,
+      "expected": "contains: poster-carousel",
+      "actual": "found"
+    },
+    {
+      "name": "导出 pages/home/index.wxml 不再含海报组件（已移走）",
+      "pass": true,
+      "expected": true,
+      "actual": {
+        "hasPosterInHome": false
+      }
+    },
+    {
+      "name": "导出 store.generated.js 携带口号",
+      "pass": true,
+      "expected": "contains: 每天现做，只做当天",
+      "actual": "found"
+    },
+    {
+      "name": "附加场景：homeHero lg → 250rpx",
+      "pass": true,
+      "expected": "contains: --store-home-hero-min-height: 250rpx;",
+      "actual": "found"
+    },
+    {
+      "name": "附加场景：productCard sm → 110rpx",
+      "pass": true,
+      "expected": "contains: --store-product-card-min-height: 110rpx;",
+      "actual": "found"
+    },
+    {
+      "name": "附加场景导出路径",
+      "pass": true,
+      "expected": true,
+      "actual": "C:\\Users\\leiji\\AppData\\Local\\Temp\\t16-verify\\composer-out-lg\\t16-e2e-lg"
+    },
+    {
+      "name": "对抗：二次导出 theme.generated.wxss 字节一致（幂等）",
+      "pass": true,
+      "expected": "/* 由 Composer 生成，勿手改。主题唯一事实来自 CompositionPlan.themeTokens。 */\n/* 尺寸唯一事实来自 templates/presentation/size-tokens.v1.json（导出只使用 rpx）。 */\npage {\n  --store-page-background: #F7F3EC;\n  --store-primary-color: #0E4D3A;\n  --store-accent-color: #9C2E12;\n  --store-text-color: #232323;\n  --store-tab-bar-background: #FFFDF9;\n  --store-tab-bar-color: #8A8178;\n  --store-tab-bar-selected-color: #B34A0F;\n  --store-home-hero-min-height: 190rpx;\n  --store-product-card-min-height: 110rpx;\n\n  --color-bg: var(--store-page-background);\n  --color-surface: #FFFDF9;\n  --color-text: var(--store-text-color);\n  --color-muted: #8A8178;\n  --color-primary: var(--store-primary-color);\n  --color-primary-soft: #FDE9D8;\n  --color-accent: var(--store-accent-color);\n  --color-success: #2F7D4F;\n  --color-danger: #B23A2F;\n  --color-border: #E6DED2;\n}\n",
+      "actual": "/* 由 Composer 生成，勿手改。主题唯一事实来自 CompositionPlan.themeTokens。 */\n/* 尺寸唯一事实来自 templates/presentation/size-tokens.v1.json（导出只使用 rpx）。 */\npage {\n  --store-page-background: #F7F3EC;\n  --store-primary-color: #0E4D3A;\n  --store-accent-color: #9C2E12;\n  --store-text-color: #232323;\n  --store-tab-bar-background: #FFFDF9;\n  --store-tab-bar-color: #8A8178;\n  --store-tab-bar-selected-color: #B34A0F;\n  --store-home-hero-min-height: 190rpx;\n  --store-product-card-min-height: 110rpx;\n\n  --color-bg: var(--store-page-background);\n  --color-surface: #FFFDF9;\n  --color-text: var(--store-text-color);\n  --color-muted: #8A8178;\n  --color-primary: var(--store-primary-color);\n  --color-primary-soft: #FDE9D8;\n  --color-accent: var(--store-accent-color);\n  --color-success: #2F7D4F;\n  --color-danger: #B23A2F;\n  --color-border: #E6DED2;\n}\n"
+    }
+  ]
+}

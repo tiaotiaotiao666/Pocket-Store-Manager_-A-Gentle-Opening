@@ -20,6 +20,41 @@ const SHA_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const REGISTRY_VERSION_PATTERN = /^\d{4}\.\d{2}\.\d+$/;
 const MAX_JSON_BYTES = 64 * 1024;
 
+/** 三档组件尺寸；与 `C-SIZE-TOKENS@1` 的 `sm|md|lg` 完全一致。 */
+const SIZE_STEPS = Object.freeze(['sm', 'md', 'lg']);
+
+/**
+ * Plan 顶层 `presentationTokens` 的允许键（C-PLAN-PRESENTATION@1）。
+ * 只允许两组尺寸；`carousel` 档位走海报 `props.size`，不得写进这里，避免双写。
+ */
+const PLAN_SIZE_TOKEN_KEYS = Object.freeze(['homeHeroSize', 'productCardSize']);
+
+/** 缺省尺寸固定为 `md`，与 `templates/presentation/size-tokens.v1.json` 的 defaults 一致。 */
+const DEFAULT_PRESENTATION_TOKENS = Object.freeze({
+  homeHeroSize: 'md',
+  productCardSize: 'md',
+});
+
+/**
+ * Base 插槽 → 导出配置键的固定映射（plan.md 2.2.2 落位表）。
+ * `menu-hero` 由 T11 新增，映射到 `menuHero`；这里只是命名约定，不要求 Base 已声明。
+ */
+const PRESENTATION_SLOT_PAGE_IDS = Object.freeze({
+  'home-hero': 'home',
+  'home-marketing': 'home',
+  'menu-aside': 'menu',
+  'menu-hero': 'menu',
+});
+
+const PRESENTATION_SLOT_DATA_KEYS = Object.freeze({
+  'home-hero': 'homeHero',
+  'home-marketing': 'homeMarketing',
+  'menu-aside': 'menuAside',
+  'menu-hero': 'menuHero',
+});
+
+const PRESENTATION_SLOT_IDS = Object.freeze(Object.keys(PRESENTATION_SLOT_PAGE_IDS));
+
 const FORBIDDEN_KEYS = new Set([
   'source',
   'code',
@@ -252,6 +287,161 @@ function checkJsonSize(value, path) {
   return null;
 }
 
+/**
+ * 归一化 Plan 顶层 `presentationTokens`：
+ * - 缺省或非法值一律回落 `md`（契约 2.2.2：缺省等价于默认值）；
+ * - 输出固定两键，未知键被丢弃，保证摘要与导出结果稳定。
+ */
+function normalizePresentationTokens(tokens) {
+  const normalized = { ...DEFAULT_PRESENTATION_TOKENS };
+  if (!isPlainObject(tokens)) return normalized;
+  for (const key of PLAN_SIZE_TOKEN_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(tokens, key) && SIZE_STEPS.includes(tokens[key])) {
+      normalized[key] = tokens[key];
+    }
+  }
+  return normalized;
+}
+
+/**
+ * 校验可选字段 `presentationTokens`（C-PLAN-PRESENTATION@1）。
+ * 只在字段存在时校验；缺省时 Composer 必须继续放行。
+ */
+function validatePresentationTokens(tokens) {
+  if (tokens === undefined) return null;
+  if (!isPlainObject(tokens)) return fail('FIELD_TYPE', 'presentationTokens', 'presentationTokens 必须是对象');
+  for (const key of Object.keys(tokens)) {
+    if (!PLAN_SIZE_TOKEN_KEYS.includes(key)) {
+      return fail(
+        'PLAN_FIELD_FORBIDDEN',
+        'presentationTokens.' + key,
+        'presentationTokens 只允许 homeHeroSize、productCardSize，禁止字段：' + key,
+        { key },
+      );
+    }
+  }
+  for (const key of PLAN_SIZE_TOKEN_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(tokens, key)) continue;
+    if (!SIZE_STEPS.includes(tokens[key])) {
+      return fail(
+        'PRESENTATION_SIZE_INVALID',
+        'presentationTokens.' + key,
+        '尺寸档位只能是 sm|md|lg：' + String(tokens[key]),
+        { key, value: String(tokens[key]), allowed: [...SIZE_STEPS] },
+      );
+    }
+  }
+  return null;
+}
+
+/** 归一化可选字段 `slotOrder`：只保留三键，缺省返回空数组（表示沿用声明落位）。 */
+function normalizeSlotOrder(slotOrder) {
+  if (!Array.isArray(slotOrder)) return [];
+  return slotOrder
+    .filter((entry) => isPlainObject(entry))
+    .map((entry) => ({
+      featureId: typeof entry.featureId === 'string' ? entry.featureId : '',
+      pageId: typeof entry.pageId === 'string' ? entry.pageId : '',
+      slotId: typeof entry.slotId === 'string' ? entry.slotId : '',
+    }));
+}
+
+/** 取插槽对应的导出配置键；未知插槽返回 null。 */
+function presentationSlotDataKey(slotId) {
+  return Object.prototype.hasOwnProperty.call(PRESENTATION_SLOT_DATA_KEYS, slotId)
+    ? PRESENTATION_SLOT_DATA_KEYS[slotId]
+    : null;
+}
+
+/** 插槽的归属页面；未知插槽返回 null。 */
+function presentationSlotPageId(slotId) {
+  return Object.prototype.hasOwnProperty.call(PRESENTATION_SLOT_PAGE_IDS, slotId)
+    ? PRESENTATION_SLOT_PAGE_IDS[slotId]
+    : null;
+}
+
+/**
+ * 校验可选字段 `slotOrder`（C-PLAN-PRESENTATION@1）。
+ *
+ * 规则：
+ * 1. 缺省放行；存在时必须是数组，条目只允许 `featureId|pageId|slotId`。
+ * 2. 必须是当前 Plan 已占用 Feature 的完整排列：每个 featureId 恰好一次。
+ * 3. 目标 `pageId+slotId` 必须是落位表中的合法组合，且同一目标插槽不得重复。
+ * 4. Base 是否真的声明该插槽、`accepts` 是否匹配，由 `resolve` 校验（SLOT_UNKNOWN / SLOT_TYPE_REJECTED）。
+ */
+function validateSlotOrder(slotOrder, features) {
+  if (slotOrder === undefined) return null;
+  if (!Array.isArray(slotOrder)) return fail('FIELD_TYPE', 'slotOrder', 'slotOrder 必须是数组');
+
+  const featureIds = (Array.isArray(features) ? features : [])
+    .map((feature) => (isPlainObject(feature) ? feature.id : null))
+    .filter((id) => typeof id === 'string');
+  const featureIdSet = new Set(featureIds);
+  const seenFeatureIds = new Set();
+  const seenTargets = new Set();
+
+  for (let index = 0; index < slotOrder.length; index += 1) {
+    const entry = slotOrder[index];
+    const entryPath = 'slotOrder[' + index + ']';
+    if (!isPlainObject(entry)) return fail('FIELD_TYPE', entryPath, 'slotOrder 条目必须是对象');
+
+    for (const key of Object.keys(entry)) {
+      if (!['featureId', 'pageId', 'slotId'].includes(key)) {
+        return fail('PLAN_FIELD_FORBIDDEN', entryPath + '.' + key, 'slotOrder 条目只允许 featureId、pageId、slotId，禁止字段：' + key, { key });
+      }
+    }
+
+    const missing = requiredFields(entry, ['featureId', 'pageId', 'slotId'], entryPath);
+    if (missing) return missing;
+
+    if (typeof entry.featureId !== 'string') {
+      return fail('FIELD_TYPE', entryPath + '.featureId', 'featureId 必须是字符串');
+    }
+    if (!featureIdSet.has(entry.featureId)) {
+      return fail('PLAN_SLOT_ORDER_INVALID', entryPath + '.featureId', 'slotOrder 引用了 Plan 中不存在的 Feature：' + entry.featureId, {
+        featureId: entry.featureId,
+        available: featureIds,
+      });
+    }
+    if (seenFeatureIds.has(entry.featureId)) {
+      return fail('PLAN_SLOT_ORDER_INVALID', entryPath + '.featureId', 'slotOrder 中 Feature 重复：' + entry.featureId, {
+        featureId: entry.featureId,
+      });
+    }
+    seenFeatureIds.add(entry.featureId);
+
+    if (typeof entry.pageId !== 'string' || typeof entry.slotId !== 'string') {
+      return fail('FIELD_TYPE', entryPath, 'pageId 与 slotId 必须是字符串');
+    }
+    const page = presentationSlotPageId(entry.slotId);
+    if (!page || page !== entry.pageId) {
+      return fail(
+        'PLAN_SLOT_TARGET_INVALID',
+        entryPath + '.slotId',
+        'slotOrder 目标插槽不合法：' + entry.pageId + '#' + entry.slotId,
+        { pageId: entry.pageId, slotId: entry.slotId, allowed: PRESENTATION_SLOT_IDS },
+      );
+    }
+    const target = entry.pageId + '#' + entry.slotId;
+    if (seenTargets.has(target)) {
+      return fail('PLAN_SLOT_TARGET_INVALID', entryPath + '.slotId', 'slotOrder 目标插槽重复：' + target, {
+        pageId: entry.pageId,
+        slotId: entry.slotId,
+      });
+    }
+    seenTargets.add(target);
+  }
+
+  if (seenFeatureIds.size !== featureIds.length) {
+    const missingIds = featureIds.filter((id) => !seenFeatureIds.has(id));
+    return fail('PLAN_SLOT_ORDER_INVALID', 'slotOrder', 'slotOrder 必须是当前已占用 Feature 的完整排列，缺少：' + missingIds.join('、'), {
+      missing: missingIds,
+    });
+  }
+
+  return null;
+}
+
 function validatePlan(plan) {
   if (!isPlainObject(plan)) return fail('PLAN_SCHEMA_UNSUPPORTED', '$', 'Plan 必须是对象');
   if (plan.schemaVersion !== SCHEMA_VERSIONS.composition) {
@@ -348,6 +538,12 @@ function validatePlan(plan) {
       }
     }
   }
+
+  // 可选展示字段（C-PLAN-PRESENTATION@1）：缺省时保持向后兼容，存在时必须合法。
+  const presentationError = validatePresentationTokens(plan.presentationTokens);
+  if (presentationError) return presentationError;
+  const slotOrderError = validateSlotOrder(plan.slotOrder, plan.features);
+  if (slotOrderError) return slotOrderError;
 
   if (!Array.isArray(plan.components)) return fail('FIELD_TYPE', 'components', 'components 必须是数组');
   for (let index = 0; index < plan.components.length; index += 1) {
@@ -887,10 +1083,22 @@ module.exports = {
   checkId,
   checkJsonSize,
   byteLength,
+  normalizePresentationTokens,
+  normalizeSlotOrder,
+  validatePresentationTokens,
+  validateSlotOrder,
+  presentationSlotDataKey,
+  presentationSlotPageId,
   FORBIDDEN_KEYS,
   STORE_CONFIG_ALLOWED,
   ID_PATTERN,
   VERSION_PATTERN,
   COLOR_PATTERN,
+  SIZE_STEPS,
+  PLAN_SIZE_TOKEN_KEYS,
+  DEFAULT_PRESENTATION_TOKENS,
+  PRESENTATION_SLOT_PAGE_IDS,
+  PRESENTATION_SLOT_DATA_KEYS,
+  PRESENTATION_SLOT_IDS,
   MAX_JSON_BYTES,
 };

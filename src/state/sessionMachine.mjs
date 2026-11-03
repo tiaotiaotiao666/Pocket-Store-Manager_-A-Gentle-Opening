@@ -25,6 +25,7 @@ import {
   FEATURE_INTRO,
   BUILDING_INTRO,
   TEMPLATE_INTRO,
+  TEMPLATE_REFINE,
   STORE_INTRO,
   PROMPT_INTRO,
   REVIEW_INTRO,
@@ -34,6 +35,11 @@ import {
 import { buildHandoff } from '../domain/handoff.mjs';
 import { STORE_TYPES, STYLE_PRESETS } from '../domain/storeBrief.mjs';
 import {
+  diffPresentationPatch,
+  validatePresentationPatch,
+} from '../domain/presentationPatch.mjs';
+import { resolveRecipe } from '../domain/recipeCatalog.mjs';
+import {
   createEmptyDeployState,
   createEmptyPreflight,
   fromDocument,
@@ -42,12 +48,147 @@ import {
 const REQUIRED_FEATURE_IDS = catalogFeatures.filter((feature) => feature.required).map((feature) => feature.id);
 const MAX_DISHES = 5;
 
+/** 展示修改清单最多保留的条数（plan.md 2.2.3「changes 截断 20」）。 */
+const MAX_PRESENTATION_CHANGES = 20;
+
+/**
+ * 可移动区块的类型。
+ *
+ * 与 `templates/registry/registry.v1.json` 的 `kind` 声明保持一致；
+ * 状态机同构运行在浏览器与 Node，不读模板文件，因此在此保留最小映射。
+ * 未列出的区块按 `feature-pack` 处理（当前唯一的可移动区块是 poster-carousel）。
+ */
+const FEATURE_KIND_BY_ID = Object.freeze({
+  'poster-carousel': 'feature-pack',
+});
+
+/**
+ * `C-SESSION-PRESENTATION@1` 的初始切片（plan.md 2.2.3）。
+ *
+ * @returns {{templateId: string|null, patch: object, changes: Array, status: 'idle',
+ *   requestId: null, lastUtterance: string, error: null}}
+ */
+function createInitialPresentationSlice() {
+  return {
+    templateId: null,
+    patch: {},
+    changes: [],
+    status: 'idle',
+    requestId: null,
+    lastUtterance: '',
+    error: null,
+  };
+}
+
+/**
+ * 构造补丁校验上下文（plan.md 2.2.4）。
+ *
+ * 已占用 feature 来自当前模板的 Recipe 投影，保证与 Plan 的 `features[]` 口径一致；
+ * `hasCarousel` 决定 `sizes.carousel` 是否允许；`baseDraft` 决定菜品文案能否按 id 落位。
+ *
+ * @param {object} state 会话状态
+ * @param {string|null|undefined} templateId 补丁所属模板（缺省回落当前选中模板）
+ */
+function presentationContext(state, templateId) {
+  const selectedId = templateId ?? state.build?.selectedId ?? null;
+  const { recipe } = resolveRecipe(selectedId);
+  const features = Array.isArray(recipe?.features) ? recipe.features : [];
+  const occupiedFeatures = features.map((feature) => ({
+    id: feature.id,
+    kind: FEATURE_KIND_BY_ID[feature.id] ?? 'feature-pack',
+  }));
+  return {
+    occupiedFeatures,
+    hasCarousel: occupiedFeatures.some((feature) => feature.id === 'poster-carousel'),
+    baseDraft: {
+      dishes: Array.isArray(state.agentDraft?.dishes) ? state.agentDraft.dishes : [],
+    },
+  };
+}
+
+/** 把任意来源的错误对象收敛成 `{ code, message }`。 */
+function normalizePresentationError(error, fallbackCode, fallbackMessage) {
+  const source = error && typeof error === 'object' ? error : {};
+  const code = typeof source.code === 'string' && source.code ? source.code : fallbackCode;
+  const message = typeof source.message === 'string' && source.message ? source.message : fallbackMessage;
+  return { code, message };
+}
+
+/** 变更清单只保留 path/label/before/after，并截断到 20 条。 */
+function normalizePresentationChanges(changes) {
+  if (!Array.isArray(changes)) return null;
+  return changes.slice(0, MAX_PRESENTATION_CHANGES).map((item) => {
+    const source = item && typeof item === 'object' ? item : {};
+    return {
+      path: typeof source.path === 'string' ? source.path : '',
+      label: typeof source.label === 'string' ? source.label : '',
+      before: typeof source.before === 'string' ? source.before : null,
+      after: typeof source.after === 'string' ? source.after : null,
+    };
+  });
+}
+
+/**
+ * 把已接受的 `copy` 补丁映射到门店资料与 Agent 草稿（plan.md 2.2.3）。
+ *
+ * - `storeName` → `store.name` + `agentDraft.storeName`
+ * - `category`  → `store.type` + `agentDraft.category`
+ * - `tagline`   → `store.notes`（Plan 的 `storeProfile.notes`）
+ * - `dishes[]`  → 按 id 更新 `agentDraft.dishes[]` 的 name/description，**价格保持不变**
+ *
+ * @returns {{store: object, draft: object}|null} 无 copy 时返回 null
+ */
+function applyPresentationCopy(state, copy) {
+  if (!copy || typeof copy !== 'object') return null;
+  const store = { ...(state.store || {}) };
+  let storeTouched = false;
+  const draft = { ...(state.agentDraft || {}) };
+  let draftTouched = false;
+
+  if (typeof copy.storeName === 'string') {
+    store.name = copy.storeName;
+    draft.storeName = copy.storeName;
+    storeTouched = true;
+    draftTouched = true;
+  }
+  if (typeof copy.category === 'string') {
+    store.type = copy.category;
+    draft.category = copy.category;
+    storeTouched = true;
+    draftTouched = true;
+  }
+  if (typeof copy.tagline === 'string') {
+    store.notes = copy.tagline;
+    storeTouched = true;
+  }
+  if (Array.isArray(copy.dishes) && copy.dishes.length > 0) {
+    const patchesById = new Map();
+    for (const dish of copy.dishes) {
+      if (dish && typeof dish.id === 'string') patchesById.set(dish.id, dish);
+    }
+    const dishes = Array.isArray(draft.dishes) ? draft.dishes : [];
+    draft.dishes = dishes.map((dish) => {
+      const patch = dish && patchesById.get(dish.id);
+      if (!patch) return dish;
+      const next = { ...dish };
+      if (typeof patch.name === 'string') next.name = patch.name;
+      if (typeof patch.description === 'string') next.description = patch.description;
+      // 价格不在补丁契约内（plan.md 2.2.4 第 8 条），这里刻意不复制 priceCents/priceText。
+      draftTouched = true;
+      return next;
+    });
+  }
+  if (!storeTouched && !draftTouched) return null;
+  return { store: storeTouched ? store : state.store, draft: draftTouched ? draft : state.agentDraft };
+}
+
 function createInitialAgentSlice() {
   return {
     status: AGENT_STATUS.IDLE,
     lastUtterance: '',
     lastError: null,
     attempts: 0,
+    activeRequestId: null,
     missingFields: [],
     errors: [],
     nextQuestion: null,
@@ -57,6 +198,27 @@ function createInitialAgentSlice() {
     turnId: null,
     confirmedAtSeq: null,
   };
+}
+
+function isCurrentAgentTurnCompletion(state, action) {
+  return state.agent.status === AGENT_STATUS.REQUESTING
+    && state.agent.activeRequestId === (action.requestId ?? null);
+}
+
+/**
+ * 展示修改的结果是否属于当前挂起的请求（plan.md 2.2.3）。
+ *
+ * 条件：处于 `revising`、`requestId` 一致；若动作携带 `templateId`，还必须与补丁所属模板一致。
+ * 任一不满足即「整包忽略」——连撤销元数据与 changes 都不能碰。
+ */
+function isCurrentPresentationCompletion(state, action) {
+  const presentation = state.presentation;
+  if (!presentation || presentation.status !== 'revising') return false;
+  const requestId = typeof action.requestId === 'string' ? action.requestId.trim() : '';
+  if (!requestId || requestId !== presentation.requestId) return false;
+  const templateId = typeof action.templateId === 'string' ? action.templateId : '';
+  if (templateId && presentation.templateId && templateId !== presentation.templateId) return false;
+  return true;
 }
 
 function validationStatus(status, validation) {
@@ -159,11 +321,12 @@ export function createInitialState() {
     sessions: [mainSession],
     store: { name: '', type: STORE_TYPES[0], notes: '', address: '', phone: '', logoAssetId: null, imageAssetIds: [] },
     features: { selected: [...REQUIRED_FEATURE_IDS], custom: '' },
-    build: { status: 'idle', candidates: [], selectedId: null },
+    build: { status: 'idle', candidates: [], selectedId: null, feedback: [], refineError: null },
     visual: { styleId: STYLE_PRESETS[0].id, promptRounds: [], imageRounds: [], image: null, prompt: '', imageAssetId: null, imageMeta: null },
     deploy: createInitialDeploySlice(),
     agentDraft: createEmptyAgentDraft(),
     agent: createInitialAgentSlice(),
+    presentation: createInitialPresentationSlice(),
     assets: { images: [] },
     unmappedFields: {},
     project: createInitialProjectSlice(),
@@ -654,6 +817,7 @@ function baseReducer(state, action) {
           errors: validation.errors,
           nextQuestion: buildNextQuestion(validation),
         },
+        presentation: restorePresentation(snapshot, state),
         project: {
           ...state.project,
           appid: typeof snapshot.appid === 'string' ? snapshot.appid : state.project.appid,
@@ -734,17 +898,251 @@ function baseReducer(state, action) {
       let next = custom ? { ...state, features: { ...state.features, custom } } : state;
       if (custom) next = appendMessages(next, state.activeSessionId, [{ role: ROLES.USER, text: custom, instant: true }]);
       next = appendMessages(next, state.activeSessionId, [{ text: BUILDING_INTRO, staged: true }]);
-      return { ...next, phase: PHASES.BUILDING, build: { ...next.build, status: 'building', candidates: [] } };
+      return {
+        ...next,
+        phase: PHASES.BUILDING,
+        build: { ...next.build, status: 'building', candidates: [], selectedId: null, feedback: [], refineError: null },
+      };
     }
 
     case 'BUILD_READY': {
       const candidates = action.candidates || [];
       let next = appendMessages(state, state.activeSessionId, [{ text: TEMPLATE_INTRO, staged: true, meta: { kind: 'template-pick' } }]);
-      return { ...next, phase: PHASES.TEMPLATE_PICK, build: { status: 'ready', candidates, selectedId: candidates[0]?.id ?? null } };
+      return {
+        ...next,
+        phase: PHASES.TEMPLATE_PICK,
+        build: { ...next.build, status: 'ready', candidates, selectedId: candidates[0]?.id ?? null, refineError: null },
+      };
     }
 
-    case 'SELECT_TEMPLATE':
-      return { ...state, build: { ...state.build, selectedId: action.id } };
+    /**
+     * 模板页「不满意 → 重新用语言描述」。
+     *
+     * 语义约束：不离开 TEMPLATE_PICK、不清空已选功能、不覆盖已有候选——
+     * 输入的消息进入当前会话，build.status 切到 building，由 App 层重新生成候选，
+     * 生成完成后用 TEMPLATE_REBUILD_READY 原地替换候选（不再追加一遍开场白）。
+     */
+    case 'SUBMIT_TEMPLATE_FEEDBACK': {
+      if (state.phase !== PHASES.TEMPLATE_PICK) return state;
+      if (state.build.status === 'building') return state;
+      const text = String(action.value ?? '').trim().slice(0, TEMPLATE_REFINE.maxLength);
+      if (!text) return state;
+      const feedback = [...(state.build.feedback || []), text].slice(-8);
+      let next = appendMessages(state, state.activeSessionId, [{ role: ROLES.USER, text, instant: true }]);
+      next = appendMessages(next, next.activeSessionId, [{
+        text: TEMPLATE_REFINE.reply,
+        staged: true,
+        meta: { kind: 'template-refine' },
+      }]);
+      return {
+        ...next,
+        build: { ...next.build, status: 'building', feedback, refineError: null },
+      };
+    }
+
+    case 'TEMPLATE_REBUILD_READY': {
+      const candidates = Array.isArray(action.candidates) ? action.candidates : [];
+      if (candidates.length === 0) {
+        return {
+          ...state,
+          build: {
+            ...state.build,
+            status: 'ready',
+            refineError: { code: 'TEMPLATE_REBUILD_EMPTY', message: '这一版没有可用的页面骨架，请换个说法再试。' },
+          },
+        };
+      }
+      return {
+        ...state,
+        build: {
+          ...state.build,
+          status: 'ready',
+          candidates,
+          selectedId: candidates[0].id,
+          refineError: null,
+        },
+      };
+    }
+
+    case 'TEMPLATE_REBUILD_FAILED': {
+      const withMessage = appendMessages(state, state.activeSessionId, [{
+        text: TEMPLATE_REFINE.failed,
+        staged: true,
+        meta: { kind: 'template-refine-failed' },
+      }]);
+      const source = action.error ?? {};
+      return {
+        ...withMessage,
+        build: {
+          ...withMessage.build,
+          status: 'ready',
+          refineError: {
+            code: source.code ?? 'TEMPLATE_REBUILD_FAILED',
+            message: source.message ?? TEMPLATE_REFINE.failed,
+          },
+        },
+      };
+    }
+
+    /**
+     * 模板切换（plan.md 2.2.3）。
+     *
+     * 换到不同模板时旧补丁不再适用：清空 `patch/changes`、丢弃挂起请求（requestId=null），
+     * 避免旧模板的晚响应落到新模板上。重复选择同一模板不重置任何东西。
+     */
+    case 'SELECT_TEMPLATE': {
+      const id = action.id;
+      const build = { ...state.build, selectedId: id };
+      const presentation = state.presentation ?? createInitialPresentationSlice();
+      if (presentation.templateId === id) return { ...state, build };
+      const patchEmpty = !presentation.patch || Object.keys(presentation.patch).length === 0;
+      return {
+        ...state,
+        build,
+        presentation: {
+          ...presentation,
+          templateId: id,
+          ...(patchEmpty ? {} : { patch: {}, changes: [] }),
+          status: 'idle',
+          requestId: null,
+          error: null,
+        },
+      };
+    }
+
+    /**
+     * 模板页「对话修改当前模板」：发出修改请求（plan.md 2.2.3）。
+     *
+     * 单飞：`status === 'revising'` 时忽略；`build.status !== 'ready'` 时没有可改的模板。
+     * `patch` 保持不变——多轮累积由 T4 在请求里带上当前已接受补丁、服务端返回合并结果完成。
+     */
+    case 'TEMPLATE_REVISE_REQUEST': {
+      if (state.phase !== PHASES.TEMPLATE_PICK) return state;
+      if (state.build.status !== 'ready') return state;
+      const presentation = state.presentation ?? createInitialPresentationSlice();
+      if (presentation.status === 'revising') return state;
+      const utterance = String(action.utterance ?? '').trim();
+      const requestId = typeof action.requestId === 'string' ? action.requestId.trim() : '';
+      if (!utterance || !requestId) return state;
+      const withMessage = appendMessages(state, state.activeSessionId, [{
+        role: ROLES.USER,
+        text: utterance,
+        instant: true,
+        meta: { kind: 'template-revise-request' },
+      }]);
+      return {
+        ...withMessage,
+        presentation: {
+          ...presentation,
+          templateId: presentation.templateId ?? state.build.selectedId ?? null,
+          status: 'revising',
+          requestId,
+          lastUtterance: utterance,
+          error: null,
+        },
+      };
+    }
+
+    /**
+     * 修改成功（plan.md 2.2.3）。
+     *
+     * `requestId` / `templateId` 必须与当前挂起请求一致，否则整包忽略（含 changes 与撤销压栈）。
+     * 服务端结果先过 `validatePresentationPatch` 兜底，非法则进入失败态、保留上一版补丁。
+     */
+    case 'TEMPLATE_REVISE_SUCCESS': {
+      const presentation = state.presentation ?? createInitialPresentationSlice();
+      const requestId = typeof action.requestId === 'string' ? action.requestId.trim() : '';
+      if (!requestId || presentation.status !== 'revising' || requestId !== presentation.requestId) {
+        return state;
+      }
+      const templateId = typeof action.templateId === 'string' && action.templateId
+        ? action.templateId
+        : (presentation.templateId ?? state.build.selectedId ?? null);
+      if (presentation.templateId && templateId !== presentation.templateId) return state;
+
+      const context = presentationContext(state, templateId);
+      const validated = validatePresentationPatch(action.patch ?? {}, context);
+      if (!validated.ok) {
+        const detail = Array.isArray(validated.details) ? validated.details[0] : null;
+        return {
+          ...state,
+          presentation: {
+            ...presentation,
+            status: 'failed',
+            error: {
+              code: validated.code,
+              message: detail?.message ? `展示修改未通过校验：${detail.message}` : '展示修改未通过校验，请再试一次。',
+            },
+          },
+        };
+      }
+
+      const nextPatch = validated.patch;
+      const providedChanges = normalizePresentationChanges(action.changes);
+      const changes = providedChanges
+        ?? diffPresentationPatch(presentation.patch ?? {}, nextPatch, context);
+      const reply = typeof action.reply === 'string' ? action.reply.trim() : '';
+
+      const withMessage = appendMessages(state, state.activeSessionId, [{
+        text: reply || `已更新 ${changes.length} 项`,
+        staged: true,
+        meta: { kind: 'template-revise' },
+      }]);
+
+      const applied = applyPresentationCopy(withMessage, nextPatch.copy);
+      let next = {
+        ...withMessage,
+        presentation: {
+          ...presentation,
+          templateId,
+          patch: nextPatch,
+          changes,
+          status: 'idle',
+          error: null,
+        },
+      };
+      if (applied) {
+        // 只同步资料与草稿，不改变 agent.status（模板页修改展示不应把抽帧状态推成 collecting）。
+        const draft = normalizeAgentDraft(applied.draft);
+        const validation = validateAgentDraft(draft);
+        next = {
+          ...next,
+          store: applied.store,
+          agentDraft: draft,
+          agent: {
+            ...next.agent,
+            missingFields: validation.missingFields,
+            errors: validation.errors,
+            nextQuestion: buildNextQuestion(validation),
+          },
+        };
+      }
+      return next;
+    }
+
+    /**
+     * 修改失败（plan.md 2.2.3）：保留上一版 `patch/changes`，不追加成功消息。
+     * 与 SUCCESS 一样，非当前请求的失败结果整包忽略。
+     */
+    case 'TEMPLATE_REVISE_FAILURE': {
+      const presentation = state.presentation ?? createInitialPresentationSlice();
+      const requestId = typeof action.requestId === 'string' ? action.requestId.trim() : '';
+      if (!requestId || presentation.status !== 'revising' || requestId !== presentation.requestId) {
+        return state;
+      }
+      const error = normalizePresentationError(
+        action.error,
+        'TEMPLATE_REVISE_FAILED',
+        '展示修改失败，请稍后再试。',
+      );
+      return { ...state, presentation: { ...presentation, status: 'failed', error } };
+    }
+
+    case 'TEMPLATE_REVISE_CLEAR': {
+      const presentation = state.presentation ?? createInitialPresentationSlice();
+      if (presentation.status === 'idle' && presentation.error === null) return state;
+      return { ...state, presentation: { ...presentation, status: 'idle', error: null } };
+    }
 
     case 'CONFIRM_TEMPLATE': {
       const chosen = state.build.candidates.find((item) => item.id === state.build.selectedId) ?? state.build.candidates[0];
@@ -800,6 +1198,7 @@ function baseReducer(state, action) {
           ...withMessage.agent,
           status: AGENT_STATUS.REQUESTING,
           attempts: withMessage.agent.attempts + 1,
+          activeRequestId: action.requestId ?? null,
           lastUtterance: utterance,
           lastError: null,
         },
@@ -815,13 +1214,14 @@ function baseReducer(state, action) {
           ...state.agent,
           status: AGENT_STATUS.REQUESTING,
           attempts: state.agent.attempts + 1,
+          activeRequestId: action.requestId ?? null,
           lastError: null,
         },
       };
     }
 
     case 'AGENT_TURN_SUCCESS': {
-      if (state.agent.status !== AGENT_STATUS.REQUESTING) return state;
+      if (!isCurrentAgentTurnCompletion(state, action)) return state;
       const draft = normalizeAgentDraft(action.draft);
       const validation = validateAgentDraft(draft);
       const reply = String(action.reply ?? '').trim();
@@ -844,6 +1244,7 @@ function baseReducer(state, action) {
           reply,
           meta: action.meta ?? null,
           turnId: action.turnId ?? null,
+          activeRequestId: null,
           lastError: null,
           simulateFailure: false,
         },
@@ -851,7 +1252,7 @@ function baseReducer(state, action) {
     }
 
     case 'AGENT_TURN_FAILURE': {
-      if (state.agent.status !== AGENT_STATUS.REQUESTING) return state;
+      if (!isCurrentAgentTurnCompletion(state, action)) return state;
       const source = action.error ?? {};
       const lastError = {
         code: source.code ?? 'AGENT_NETWORK',
@@ -866,6 +1267,7 @@ function baseReducer(state, action) {
         agent: {
           ...state.agent,
           status: AGENT_STATUS.FAILED,
+          activeRequestId: null,
           lastError,
           simulateFailure: false,
         },
@@ -967,8 +1369,28 @@ function baseReducer(state, action) {
       };
     }
 
-    case 'SET_STYLE':
-      return { ...state, visual: { ...state.visual, styleId: action.id } };
+    /**
+     * 切换装修风格（plan.md 2.2.3 契约补充）。
+     *
+     * 换风格等价于换一套配色意图：清除 `presentation.patch.theme`，
+     * 保留 `sizes` / `slotOrder` / `copy`（版面与文案与风格无关）。
+     * `changes` 中属于 `theme.*` 的条目同时移除，避免变更清单与补丁不一致。
+     */
+    case 'SET_STYLE': {
+      const visual = { ...state.visual, styleId: action.id };
+      const presentation = state.presentation;
+      const patch = presentation?.patch;
+      if (!patch || !patch.theme) return { ...state, visual };
+      const nextPatch = { ...patch };
+      delete nextPatch.theme;
+      const changes = (Array.isArray(presentation.changes) ? presentation.changes : [])
+        .filter((item) => !String(item?.path ?? '').startsWith('theme.'));
+      return {
+        ...state,
+        visual,
+        presentation: { ...presentation, patch: nextPatch, changes },
+      };
+    }
 
     case 'SUBMIT_STORE_INFO': {
       if (state.agent.status !== AGENT_STATUS.IDLE && state.agent.status !== AGENT_STATUS.CONFIRMED) {
@@ -1314,6 +1736,8 @@ const UNDOABLE_ACTIONS = new Set([
   'CONFIRM_PROMPT',
   'APPROVE_IMAGE',
   'PROJECT_SET_APPID',
+  // C-SESSION-PRESENTATION@1：只有成功的展示修改可撤销；请求/失败/清错不压栈。
+  'TEMPLATE_REVISE_SUCCESS',
 ]);
 
 const UNDO_RESET_ACTIONS = new Set(['RESET', 'RESET_PROJECT', 'PROJECT_OPEN_SUCCESS', 'PROJECT_NEW_SUCCESS', 'PROJECT_DELETE_SUCCESS']);
@@ -1343,8 +1767,52 @@ function undoSnapshot(state) {
       imageRounds: cloneJson(visual.imageRounds || []),
     },
     agentDraft: cloneJson(state.agentDraft || {}),
+    // 展示切片必须进快照，否则展示修改无法撤销/重做。
+    presentation: cloneJson(state.presentation || createInitialPresentationSlice()),
     appid: (state.project && state.project.appid) || '',
   };
+}
+
+/**
+ * 撤销快照里的展示切片：撤销要回到「上一版已接受的展示」，而不是停在请求态。
+ *
+ * `TEMPLATE_REVISE_SUCCESS` 压栈时，当前 state 的 `presentation` 还带着
+ * `status='revising'`；若不处理，撤销后会卡在「修改中」。这里只改状态位，
+ * 补丁与变更仍是上一版（本动作尚未写入）。
+ *
+ * @param {object} snapshot undoSnapshot() 的结果
+ * @returns {object} 修正后的快照
+ */
+function withPresentationUndoView(snapshot) {
+  const presentation = snapshot.presentation;
+  if (!presentation) return snapshot;
+  return {
+    ...snapshot,
+    presentation: { ...presentation, status: 'idle', error: null },
+  };
+}
+
+/**
+ * 从撤销快照恢复展示切片，并保证补丁与当前模板不错配。
+ *
+ * 快照同时保存了 `build.selectedId` 与 `presentation.templateId`；
+ * 若两者不一致（例如切模板后又撤销），以 `build.selectedId` 为准丢弃旧补丁，
+ * 避免出现「补丁属于 A 模板、当前模板却是 B」。
+ *
+ * @param {object} snapshot 撤销快照
+ * @param {object} state 当前状态（用于兜底）
+ * @returns {object} 恢复后的 presentation 切片
+ */
+function restorePresentation(snapshot, state) {
+  const fallback = state.presentation ?? createInitialPresentationSlice();
+  const source = snapshot.presentation;
+  if (!source) return fallback;
+  const restored = cloneJson(source);
+  const selectedId = snapshot.build ? snapshot.build.selectedId : (state.build?.selectedId ?? null);
+  if (selectedId && restored.templateId && restored.templateId !== selectedId) {
+    return { ...createInitialPresentationSlice(), templateId: selectedId };
+  }
+  return restored;
 }
 
 /**
@@ -1353,6 +1821,16 @@ function undoSnapshot(state) {
  * 栈不持久化（重启清空）。
  */
 export function reducer(state, action) {
+  // 晚响应必须连 undo 元数据也不触碰，严格保持原 state 引用。
+  if ((action.type === 'AGENT_TURN_SUCCESS' || action.type === 'AGENT_TURN_FAILURE')
+    && !isCurrentAgentTurnCompletion(state, action)) {
+    return state;
+  }
+  // 展示修改的晚响应同样整包忽略：不写补丁/changes，也不产生撤销历史。
+  if ((action.type === 'TEMPLATE_REVISE_SUCCESS' || action.type === 'TEMPLATE_REVISE_FAILURE')
+    && !isCurrentPresentationCompletion(state, action)) {
+    return state;
+  }
   const undo = state.undo || { past: [], future: [], lastKey: null };
 
   if (action.type === 'UNDO_APPLY' || action.type === 'REDO_APPLY') {
@@ -1376,9 +1854,19 @@ export function reducer(state, action) {
   }
 
   if (UNDOABLE_ACTIONS.has(action.type)) {
-    const key = `${action.type}:${action.field || action.id || ''}`;
-    const snapshot = undoSnapshot(state);
+    // 合并键：同一动作 + 同一字段连续触发只占一格。
+    // TEMPLATE_REVISE_SUCCESS 没有 field/id，用 requestId 区分，保证多轮修改各自可撤销。
+    const key = `${action.type}:${action.field || action.id || action.requestId || ''}`;
+    const rawSnapshot = undoSnapshot(state);
+    // 成功的展示修改：撤销要回到「上一版已接受展示」，而不是停留在 revising 请求态。
+    const snapshot = action.type === 'TEMPLATE_REVISE_SUCCESS'
+      ? withPresentationUndoView(rawSnapshot)
+      : rawSnapshot;
     const next = baseReducer(state, action);
+    // 展示补丁未通过兜底校验时进入失败态，失败不压栈。
+    if (action.type === 'TEMPLATE_REVISE_SUCCESS' && next.presentation?.status === 'failed') {
+      return next;
+    }
     // 被 reducer 拒绝的动作（例如锁定 required 功能）不应产生历史记录。
     const changed = JSON.stringify(undoSnapshot(next)) !== JSON.stringify(snapshot);
     if (!changed) return next;
@@ -1408,6 +1896,26 @@ export function selectUndoState(state) {
 
 export function selectActiveSession(state) {
   return state.sessions.find((session) => session.id === state.activeSessionId) ?? state.sessions[0];
+}
+
+/**
+ * `C-SESSION-PRESENTATION@1` 选择器（plan.md 2.2.3）。
+ *
+ * 只暴露渲染层需要的字段，不把 requestId/lastUtterance/templateId 泄露给 UI。
+ *
+ * @param {object} state 会话状态
+ * @returns {{canRevise: boolean, patch: object, changes: Array, status: 'idle'|'revising'|'failed',
+ *   error: {code: string, message: string}|null}}
+ */
+export function selectPresentationState(state) {
+  const presentation = state?.presentation ?? createInitialPresentationSlice();
+  return {
+    canRevise: state?.phase === PHASES.TEMPLATE_PICK && state?.build?.status === 'ready',
+    patch: presentation.patch ?? {},
+    changes: Array.isArray(presentation.changes) ? presentation.changes : [],
+    status: presentation.status ?? 'idle',
+    error: presentation.error ?? null,
+  };
 }
 
 export function selectSelectedFeatures(state) {

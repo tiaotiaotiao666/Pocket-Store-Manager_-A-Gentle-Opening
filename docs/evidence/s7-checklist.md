@@ -1,6 +1,6 @@
 # 全量验证矩阵
 
-日期：2026-10-31 · 最后更新：M5–M7 验收轮（注册表冻结 + 失败修复后复验）
+日期：2026-10-31 · 最后更新：2026-11-03（M7 微信编译与晋升 direct）
 
 > 每行必须是真实执行结果；未执行写“未执行 + 原因”，禁止只写“已测试”。
 
@@ -14,7 +14,7 @@
 | `npm run test:desktop` | pass 7 / fail 0 | BUG-009 恢复可执行 |
 | `npm run mini:check` | 0 错误 / 0 警告 | 7 页面 / 13 组件 |
 | `npm run mini:dup-check` | 镜像一致性通过 | 迁移状态 `migrating`；`domain/versionGuard.js` 仅 Base 有（待同步）、`project.private.config.json` 仅镜像有（允许） |
-| `node scripts/registry-check.cjs` | 通过 | **base 1 / ui-block 3 / feature-pack 1 / recipe 3（direct 0）** |
+| `node scripts/registry-check.cjs` | 通过 | **base 1 / ui-block 3 / feature-pack 1 / recipe 3（direct 0）**（2026-10-31 快照；2026-11-03 已为 `direct 2`） |
 | `node scripts/check-packaging.cjs` | 通过 | 224 必需文件 / 10 条 files 规则 / 旧复制脚本未入包 |
 | `npm run build` | 通过 | Vite 构建 2.48s，M6/M7 前端接线后已复验 |
 
@@ -54,7 +54,7 @@
 
 | 项 | 状态 | 说明 |
 | --- | --- | --- |
-| 微信开发者工具编译（W） | 未执行 | CLI 服务端口关闭，需人工 GUI 导入 `m5acc\classic` / `m5acc\poster` 编译；三份 Recipe 因此保持 `candidate`，不得进入店主可选列表 |
+| 微信开发者工具编译（W） | **已执行（2026-11-03）** | 5 份工程 `cli auto` 均成功（`order-classic`/`order-poster`/`poster-solo`/`classic-noblock`/候选），截图见 `m7/wechat/`；详见 `m7/s6.md` |
 | `npm run desktop` 点击导出（L2） | 未执行 | 代码与契约测试完成，无人工点击证据 |
 | `npm run build:win`（L3） | 未执行 | electron-builder 缓存为空，强制打包会失败 |
 | 干净机安装（L4） | 未执行 | 无验收机；`M5-7-02` 保持未勾选 |
@@ -64,5 +64,6 @@
 ## 4. 结论
 
 - M5 的 L1 门禁通过；M6 前后端测试全绿（根 245 pass + 服务端 164 pass）；M7 资产已冻结并完成双工程 L1 生成与静态校验。
-- **L1 自动化层面 M5–M7 已闭环**；但 Recipe 晋升 `direct` 仍缺微信编译证据，L2 点击导出、L3/L4、W、R 均未执行。
-- 可表述为「M5–M7 代码与 L1 验收完成」；不得表述为「可发布 / 已通过微信验收」。
+- 2026-11-03 更新：微信编译（W）已执行，`registry:check` 实测 `direct 2`；根目录全量 623 项 623 pass / 0 fail / 0 todo。
+- 仍未执行：L2 点击导出、L3/L4 安装包、真机 R、海报视觉人工目视。
+- 可表述为「M5–M7 代码与 L1 + W 验收完成」；不得表述为「可发布 / 可直接上架」。

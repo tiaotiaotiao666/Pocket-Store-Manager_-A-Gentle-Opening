@@ -1,0 +1,14 @@
+{
+  "scannedRoots": [
+    "dist",
+    "server/dist"
+  ],
+  "scannedFileCount": 202,
+  "env": {
+    "envFileExists": true,
+    "deepseekKeyPresent": true
+  },
+  "deepseekValueHits": [],
+  "skPrefixHits": [],
+  "inlineImageHits": []
+}

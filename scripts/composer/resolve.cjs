@@ -13,7 +13,16 @@
 const path = require('node:path');
 
 const { getAsset } = require('./registry.cjs');
-const { validatePlan, validateSlots, validatePath, fail, ok } = require('./schema.cjs');
+const {
+  validatePlan,
+  validateSlots,
+  validatePath,
+  normalizePresentationTokens,
+  normalizeSlotOrder,
+  presentationSlotDataKey,
+  fail,
+  ok,
+} = require('./schema.cjs');
 const { assetDigest } = require('./digest.cjs');
 
 function parseVersion(version) {
@@ -232,20 +241,64 @@ function resolvePlan(planInput, loaded, options) {
   if (!slotsDoc.ok) return slotsDoc;
 
   const slotMap = new Map(base.manifest.slots.map((slot) => [slot.pageId + '#' + slot.slotId, slot]));
+
+  // 展示声明（C-PLAN-PRESENTATION@1）：尺寸缺省按 md 补齐，落位缺省为空数组（沿用声明落位）。
+  // 两者都只做视图层归一化，不回写 plan，也不改写 plan.features[].slots[]。
+  const presentationTokens = normalizePresentationTokens(plan.presentationTokens);
+  const slotOrder = normalizeSlotOrder(plan.slotOrder);
+  const placementByFeature = new Map();
+  for (const entry of slotOrder) {
+    if (!placementByFeature.has(entry.featureId)) {
+      placementByFeature.set(entry.featureId, entry);
+    }
+  }
+
+  // 第一步：落位被 slotOrder 覆盖的 Feature，先按 Recipe 原始 features[].slots[] 校验
+  // requiresSlots。落位由顶层 slotOrder 表达，但“是否提供了必需插槽”仍以声明为准；
+  // 否则把 poster-carousel 移到 menu-hero 会误报 SLOT_REQUIRED_MISSING。
+  // 未被覆盖的 Feature 保持既有校验顺序（先落位、后 requiresSlots），以免改变历史错误码优先级。
+  for (const feature of plan.features) {
+    if (!placementByFeature.has(feature.id)) continue;
+    const asset = requested.get(feature.id + '@' + feature.version);
+    if (!asset) continue;
+    for (const requiredSlot of asset.manifest.requiresSlots || []) {
+      if (!feature.slots.some((slot) => slot.slotId === requiredSlot)) {
+        return fail('SLOT_REQUIRED_MISSING', 'features', '资产要求插槽未分配：' + requiredSlot, {
+          assetId: asset.id,
+          slotId: requiredSlot,
+        });
+      }
+    }
+  }
+
+  // 第二步：落位映射。slotOrder 的目标 pageId+slotId 只作为 assignment key；
+  // 目标插槽是否存在、accepts 是否匹配仍由 Base manifest 决定。
   const assignments = new Map();
   for (const feature of plan.features) {
     const asset = requested.get(feature.id + '@' + feature.version);
     if (!asset) continue;
-    for (const slot of feature.slots) {
+    const placement = placementByFeature.get(feature.id) || null;
+    for (let slotIndex = 0; slotIndex < feature.slots.length; slotIndex += 1) {
+      const slot = feature.slots[slotIndex];
+      // 一个 Feature 只对外暴露一个落位：仅首个插槽接受 slotOrder 覆盖。
+      const override = slotIndex === 0 ? placement : null;
       let slotDecl = null;
       let slotPage = slot.pageId || '';
-      if (slotPage) {
-        slotDecl = slotMap.get(slotPage + '#' + slot.slotId) || null;
+      let slotId = slot.slotId;
+      let dataKey = slot.dataKey;
+      if (override) {
+        slotPage = override.pageId;
+        slotId = override.slotId;
+        // 配置键由目标插槽的固定映射决定（menu-hero → menuHero），否则沿用声明的 dataKey。
+        dataKey = presentationSlotDataKey(slotId) || slot.dataKey;
+        slotDecl = slotMap.get(slotPage + '#' + slotId) || null;
+      } else if (slotPage) {
+        slotDecl = slotMap.get(slotPage + '#' + slotId) || null;
       } else {
-        const matches = base.manifest.slots.filter((candidate) => candidate.slotId === slot.slotId);
+        const matches = base.manifest.slots.filter((candidate) => candidate.slotId === slotId);
         if (matches.length > 1) {
-          return fail('SLOT_AMBIGUOUS', 'features', '插槽出现在多个页面，必须显式指定 pageId：' + slot.slotId, {
-            slotId: slot.slotId,
+          return fail('SLOT_AMBIGUOUS', 'features', '插槽出现在多个页面，必须显式指定 pageId：' + slotId, {
+            slotId,
             pages: matches.map((candidate) => candidate.pageId),
           });
         }
@@ -254,25 +307,34 @@ function resolvePlan(planInput, loaded, options) {
           slotPage = matches[0].pageId;
         }
       }
-      const key = slotPage + '#' + slot.slotId;
+      const key = slotPage + '#' + slotId;
       if (!slotDecl) {
-        return fail('SLOT_UNKNOWN', 'features', '插槽未在 Base 声明：' + slot.slotId + (slotPage ? '@' + slotPage : ''), { slotId: slot.slotId, pageId: slotPage || null });
+        return fail('SLOT_UNKNOWN', 'features', '插槽未在 Base 声明：' + slotId + (slotPage ? '@' + slotPage : ''), { slotId, pageId: slotPage || null });
       }
       if (!slotDecl.accepts.includes(asset.kind)) {
-        return fail('SLOT_TYPE_REJECTED', 'features', '插槽 ' + slot.slotId + ' 不接受 ' + asset.kind, {
-          slotId: slot.slotId,
+        return fail('SLOT_TYPE_REJECTED', 'features', '插槽 ' + slotId + ' 不接受 ' + asset.kind, {
+          slotId,
           kind: asset.kind,
           accepts: slotDecl.accepts,
         });
       }
       const existing = assignments.get(key) || [];
       if (existing.some((item) => item.asset.id === asset.id)) {
-        return fail('SLOT_DUPLICATED', 'features', '同一资产重复占用插槽：' + slot.slotId, { slotId: slot.slotId });
+        return fail('SLOT_DUPLICATED', 'features', '同一资产重复占用插槽：' + slotId, { slotId });
       }
-      existing.push({ asset, feature, slot, pageId: slotPage });
+      existing.push({
+        asset,
+        feature,
+        slot,
+        pageId: slotPage,
+        slotId,
+        // 导出侧配置键：T11 的 buildSlotsModule 必须用这个值，而不是再用 slotId 三元表达式。
+        dataKey,
+        placement: override ? 'slotOrder' : 'declared',
+      });
       if (existing.length > slotDecl.maxItems) {
-        return fail('SLOT_CAPACITY_EXCEEDED', 'features', '插槽容量超限：' + slot.slotId, {
-          slotId: slot.slotId,
+        return fail('SLOT_CAPACITY_EXCEEDED', 'features', '插槽容量超限：' + slotId, {
+          slotId,
           maxItems: slotDecl.maxItems,
           actual: existing.length,
         });
@@ -282,6 +344,7 @@ function resolvePlan(planInput, loaded, options) {
       const propError = validateSlotProps(asset, slot.props || {});
       if (propError) return propError;
     }
+    // 固有校验：requiresSlots 一律按 Recipe 原始声明判定（slotOrder 不改变“是否提供了必需插槽”）。
     for (const requiredSlot of asset.manifest.requiresSlots || []) {
       if (!feature.slots.some((slot) => slot.slotId === requiredSlot)) {
         return fail('SLOT_REQUIRED_MISSING', 'features', '资产要求插槽未分配：' + requiredSlot, {
@@ -359,6 +422,9 @@ function resolvePlan(planInput, loaded, options) {
     onlineReady: capabilitySet.filter((id) => !previewOnly.includes(id)),
     minWechatLib,
     themeTokens: { ...plan.themeTokens },
+    // 展示事实（C-PLAN-PRESENTATION@1）：归一化后的尺寸与落位，供 emit 输出 CSS 变量与插槽配置。
+    presentationTokens,
+    slotOrder,
     sourceDigests,
     pageIds: plan.pages.map((page) => page.pageId),
     manifestDigests: assets.map((asset) => ({ id: asset.id, version: asset.version, kind: asset.kind, digest: assetDigest(asset) })),

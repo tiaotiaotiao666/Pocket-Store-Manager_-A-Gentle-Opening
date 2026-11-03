@@ -1,0 +1,7 @@
+{
+  "verification_scenario": "new-feature",
+  "task_id": 10,
+  "plan": ".codeartsdoer/plans/agent-realtime-preview/plan.md",
+  "reason": "验收 Agent v1 草稿实时驱动 React DOM 预览的新增能力及其回归、构建和文档证据。",
+  "skill_fallback": "scenario-recognition skill unavailable; classified manually from the assigned plan"
+}

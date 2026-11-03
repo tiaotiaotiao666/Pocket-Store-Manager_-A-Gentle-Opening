@@ -1,4 +1,4 @@
-<view class="poster-carousel">
+<view class="poster-carousel poster-carousel--{{size}}">
   <swiper
     wx:if="{{slides.length > 0}}"
     class="poster-swiper"

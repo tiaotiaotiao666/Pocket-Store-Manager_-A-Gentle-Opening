@@ -7,16 +7,35 @@ import {
   projectContractDraft,
   validateInternalDraft,
 } from './agent-draft.validator';
-import { AGENT_PROVIDER, AGENT_TURN_CONTRACT_VERSION } from './agent.types';
+import { validateAgentImages } from './agent-image.validator';
+import type { ValidatedAgentImages } from './agent-image.validator';
+import { AGENT_PROVIDER, AGENT_TURN_CONTRACT_VERSION, AGENT_TURN_V2_CONTRACT_VERSION } from './agent.types';
 import type {
   AgentTurnContext,
-  AgentTurnRequest,
-  AgentTurnResponse,
+  AgentTurnV1Response,
+  AgentTurnV2Response,
+  AgentTurnVisionSummary,
+  ContractDraft,
   DraftValidation,
 } from './agent.types';
-import type { AgentProvider } from './provider/agent-provider.interface';
+import type { AgentProvider, AgentProviderExtractResult } from './provider/agent-provider.interface';
 
 const MAX_UTTERANCE_LENGTH = 500;
+
+/**
+ * v2 请求体允许的顶层键。
+ *
+ * 契约要求“未知字段整包拒绝”，因此 v2 会做白名单校验；
+ * v1 分支刻意不做该检查，保持与既有实现字节级一致。
+ */
+const AGENT_TURN_V2_ALLOWED_KEYS: readonly string[] = Object.freeze([
+  'contractVersion',
+  'utterance',
+  'draft',
+  'images',
+  'client',
+  'projectId',
+]);
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -26,20 +45,18 @@ function reject(code: string, message: string): never {
   throw new HttpException({ code, message }, HttpStatus.BAD_REQUEST);
 }
 
+interface ParsedTurnFields {
+  utterance: string;
+  draft: ContractDraft;
+}
+
 /**
- * 严格解析请求体。
+ * v1 / v2 共用的 utterance、draft、client、projectId 校验。
  *
  * 关键安全点：请求里的 status / missingFields / errors / readyForReview
  * 一律不读取，服务端只相信自己的校验结果。
  */
-function parseTurnRequest(raw: unknown): AgentTurnRequest {
-  if (!isPlainObject(raw)) {
-    reject('AGENT_REQUEST_INVALID', '请求体必须是 JSON 对象。');
-  }
-  if (raw.contractVersion !== AGENT_TURN_CONTRACT_VERSION) {
-    reject('AGENT_CONTRACT_MISMATCH', `contractVersion 必须为 ${AGENT_TURN_CONTRACT_VERSION}。`);
-  }
-
+function parseCommonTurnFields(raw: Record<string, unknown>): ParsedTurnFields {
   const utterance = typeof raw.utterance === 'string' ? raw.utterance.trim() : '';
   const utteranceLength = Array.from(utterance).length;
   if (utteranceLength < 1 || utteranceLength > MAX_UTTERANCE_LENGTH) {
@@ -59,12 +76,45 @@ function parseTurnRequest(raw: unknown): AgentTurnRequest {
   }
 
   return {
-    contractVersion: AGENT_TURN_CONTRACT_VERSION,
     utterance,
     draft: projectContractDraft(normalizeInternalDraft(raw.draft)),
-    client: { surface: 'desktop', phase: 'store-info' },
-    projectId: null,
   };
+}
+
+/** 严格解析 v1 请求体（与改造前完全一致，不做额外字段校验）。 */
+function parseTurnRequest(raw: unknown): ParsedTurnFields {
+  if (!isPlainObject(raw)) {
+    reject('AGENT_REQUEST_INVALID', '请求体必须是 JSON 对象。');
+  }
+  if (raw.contractVersion !== AGENT_TURN_CONTRACT_VERSION) {
+    reject('AGENT_CONTRACT_MISMATCH', `contractVersion 必须为 ${AGENT_TURN_CONTRACT_VERSION}。`);
+  }
+  return parseCommonTurnFields(raw);
+}
+
+interface ParsedTurnV2Request extends ParsedTurnFields {
+  images: ValidatedAgentImages;
+}
+
+/**
+ * 严格解析 v2 请求体：在 v1 基础字段之外，新增未知字段白名单与图片校验。
+ * 图片校验失败会抛出 422/400，调用方因此不会得到任何部分草稿。
+ */
+function parseTurnRequestV2(raw: unknown): ParsedTurnV2Request {
+  if (!isPlainObject(raw)) {
+    reject('AGENT_REQUEST_INVALID', '请求体必须是 JSON 对象。');
+  }
+  if (raw.contractVersion !== AGENT_TURN_V2_CONTRACT_VERSION) {
+    reject('AGENT_CONTRACT_MISMATCH', `contractVersion 必须为 ${AGENT_TURN_V2_CONTRACT_VERSION}。`);
+  }
+  for (const key of Object.keys(raw)) {
+    if (!AGENT_TURN_V2_ALLOWED_KEYS.includes(key)) {
+      reject('AGENT_REQUEST_INVALID', '请求体包含未知字段。');
+    }
+  }
+
+  const common = parseCommonTurnFields(raw);
+  return { ...common, images: validateAgentImages(raw.images) };
 }
 
 function normalizeReply(reply: unknown, validation: DraftValidation): string {
@@ -89,7 +139,27 @@ export class AgentService {
 
   constructor(@Inject(AGENT_PROVIDER) private readonly provider: AgentProvider) {}
 
-  async handleTurn(raw: unknown, context: AgentTurnContext): Promise<AgentTurnResponse> {
+  /**
+   * 同一路由 `POST /api/v1/agent/turn` 按 `contractVersion` 分派。
+   *
+   * - 缺省 / `agent-turn.v1` → v1 逻辑（响应与改造前完全一致，不含 vision）；
+   * - 仅显式 `agent-turn.v2` → v2 逻辑（多模态草稿抽取）；
+   * - 其他取值 → 走 v1 校验并返回 400 `AGENT_CONTRACT_MISMATCH`，绝不静默升级。
+   */
+  async handleTurn(
+    raw: unknown,
+    context: AgentTurnContext,
+  ): Promise<AgentTurnV1Response | AgentTurnV2Response> {
+    if (isPlainObject(raw) && raw.contractVersion === AGENT_TURN_V2_CONTRACT_VERSION) {
+      return this.handleTurnV2(raw, context);
+    }
+    return this.handleTurnV1(raw, context);
+  }
+
+  private async handleTurnV1(
+    raw: unknown,
+    context: AgentTurnContext,
+  ): Promise<AgentTurnV1Response> {
     const startedAt = Date.now();
     const request = parseTurnRequest(raw);
 
@@ -100,6 +170,75 @@ export class AgentService {
       requestId: context.requestId,
     });
 
+    return this.buildResponse({
+      contractVersion: AGENT_TURN_CONTRACT_VERSION,
+      request,
+      baseDraft,
+      providerResult,
+      startedAt,
+      context,
+    });
+  }
+
+  private async handleTurnV2(
+    raw: Record<string, unknown>,
+    context: AgentTurnContext,
+  ): Promise<AgentTurnV2Response> {
+    const startedAt = Date.now();
+    const request = parseTurnRequestV2(raw);
+    const { images } = request.images;
+    const totalBytes = request.images.totalBytes;
+
+    const baseDraft = normalizeInternalDraft(request.draft);
+    const providerResult = await this.provider.extractTurn({
+      utterance: request.utterance,
+      draft: projectContractDraft(baseDraft),
+      requestId: context.requestId,
+      // 无图片时不传该字段，Provider 因此保持字符串 content（与 v1 一致）。
+      ...(images.length > 0 ? { images } : {}),
+    });
+
+    const vision: AgentTurnVisionSummary = {
+      menuImages: request.images.menuImages,
+      storeImages: request.images.storeImages,
+      analyzed: providerResult.visionAnalyzed === true,
+      // 当前实现“失败即失败”，不做部分降级，恒为 false。
+      degraded: false,
+    };
+
+    const response = this.buildResponse({
+      contractVersion: AGENT_TURN_V2_CONTRACT_VERSION,
+      request,
+      baseDraft,
+      providerResult,
+      startedAt,
+      context,
+      // 日志只含计数与耗时：menuImages / storeImages / totalBytes / analyzed。
+      logSuffix: ` menuImages=${vision.menuImages} storeImages=${vision.storeImages} totalBytes=${totalBytes} analyzed=${vision.analyzed}`,
+    });
+
+    return {
+      ...response,
+      contractVersion: AGENT_TURN_V2_CONTRACT_VERSION,
+      vision,
+    };
+  }
+
+  /**
+   * 合并 Provider 补丁、跑后端校验并组装 v1 形状的响应。
+   * v2 在其基础上追加 vision 字段与计数日志，其余字段完全共用。
+   */
+  private buildResponse(params: {
+    contractVersion: string;
+    request: ParsedTurnFields;
+    baseDraft: ReturnType<typeof normalizeInternalDraft>;
+    providerResult: AgentProviderExtractResult;
+    startedAt: number;
+    context: AgentTurnContext;
+    logSuffix?: string;
+  }): AgentTurnV1Response {
+    const { contractVersion, request, baseDraft, providerResult, startedAt, context } = params;
+
     // 只合并白名单字段；模型返回的 status / missingFields / errors 全部忽略。
     const mergedDraft = applyDraftPatch(baseDraft, providerResult.draftPatch);
     const validation = validateInternalDraft(mergedDraft);
@@ -108,11 +247,11 @@ export class AgentService {
     const status = validation.readyForReview ? 'reviewing' : 'collecting';
 
     this.logger.log(
-      `agent turn requestId=${context.requestId} turnId=${turnId} status=${status} model=${providerResult.model ?? 'unknown'} latencyMs=${latencyMs} utteranceLength=${Array.from(request.utterance).length} missing=${validation.missingFields.length} errors=${validation.errors.length}`,
+      `agent turn requestId=${context.requestId} turnId=${turnId} status=${status} model=${providerResult.model ?? 'unknown'} latencyMs=${latencyMs} utteranceLength=${Array.from(request.utterance).length} missing=${validation.missingFields.length} errors=${validation.errors.length}${params.logSuffix ?? ''}`,
     );
 
     return {
-      contractVersion: AGENT_TURN_CONTRACT_VERSION,
+      contractVersion,
       turnId,
       status,
       reply: normalizeReply(providerResult.reply, validation),

@@ -5,12 +5,18 @@
   "displayName": "经典点餐",
   "description": "以首页门店头部、菜单列表、购物车与六态订单为核心的餐饮扫码点餐基线方案。",
   "recipe": {
-    "stage": "candidate",
-    "verifiedAt": null,
-    "wechatCompile": "not-run",
-    "regression": "not-run",
+    "stage": "direct",
+    "verifiedAt": "2026-11-03T19:49:13+08:00",
+    "wechatCompile": "pass",
+    "regression": "pass",
     "secretScan": "pass",
-    "approvals": [],
+    "approvals": [
+      {
+        "reviewer": "project-owner",
+        "reviewedAt": "2026-11-03T19:49:13+08:00",
+        "note": "用户批准继续完成 M7；本机微信开发者工具编译与自动化渲染验证通过，证据 docs/evidence/m7/wechat/order-classic-home.png"
+      }
+    ],
     "knownLimits": [
       "演示付款，不产生真实交易",
       "不含外送与公开店主注册"

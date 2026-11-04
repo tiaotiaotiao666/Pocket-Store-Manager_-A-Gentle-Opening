@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "recipe.v1",
+  "identity": { "id": "order-warm-home", "version": "1.0.0" },
+  "planRef": "plan.json",
+  "displayName": "暖橙首页视图包",
+  "description": "在经典点餐基线上，用受控 FrontendPack 覆盖首页与菜单页的 WXML/WXSS，页面控制器与服务层保持 Base 原样。",
+  "recipe": {
+    "stage": "candidate",
+    "verifiedAt": null,
+    "wechatCompile": "not-run",
+    "regression": "not-run",
+    "secretScan": "pass",
+    "approvals": [],
+    "knownLimits": [
+      "视图包只覆盖首页与菜单页，其他页面仍为 Base 视图",
+      "尚未经过微信开发者工具真实编译与人工视觉验收"
+    ]
+  }
+}

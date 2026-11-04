@@ -1,5 +1,10 @@
-const { request } = require('./request.js');
+const config = require('../config/env.js');
+const platform = require('./platform.js');
+const core = require('./request-core.js');
 const ApiError = require('./api-error.js');
+const session = require('./session.js');
+const requestService = require('./request.js');
+const { request } = requestService;
 
 function assertStoreId(storeId) {
   if (!storeId) {
@@ -115,6 +120,9 @@ async function createProduct(storeId, payload) {
   if (input.description !== undefined) {
     body.description = input.description;
   }
+  if (input.imageUrl) {
+    body.imageUrl = input.imageUrl;
+  }
   if (input.available !== undefined) {
     body.available = Boolean(input.available);
   }
@@ -125,6 +133,57 @@ async function createProduct(storeId, payload) {
     path: '/merchant/stores/' + encodeURIComponent(storeId) + '/products',
     method: 'POST',
     data: body,
+  });
+}
+
+async function updateProduct(productId, payload) {
+  assertProductId(productId);
+  const input = payload || {};
+  const body = { expectedUpdatedAt: input.expectedUpdatedAt };
+  ['categoryId', 'name', 'description', 'imageUrl', 'priceCents', 'sortOrder'].forEach((key) => {
+    if (input[key] !== undefined) body[key] = input[key];
+  });
+  if (input.available !== undefined) body.available = Boolean(input.available);
+  return request({
+    path: '/merchant/products/' + encodeURIComponent(productId),
+    method: 'PATCH',
+    data: body,
+  });
+}
+
+async function listPosters(storeId) {
+  assertStoreId(storeId);
+  return request({
+    path: '/merchant/stores/' + encodeURIComponent(storeId) + '/posters',
+    method: 'GET',
+  });
+}
+
+async function createPoster(storeId, payload) {
+  assertStoreId(storeId);
+  return request({
+    path: '/merchant/stores/' + encodeURIComponent(storeId) + '/posters',
+    method: 'POST',
+    data: payload || {},
+  });
+}
+
+async function updatePoster(posterId, payload) {
+  if (!posterId) throw ApiError.client('POSTER_ID_REQUIRED', '缺少海报编号');
+  return request({ path: '/merchant/posters/' + encodeURIComponent(posterId), method: 'PATCH', data: payload || {} });
+}
+
+async function deletePoster(posterId) {
+  if (!posterId) throw ApiError.client('POSTER_ID_REQUIRED', '缺少海报编号');
+  return request({ path: '/merchant/posters/' + encodeURIComponent(posterId), method: 'DELETE' });
+}
+
+async function reorderPosters(storeId, ids) {
+  assertStoreId(storeId);
+  return request({
+    path: '/merchant/stores/' + encodeURIComponent(storeId) + '/posters/reorder',
+    method: 'PATCH',
+    data: { ids: Array.isArray(ids) ? ids : [] },
   });
 }
 
@@ -141,6 +200,51 @@ async function updateProductPrice(productId, payload) {
   });
 }
 
+function uploadImageRequest(storeId, filePath, token) {
+  return new Promise((resolve, reject) => {
+    platform.uploadFile({
+      url: core.buildUrl(config.API_BASE_URL, '/media/stores/' + encodeURIComponent(storeId) + '/images'),
+      filePath,
+      name: 'file',
+      header: { Authorization: 'Bearer ' + token },
+      timeout: 30000,
+    }, (result) => {
+      if (result && result.error) {
+        reject(ApiError.network(result.error.errMsg, result.error.timeout));
+        return;
+      }
+      const body = core.parseBody(result && result.data);
+      if (core.isSuccess(result && result.statusCode)) {
+        resolve(body);
+        return;
+      }
+      reject(core.toApiError(result && result.statusCode, body));
+    });
+  });
+}
+
+async function uploadImage(storeId, filePath) {
+  assertStoreId(storeId);
+  if (!filePath) throw ApiError.client('IMAGE_REQUIRED', '请选择图片后再上传');
+  let token = session.getToken();
+  if (!token) {
+    await requestService.demoRelogin();
+    token = session.getToken();
+    if (!token) throw ApiError.client('AUTH_REQUIRED', '请先登录店主账号');
+  }
+  try {
+    return await uploadImageRequest(storeId, filePath, token);
+  } catch (error) {
+    if (!(error instanceof ApiError) || !core.shouldRetryAuth(error.statusCode, error.code)) {
+      throw error;
+    }
+    await requestService.demoRelogin();
+    token = session.getToken();
+    if (!token) throw ApiError.client('AUTH_REQUIRED', '店主登录已过期，请重新登录');
+    return uploadImageRequest(storeId, filePath, token);
+  }
+}
+
 module.exports = {
   listOrders,
   updateOrderStatus,
@@ -149,5 +253,12 @@ module.exports = {
   createCategory,
   updateCategory,
   createProduct,
+  updateProduct,
   updateProductPrice,
+  listPosters,
+  createPoster,
+  updatePoster,
+  deletePoster,
+  reorderPosters,
+  uploadImage,
 };

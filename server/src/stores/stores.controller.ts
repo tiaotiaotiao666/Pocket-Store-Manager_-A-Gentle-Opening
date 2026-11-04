@@ -25,4 +25,9 @@ export class StoresController {
   getTables(@Param('storeId') storeId: string): Promise<PublicTablesView> {
     return this.storesService.listTables(storeId);
   }
+
+  @Get(':storeId/posters')
+  getPosters(@Param('storeId') storeId: string) {
+    return this.storesService.listPublicPosters(storeId);
+  }
 }

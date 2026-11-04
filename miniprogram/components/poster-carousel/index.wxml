@@ -1,0 +1,36 @@
+<view class="poster-carousel poster-carousel--{{size}}">
+  <swiper
+    wx:if="{{slides.length > 0}}"
+    class="poster-carousel__swiper"
+    autoplay="{{autoplay}}"
+    interval="{{safeInterval}}"
+    circular
+    indicator-dots="{{showIndicator}}"
+    indicator-color="rgba(255,255,255,0.5)"
+    indicator-active-color="#FFFFFF"
+  >
+    <swiper-item wx:for="{{slides}}" wx:key="id">
+      <view class="poster-carousel__slide" data-index="{{index}}" bind:tap="onSelect">
+        <view class="poster-carousel__fallback"></view>
+        <image
+          wx:if="{{item.imageUrl && failedIndex !== index}}"
+          class="poster-carousel__image"
+          src="{{item.imageUrl}}"
+          mode="aspectFill"
+          data-index="{{index}}"
+          binderror="onImageError"
+        />
+        <view class="poster-carousel__shade"></view>
+        <view class="poster-carousel__copy">
+          <text class="poster-carousel__eyebrow">本店推荐 · {{index + 1}} / {{slides.length}}</text>
+          <text class="poster-carousel__title">{{item.title || item.product.name || '今日推荐'}}</text>
+          <text class="poster-carousel__subtitle">{{item.subtitle || item.product.description || '好味道，值得慢慢品尝'}}</text>
+          <view class="poster-carousel__bottom">
+            <text class="poster-carousel__price" wx:if="{{item.priceText}}">¥{{item.priceText}}</text>
+            <text class="poster-carousel__link">查看商品详情 ›</text>
+          </view>
+        </view>
+      </view>
+    </swiper-item>
+  </swiper>
+</view>

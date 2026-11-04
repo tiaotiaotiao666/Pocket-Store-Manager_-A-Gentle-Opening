@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -16,18 +17,23 @@ import type { AuthenticatedUser } from '../common/http/request-context';
 import type { OrderView, PaginatedOrders } from '../orders/order.mapper';
 import {
   CreateCategoryDto,
+  CreatePosterDto,
   CreateProductDto,
   MerchantOrdersQueryDto,
   UpdateCategoryDto,
   UpdateOrderStatusDto,
   UpdateProductAvailabilityDto,
+  UpdateProductDto,
   UpdateProductPriceDto,
+  UpdatePosterDto,
+  ReorderPostersDto,
 } from './merchant.dto';
 import { MerchantService } from './merchant.service';
 import type {
   MerchantCatalogView,
   MerchantCategoryView,
   MerchantProductView,
+  MerchantPosterView,
 } from './merchant.service';
 
 @Controller('merchant')
@@ -82,6 +88,64 @@ export class MerchantController {
     @Body() dto: UpdateProductAvailabilityDto,
   ): Promise<MerchantProductView> {
     return this.merchantService.updateProductAvailability(user, productId, dto);
+  }
+
+  @Patch('products/:id')
+  @UseGuards(SessionAuthGuard)
+  updateProduct(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') productId: string,
+    @Body() dto: UpdateProductDto,
+  ): Promise<MerchantProductView> {
+    return this.merchantService.updateProduct(user, productId, dto);
+  }
+
+  @Get('stores/:storeId/posters')
+  @UseGuards(SessionAuthGuard, StoreMemberGuard)
+  listPosters(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId') storeId: string,
+  ): Promise<MerchantPosterView[]> {
+    return this.merchantService.listPosters(user, storeId);
+  }
+
+  @Post('stores/:storeId/posters')
+  @UseGuards(SessionAuthGuard, StoreOwnerGuard)
+  createPoster(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId') storeId: string,
+    @Body() dto: CreatePosterDto,
+  ): Promise<MerchantPosterView> {
+    return this.merchantService.createPoster(user, storeId, dto);
+  }
+
+  @Patch('posters/:id')
+  @UseGuards(SessionAuthGuard)
+  updatePoster(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') posterId: string,
+    @Body() dto: UpdatePosterDto,
+  ): Promise<MerchantPosterView> {
+    return this.merchantService.updatePoster(user, posterId, dto);
+  }
+
+  @Delete('posters/:id')
+  @UseGuards(SessionAuthGuard)
+  deletePoster(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') posterId: string,
+  ): Promise<{ id: string; deleted: true }> {
+    return this.merchantService.deletePoster(user, posterId);
+  }
+
+  @Patch('stores/:storeId/posters/reorder')
+  @UseGuards(SessionAuthGuard, StoreOwnerGuard)
+  reorderPosters(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('storeId') storeId: string,
+    @Body() dto: ReorderPostersDto,
+  ): Promise<MerchantPosterView[]> {
+    return this.merchantService.reorderPosters(user, storeId, dto);
   }
 
   @Post('stores/:storeId/categories')

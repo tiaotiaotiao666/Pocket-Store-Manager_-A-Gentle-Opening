@@ -35,15 +35,15 @@ function sessionState(overrides) {
   };
 }
 
-test('会话状态生成合法 Plan，页面固定 7 个', async () => {
+test('会话状态生成合法 Plan，页面固定 8 个', async () => {
   const { buildPlanFromSession } = await import('../src/composition/planFromSession.mjs');
   const result = buildPlanFromSession(sessionState());
   assert.strictEqual(result.plan.planId, 'order-classic');
-  assert.strictEqual(result.plan.pages.length, 7);
+  assert.strictEqual(result.plan.pages.length, 8);
   assert.deepStrictEqual(result.plan.features, [], '经典点餐不携带任何 Feature Pack');
   assert.strictEqual(result.recipeId, 'order-classic');
   assert.strictEqual(result.recipeDisplayName, '经典点餐');
-  assert.deepStrictEqual(result.plan.pages.map((page) => page.pageId), ['home', 'menu', 'orders', 'mine', 'checkout', 'order-detail', 'merchant-orders']);
+  assert.deepStrictEqual(result.plan.pages.map((page) => page.pageId), ['home', 'menu', 'orders', 'mine', 'checkout', 'order-detail', 'product-detail', 'merchant-orders']);
   const validation = validatePlan(result.plan);
   assert.strictEqual(validation.ok, true, JSON.stringify(validation));
   assert.deepStrictEqual(result.unmappedCapabilities.map((item) => item.id), ['loyalty-membership']);
@@ -109,7 +109,7 @@ test('按角色过滤页面，combined 与缺省一致且不修改 state', async
   const snapshot = JSON.stringify(state);
   const customer = buildPlanFromSession(state, { role: 'customer' });
   const merchant = buildPlanFromSession(state, { role: 'merchant' });
-  assert.deepStrictEqual(customer.plan.pages.map((page) => page.pageId), ['home', 'menu', 'orders', 'mine', 'checkout', 'order-detail']);
+  assert.deepStrictEqual(customer.plan.pages.map((page) => page.pageId), ['home', 'menu', 'orders', 'mine', 'checkout', 'order-detail', 'product-detail']);
   assert.deepStrictEqual(merchant.plan.pages.map((page) => page.pageId), ['merchant-orders']);
   assert.strictEqual(validatePlan(customer.plan).ok, true);
   assert.strictEqual(validatePlan(merchant.plan).ok, true);

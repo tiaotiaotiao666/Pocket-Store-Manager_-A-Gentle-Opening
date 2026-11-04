@@ -1,9 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import type { INestApplication } from '@nestjs/common';
-import { json, urlencoded } from 'express';
+import express, { json, urlencoded } from 'express';
 import type { NextFunction, Request, Response } from 'express';
+import { mkdirSync } from 'node:fs';
 import { AppModule } from './app.module';
 import { resolveRequestId } from './common/request-id';
+import { resolveMediaStorageDirectory } from './media/media-storage';
 
 /**
  * Agent 路由前缀：v2 图片请求（base64）需要比 express 默认 100kb 更大的 JSON 上限。
@@ -120,9 +122,12 @@ export async function bootstrap(): Promise<void> {
   // 关闭 Nest 内置 body parser，改为按路由前缀配置，避免 agent 图片请求被 100kb 限制拦成 413。
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.setGlobalPrefix('api/v1');
+  const uploadDirectory = resolveMediaStorageDirectory();
+  mkdirSync(uploadDirectory, { recursive: true });
+  app.use('/uploads', express.static(uploadDirectory, { maxAge: '1d', immutable: true }));
   app.enableCors({
     origin: process.env.DESKTOP_ORIGIN ? [process.env.DESKTOP_ORIGIN] : true,
-    methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Agent-Contract', 'X-Agent-Request-Id'],
     exposedHeaders: ['X-Request-Id'],
   });

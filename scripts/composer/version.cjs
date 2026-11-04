@@ -16,6 +16,7 @@ const LOCK_VERSION = 'lock.v1';
 const SCHEMA_VERSIONS = Object.freeze({
   baseManifest: 'base.manifest.v1',
   manifest: 'manifest.v1',
+  frontendPack: 'frontend-pack.v1',
   slots: 'slots.v1',
   composition: 'composition.v1',
   lock: LOCK_VERSION,

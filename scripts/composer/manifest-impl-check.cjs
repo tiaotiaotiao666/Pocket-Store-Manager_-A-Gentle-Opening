@@ -16,6 +16,35 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const { ok, fail } = require('./schema.cjs');
+const { walk } = require('./digest.cjs');
+
+function checkFrontendPackImplementation(manifest, entryRoot) {
+  if (!manifest || !Array.isArray(manifest.pages)) {
+    return fail('FRONTEND_PACK_MANIFEST_INVALID', 'pages', 'FrontendPack 缺少 pages 声明');
+  }
+  const allFiles = walk(entryRoot);
+  for (const file of allFiles) {
+    if (/\.js$/i.test(file)) {
+      return fail('FRONTEND_PACK_SOURCE_FORBIDDEN', file, 'FrontendPack 不允许包含任何 JS 文件');
+    }
+  }
+  for (const pageId of manifest.pages) {
+    for (const extension of ['wxml', 'wxss', 'json']) {
+      const file = path.join(entryRoot, 'pages', pageId, 'index.' + extension);
+      if (!fs.existsSync(file)) {
+        return fail('FRONTEND_PACK_PAGE_FILE_MISSING', file, 'FrontendPack 页面缺少文件：pages/' + pageId + '/index.' + extension);
+      }
+      if (extension === 'json') {
+        try {
+          JSON.parse(fs.readFileSync(file, 'utf8'));
+        } catch (error) {
+          return fail('FRONTEND_PACK_PAGE_JSON_INVALID', file, 'FrontendPack 页面 JSON 无法解析：' + error.message);
+        }
+      }
+    }
+  }
+  return { ...ok(), pages: manifest.pages, files: allFiles.length };
+}
 
 function normalizePropertyType(prop) {
   if (!prop) return 'unknown';
@@ -173,6 +202,7 @@ function checkComponentImplementation(manifest, entryRoot) {
 
 module.exports = {
   checkComponentImplementation,
+  checkFrontendPackImplementation,
   collectComponentDefinition,
   normalizePropertyType,
   kebabToCamel,

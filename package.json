@@ -54,6 +54,7 @@
       "templates/base/**",
       "templates/components/**",
       "templates/features/**",
+      "templates/frontend-packs/**",
       "templates/recipes/**",
       "scripts/composer/**",
       "scripts/validate-miniprogram.cjs",

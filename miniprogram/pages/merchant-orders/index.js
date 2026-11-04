@@ -29,6 +29,7 @@ Page({
     loading: false,
     ordersLoading: false,
     productsLoading: false,
+    postersLoading: false,
     error: '',
     errorAction: '',
     requestId: '',
@@ -41,6 +42,10 @@ Page({
     hasMore: false,
     emptyText: SEGMENTS[0].emptyText,
     categories: [],
+    productsFlat: [],
+    availableProducts: [],
+    posterProducts: [],
+    posters: [],
     productCount: 0,
     availableCount: 0,
     lastUpdated: '',
@@ -58,10 +63,27 @@ Page({
     productCategoryIndex: 0,
     productPrice: '',
     productDescription: '',
+    productImageUrl: '',
     productAvailable: true,
     priceEditorId: '',
     priceValue: '',
     priceOriginalUpdatedAt: '',
+    editProductId: '',
+    editProductName: '',
+    editProductDescription: '',
+    editProductImageUrl: '',
+    editProductPrice: '',
+    editProductUpdatedAt: '',
+    editProductCategoryIndex: 0,
+    editProductCategoryId: '',
+    posterEditorId: '',
+    posterProductId: '',
+    posterProductIndex: 0,
+    posterTitle: '',
+    posterSubtitle: '',
+    posterImageUrl: '',
+    posterActive: true,
+    showPosterForm: false,
     categoryEditorId: '',
     categoryEditorName: '',
     demoMode: !config.USE_WECHAT_CODE_LOGIN,
@@ -87,8 +109,10 @@ Page({
       if (this.data.polling) {
         this.startPolling();
       }
-    } else {
+    } else if (this.data.tab === 'products') {
       this.loadProducts();
+    } else {
+      this.loadPosters();
     }
   },
 
@@ -114,6 +138,8 @@ Page({
     };
     if (this.data.tab === 'products') {
       this.loadProducts(done);
+    } else if (this.data.tab === 'posters') {
+      this.loadPosters(done);
     } else {
       this.loadOrders(false, done);
     }
@@ -300,6 +326,7 @@ Page({
       }
       let productCount = 0;
       let availableCount = 0;
+      const productsFlat = [];
       const categories = ((catalog && catalog.categories) || []).map((category) => ({
         id: category.id,
         name: category.name,
@@ -309,7 +336,7 @@ Page({
           if (product.available) {
             availableCount += 1;
           }
-          return {
+          const view = {
             id: product.id,
             name: product.name,
             description: product.description || '',
@@ -320,10 +347,15 @@ Page({
             amountText: money.formatCents(product.priceCents),
             available: product.available,
           };
+          productsFlat.push(Object.assign({ categoryId: category.id, categoryName: category.name }, view));
+          return view;
         }),
       }));
       this.setData({
         categories,
+        productsFlat,
+        availableProducts: productsFlat.filter((item) => item.available),
+        posterProducts: productsFlat.map((item) => Object.assign({}, item, { amountText: money.formatCents(item.priceCents) })),
         productCount,
         availableCount,
         productsLoading: false,
@@ -349,6 +381,36 @@ Page({
     }
   },
 
+  async loadPosters(done) {
+    if (!this.data.allowed) {
+      if (typeof done === 'function') done();
+      return;
+    }
+    const serial = (this.postersRequestSerial || 0) + 1;
+    this.postersRequestSerial = serial;
+    this.setData({ postersLoading: true });
+    try {
+      const posters = await merchantService.listPosters(this.data.storeId);
+      if (serial !== this.postersRequestSerial) return;
+      this.setData({ posters: this.mapPosterViews(posters), postersLoading: false, error: '' });
+    } catch (error) {
+      if (serial !== this.postersRequestSerial) return;
+      this.setData({ postersLoading: false });
+      this.showProductError(error, '重新加载');
+    } finally {
+      if (typeof done === 'function') done();
+    }
+  },
+
+  mapPosterViews(posters) {
+    return (Array.isArray(posters) ? posters : []).map((poster) => Object.assign({}, poster, {
+      amountText: money.formatCents(poster.product && poster.product.priceCents),
+      product: Object.assign({}, poster.product || {}, {
+        amountText: money.formatCents(poster.product && poster.product.priceCents),
+      }),
+    }));
+  },
+
   onChangeTab(event) {
     const tab = event.currentTarget.dataset.tab;
     if (!tab || tab === this.data.tab) {
@@ -359,6 +421,11 @@ Page({
       this.ordersRequestSerial += 1;
       this.stopPolling();
       this.loadProducts();
+    } else if (tab === 'posters') {
+      this.ordersRequestSerial += 1;
+      this.stopPolling();
+      this.loadProducts();
+      this.loadPosters();
     } else {
       this.productsRequestSerial += 1;
       this.loadOrders(false);
@@ -403,6 +470,10 @@ Page({
       this.loadProducts();
       return;
     }
+    if (this.data.tab === 'posters') {
+      this.loadPosters();
+      return;
+    }
     this.loadOrders(false);
   },
 
@@ -445,6 +516,265 @@ Page({
       }
     }
     return null;
+  },
+
+  onOpenProductEditor(event) {
+    if (!this.data.isOwner || this.data.productWriting) return;
+    const product = (this.data.productsFlat || []).find((item) => item.id === event.currentTarget.dataset.id);
+    if (!product) return;
+    const categories = this.data.categories || [];
+    const categoryIndex = Math.max(0, categories.findIndex((item) => item.id === product.categoryId));
+    this.setData({
+      editProductId: product.id,
+      editProductName: product.name,
+      editProductDescription: product.description,
+      editProductImageUrl: product.imageUrl || '',
+      editProductPrice: money.formatAmount(product.priceCents),
+      editProductUpdatedAt: product.updatedAt || '',
+      editProductCategoryIndex: categoryIndex,
+      editProductCategoryId: product.categoryId,
+      error: '',
+    });
+  },
+
+  onCloseProductEditor() {
+    if (this.data.productWriting) return;
+    this.setData({ editProductId: '', editProductUpdatedAt: '' });
+  },
+
+  onEditProductFieldInput(event) {
+    const fields = { name: 'editProductName', description: 'editProductDescription', imageUrl: 'editProductImageUrl', price: 'editProductPrice' };
+    const key = fields[event.currentTarget.dataset.field];
+    if (key) this.setData({ [key]: event.detail.value });
+  },
+
+  onEditProductCategoryChange(event) {
+    const index = Number(event.detail.value);
+    const category = this.data.categories[index];
+    if (category) this.setData({ editProductCategoryIndex: index, editProductCategoryId: category.id });
+  },
+
+  async onSaveProductEdit() {
+    if (!this.data.isOwner || !this.data.editProductId) return;
+    const name = (this.data.editProductName || '').trim();
+    const priceCents = money.parseYuanToCents(this.data.editProductPrice);
+    if (!name) {
+      this.setData({ error: '请输入商品名称', errorAction: '', requestId: '' });
+      return;
+    }
+    if (priceCents === null) {
+      this.setData({ error: '价格须为 0.01 至 9999.99 元，最多两位小数', errorAction: '', requestId: '' });
+      return;
+    }
+    if (!this.data.editProductUpdatedAt) {
+      this.setData({ error: '商品版本信息缺失，请刷新后重试', errorAction: '重新加载', requestId: '' });
+      return;
+    }
+    if (!this.beginProductWrite('edit-product')) return;
+    try {
+      await merchantService.updateProduct(this.data.editProductId, {
+        expectedUpdatedAt: this.data.editProductUpdatedAt,
+        name,
+        description: (this.data.editProductDescription || '').trim(),
+        imageUrl: (this.data.editProductImageUrl || '').trim(),
+        categoryId: this.data.editProductCategoryId,
+        priceCents,
+      });
+      platform.toast('商品资料已更新');
+      this.setData({ editProductId: '', editProductUpdatedAt: '' });
+      await this.loadProducts();
+    } catch (error) {
+      if (error && error.code === 'PRODUCT_CONFLICT') {
+        this.setData({ editProductId: '', editProductUpdatedAt: '' });
+        await this.loadProducts();
+        this.setData({ error: '商品资料已被更新，列表已刷新，请重新编辑', errorAction: '重新加载' });
+      } else {
+        this.showProductError(error, '重新加载');
+      }
+    } finally {
+      this.endProductWrite();
+    }
+  },
+
+  onOpenPosterForm(event) {
+    if (!this.data.isOwner || this.data.productWriting) return;
+    const posterId = event && event.currentTarget && event.currentTarget.dataset.id;
+    const poster = posterId ? (this.data.posters || []).find((item) => item.id === posterId) : null;
+    const products = poster ? (this.data.posterProducts || []) : (this.data.availableProducts || []);
+    const productIndex = poster
+      ? Math.max(0, products.findIndex((item) => item.id === poster.productId))
+      : 0;
+    this.setData({
+      showPosterForm: true,
+      posterEditorId: poster ? poster.id : '',
+      posterProductId: poster ? poster.productId : (products[0] ? products[0].id : ''),
+      posterProductIndex: productIndex,
+      posterTitle: poster ? poster.title : '',
+      posterSubtitle: poster ? poster.subtitle : '',
+      posterImageUrl: poster ? poster.imageUrl : '',
+      posterActive: poster ? poster.active : true,
+      error: '',
+    });
+  },
+
+  onClosePosterForm() {
+    if (this.data.productWriting) return;
+    this.setData({ showPosterForm: false, posterEditorId: '' });
+  },
+
+  onPosterProductChange(event) {
+    const index = Number(event.detail.value);
+    const products = this.data.posterEditorId
+      ? (this.data.posterProducts || [])
+      : (this.data.availableProducts || []);
+    const product = products[index];
+    if (product) this.setData({ posterProductIndex: index, posterProductId: product.id });
+  },
+
+  onPosterFieldInput(event) {
+    const fields = { title: 'posterTitle', subtitle: 'posterSubtitle', imageUrl: 'posterImageUrl' };
+    const key = fields[event.currentTarget.dataset.field];
+    if (key) this.setData({ [key]: event.detail.value });
+  },
+
+  onPosterActiveChange(event) {
+    this.setData({ posterActive: Boolean(event.detail.value) });
+  },
+
+  async chooseAndUploadImage(fieldName) {
+    if (!this.data.isOwner || this.data.productWriting) return;
+    let picked;
+    try {
+      picked = await platform.chooseImage();
+    } catch (error) {
+      if (!error || error.code !== 'USER_CANCELLED') platform.toast('无法选择图片，请重试');
+      return;
+    }
+    if (!picked || !picked.tempFilePath || !this.beginProductWrite('upload-image')) return;
+    try {
+      const uploaded = await merchantService.uploadImage(this.data.storeId, picked.tempFilePath);
+      if (!uploaded || !uploaded.url) throw new Error('服务器没有返回图片地址');
+      this.setData({ [fieldName]: uploaded.url });
+      platform.toast('图片已上传');
+    } catch (error) {
+      this.showProductError(error, '重新加载');
+    } finally {
+      this.endProductWrite();
+    }
+  },
+
+  onChooseProductImage() {
+    return this.chooseAndUploadImage('productImageUrl');
+  },
+
+  onChooseEditProductImage() {
+    return this.chooseAndUploadImage('editProductImageUrl');
+  },
+
+  onChoosePosterImage() {
+    return this.chooseAndUploadImage('posterImageUrl');
+  },
+
+  onClearImage(event) {
+    if (!this.data.isOwner || this.data.productWriting) return;
+    const field = event.currentTarget.dataset.field;
+    const fields = {
+      product: 'productImageUrl',
+      edit: 'editProductImageUrl',
+      poster: 'posterImageUrl',
+    };
+    const stateKey = fields[field];
+    if (stateKey) this.setData({ [stateKey]: '' });
+  },
+
+  async onSavePoster() {
+    if (!this.data.isOwner) return;
+    if (!this.data.posterProductId) {
+      this.setData({ error: '请先创建并上架一个商品', errorAction: '', requestId: '' });
+      return;
+    }
+    const selectedProduct = (this.data.posterProducts || []).find((item) => item.id === this.data.posterProductId);
+    if (!this.data.posterEditorId && (!selectedProduct || !selectedProduct.available)) {
+      this.setData({ error: '新建海报请选择在售商品', errorAction: '', requestId: '' });
+      return;
+    }
+    if (!this.beginProductWrite(this.data.posterEditorId ? 'update-poster' : 'create-poster')) return;
+    const payload = {
+      productId: this.data.posterProductId,
+      title: (this.data.posterTitle || '').trim(),
+      subtitle: (this.data.posterSubtitle || '').trim(),
+      imageUrl: (this.data.posterImageUrl || '').trim(),
+      active: Boolean(this.data.posterActive),
+    };
+    try {
+      if (this.data.posterEditorId) {
+        await merchantService.updatePoster(this.data.posterEditorId, payload);
+      } else {
+        await merchantService.createPoster(this.data.storeId, payload);
+      }
+      platform.toast(this.data.posterEditorId ? '海报已更新' : '海报已创建');
+      this.setData({ showPosterForm: false, posterEditorId: '' });
+      await this.loadPosters();
+    } catch (error) {
+      this.showProductError(error, '重新加载');
+    } finally {
+      this.endProductWrite();
+    }
+  },
+
+  async onTogglePoster(event) {
+    const posterId = event.currentTarget.dataset.id;
+    const active = Boolean(event.detail.value);
+    if (!posterId || !this.beginProductWrite('poster-active', posterId)) return;
+    try {
+      await merchantService.updatePoster(posterId, { active });
+      await this.loadPosters();
+      platform.toast(active ? '海报已启用' : '海报已停用');
+    } catch (error) {
+      this.showProductError(error, '重新加载');
+    } finally {
+      this.endProductWrite();
+    }
+  },
+
+  async onDeletePoster(event) {
+    if (!this.data.isOwner || this.data.productWriting) return;
+    const posterId = event.currentTarget.dataset.id;
+    const confirmation = await platform.modal({
+      title: '删除海报',
+      content: '删除后首页轮播中将不再显示这张海报。',
+      confirmText: '删除',
+    });
+    if (!confirmation.confirm || !this.beginProductWrite('delete-poster', posterId)) return;
+    try {
+      await merchantService.deletePoster(posterId);
+      await this.loadPosters();
+      platform.toast('海报已删除');
+    } catch (error) {
+      this.showProductError(error, '重新加载');
+    } finally {
+      this.endProductWrite();
+    }
+  },
+
+  async onMovePoster(event) {
+    if (!this.data.isOwner || this.data.productWriting) return;
+    const index = Number(event.currentTarget.dataset.index);
+    const direction = Number(event.currentTarget.dataset.direction);
+    const posters = (this.data.posters || []).slice();
+    const target = index + direction;
+    if (!Number.isInteger(index) || target < 0 || target >= posters.length) return;
+    [posters[index], posters[target]] = [posters[target], posters[index]];
+    if (!this.beginProductWrite('reorder-posters')) return;
+    try {
+      const saved = await merchantService.reorderPosters(this.data.storeId, posters.map((item) => item.id));
+      this.setData({ posters: this.mapPosterViews(saved) });
+    } catch (error) {
+      this.showProductError(error, '重新加载');
+      await this.loadPosters();
+    } finally {
+      this.endProductWrite();
+    }
   },
 
   onOpenCategoryForm() {
@@ -503,6 +833,7 @@ Page({
       productCategoryIndex: 0,
       productPrice: '',
       productDescription: '',
+      productImageUrl: '',
       productAvailable: true,
       error: '',
     });
@@ -558,6 +889,7 @@ Page({
       name: 'productName',
       price: 'productPrice',
       description: 'productDescription',
+      imageUrl: 'productImageUrl',
     };
     const key = fields[event.currentTarget.dataset.field];
     if (!key) {
@@ -608,6 +940,7 @@ Page({
         categoryId,
         name,
         description: (this.data.productDescription || '').trim(),
+        imageUrl: (this.data.productImageUrl || '').trim(),
         priceCents,
         available: Boolean(this.data.productAvailable),
       });
@@ -618,6 +951,7 @@ Page({
         productCategoryId: '',
         productPrice: '',
         productDescription: '',
+        productImageUrl: '',
         productAvailable: true,
       });
       await this.loadProducts();
@@ -875,6 +1209,10 @@ Page({
     }
     if (this.data.tab === 'products' && this.data.allowed) {
       this.loadProducts();
+      return;
+    }
+    if (this.data.tab === 'posters' && this.data.allowed) {
+      this.loadPosters();
       return;
     }
     this.bootstrap();

@@ -24,6 +24,15 @@
       business-hours="{{store.businessHours}}"
       mode="{{mode}}"
       address="{{store.address}}"
+      compact="{{true}}"
+    />
+
+    <poster-carousel
+      wx:if="{{posters.length > 0}}"
+      items="{{posters}}"
+      size="lg"
+      interval="4200"
+      bind:select="onSelectPoster"
     />
 
     <view wx:if="{{demoHint}}" class="home__scene-hint">{{demoHint}}</view>

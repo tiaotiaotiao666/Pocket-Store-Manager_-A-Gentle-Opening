@@ -50,7 +50,7 @@ test('Composer 生成可独立导入的小程序工程（产物契约）', async
   assert.doesNotMatch(theme, /--store-primary:/);
 
   const app = JSON.parse(await fs.readFile(path.join(output, 'app.json'), 'utf8'));
-  assert.equal(app.pages.length, 7);
+  assert.equal(app.pages.length, 8);
 
   const project = JSON.parse(await fs.readFile(path.join(output, 'project.config.json'), 'utf8'));
   assert.equal(project.appid, 'touristappid');

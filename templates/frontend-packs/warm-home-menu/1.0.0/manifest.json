@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "frontend-pack.v1",
+  "identity": { "id": "warm-home-menu", "version": "1.0.0" },
+  "kind": "frontend-pack",
+  "displayName": "暖橙首页与菜单视图包",
+  "entry": {
+    "path": "src",
+    "files": [
+      "pages/home/index.wxml",
+      "pages/home/index.wxss",
+      "pages/home/index.json",
+      "pages/menu/index.wxml",
+      "pages/menu/index.wxss",
+      "pages/menu/index.json"
+    ],
+    "assets": []
+  },
+  "pages": ["home", "menu"],
+  "boundary": {
+    "allowNetwork": false,
+    "allowRoutes": false,
+    "allowGlobalState": false,
+    "allowServices": false
+  },
+  "compatibility": {
+    "baseRange": "^1.0.0",
+    "minWechatLib": "3.0.0",
+    "apiContract": "storefront.v1"
+  },
+  "requiresSlots": ["home-hero", "home-marketing", "menu-hero", "menu-aside"],
+  "preview": {
+    "dir": "preview",
+    "kinds": ["normal", "empty", "error", "long"]
+  },
+  "release": {
+    "stage": "candidate",
+    "knownLimits": [
+      "只覆盖首页与菜单页的视图层，页面控制器、服务层与领域逻辑仍来自 Base",
+      "WXSS 在 Base 页面样式之后追加，不删除 Base 原有样式"
+    ]
+  }
+}

@@ -27,8 +27,8 @@ function validateByContract(contract, value) {
   throw new Error('unknown contract ' + contract);
 }
 
-test('六份契约 Schema 文档可解析且携带冻结标记', () => {
-  const files = ['base.manifest.v1', 'manifest.v1', 'slots.v1', 'composition.v1', 'lock.v1', 'store.generated.v2'];
+test('七份契约 Schema 文档可解析且携带冻结标记', () => {
+  const files = ['base.manifest.v1', 'manifest.v1', 'frontend-pack.v1', 'slots.v1', 'composition.v1', 'lock.v1', 'store.generated.v2'];
   files.forEach((name) => {
     const doc = JSON.parse(fs.readFileSync(path.join(REPO, 'templates', 'registry', 'schema', name + '.json'), 'utf8'));
     assert.strictEqual(doc.status, 'frozen');

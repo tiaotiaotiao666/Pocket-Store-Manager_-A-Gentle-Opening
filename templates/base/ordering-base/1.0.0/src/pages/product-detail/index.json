@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "商品详情",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "state-view": "/components/state-view/index",
+    "error-banner": "/components/error-banner/index",
+    "cart-bar": "/components/cart-bar/index",
+    "cart-panel": "/components/cart-panel/index"
+  }
+}

@@ -1,0 +1,115 @@
+<view class="menu">
+  <view class="fp-menu">
+    <view class="fp-menu__top">
+      <store-header
+        store-name="{{store.name || '菜单'}}"
+        table-name="{{tableName}}"
+        business-hours="{{store.businessHours}}"
+        mode="{{mode}}"
+        address="{{store.address}}"
+        compact="{{true}}"
+      />
+      <view class="fp-menu__switch">
+        <fulfillment-switch
+          value="{{mode}}"
+          dine-in-enabled="{{store.fulfillment.dineIn}}"
+          takeaway-enabled="{{store.fulfillment.takeaway}}"
+          table-name="{{tableName}}"
+          table-required="{{true}}"
+          bind:change="onModeChange"
+        />
+        <view wx:if="{{mode === 'DINE_IN' && !tableName}}" class="fp-menu__tables">
+          <text class="fp-menu__tables-label">演示桌号</text>
+          <view
+            wx:for="{{tableOptions}}"
+            wx:key="id"
+            class="fp-menu__table"
+            data-id="{{item.id}}"
+            data-name="{{item.name}}"
+            bind:tap="onPickTable"
+          >
+            {{item.name}}
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <state-view wx:if="{{loading}}" state="loading" title="正在加载菜单" />
+
+    <view wx:elif="{{error}}" class="fp-menu__error">
+      <error-banner message="{{error}}" action="{{errorAction}}" request-id="{{requestId}}" bind:retry="onRetry" bind:close="onRetry" />
+      <view class="ghost-button fp-menu__retry" bind:tap="onRetry">重新加载</view>
+    </view>
+
+    <view wx:else class="fp-menu__body">
+      <view class="fp-menu__headline">
+        <text class="fp-menu__eyebrow">TODAY'S MENU</text>
+        <text class="fp-menu__title">{{activeCategoryName || '全部菜品'}}</text>
+        <text class="fp-menu__meta">{{products.length}} 道菜 · {{tableName ? tableName + ' 桌' : '到店自取'}}</text>
+      </view>
+
+      <!-- @slot:menu-hero -->
+      <!-- @slot-fallback:menu-hero -->
+      <!-- @slot-fallback:menu-hero:end -->
+      <!-- @slot:menu-hero:end -->
+
+      <!-- @slot:menu-aside -->
+      <!-- @slot-fallback:menu-aside -->
+      <!-- @slot-fallback:menu-aside:end -->
+      <!-- @slot:menu-aside:end -->
+
+      <category-nav categories="{{categories}}" active-id="{{activeCategoryId}}" bind:select="onSelectCategory" />
+
+      <scroll-view class="fp-menu__list" scroll-y>
+        <view wx:if="{{products.length > 0}}" class="fp-menu__products">
+          <view wx:for="{{products}}" wx:key="id" class="fp-menu__product">
+            <product-card
+              product="{{item}}"
+              quantity="{{quantityMap[item.id] || 0}}"
+              disabled="{{item.available === false}}"
+              bind:add="onProductAdd"
+              bind:remove="onProductRemove"
+              bind:openDetail="onOpenDetail"
+            />
+          </view>
+        </view>
+        <state-view
+          wx:else
+          state="empty"
+          title="这个分类还没有上架菜品"
+          description="换一个分类看看，或稍后下拉刷新"
+        />
+        <view class="fp-menu__spacer"></view>
+      </scroll-view>
+    </view>
+
+    <cart-bar
+      total-cents="{{cartSummary.totalCents}}"
+      total-quantity="{{cartSummary.totalQuantity}}"
+      submitting="{{false}}"
+      bind:expand="onExpandCart"
+      bind:checkout="onCheckout"
+    />
+
+    <cart-panel
+      visible="{{cartVisible}}"
+      items="{{cartSummary.items}}"
+      total-cents="{{cartSummary.totalCents}}"
+      total-quantity="{{cartSummary.totalQuantity}}"
+      submitting="{{false}}"
+      bind:close="onPanelClose"
+      bind:add="onPanelAdd"
+      bind:remove="onPanelRemove"
+      bind:checkout="onCheckout"
+    />
+
+    <product-detail
+      visible="{{detailVisible}}"
+      product="{{detailProduct}}"
+      quantity="{{detailQuantity}}"
+      bind:close="onDetailClose"
+      bind:add="onDetailAdd"
+      bind:remove="onDetailRemove"
+    />
+  </view>
+</view>

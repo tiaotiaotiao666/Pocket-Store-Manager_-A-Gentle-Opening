@@ -99,7 +99,7 @@ test('订单详情注册 pay-result，且不新增页面', () => {
   const json = JSON.parse(fs.readFileSync(path.join(MIRROR, 'pages', 'order-detail', 'index.json'), 'utf8'));
   assert.ok(json.usingComponents['pay-result']);
   const appJson = JSON.parse(fs.readFileSync(path.join(MIRROR, 'app.json'), 'utf8'));
-  assert.strictEqual(appJson.pages.length, 7);
+  assert.strictEqual(appJson.pages.length, 8);
   assert.ok(!appJson.pages.includes('pages/order-result/index'));
 });
 

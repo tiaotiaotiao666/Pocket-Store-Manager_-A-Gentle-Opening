@@ -49,6 +49,7 @@ const PAGES = [
   { pageId: 'mine' },
   { pageId: 'checkout' },
   { pageId: 'order-detail' },
+  { pageId: 'product-detail' },
   { pageId: 'merchant-orders' },
 ];
 

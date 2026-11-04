@@ -25,6 +25,7 @@ const {
   detectForbiddenKeysWithCode,
   normalizePresentationTokens,
   presentationSlotDataKey,
+  FRONTEND_PACK_PAGE_JSON_KEYS,
 } = require('./schema.cjs');
 const { COMPOSER_VERSION, OUTPUT_SCHEMA_VERSION } = require('./version.cjs');
 const { sanitizeProjectName } = require('./atomic.cjs');
@@ -292,6 +293,10 @@ function buildStoreConfig(graph, options) {
   };
   const storeId = typeof options.storeId === 'string' ? options.storeId.trim() : '';
   if (storeId) config.store.id = storeId;
+  if (graph.frontendPack) {
+    config.meta.frontendPackId = graph.frontendPack.asset.id;
+    config.meta.frontendPackVersion = graph.frontendPack.asset.version;
+  }
   return config;
 }
 
@@ -347,6 +352,9 @@ function buildReadme(graph, options) {
     '',
     '- Plan：`' + graph.plan.planId + '@' + graph.plan.planVersion + '`',
     '- Base：`' + graph.base.manifest.identity.id + '@' + graph.base.manifest.identity.version + '`',
+    ...(graph.frontendPack
+      ? ['- FrontendPack：`' + graph.frontendPack.asset.id + '@' + graph.frontendPack.asset.version + '`（仅覆盖 ' + graph.frontendPack.pages.join('、') + ' 的视图层；页面 JS 仍来自 Base）']
+      : []),
     '- 模式：`' + options.mode + '`',
     '- 生成时间：确定性快照（真实导出时间见 `generation-report.json`）',
     '',
@@ -639,6 +647,126 @@ function applyMediaOutput(files, media) {
   return ok();
 }
 
+
+function validateFrontendPackWxml(wxml, pageId, requiredSlots, controllerSource) {
+  if (/<(script|wxs|import|include)[\s>]/i.test(wxml)) {
+    return fail('FRONTEND_PACK_SCRIPT_FORBIDDEN', 'frontendPack', 'FrontendPack WXML 不允许 script/wxs/import/include', { pageId });
+  }
+  if (/\b(eval|Function)\s*\(/.test(wxml)) {
+    return fail('FRONTEND_PACK_SCRIPT_FORBIDDEN', 'frontendPack', 'FrontendPack WXML 不允许动态执行', { pageId });
+  }
+  if (/url\(\s*['"]?(?:https?:)?\/\//i.test(wxml) || /\bsrc\s*=\s*["'](?:https?:)?\/\//i.test(wxml)) {
+    return fail('FRONTEND_PACK_EXTERNAL_URL', 'frontendPack', 'FrontendPack 禁止引用外部 URL', { pageId });
+  }
+  for (const slotId of requiredSlots || []) {
+    for (const anchor of [
+      '<!-- @slot:' + slotId + ' -->',
+      '<!-- @slot-fallback:' + slotId + ' -->',
+      '<!-- @slot-fallback:' + slotId + ':end -->',
+      '<!-- @slot:' + slotId + ':end -->',
+    ]) {
+      if (wxml.split(anchor).length - 1 !== 1) {
+        return fail('FRONTEND_PACK_SLOT_ANCHOR_MISSING', 'frontendPack', 'FrontendPack 页面缺少或重复插槽锚点：' + slotId, { pageId, slotId, anchor });
+      }
+    }
+  }
+
+  const handlerPattern = /\b((?:bind|catch|capture-bind|capture-catch)[:a-zA-Z0-9-]*)\s*=\s*(["'])(.*?)\2/g;
+  let match = handlerPattern.exec(wxml);
+  while (match) {
+    const handler = match[3].trim();
+    if (handler && !handler.includes('{{')) {
+      const pattern = new RegExp('(^|[^a-zA-Z0-9_$])' + handler.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\(');
+      if (!pattern.test(controllerSource)) {
+        return fail('FRONTEND_PACK_EVENT_UNKNOWN', 'frontendPack', 'FrontendPack 绑定了控制器不存在的方法：' + handler, {
+          pageId,
+          handler,
+          event: match[1],
+        });
+      }
+    }
+    match = handlerPattern.exec(wxml);
+  }
+  return ok();
+}
+
+function overlayFrontendPack(files, graph) {
+  const pack = graph.frontendPack;
+  if (!pack) return ok();
+  for (const pageId of pack.pages) {
+    const pagePrefix = 'pages/' + pageId + '/index';
+    const packRoot = path.join(pack.root, 'pages', pageId);
+    const wxmlFile = path.join(packRoot, 'index.wxml');
+    const wxssFile = path.join(packRoot, 'index.wxss');
+    const jsonFile = path.join(packRoot, 'index.json');
+    for (const [kind, file] of [['wxml', wxmlFile], ['wxss', wxssFile], ['json', jsonFile]]) {
+      if (!fs.existsSync(file)) {
+        return fail('FRONTEND_PACK_PAGE_FILE_MISSING', 'frontendPack', 'FrontendPack 页面缺少文件：' + pageId + '/index.' + kind, { pageId, kind });
+      }
+    }
+
+    const controller = files.get(pagePrefix + '.js');
+    if (!controller) {
+      return fail('FRONTEND_PACK_CONTROLLER_MISSING', 'frontendPack', 'Base 页面控制器不存在：' + pageId, { pageId });
+    }
+    const wxml = text(fs.readFileSync(wxmlFile));
+    const pageSlots = (pack.manifest.requiresSlots || []).filter((slotId) => {
+      const slot = (graph.base.manifest.slots || []).filter((item) => item.slotId === slotId)[0];
+      return slot && slot.pageId === pageId;
+    });
+    const wxmlCheck = validateFrontendPackWxml(wxml, pageId, pageSlots, controller.toString('utf8'));
+    if (!wxmlCheck.ok) return wxmlCheck;
+    files.set(pagePrefix + '.wxml', Buffer.from(wxml, 'utf8'));
+
+    const packWxss = text(fs.readFileSync(wxssFile));
+    if (/url\(\s*['"]?(?:https?:)?\/\//i.test(packWxss)) {
+      return fail('FRONTEND_PACK_EXTERNAL_URL', 'frontendPack', 'FrontendPack WXSS 禁止引用外部 URL', { pageId });
+    }
+    const baseWxss = files.get(pagePrefix + '.wxss');
+    const marker = '/* FrontendPack ' + pack.asset.id + '@' + pack.asset.version + '：在 Base 页面样式之后追加。 */';
+    files.set(
+      pagePrefix + '.wxss',
+      Buffer.from((baseWxss ? text(baseWxss) : '') + '\n' + marker + '\n' + packWxss + '\n', 'utf8'),
+    );
+
+    let packJson;
+    try {
+      packJson = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
+    } catch (error) {
+      return fail('FRONTEND_PACK_PAGE_JSON_INVALID', 'frontendPack', 'FrontendPack 页面 JSON 无法解析：' + pageId, { pageId, error: error.message });
+    }
+    for (const key of Object.keys(packJson)) {
+      if (!FRONTEND_PACK_PAGE_JSON_KEYS.includes(key)) {
+        return fail('FRONTEND_PACK_JSON_FIELD_FORBIDDEN', 'frontendPack', 'FrontendPack 页面 JSON 不允许字段：' + key, { pageId, key });
+      }
+    }
+    const baseJsonBuffer = files.get(pagePrefix + '.json');
+    let baseJson = {};
+    try {
+      baseJson = baseJsonBuffer ? JSON.parse(baseJsonBuffer.toString('utf8')) : {};
+    } catch (error) {
+      return fail('FRONTEND_PACK_BASE_PAGE_UNREADABLE', 'frontendPack', 'Base 页面配置无法读取：' + pageId, { pageId, error: error.message });
+    }
+    const baseUsing = baseJson.usingComponents || {};
+    const packUsing = packJson.usingComponents || {};
+    for (const [tag, target] of Object.entries(packUsing)) {
+      if (!Object.prototype.hasOwnProperty.call(baseUsing, tag)) {
+        return fail('FRONTEND_PACK_COMPONENT_UNKNOWN', 'frontendPack', 'FrontendPack 不得新增 Base 未声明的组件：' + tag, { pageId, tag });
+      }
+      if (baseUsing[tag] !== target) {
+        return fail('FRONTEND_PACK_COMPONENT_REMAP', 'frontendPack', 'FrontendPack 不得改绑 Base 组件路径：' + tag, { pageId, tag, base: baseUsing[tag], pack: target });
+      }
+    }
+    const merged = {
+      ...baseJson,
+      ...packJson,
+      usingComponents: { ...baseUsing, ...packUsing },
+    };
+    files.set(pagePrefix + '.json', Buffer.from(json(merged), 'utf8'));
+  }
+  return ok();
+}
+
 function buildProjectFiles(graph, options) {
   const opts = { mode: 'development', ...options };
   if (opts.media !== undefined) {
@@ -653,6 +781,10 @@ function buildProjectFiles(graph, options) {
   const storeName = (graph.plan.storeProfile && graph.plan.storeProfile.name) || '我的餐馆';
   const files = readBaseFiles(graph, opts);
   applyRoleOutput(files, graph, opts.role);
+
+  // FrontendPack 只覆盖视图层：WXML 替换、WXSS 追加、JSON 受限合并；控制器 JS 始终来自 Base。
+  const overlay = overlayFrontendPack(files, graph);
+  if (!overlay.ok) return overlay;
 
   files.set('app.json', Buffer.from(json(buildAppJson(graph, opts, theme, storeName)), 'utf8'));
   files.set('theme.generated.wxss', Buffer.from(buildThemeWxss(theme, presentationTokens), 'utf8'));
@@ -740,6 +872,7 @@ function buildProjectFiles(graph, options) {
       components: files.size > 0 ? new Set([...files.keys()].filter((file) => file.startsWith('components/')).map((file) => file.split('/')[1])).size : 0,
       assets: [...files.keys()].filter((file) => file.startsWith('assets/')).length,
       files: files.size,
+      frontendPackPages: graph.frontendPack ? graph.frontendPack.pages.length : 0,
     },
     theme,
     storeConfig,

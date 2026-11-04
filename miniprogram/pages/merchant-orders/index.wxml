@@ -60,6 +60,13 @@
       >
         商品管理
       </view>
+      <view
+        class="merchant__tab {{tab === 'posters' ? 'merchant__tab--active' : ''}}"
+        data-tab="posters"
+        bind:tap="onChangeTab"
+      >
+        海报装修
+      </view>
     </view>
 
     <block wx:if="{{tab === 'orders'}}">
@@ -106,7 +113,7 @@
       </view>
     </block>
 
-    <block wx:else>
+    <block wx:elif="{{tab === 'products'}}">
       <view class="merchant__product-summary">
         <text class="merchant__product-stat">共 {{productCount}} 个商品</text>
         <text class="merchant__product-stat merchant__product-stat--ok">在售 {{availableCount}}</text>
@@ -155,6 +162,16 @@
           <text class="merchant__field-label">商品描述</text>
           <textarea class="merchant__input merchant__textarea" value="{{productDescription}}" placeholder="选填" data-field="description" bindinput="onProductFieldInput" />
         </view>
+        <view class="merchant__field">
+          <text class="merchant__field-label">商品图片地址（选填）</text>
+          <view class="merchant__image-upload">
+            <image wx:if="{{productImageUrl}}" class="merchant__image-preview" src="{{productImageUrl}}" mode="aspectFill" />
+            <button class="merchant__secondary-button" size="mini" loading="{{productWriting && productAction === 'upload-image'}}" disabled="{{productWriting}}" bind:tap="onChooseProductImage">从相册或拍摄上传</button>
+            <button wx:if="{{productImageUrl}}" class="merchant__text-button" size="mini" data-field="product" disabled="{{productWriting}}" bind:tap="onClearImage">移除</button>
+          </view>
+          <input class="merchant__input" value="{{productImageUrl}}" placeholder="图片地址，可留空" data-field="imageUrl" bindinput="onProductFieldInput" />
+          <text class="merchant__upload-hint">支持 JPG、PNG，单张不超过 5 MB</text>
+        </view>
         <view class="merchant__switch-field">
           <text>创建后立即上架</text>
           <switch checked="{{productAvailable}}" color="#E86A17" disabled="{{productWriting}}" bindchange="onProductAvailableChange" />
@@ -192,32 +209,129 @@
               wx:for="{{category.products}}"
               wx:key="id"
               wx:for-item="product"
-              class="merchant__product"
+              class="merchant__product-wrap"
             >
-              <view class="merchant__product-main">
-                <view class="merchant__product-title">
-                  <text class="merchant__product-name">{{product.name}}</text>
-                  <text wx:if="{{!product.available}}" class="merchant__product-tag">已下架</text>
-                </view>
-                <text class="merchant__product-desc">{{product.description || '暂无描述'}}</text>
-                <text class="merchant__product-price">{{product.amountText}}</text>
-                <button wx:if="{{isOwner && priceEditorId !== product.id}}" class="merchant__text-button merchant__price-button" size="mini" data-id="{{product.id}}" disabled="{{productWriting}}" bind:tap="onOpenPriceEditor">改价</button>
-                <view wx:if="{{isOwner && priceEditorId === product.id}}" class="merchant__price-editor">
-                  <input class="merchant__input" type="digit" value="{{priceValue}}" bindinput="onPriceValueInput" />
-                  <view class="merchant__editor-actions">
-                    <button class="merchant__primary-button" size="mini" loading="{{productWriting && productAction === 'update-price'}}" disabled="{{productWriting}}" bind:tap="onSavePrice">保存价格</button>
-                    <button class="merchant__secondary-button" size="mini" disabled="{{productWriting}}" bind:tap="onClosePriceEditor">取消</button>
+              <view class="merchant__product">
+                <image wx:if="{{product.imageUrl}}" class="merchant__product-image" src="{{product.imageUrl}}" mode="aspectFill" />
+                <view wx:else class="merchant__product-image merchant__product-image--empty">商品</view>
+                <view class="merchant__product-main">
+                  <view class="merchant__product-title">
+                    <text class="merchant__product-name">{{product.name}}</text>
+                    <text wx:if="{{!product.available}}" class="merchant__product-tag">已下架</text>
+                  </view>
+                  <text class="merchant__product-desc">{{product.description || '暂无描述'}}</text>
+                  <text class="merchant__product-price">{{product.amountText}}</text>
+                  <button wx:if="{{isOwner}}" class="merchant__text-button merchant__price-button" size="mini" data-id="{{product.id}}" disabled="{{productWriting}}" bind:tap="onOpenProductEditor">编辑资料</button>
+                  <button wx:if="{{isOwner && priceEditorId !== product.id}}" class="merchant__text-button merchant__price-button" size="mini" data-id="{{product.id}}" disabled="{{productWriting}}" bind:tap="onOpenPriceEditor">改价</button>
+                  <view wx:if="{{isOwner && priceEditorId === product.id}}" class="merchant__price-editor">
+                    <input class="merchant__input" type="digit" value="{{priceValue}}" bindinput="onPriceValueInput" />
+                    <view class="merchant__editor-actions">
+                      <button class="merchant__primary-button" size="mini" loading="{{productWriting && productAction === 'update-price'}}" disabled="{{productWriting}}" bind:tap="onSavePrice">保存价格</button>
+                      <button class="merchant__secondary-button" size="mini" disabled="{{productWriting}}" bind:tap="onClosePriceEditor">取消</button>
+                    </view>
                   </view>
                 </view>
+                <switch checked="{{product.available}}" color="#E86A17" disabled="{{productWriting}}" data-id="{{product.id}}" data-name="{{product.name}}" bindchange="onToggleProduct" />
               </view>
-              <switch
-                checked="{{product.available}}"
-                color="#E86A17"
-                disabled="{{productWriting}}"
-                data-id="{{product.id}}"
-                data-name="{{product.name}}"
-                bindchange="onToggleProduct"
-              />
+              <view wx:if="{{isOwner && editProductId === product.id}}" class="merchant__editor merchant__product-editor">
+                <view class="merchant__field">
+                  <text class="merchant__field-label">商品名称</text>
+                  <input class="merchant__input" value="{{editProductName}}" data-field="name" bindinput="onEditProductFieldInput" />
+                </view>
+                <view wx:if="{{categories.length > 0}}" class="merchant__field">
+                  <text class="merchant__field-label">商品分类</text>
+                  <picker mode="selector" range="{{categories}}" range-key="name" value="{{editProductCategoryIndex}}" bindchange="onEditProductCategoryChange">
+                    <view class="merchant__picker">{{categories[editProductCategoryIndex].name}}</view>
+                  </picker>
+                </view>
+                <view class="merchant__field">
+                  <text class="merchant__field-label">价格（元）</text>
+                  <input class="merchant__input" type="digit" value="{{editProductPrice}}" data-field="price" bindinput="onEditProductFieldInput" />
+                </view>
+                <view class="merchant__field">
+                  <text class="merchant__field-label">商品描述</text>
+                  <textarea class="merchant__input merchant__textarea" value="{{editProductDescription}}" data-field="description" bindinput="onEditProductFieldInput" />
+                </view>
+                <view class="merchant__field">
+                  <text class="merchant__field-label">商品图片地址</text>
+                  <view class="merchant__image-upload">
+                    <image wx:if="{{editProductImageUrl}}" class="merchant__image-preview" src="{{editProductImageUrl}}" mode="aspectFill" />
+                    <button class="merchant__secondary-button" size="mini" loading="{{productWriting && productAction === 'upload-image'}}" disabled="{{productWriting}}" bind:tap="onChooseEditProductImage">替换商品图片</button>
+                    <button wx:if="{{editProductImageUrl}}" class="merchant__text-button" size="mini" data-field="edit" disabled="{{productWriting}}" bind:tap="onClearImage">移除</button>
+                  </view>
+                  <input class="merchant__input" value="{{editProductImageUrl}}" placeholder="图片地址，可留空" data-field="imageUrl" bindinput="onEditProductFieldInput" />
+                </view>
+                <view class="merchant__editor-actions">
+                  <button class="merchant__primary-button" size="mini" loading="{{productWriting && productAction === 'edit-product'}}" disabled="{{productWriting}}" bind:tap="onSaveProductEdit">保存修改</button>
+                  <button class="merchant__secondary-button" size="mini" disabled="{{productWriting}}" bind:tap="onCloseProductEditor">取消</button>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view class="merchant__poster-heading">
+        <view>
+          <text class="merchant__category-name">首页海报</text>
+          <text class="merchant__poster-hint">共 {{posters.length}} 张 · 点击后打开关联商品详情</text>
+        </view>
+        <button wx:if="{{isOwner}}" class="merchant__owner-button" size="mini" disabled="{{productWriting || availableProducts.length === 0}}" bind:tap="onOpenPosterForm">新建海报</button>
+      </view>
+      <view wx:if="{{isOwner && showPosterForm}}" class="surface-card merchant__editor">
+        <view class="merchant__editor-title">{{posterEditorId ? '编辑海报' : '新建海报'}}</view>
+        <view class="merchant__field">
+          <text class="merchant__field-label">关联商品</text>
+          <picker mode="selector" range="{{posterProducts}}" range-key="name" value="{{posterProductIndex}}" bindchange="onPosterProductChange">
+            <view class="merchant__picker">{{posterProducts[posterProductIndex].name || '请选择商品'}}</view>
+          </picker>
+          <text wx:if="{{posterProducts[posterProductIndex].available === false}}" class="merchant__upload-hint">当前商品已下架，海报暂不会展示；请选择在售商品后再启用。</text>
+        </view>
+        <view class="merchant__field">
+          <text class="merchant__field-label">海报标题</text>
+          <input class="merchant__input" value="{{posterTitle}}" placeholder="留空时使用商品名称" data-field="title" bindinput="onPosterFieldInput" />
+        </view>
+        <view class="merchant__field">
+          <text class="merchant__field-label">副标题</text>
+          <input class="merchant__input" value="{{posterSubtitle}}" placeholder="介绍商品特色" data-field="subtitle" bindinput="onPosterFieldInput" />
+        </view>
+        <view class="merchant__field">
+          <text class="merchant__field-label">海报图片（建议横图 16:9）</text>
+          <view class="merchant__image-upload">
+            <image wx:if="{{posterImageUrl}}" class="merchant__image-preview merchant__image-preview--wide" src="{{posterImageUrl}}" mode="aspectFill" />
+            <button class="merchant__secondary-button" size="mini" loading="{{productWriting && productAction === 'upload-image'}}" disabled="{{productWriting}}" bind:tap="onChoosePosterImage">上传海报图片</button>
+            <button wx:if="{{posterImageUrl}}" class="merchant__text-button" size="mini" data-field="poster" disabled="{{productWriting}}" bind:tap="onClearImage">移除</button>
+          </view>
+          <input class="merchant__input" value="{{posterImageUrl}}" placeholder="图片地址，留空使用商品图片" data-field="imageUrl" bindinput="onPosterFieldInput" />
+          <text class="merchant__upload-hint">支持 JPG、PNG，单张不超过 5 MB；留空时使用商品图片</text>
+        </view>
+        <view class="merchant__switch-field">
+          <text>在首页轮播中展示</text>
+          <switch checked="{{posterActive}}" color="#E86A17" disabled="{{productWriting}}" bindchange="onPosterActiveChange" />
+        </view>
+        <view class="merchant__editor-actions">
+          <button class="merchant__primary-button" size="mini" loading="{{productWriting && (productAction === 'create-poster' || productAction === 'update-poster')}}" disabled="{{productWriting || availableProducts.length === 0}}" bind:tap="onSavePoster">保存海报</button>
+          <button class="merchant__secondary-button" size="mini" disabled="{{productWriting}}" bind:tap="onClosePosterForm">取消</button>
+        </view>
+      </view>
+      <loading-block wx:if="{{postersLoading}}" text="正在加载海报" />
+      <state-view wx:elif="{{posters.length === 0}}" state="empty" title="还没有首页海报" description="新建海报并选择一个在售商品，首页就会显示可点击的推荐卡片。" />
+      <view wx:else class="merchant__poster-list">
+        <view wx:for="{{posters}}" wx:key="id" class="surface-card merchant__poster-card">
+          <image wx:if="{{item.imageUrl}}" class="merchant__poster-image" src="{{item.imageUrl}}" mode="aspectFill" />
+          <view wx:else class="merchant__poster-image merchant__poster-image--empty">{{item.product.name}}</view>
+          <view class="merchant__poster-body">
+            <text class="merchant__product-name">{{item.title}}</text>
+            <text class="merchant__product-desc">{{item.subtitle || item.product.name}} · ¥{{item.product.amountText}}</text>
+            <text class="merchant__poster-product">跳转商品：{{item.product.name}}</text>
+            <view wx:if="{{isOwner}}" class="merchant__poster-actions">
+              <switch checked="{{item.active}}" color="#E86A17" disabled="{{productWriting}}" data-id="{{item.id}}" bindchange="onTogglePoster" />
+              <button class="merchant__text-button" size="mini" data-id="{{item.id}}" disabled="{{productWriting}}" bind:tap="onOpenPosterForm">编辑</button>
+              <button class="merchant__text-button" size="mini" data-index="{{index}}" data-direction="-1" disabled="{{productWriting || index === 0}}" bind:tap="onMovePoster">上移</button>
+              <button class="merchant__text-button" size="mini" data-index="{{index}}" data-direction="1" disabled="{{productWriting || index === posters.length - 1}}" bind:tap="onMovePoster">下移</button>
+              <button class="merchant__text-button merchant__delete-button" size="mini" data-id="{{item.id}}" disabled="{{productWriting}}" bind:tap="onDeletePoster">删除</button>
             </view>
           </view>
         </view>

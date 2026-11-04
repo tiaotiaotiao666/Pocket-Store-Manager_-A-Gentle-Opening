@@ -48,6 +48,12 @@
       "audience": "customer"
     },
     {
+      "pageId": "product-detail",
+      "path": "pages/product-detail",
+      "required": true,
+      "audience": "customer"
+    },
+    {
       "pageId": "mine",
       "path": "pages/mine",
       "required": true,

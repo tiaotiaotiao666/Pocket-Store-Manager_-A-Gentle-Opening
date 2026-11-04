@@ -132,6 +132,78 @@ function sendRequest(options, callback) {
   callback({ error: { errMsg: 'request:fail transport unavailable', timeout: false } });
 }
 
+function uploadFile(options, callback) {
+  const settings = options || {};
+  if (typeof wx === 'undefined' || !wx || typeof wx.uploadFile !== 'function') {
+    callback({ error: { errMsg: 'uploadFile:fail platform unavailable', timeout: false } });
+    return;
+  }
+  wx.uploadFile({
+    url: settings.url,
+    filePath: settings.filePath,
+    name: settings.name || 'file',
+    header: settings.header || {},
+    formData: settings.formData || {},
+    timeout: settings.timeout || 30000,
+    success(response) {
+      callback({ statusCode: response.statusCode, data: response.data, header: response.header || {} });
+    },
+    fail(error) {
+      callback({
+        error: {
+          errMsg: error && error.errMsg ? error.errMsg : 'uploadFile:fail',
+          timeout: Boolean(error && /timeout/i.test(error.errMsg || '')),
+        },
+      });
+    },
+  });
+}
+
+function chooseImage() {
+  return new Promise((resolve, reject) => {
+    if (typeof wx === 'undefined' || !wx) {
+      reject(new Error('当前平台不支持选择图片'));
+      return;
+    }
+    const onSuccess = (path) => {
+      if (path) resolve({ tempFilePath: path });
+      else reject(new Error('没有获取到图片文件'));
+    };
+    const onFailure = (error) => {
+      const result = new Error(error && error.errMsg ? error.errMsg : '选择图片失败');
+      result.code = error && /cancel/i.test(error.errMsg || '') ? 'USER_CANCELLED' : 'IMAGE_PICK_FAILED';
+      reject(result);
+    };
+    if (typeof wx.chooseMedia === 'function') {
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        sizeType: ['compressed'],
+        success(result) {
+          const item = result && Array.isArray(result.tempFiles) ? result.tempFiles[0] : null;
+          onSuccess(item && (item.tempFilePath || item.path));
+        },
+        fail: onFailure,
+      });
+      return;
+    }
+    if (typeof wx.chooseImage === 'function') {
+      wx.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+        success(result) {
+          onSuccess(result && Array.isArray(result.tempFilePaths) ? result.tempFilePaths[0] : '');
+        },
+        fail: onFailure,
+      });
+      return;
+    }
+    reject(new Error('当前微信版本不支持选择图片'));
+  });
+}
+
 function loginWithWechatCode() {
   return new Promise((resolve, reject) => {
     if (!hasWx() || typeof wx.login !== 'function') {
@@ -194,6 +266,8 @@ module.exports = {
   hasWx,
   storage,
   sendRequest,
+  uploadFile,
+  chooseImage,
   loginWithWechatCode,
   toast,
   modal,

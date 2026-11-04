@@ -1,0 +1,112 @@
+<view class="page home">
+  <view class="fp-home">
+    <view class="fp-home__hero">
+      <!-- @slot:home-hero -->
+      <!-- @slot-fallback:home-hero -->
+      <store-header
+        store-name="{{store.name}}"
+        table-name="{{tableName}}"
+        business-hours="{{store.businessHours}}"
+        mode="{{mode}}"
+        address="{{store.address}}"
+      />
+      <!-- @slot-fallback:home-hero:end -->
+      <!-- @slot:home-hero:end -->
+    </view>
+
+    <view class="fp-home__head">
+      <view class="fp-home__brand">
+        <text class="fp-home__eyebrow">SMART STORE · 扫码点餐</text>
+        <text class="fp-home__title">今天想吃点什么？</text>
+        <text class="fp-home__sub">选好用餐方式，直接开始点单。</text>
+      </view>
+      <view class="fp-home__identity" bind:tap="goMine">
+        <text class="fp-home__identity-dot"></text>
+        <text>{{identityLabel}}</text>
+      </view>
+    </view>
+
+    <state-view wx:if="{{loading}}" state="loading" title="正在准备门店信息" description="马上就好" />
+
+    <view wx:elif="{{error}}" class="fp-home__error">
+      <error-banner message="{{error}}" action="{{errorAction}}" request-id="{{requestId}}" bind:retry="onRetry" bind:close="onRetry" />
+      <view class="ghost-button fp-home__retry" bind:tap="onRetry">重新加载</view>
+    </view>
+
+    <block wx:else>
+      <view wx:if="{{demoHint}}" class="fp-home__hint">{{demoHint}}</view>
+      <view wx:if="{{versionNotice}}" class="fp-home__hint">{{versionNotice}}</view>
+
+      <view class="fp-home__marketing">
+        <!-- @slot:home-marketing -->
+        <!-- @slot-fallback:home-marketing -->
+        <!-- @slot-fallback:home-marketing:end -->
+        <!-- @slot:home-marketing:end -->
+      </view>
+
+      <view class="fp-home__section">
+        <view class="fp-home__section-head">
+          <text class="fp-home__section-title">用餐方式</text>
+          <text class="fp-home__section-extra">{{mode === 'DINE_IN' ? '堂食' : '到店自取'}}</text>
+        </view>
+        <fulfillment-switch
+          value="{{mode}}"
+          dine-in-enabled="{{store.fulfillment.dineIn}}"
+          takeaway-enabled="{{store.fulfillment.takeaway}}"
+          table-name="{{tableName}}"
+          table-required="{{true}}"
+          bind:change="onModeChange"
+        />
+        <view wx:if="{{mode === 'DINE_IN' && !tableName}}" class="fp-home__tables">
+          <text class="fp-home__tables-label">演示桌号</text>
+          <view
+            wx:for="{{tableOptions}}"
+            wx:key="id"
+            class="fp-home__table"
+            data-id="{{item.id}}"
+            data-name="{{item.name}}"
+            bind:tap="onPickTable"
+          >
+            {{item.name}}
+          </view>
+        </view>
+      </view>
+
+      <view class="fp-home__cta" bind:tap="goMenu">
+        <view class="fp-home__cta-copy">
+          <text class="fp-home__cta-title">开始点餐</text>
+          <text class="fp-home__cta-sub">{{mode === 'DINE_IN' ? '堂食 · 请先确认桌号' : '到店自取 · 免排队'}}</text>
+        </view>
+        <text class="fp-home__cta-arrow">→</text>
+      </view>
+
+      <view wx:if="{{pendingPaymentCount > 0}}" class="fp-home__notice" bind:tap="goOrders">
+        <view class="fp-home__notice-dot"></view>
+        <text class="fp-home__notice-text">你有 {{pendingPaymentCount}} 笔订单待演示付款</text>
+        <text class="fp-home__notice-arrow">去处理 ›</text>
+      </view>
+
+      <view wx:if="{{activeOrders.length > 0}}" class="fp-home__orders">
+        <view class="fp-home__section-head">
+          <text class="fp-home__section-title">进行中</text>
+          <text class="fp-home__section-extra" bind:tap="goOrders">全部订单 ›</text>
+        </view>
+        <view wx:for="{{activeOrders}}" wx:key="id" class="fp-home__order">
+          <order-card order="{{item}}" role="CUSTOMER" actionable="{{false}}" bind:open="onOpenOrder" />
+        </view>
+      </view>
+
+      <view wx:if="{{merchantStoreId}}" class="fp-home__merchant" bind:tap="goMerchant">
+        <view class="fp-home__merchant-body">
+          <text class="fp-home__merchant-title">店主订单台</text>
+          <text class="fp-home__merchant-sub">当前身份拥有该门店的管理权限</text>
+        </view>
+        <text class="fp-home__merchant-arrow">›</text>
+      </view>
+
+      <view class="fp-home__foot">
+        <text wx:if="{{demoMode}}">演示环境 · 演示登录与模拟支付，不产生真实交易</text>
+      </view>
+    </block>
+  </view>
+</view>

@@ -7,5 +7,6 @@
     "state-view": "/components/state-view/index",
     "error-banner": "/components/error-banner/index",
     "order-card": "/components/order-card/index"
+    ,"poster-carousel": "/components/poster-carousel/index"
   }
 }

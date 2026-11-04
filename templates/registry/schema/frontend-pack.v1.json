@@ -1,0 +1,206 @@
+{
+  "schemaDocVersion": "schema-doc.v1",
+  "contract": "frontend-pack.v1",
+  "status": "frozen",
+  "description": "受控视图包：在 Base 之上覆盖指定的 WXML/WXSS/页面 JSON，不允许包含任何 JS。页面控制器、服务层与领域逻辑仍来自 Base。",
+  "required": [
+    "schemaVersion",
+    "identity",
+    "kind",
+    "displayName",
+    "entry",
+    "pages",
+    "boundary",
+    "compatibility",
+    "requiresSlots",
+    "preview",
+    "release"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "frontend-pack.v1"
+    },
+    "identity": {
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "length": [
+            3,
+            48
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        }
+      }
+    },
+    "kind": {
+      "type": "string",
+      "const": "frontend-pack"
+    },
+    "displayName": {
+      "type": "string",
+      "maxLength": 48
+    },
+    "entry": {
+      "type": "object",
+      "required": [
+        "path",
+        "files",
+        "assets"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "path": "relative-posix"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^pages/[a-z][a-z0-9-]*/index\\.(wxml|wxss|json)$"
+          },
+          "mustExist": true
+        },
+        "assets": {
+          "type": "array",
+          "items": "path",
+          "mustExist": true
+        }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+      },
+      "minItems": 1,
+      "description": "被覆盖的 Base 页面 ID；每页必须同时提供 wxml、wxss、json"
+    },
+    "boundary": {
+      "type": "object",
+      "required": [
+        "allowNetwork",
+        "allowRoutes",
+        "allowGlobalState",
+        "allowServices"
+      ],
+      "properties": {
+        "allowNetwork": {
+          "type": "boolean",
+          "const": false
+        },
+        "allowRoutes": {
+          "type": "boolean",
+          "const": false
+        },
+        "allowGlobalState": {
+          "type": "boolean",
+          "const": false
+        },
+        "allowServices": {
+          "type": "boolean",
+          "const": false
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "required": [
+        "baseRange",
+        "minWechatLib",
+        "apiContract"
+      ],
+      "properties": {
+        "baseRange": {
+          "type": "string",
+          "pattern": "^\\^\\d+\\.\\d+\\.\\d+$"
+        },
+        "minWechatLib": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "apiContract": {
+          "type": "string",
+          "const": "storefront.v1"
+        }
+      }
+    },
+    "requiresSlots": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "home-hero",
+          "home-marketing",
+          "menu-aside",
+          "menu-hero"
+        ]
+      },
+      "description": "视图包保留的 Base 插槽锚点；缺失即拒绝生成"
+    },
+    "preview": {
+      "type": "object",
+      "required": [
+        "dir",
+        "kinds"
+      ],
+      "properties": {
+        "dir": {
+          "type": "string",
+          "path": "relative-posix"
+        },
+        "kinds": {
+          "type": "array",
+          "contains": [
+            "normal",
+            "empty",
+            "error",
+            "long"
+          ]
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "required": [
+        "stage",
+        "knownLimits"
+      ],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": [
+            "online-ready",
+            "preview-only",
+            "blocked",
+            "candidate"
+          ]
+        },
+        "knownLimits": {
+          "type": "array",
+          "items": "string"
+        }
+      }
+    }
+  },
+  "rules": [
+    "kind 固定为 frontend-pack",
+    "entry.files 只允许 pages/<pageId>/index.wxml|wxss|json，不允许 .js",
+    "每个 page 必须同时提供 wxml/wxss/json",
+    "boundary 四项必须为 false",
+    "requiresSlots 只能引用 Base 已声明插槽",
+    "preview.kinds 必须覆盖 normal/empty/error/long",
+    "Plan 只能通过 {id,version} 精确引用",
+    "missing capability 必须硬失败，不得静默降级"
+  ]
+}

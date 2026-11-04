@@ -14,6 +14,7 @@ const path = require('node:path');
 const { registryDigest, assetDigest, fileSha256 } = require('./digest.cjs');
 const {
   validateManifest,
+  validateFrontendPackManifest,
   validateBaseManifest,
   validatePath,
   fail,
@@ -103,7 +104,7 @@ function loadRegistry(options) {
         errors.push({ code: 'REGISTRY_ENTRY_INVALID', path: entryPath + '.' + field, message: '缺少字段 ' + field });
       }
     }
-    if (!['base', 'ui-block', 'feature-pack', 'recipe'].includes(entry.kind)) {
+    if (!['base', 'ui-block', 'feature-pack', 'frontend-pack', 'recipe'].includes(entry.kind)) {
       errors.push({ code: 'REGISTRY_ENTRY_INVALID', path: entryPath + '.kind', message: '未知资产类型 ' + entry.kind });
       continue;
     }
@@ -148,7 +149,9 @@ function loadRegistry(options) {
     const manifest = manifestRead.value;
     const validation = entry.kind === 'base'
       ? validateBaseManifest(manifest)
-      : validateManifest(manifest, { expectedKind: entry.kind });
+      : entry.kind === 'frontend-pack'
+        ? validateFrontendPackManifest(manifest)
+        : validateManifest(manifest, { expectedKind: entry.kind });
     if (!validation.ok) {
       errors.push({ ...validation, assetId: entry.id });
       continue;

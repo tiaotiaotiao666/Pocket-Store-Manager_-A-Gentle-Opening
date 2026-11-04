@@ -78,10 +78,11 @@ $RECYCLE.BIN/
 generated-projects/
 
 # ---------- AI 工具本地状态 ----------
-# 只放行计划与说明文档；索引库、临时文件、个人配置仍留在本机
+# 只放行计划、说明文档与可复用 skill；索引库、临时文件、个人配置仍留在本机
 .codeartsdoer/*
 !.codeartsdoer/AGENTS.md
 !.codeartsdoer/plans/
+!.codeartsdoer/skills/
 .merkle-snapshot.json
 
 # ---------- 验证临时产物 ----------

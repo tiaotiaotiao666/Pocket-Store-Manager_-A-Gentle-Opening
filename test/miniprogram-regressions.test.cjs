@@ -750,6 +750,7 @@ test('STAFF 不能创建商品，OWNER 重复提交只发送一次请求', async
         categoryId: 'cat_1',
         name: '新商品',
         description: '商品描述',
+        imageUrl: '',
         priceCents: 1230,
         available: false,
       },

@@ -2,6 +2,8 @@ import { Transform } from 'class-transformer';
 import type { TransformFnParams } from 'class-transformer';
 import {
   IsBoolean,
+  IsArray,
+  ArrayMaxSize,
   IsDateString,
   IsIn,
   IsInt,
@@ -74,6 +76,11 @@ export class CreateProductDto extends ProductPriceDto {
   description?: string;
 
   @ValidateIf(isPresent)
+  @IsString()
+  @MaxLength(512, { message: '商品图片地址最长 512 个字符' })
+  imageUrl?: string;
+
+  @ValidateIf(isPresent)
   @IsBoolean({ message: 'available 必须是布尔值' })
   available?: boolean;
 
@@ -84,9 +91,127 @@ export class CreateProductDto extends ProductPriceDto {
   sortOrder?: number;
 }
 
+export class UpdateProductDto {
+  @IsDateString({}, { message: 'expectedUpdatedAt 必须是合法时间' })
+  expectedUpdatedAt!: string;
+
+  @ValidateIf(isPresent)
+  @Transform(trimString)
+  @IsString()
+  @Length(1, 48, { message: '商品名称 1–48 个字符' })
+  name?: string;
+
+  @ValidateIf(isPresent)
+  @IsString()
+  categoryId?: string;
+
+  @ValidateIf(isPresent)
+  @IsString()
+  @MaxLength(255, { message: '商品描述最长 255 个字符' })
+  description?: string;
+
+  @ValidateIf(isPresent)
+  @IsString()
+  @MaxLength(512, { message: '商品图片地址最长 512 个字符' })
+  imageUrl?: string;
+
+  @ValidateIf(isPresent)
+  @IsInt()
+  @Min(1)
+  @Max(999999)
+  priceCents?: number;
+
+  @ValidateIf(isPresent)
+  @IsBoolean()
+  available?: boolean;
+
+  @ValidateIf(isPresent)
+  @IsInt()
+  @Min(0)
+  @Max(999)
+  sortOrder?: number;
+}
+
 export class UpdateProductPriceDto extends ProductPriceDto {
   @IsDateString({}, { message: 'expectedUpdatedAt 必须是合法时间' })
   expectedUpdatedAt!: string;
+}
+
+export class CreatePosterDto {
+  @Transform(trimString)
+  @IsString()
+  @Length(1, 64)
+  productId!: string;
+
+  @ValidateIf(isPresent)
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(48)
+  title?: string;
+
+  @ValidateIf(isPresent)
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(96)
+  subtitle?: string;
+
+  @ValidateIf(isPresent)
+  @IsString()
+  @MaxLength(512)
+  imageUrl?: string;
+
+  @ValidateIf(isPresent)
+  @IsBoolean()
+  active?: boolean;
+
+  @ValidateIf(isPresent)
+  @IsInt()
+  @Min(0)
+  @Max(999)
+  sortOrder?: number;
+}
+
+export class UpdatePosterDto {
+  @ValidateIf(isPresent)
+  @Transform(trimString)
+  @IsString()
+  @Length(1, 64)
+  productId?: string;
+
+  @ValidateIf(isPresent)
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(48)
+  title?: string;
+
+  @ValidateIf(isPresent)
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(96)
+  subtitle?: string;
+
+  @ValidateIf(isPresent)
+  @IsString()
+  @MaxLength(512)
+  imageUrl?: string;
+
+  @ValidateIf(isPresent)
+  @IsBoolean()
+  active?: boolean;
+
+  @ValidateIf(isPresent)
+  @IsInt()
+  @Min(0)
+  @Max(999)
+  sortOrder?: number;
+}
+
+export class ReorderPostersDto {
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @Length(1, 64, { each: true })
+  ids!: string[];
 }
 
 export class CreateCategoryDto {

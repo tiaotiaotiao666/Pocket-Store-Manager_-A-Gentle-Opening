@@ -25,6 +25,23 @@ export interface PublicTablesView {
   tables: PublicTableView[];
 }
 
+export interface PublicPosterView {
+  id: string;
+  productId: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  sortOrder: number;
+  product: {
+    id: string;
+    name: string;
+    description: string;
+    priceCents: number;
+    imageUrl: string;
+    available: boolean;
+  };
+}
+
 @Injectable()
 export class StoresService {
   constructor(private readonly prisma: PrismaService) {}
@@ -73,5 +90,36 @@ export class StoresService {
       storeId,
       tables: tables.map((table) => ({ id: table.id, name: table.name, sortOrder: table.sortOrder })),
     };
+  }
+
+  async listPublicPosters(storeId: string): Promise<PublicPosterView[]> {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true },
+    });
+    if (!store) {
+      throw new AppError(404, 'STORE_NOT_FOUND', ErrorMessages.STORE_NOT_FOUND, { storeId });
+    }
+    const posters = await this.prisma.storePoster.findMany({
+      where: { storeId, active: true, product: { available: true } },
+      include: { product: true },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    });
+    return posters.map((poster) => ({
+      id: poster.id,
+      productId: poster.productId,
+      title: poster.title,
+      subtitle: poster.subtitle,
+      imageUrl: poster.imageUrl || poster.product.imageUrl,
+      sortOrder: poster.sortOrder,
+      product: {
+        id: poster.product.id,
+        name: poster.product.name,
+        description: poster.product.description,
+        priceCents: poster.product.priceCents,
+        imageUrl: poster.product.imageUrl,
+        available: poster.product.available,
+      },
+    }));
   }
 }

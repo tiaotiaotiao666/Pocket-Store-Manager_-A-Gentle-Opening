@@ -29,11 +29,11 @@ test('端到端生成完整工程并注册全部页面', () => {
   const graph = buildGraph();
   const result = buildProjectFiles(graph, { mode: 'development', projectName: 'emit-check' });
   assert.strictEqual(result.ok, true, JSON.stringify(result));
-  assert.strictEqual(result.stats.pages, 7);
+  assert.strictEqual(result.stats.pages, 8);
   assert.ok(result.stats.files > 100);
 
   const appJson = JSON.parse(result.files.get('app.json').toString('utf8'));
-  assert.strictEqual(appJson.pages.length, 7);
+  assert.strictEqual(appJson.pages.length, 8);
   assert.strictEqual(appJson.tabBar.list.length, 4);
   assert.ok(appJson.pages.every((page) => result.files.has(page + '.js')));
   assert.ok(appJson.pages.every((page) => result.files.has(page + '.wxml')));
@@ -46,12 +46,12 @@ test('端到端生成完整工程并注册全部页面', () => {
 test('customer 产物移除店主页面并隐藏店主入口', () => {
   const result = buildProjectFiles(buildGraph('customer'), { mode: 'development', projectName: 'emit-check', role: 'customer' });
   assert.strictEqual(result.ok, true, JSON.stringify(result));
-  assert.strictEqual(result.stats.pages, 6);
+  assert.strictEqual(result.stats.pages, 7);
   const pageFiles = [...result.files.keys()].filter((file) => file.startsWith('pages/'));
   assert.ok(pageFiles.length > 0);
   assert.ok(pageFiles.every((file) => !file.startsWith('pages/merchant-orders/')));
   const appJson = JSON.parse(result.files.get('app.json').toString('utf8'));
-  assert.strictEqual(appJson.pages.length, 6);
+  assert.strictEqual(appJson.pages.length, 7);
   assert.strictEqual(appJson.tabBar.list.length, 4);
   assert.ok(!appJson.pages.includes('pages/merchant-orders/index'));
   const mine = result.files.get('pages/mine/index.wxml').toString('utf8');

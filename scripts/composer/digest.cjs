@@ -113,6 +113,7 @@ function planDigest(plan) {
     storeProfile: plan.storeProfile || {},
     previewOnlyAck: Boolean(plan.previewOnlyAck),
     degradations: plan.degradations || [],
+    frontendPack: plan.frontendPack || null,
     presentationTokens: normalizePresentationTokens(plan.presentationTokens),
     slotOrder: normalizeSlotOrder(plan.slotOrder),
   });

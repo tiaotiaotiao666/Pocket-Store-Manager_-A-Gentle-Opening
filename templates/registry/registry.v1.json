@@ -8,14 +8,14 @@
       "version": "1.0.0",
       "kind": "recipe",
       "path": "templates/recipes/order-classic/1.0.0",
-      "integrity": "sha256:2ff120280eab87b95450d4ca7d3dd2b4dbe9eb551c1105ed78e5c24c064cfa5f"
+      "integrity": "sha256:fbcd83c21046b6c419abc76f1d98f5244fdbeb7d4421dbbd264c72280cf82748"
     },
     {
       "id": "ordering-base",
       "version": "1.0.0",
       "kind": "base",
       "path": "templates/base/ordering-base/1.0.0",
-      "integrity": "sha256:dcf4b8e516834dd66d0a71b3f92fd4bda036a1e72f30aa3ecb9464f6f5f091f8"
+      "integrity": "sha256:5cc0d0341f7b0ce2373404b7c72bd5c0af642da0663a730df1276a6e3f29a906"
     },
     {
       "id": "store-header",
@@ -43,21 +43,35 @@
       "version": "1.0.0",
       "kind": "feature-pack",
       "path": "templates/features/poster-carousel/1.0.0",
-      "integrity": "sha256:d5b668c245f1cca47aea5cacba1a685627ff57bf74c0d07afc5e7636d967f35a"
+      "integrity": "sha256:349d2e01f4c518db1de60e292fcf0bbb4b9220019256c06dff894d03db95db0e"
+    },
+    {
+      "id": "warm-home-menu",
+      "version": "1.0.0",
+      "kind": "frontend-pack",
+      "path": "templates/frontend-packs/warm-home-menu/1.0.0",
+      "integrity": "sha256:ae3e56f4dd936fd082e3804a321c69389008f2bc4e7505eadf8268056bee4581"
+    },
+    {
+      "id": "order-warm-home",
+      "version": "1.0.0",
+      "kind": "recipe",
+      "path": "templates/recipes/order-warm-home/1.0.0",
+      "integrity": "sha256:5629c6dc7499e0b941516ed252c12ad921e6168d813032ce02ff1a6aa3fda1b8"
     },
     {
       "id": "order-poster",
       "version": "1.0.0",
       "kind": "recipe",
       "path": "templates/recipes/order-poster/1.0.0",
-      "integrity": "sha256:9fb7e3e2b7af525cb06a1769ef3bd7780cf6f9f63c46f3c873b1f10fd0d2600a"
+      "integrity": "sha256:04925049851735549676a9caaf3c14c4669972f38c506c143342211d1dff27c3"
     },
     {
       "id": "order-classic-candidate",
       "version": "0.1.0",
       "kind": "recipe",
       "path": "templates/recipes/order-classic-candidate/0.1.0",
-      "integrity": "sha256:395a93ddb2a0c95287ff74ee491644ea4cc635c26fd23fcc7517191df2ac72b7"
+      "integrity": "sha256:c28bb96319b2002ec4b165b0970262413fb31848a5fc60bb880eea635e856be2"
     }
   ]
 }

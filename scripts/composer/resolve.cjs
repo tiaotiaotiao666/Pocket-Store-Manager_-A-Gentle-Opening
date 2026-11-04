@@ -10,6 +10,7 @@
  * - 相同输入必须得到相同 graph（排序在输出时固定）。
  */
 
+const fs = require('node:fs');
 const path = require('node:path');
 
 const { getAsset } = require('./registry.cjs');
@@ -20,6 +21,7 @@ const {
   normalizePresentationTokens,
   normalizeSlotOrder,
   presentationSlotDataKey,
+  FRONTEND_PACK_PAGE_JSON_KEYS,
   fail,
   ok,
 } = require('./schema.cjs');
@@ -129,6 +131,32 @@ function resolvePlan(planInput, loaded, options) {
   (plan.components || []).forEach((component) => references.push({ id: component.id, version: component.version, requiredBy: 'components' }));
   (plan.features || []).forEach((feature) => references.push({ id: feature.id, version: feature.version, requiredBy: 'features' }));
 
+  // FrontendPack：受控视图包。只允许精确引用，不参与插槽落位，也不允许被静默降级。
+  let frontendPackAsset = null;
+  if (plan.frontendPack) {
+    const pack = getAsset(loaded, plan.frontendPack.id, plan.frontendPack.version);
+    if (!pack.ok) {
+      return fail('FRONTEND_PACK_MISSING', 'frontendPack', 'FrontendPack 未登记：' + plan.frontendPack.id + '@' + plan.frontendPack.version, {
+        id: plan.frontendPack.id,
+        version: plan.frontendPack.version,
+      });
+    }
+    if (pack.asset.kind !== 'frontend-pack') {
+      return fail('ASSET_KIND_MISMATCH', 'frontendPack', 'frontendPack 引用的资产不是 frontend-pack', {
+        id: plan.frontendPack.id,
+        kind: pack.asset.kind,
+      });
+    }
+    frontendPackAsset = pack.asset;
+    requested.set(plan.frontendPack.id + '@' + plan.frontendPack.version, frontendPackAsset);
+    order.push({
+      asset: frontendPackAsset,
+      requiredBy: 'frontendPack',
+      requestedVersion: plan.frontendPack.version,
+      options: {},
+    });
+  }
+
   for (const reference of references) {
     const asset = pushRequest(reference.id, reference.version, reference.requiredBy);
     if (asset && !asset.ok && asset.code) return asset;
@@ -234,6 +262,80 @@ function resolvePlan(planInput, loaded, options) {
   for (const page of plan.pages) {
     if (!basePages.has(page.pageId)) {
       return fail('PAGE_NOT_IN_BASE', 'pages', 'Plan 页面未在 Base 声明：' + page.pageId, { pageId: page.pageId });
+    }
+  }
+
+  if (frontendPackAsset) {
+    const packPages = frontendPackAsset.manifest.pages || [];
+    for (const pageId of packPages) {
+      if (!planPageIds.includes(pageId)) {
+        return fail('FRONTEND_PACK_PAGE_NOT_IN_PLAN', 'frontendPack', 'FrontendPack 页面未在 Plan 中启用：' + pageId, { pageId });
+      }
+      if (!basePages.has(pageId)) {
+        return fail('FRONTEND_PACK_PAGE_NOT_IN_BASE', 'frontendPack', 'FrontendPack 页面未在 Base 声明：' + pageId, { pageId });
+      }
+    }
+    for (const slotId of frontendPackAsset.manifest.requiresSlots || []) {
+      const slot = base.manifest.slots.filter((item) => item.slotId === slotId)[0];
+      if (!slot) {
+        return fail('FRONTEND_PACK_SLOT_UNKNOWN', 'frontendPack', 'FrontendPack 依赖 Base 未声明的插槽：' + slotId, { slotId });
+      }
+      if (!packPages.includes(slot.pageId)) {
+        return fail('FRONTEND_PACK_SLOT_PAGE_NOT_COVERED', 'frontendPack', 'FrontendPack 未覆盖插槽所在页面：' + slot.pageId, {
+          slotId,
+          pageId: slot.pageId,
+        });
+      }
+    }
+
+    const packRoot = path.join(frontendPackAsset.dir, frontendPackAsset.manifest.entry.path);
+    for (const pageId of packPages) {
+      const baseJsonPath = path.join(base.dir, base.manifest.entry.root, 'pages', pageId, 'index.json');
+      let baseJson;
+      try {
+        baseJson = JSON.parse(fs.readFileSync(baseJsonPath, 'utf8'));
+      } catch (error) {
+        return fail('FRONTEND_PACK_BASE_PAGE_UNREADABLE', 'frontendPack', 'Base 页面配置无法读取：' + pageId, { pageId });
+      }
+      const packJsonPath = path.join(packRoot, 'pages', pageId, 'index.json');
+      let packJson;
+      try {
+        packJson = JSON.parse(fs.readFileSync(packJsonPath, 'utf8'));
+      } catch (error) {
+        return fail('FRONTEND_PACK_PAGE_JSON_INVALID', 'frontendPack', 'FrontendPack 页面 JSON 无法解析：' + pageId, { pageId, error: error.message });
+      }
+      const allowedJsonKeys = new Set(FRONTEND_PACK_PAGE_JSON_KEYS);
+      for (const key of Object.keys(packJson)) {
+        if (!allowedJsonKeys.has(key)) {
+          return fail('FRONTEND_PACK_JSON_FIELD_FORBIDDEN', 'frontendPack', 'FrontendPack 页面 JSON 不允许字段：' + key, { pageId, key });
+        }
+      }
+      const baseUsing = baseJson.usingComponents || {};
+      const packUsing = packJson.usingComponents || {};
+      for (const [tag, target] of Object.entries(packUsing)) {
+        if (!Object.prototype.hasOwnProperty.call(baseUsing, tag)) {
+          return fail('FRONTEND_PACK_COMPONENT_UNKNOWN', 'frontendPack', 'FrontendPack 不得新增 Base 未声明的组件：' + tag, { pageId, tag });
+        }
+        if (baseUsing[tag] !== target) {
+          return fail('FRONTEND_PACK_COMPONENT_REMAP', 'frontendPack', 'FrontendPack 不得改绑 Base 组件路径：' + tag, { pageId, tag, base: baseUsing[tag], pack: target });
+        }
+      }
+
+      const wxml = fs.readFileSync(path.join(packRoot, 'pages', pageId, 'index.wxml'), 'utf8');
+      for (const slotId of frontendPackAsset.manifest.requiresSlots || []) {
+        const slot = base.manifest.slots.filter((item) => item.slotId === slotId)[0];
+        if (!slot || slot.pageId !== pageId) continue;
+        for (const anchor of [
+          '<!-- @slot:' + slotId + ' -->',
+          '<!-- @slot-fallback:' + slotId + ' -->',
+          '<!-- @slot-fallback:' + slotId + ':end -->',
+          '<!-- @slot:' + slotId + ':end -->',
+        ]) {
+          if (wxml.split(anchor).length - 1 !== 1) {
+            return fail('FRONTEND_PACK_SLOT_ANCHOR_MISSING', 'frontendPack', 'FrontendPack 页面缺少或重复插槽锚点：' + slotId, { pageId, slotId, anchor });
+          }
+        }
+      }
     }
   }
 
@@ -380,7 +482,10 @@ function resolvePlan(planInput, loaded, options) {
   const themeResult = validateThemeTokens(plan.themeTokens, base.manifest.themeTokens);
   if (!themeResult.ok) return themeResult;
 
-  const previewOnly = assets.filter((asset) => asset.manifest.release.stage === 'preview-only').map((asset) => asset.id).sort();
+  const previewOnly = assets
+    .filter((asset) => asset.kind !== 'frontend-pack' && asset.manifest.release.stage === 'preview-only')
+    .map((asset) => asset.id)
+    .sort();
   if (previewOnly.length > 0 && plan.previewOnlyAck !== true) {
     return fail('PREVIEW_ONLY_NOT_ACKNOWLEDGED', 'previewOnlyAck', '组合含 preview-only 资产，需显式确认', { assets: previewOnly });
   }
@@ -388,7 +493,7 @@ function resolvePlan(planInput, loaded, options) {
     return fail('PREVIEW_ONLY_IN_ONLINE_RECIPE', 'features', 'preview-only 资产不得进入 online Recipe', { assets: previewOnly });
   }
 
-  const capabilitySet = assets.map((asset) => asset.id).sort();
+  const capabilitySet = assets.filter((asset) => asset.kind !== 'frontend-pack').map((asset) => asset.id).sort();
   const sourceDigests = [];
   const entryFiles = base.manifest.entry.files.map((file) => ({ assetId: base.manifest.identity.id, root: base.dir, relative: base.manifest.entry.root, file }));
   assets.forEach((asset) => {
@@ -428,6 +533,15 @@ function resolvePlan(planInput, loaded, options) {
     sourceDigests,
     pageIds: plan.pages.map((page) => page.pageId),
     manifestDigests: assets.map((asset) => ({ id: asset.id, version: asset.version, kind: asset.kind, digest: assetDigest(asset) })),
+    // 受控视图包：Base 之上的页面视图覆盖层；没有则为 null。
+    frontendPack: frontendPackAsset
+      ? {
+        asset: frontendPackAsset,
+        manifest: frontendPackAsset.manifest,
+        pages: [...(frontendPackAsset.manifest.pages || [])],
+        root: path.join(frontendPackAsset.dir, frontendPackAsset.manifest.entry.path),
+      }
+      : null,
   };
 }
 

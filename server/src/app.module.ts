@@ -13,6 +13,7 @@ import { GenerationModule } from './generation/generation.module';
 import { HealthController } from './health.controller';
 import { ImportsModule } from './imports/imports.module';
 import { MerchantModule } from './merchant/merchant.module';
+import { MediaModule } from './media/media.module';
 import { OrdersModule } from './orders/orders.module';
 import { ReadyController } from './ready.controller';
 import { StoresModule } from './stores/stores.module';
@@ -30,6 +31,7 @@ import { StoresModule } from './stores/stores.module';
     StoresModule,
     OrdersModule,
     MerchantModule,
+    MediaModule,
     ImportsModule,
     GenerationModule,
     AgentModule,

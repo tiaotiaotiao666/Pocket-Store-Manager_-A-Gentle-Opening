@@ -86,6 +86,7 @@ model Store {
 
   categories      Category[]
   products        Product[]
+  posters         StorePoster[]
   tables          StoreTable[]
   members         StoreMember[]
   orders          Order[]
@@ -139,10 +140,30 @@ model Product {
 
   store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  posters  StorePoster[]
 
   @@index([storeId, categoryId, sortOrder])
   @@index([storeId, available])
   @@map("products")
+}
+
+model StorePoster {
+  id        String   @id @db.VarChar(64)
+  storeId   String   @map("store_id") @db.VarChar(64)
+  productId String   @map("product_id") @db.VarChar(64)
+  title     String   @db.VarChar(48)
+  subtitle  String   @db.VarChar(96) @default("")
+  imageUrl  String   @map("image_url") @db.VarChar(512) @default("")
+  active    Boolean  @default(true)
+  sortOrder Int      @map("sort_order") @default(0)
+  createdAt DateTime @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @map("updated_at") @db.DateTime(3)
+
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, active, sortOrder])
+  @@map("store_posters")
 }
 
 model StoreTable {

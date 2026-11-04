@@ -56,7 +56,12 @@ Component({
       if (!Number.isInteger(index)) return;
       const slide = this.data.slides[index];
       if (!slide) return;
-      this.triggerEvent('select', { index, title: slide.title || '' });
+      this.triggerEvent('select', {
+        index,
+        title: slide.title || '',
+        posterId: slide.id || '',
+        productId: slide.productId || (slide.product && slide.product.id) || '',
+      });
     },
 
     onImageError(event) {

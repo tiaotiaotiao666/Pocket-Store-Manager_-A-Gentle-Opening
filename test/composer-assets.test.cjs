@@ -27,9 +27,9 @@ test('Base 入口四件套与主题入口存在', () => {
   assert.ok(!/--store-[a-z-]+\s*:/.test(read(path.join(SRC_DIR, 'app.wxss'))), 'app.wxss 不得硬编码 --store-* Token');
 });
 
-test('app.json 页面与磁盘一致且覆盖 7 页闭环', () => {
+test('app.json 页面与磁盘一致且覆盖 8 页闭环', () => {
   const appJson = readJson(path.join(SRC_DIR, 'app.json'));
-  assert.strictEqual(appJson.pages.length, 7);
+  assert.strictEqual(appJson.pages.length, 8);
   appJson.pages.forEach((page) => {
     assert.ok(fs.existsSync(path.join(SRC_DIR, page + '.js')), page + ' 缺少 js');
     assert.ok(fs.existsSync(path.join(SRC_DIR, page + '.wxml')), page + ' 缺少 wxml');
@@ -41,9 +41,9 @@ test('app.json 页面与磁盘一致且覆盖 7 页闭环', () => {
   assert.deepStrictEqual([...appJson.pages].sort(), diskPages.sort());
 });
 
-test('Base Manifest 声明 7 页、7 个主题 Token 与 4 个插槽', () => {
+test('Base Manifest 声明 8 页、7 个主题 Token 与 4 个插槽', () => {
   const manifest = readJson(path.join(BASE_DIR, 'manifest.json'));
-  assert.strictEqual(manifest.pages.length, 7);
+  assert.strictEqual(manifest.pages.length, 8);
   assert.ok(manifest.themeTokens.length >= 4);
   assert.ok(manifest.themeTokens.some((token) => token.key === 'textColor' && token.contrastWith === 'pageBackground'));
   assert.deepStrictEqual(manifest.slots.map((slot) => slot.slotId).sort(), ['home-hero', 'home-marketing', 'menu-aside', 'menu-hero']);
@@ -165,9 +165,10 @@ test('可删除性：无可选 Block 时产物仍满足 Base 必需页，且关�
   });
 });
 
-test('M7 首批资产目录完整：3 UI Block + 1 Feature Pack + 3 Recipe', () => {
+test('M7 首批资产目录完整：3 UI Block + 1 Feature Pack + 1 FrontendPack + 4 Recipe', () => {
   const componentsRoot = path.join(REPO, 'templates', 'components');
   const featuresRoot = path.join(REPO, 'templates', 'features');
+  const frontendPacksRoot = path.join(REPO, 'templates', 'frontend-packs');
   const recipesRoot = path.join(REPO, 'templates', 'recipes');
 
   const componentManifests = [];
@@ -193,6 +194,16 @@ test('M7 首批资产目录完整：3 UI Block + 1 Feature Pack + 3 Recipe', () 
   });
   assert.deepStrictEqual(featureManifests.map((file) => path.basename(path.dirname(path.dirname(file)))), ['poster-carousel']);
 
+  const frontendPackManifests = [];
+  fs.readdirSync(frontendPacksRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).forEach((assetDir) => {
+    fs.readdirSync(path.join(frontendPacksRoot, assetDir.name), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .forEach((versionDir) => {
+        frontendPackManifests.push(path.join(frontendPacksRoot, assetDir.name, versionDir.name, 'manifest.json'));
+      });
+  });
+  assert.deepStrictEqual(frontendPackManifests.map((file) => path.basename(path.dirname(path.dirname(file)))), ['warm-home-menu']);
+
   const recipeFiles = [];
   fs.readdirSync(recipesRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).forEach((recipeDir) => {
     fs.readdirSync(path.join(recipesRoot, recipeDir.name), { withFileTypes: true })
@@ -203,7 +214,7 @@ test('M7 首批资产目录完整：3 UI Block + 1 Feature Pack + 3 Recipe', () 
   });
   assert.deepStrictEqual(
     recipeFiles.map((file) => path.basename(path.dirname(path.dirname(file)))).sort(),
-    ['order-classic', 'order-classic-candidate', 'order-poster'],
+    ['order-classic', 'order-classic-candidate', 'order-poster', 'order-warm-home'],
   );
 });
 

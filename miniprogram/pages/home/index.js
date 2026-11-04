@@ -2,6 +2,7 @@ const config = require('../../config/env.js');
 const scene = require('../../domain/scene.js');
 const orderStatus = require('../../domain/orderStatus.js');
 const orderView = require('../../domain/orderView.js');
+const money = require('../../domain/money.js');
 const errorText = require('../../domain/errorText.js');
 const platform = require('../../services/platform.js');
 const storeService = require('../../services/store.js');
@@ -17,6 +18,7 @@ Page({
     errorAction: '',
     requestId: '',
     store: null,
+    posters: [],
     visit: null,
     mode: config.FULFILLMENT_TYPES.TAKEAWAY,
     tableName: '',
@@ -69,9 +71,20 @@ Page({
     this.setData({ loading: true, error: '' });
     try {
       const store = await storeService.getStore(visit.storeId);
+      let posters = [];
+      try {
+        const posterResponse = await storeService.getPosters(visit.storeId);
+        posters = (Array.isArray(posterResponse) ? posterResponse : []).map((poster) => ({
+          ...poster,
+          priceText: money.formatAmount(poster.product && poster.product.priceCents),
+        }));
+      } catch (posterError) {
+        posters = [];
+      }
       const nextVisit = visitStore.applyStore(store);
       this.setData({
         store,
+        posters,
         visit: nextVisit,
         mode: nextVisit.fulfillmentType,
         tableName: nextVisit.tableName,
@@ -182,6 +195,18 @@ Page({
     if (typeof wx !== 'undefined' && wx.navigateTo) {
       wx.navigateTo({ url: '/pages/merchant-orders/index?storeId=' + encodeURIComponent(this.data.merchantStoreId) });
     }
+  },
+
+  onSelectPoster(event) {
+    const productId = event.detail && event.detail.productId;
+    const storeId = (this.data.visit && this.data.visit.storeId) || config.DEFAULT_STORE_ID;
+    if (!productId || typeof wx === 'undefined' || !wx.navigateTo) {
+      return;
+    }
+    wx.navigateTo({
+      url: '/pages/product-detail/index?storeId=' + encodeURIComponent(storeId) +
+        '&productId=' + encodeURIComponent(productId),
+    });
   },
 
   onOpenOrder(event) {

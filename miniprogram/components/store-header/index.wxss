@@ -5,6 +5,10 @@
   overflow: hidden;
   border-radius: 32rpx;
   padding: 40rpx 36rpx 44rpx;
+  /* 尺寸档位来自 Composer 输出的 --store-home-hero-min-height（rpx，md=190rpx）。
+     兜底值 190rpx 即原设计基线，未重新导出的旧工程保持原视觉。 */
+  min-height: var(--store-home-hero-min-height, 190rpx);
+
   background: linear-gradient(135deg, var(--color-text) 0%, #46403a 58%, #6b5540 100%);
   color: var(--color-surface);
   box-shadow: 0 16rpx 40rpx rgba(47, 42, 37, 0.22);
@@ -13,6 +17,8 @@
 .store-header--compact {
   padding: 28rpx 28rpx 30rpx;
   border-radius: 24rpx;
+  /* 菜单页紧凑头部是横向信息条，不参与 hero 尺寸档位，避免被最小高度撑高。 */
+  min-height: 0;
   box-shadow: 0 8rpx 24rpx rgba(47, 42, 37, 0.16);
 }
 

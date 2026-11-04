@@ -21,7 +21,7 @@ const path = require('node:path');
 
 const { loadRegistry, REPO_ROOT } = require('./composer/registry.cjs');
 const { registryDigest, assetDigest } = require('./composer/digest.cjs');
-const { checkComponentImplementation } = require('./composer/manifest-impl-check.cjs');
+const { checkComponentImplementation, checkFrontendPackImplementation } = require('./composer/manifest-impl-check.cjs');
 const { scanSources } = require('./composer/safety.cjs');
 
 function printError(code, message, details) {
@@ -189,7 +189,9 @@ function main() {
       ? path.join(asset.dir, asset.manifest.entry.root)
       : path.join(asset.dir, asset.manifest.entry.path);
     if (asset.kind !== 'base') {
-      const impl = checkComponentImplementation(asset.manifest, entryRoot);
+      const impl = asset.kind === 'frontend-pack'
+        ? checkFrontendPackImplementation(asset.manifest, entryRoot)
+        : checkComponentImplementation(asset.manifest, entryRoot);
       if (!impl.ok) errors.push({ code: impl.code, message: impl.message, assetId: asset.id, details: impl.details });
     }
     const scan = scanSources([asset.dir], { mode: asset.kind === 'base' ? 'development' : 'production' });
@@ -224,6 +226,7 @@ function main() {
     ' · base ' + (counts.base || 0) +
     ' / ui-block ' + (counts['ui-block'] || 0) +
     ' / feature-pack ' + (counts['feature-pack'] || 0) +
+    ' / frontend-pack ' + (counts['frontend-pack'] || 0) +
     ' / recipe ' + (counts.recipe || 0) +
     '（direct ' + directRecipes + '）');
   console.log('  ✓ 摘要冻结、Manifest、入口、预览、边界、晋升证据与扩展顺序均通过');

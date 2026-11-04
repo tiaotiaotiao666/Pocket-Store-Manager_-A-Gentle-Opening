@@ -23,6 +23,19 @@ const MAX_JSON_BYTES = 64 * 1024;
 /** 三档组件尺寸；与 `C-SIZE-TOKENS@1` 的 `sm|md|lg` 完全一致。 */
 const SIZE_STEPS = Object.freeze(['sm', 'md', 'lg']);
 
+/** FrontendPack 的页面文件白名单：只允许视图三件套，不允许 js。 */
+const FRONTEND_PACK_PAGE_FILE = /^pages\/([a-z][a-z0-9-]*)\/index\.(wxml|wxss|json)$/;
+
+/** FrontendPack 页面 JSON 允许覆盖的键；usingComponents 仍受 Base 页面白名单约束。 */
+const FRONTEND_PACK_PAGE_JSON_KEYS = Object.freeze([
+  'navigationBarTitleText',
+  'enablePullDownRefresh',
+  'disableScroll',
+  'backgroundColor',
+  'backgroundTextStyle',
+  'usingComponents',
+]);
+
 /**
  * Plan 顶层 `presentationTokens` 的允许键（C-PLAN-PRESENTATION@1）。
  * 只允许两组尺寸；`carousel` 档位走海报 `props.size`，不得写进这里，避免双写。
@@ -93,6 +106,8 @@ const STORE_CONFIG_ALLOWED = {
     'generatorVersion',
     'planDigest',
     'mode',
+    'frontendPackId',
+    'frontendPackVersion',
     'versionGaps',
   ],
   store: ['id', 'name', 'category', 'address', 'phone', 'notes', 'businessHours'],
@@ -477,6 +492,22 @@ function validatePlan(plan) {
   error = checkExactVersion(plan.planVersion, 'planVersion');
   if (error) return error;
 
+  // 可选 FrontendPack（受控视图包）：只允许 id/version 精确引用，禁止内联源码。
+  if (plan.frontendPack !== undefined) {
+    if (!isPlainObject(plan.frontendPack)) return fail('FIELD_TYPE', 'frontendPack', 'frontendPack 必须是对象');
+    for (const key of Object.keys(plan.frontendPack)) {
+      if (key !== 'id' && key !== 'version') {
+        return fail('PLAN_FIELD_FORBIDDEN', 'frontendPack.' + key, 'frontendPack 只允许 id 与 version', { key });
+      }
+    }
+    error = requiredFields(plan.frontendPack, ['id', 'version'], 'frontendPack');
+    if (error) return error;
+    error = checkId(plan.frontendPack.id, 'frontendPack.id', 'FrontendPack ID');
+    if (error) return error;
+    error = checkExactVersion(plan.frontendPack.version, 'frontendPack.version');
+    if (error) return error;
+  }
+
   if (!isPlainObject(plan.baseTemplate)) return fail('FIELD_TYPE', 'baseTemplate', '应为对象');
   error = requiredFields(plan.baseTemplate, ['id', 'version'], 'baseTemplate');
   if (error) return error;
@@ -756,6 +787,143 @@ function validateManifest(manifest, options) {
 
   if (opts.expectedKind && manifest.kind !== opts.expectedKind) {
     return fail('MANIFEST_KIND_INVALID', 'kind', '资产类型必须为 ' + opts.expectedKind);
+  }
+
+  return ok();
+}
+
+function validateFrontendPackManifest(manifest) {
+  if (!isPlainObject(manifest)) return fail('FRONTEND_PACK_MANIFEST_UNSUPPORTED', '$', 'FrontendPack Manifest 必须是对象');
+  if (manifest.schemaVersion !== SCHEMA_VERSIONS.frontendPack) {
+    return fail('FRONTEND_PACK_MANIFEST_UNSUPPORTED', 'schemaVersion', 'FrontendPack Manifest 版本不受支持：' + manifest.schemaVersion);
+  }
+  const sizeError = checkJsonSize(manifest, '$');
+  if (sizeError) return sizeError;
+
+  const forbidden = detectForbiddenKeysWithCode(manifest, 'FRONTEND_PACK_FIELD_FORBIDDEN', { keys: PLAN_FORBIDDEN });
+  if (forbidden) return forbidden;
+
+  const missing = requiredFields(manifest, [
+    'schemaVersion',
+    'identity',
+    'kind',
+    'displayName',
+    'entry',
+    'pages',
+    'boundary',
+    'compatibility',
+    'requiresSlots',
+    'preview',
+    'release',
+  ], '$');
+  if (missing) return missing;
+
+  if (!isPlainObject(manifest.identity)) return fail('FIELD_TYPE', 'identity', 'identity 必须是对象');
+  let error = requiredFields(manifest.identity, ['id', 'version'], 'identity');
+  if (error) return error;
+  error = checkId(manifest.identity.id, 'identity.id', 'FrontendPack ID');
+  if (error) return error;
+  error = checkExactVersion(manifest.identity.version, 'identity.version');
+  if (error) return error;
+
+  if (manifest.kind !== 'frontend-pack') {
+    return fail('FRONTEND_PACK_MANIFEST_INVALID', 'kind', 'kind 必须是 frontend-pack');
+  }
+  error = checkString(manifest.displayName, 'displayName', { maxLength: 48 });
+  if (error) return error;
+
+  if (!isPlainObject(manifest.entry)) return fail('FIELD_TYPE', 'entry', 'entry 必须是对象');
+  error = requiredFields(manifest.entry, ['path', 'files', 'assets'], 'entry');
+  if (error) return error;
+  error = validatePath(manifest.entry.path, { path: 'entry.path' });
+  if (error) return error;
+  if (!Array.isArray(manifest.entry.files) || manifest.entry.files.length === 0) {
+    return fail('ENTRY_MISSING', 'entry.files', 'entry.files 必须是非空数组');
+  }
+  const declaredFiles = new Set();
+  for (let index = 0; index < manifest.entry.files.length; index += 1) {
+    const file = manifest.entry.files[index];
+    error = validatePath(file, { path: 'entry.files[' + index + ']' });
+    if (error) return error;
+    if (!FRONTEND_PACK_PAGE_FILE.test(file)) {
+      return fail('FRONTEND_PACK_SOURCE_FORBIDDEN', 'entry.files[' + index + ']', 'FrontendPack 只允许 pages/<pageId>/index.wxml|wxss|json：' + file);
+    }
+    declaredFiles.add(file);
+  }
+  if (!Array.isArray(manifest.entry.assets)) return fail('FIELD_TYPE', 'entry.assets', 'entry.assets 必须是数组');
+  for (let index = 0; index < manifest.entry.assets.length; index += 1) {
+    error = validatePath(manifest.entry.assets[index], { path: 'entry.assets[' + index + ']' });
+    if (error) return error;
+  }
+
+  if (!Array.isArray(manifest.pages) || manifest.pages.length === 0) {
+    return fail('FIELD_TYPE', 'pages', 'pages 必须是非空数组');
+  }
+  const seenPages = new Set();
+  for (let index = 0; index < manifest.pages.length; index += 1) {
+    const pageId = manifest.pages[index];
+    error = checkId(pageId, 'pages[' + index + ']', 'pageId');
+    if (error) return error;
+    if (seenPages.has(pageId)) return fail('PAGE_DUPLICATED', 'pages[' + index + ']', '页面重复：' + pageId);
+    seenPages.add(pageId);
+    for (const extension of ['wxml', 'wxss', 'json']) {
+      const expected = 'pages/' + pageId + '/index.' + extension;
+      if (!declaredFiles.has(expected)) {
+        return fail('FRONTEND_PACK_PAGE_FILE_MISSING', 'entry.files', '页面缺少视图文件：' + expected);
+      }
+    }
+  }
+
+  if (!isPlainObject(manifest.compatibility)) return fail('FIELD_TYPE', 'compatibility', 'compatibility 必须是对象');
+  error = requiredFields(manifest.compatibility, ['baseRange', 'minWechatLib', 'apiContract'], 'compatibility');
+  if (error) return error;
+  error = checkString(manifest.compatibility.baseRange, 'compatibility.baseRange', {
+    pattern: /^\^\d+\.\d+\.\d+$/,
+    patternCode: 'BASE_VERSION_INCOMPATIBLE',
+  });
+  if (error) return error;
+  error = checkExactVersion(manifest.compatibility.minWechatLib, 'compatibility.minWechatLib');
+  if (error) return error;
+  if (manifest.compatibility.apiContract !== 'storefront.v1') {
+    return fail('API_CONTRACT_INCOMPATIBLE', 'compatibility.apiContract', 'API 契约不受支持');
+  }
+
+  if (!isPlainObject(manifest.boundary)) return fail('FIELD_TYPE', 'boundary', 'boundary 必须是对象');
+  for (const key of ['allowNetwork', 'allowRoutes', 'allowGlobalState', 'allowServices']) {
+    if (manifest.boundary[key] !== false) {
+      return fail('FRONTEND_PACK_BOUNDARY_VIOLATION', 'boundary.' + key, 'FrontendPack 的 boundary.' + key + ' 必须为 false');
+    }
+  }
+
+  if (!Array.isArray(manifest.requiresSlots)) return fail('FIELD_TYPE', 'requiresSlots', 'requiresSlots 必须是数组');
+  for (let index = 0; index < manifest.requiresSlots.length; index += 1) {
+    error = checkId(manifest.requiresSlots[index], 'requiresSlots[' + index + ']', 'slotId');
+    if (error) return error;
+    if (!PRESENTATION_SLOT_IDS.includes(manifest.requiresSlots[index])) {
+      return fail('FRONTEND_PACK_SLOT_UNKNOWN', 'requiresSlots[' + index + ']', '未知插槽：' + manifest.requiresSlots[index]);
+    }
+  }
+
+  if (!isPlainObject(manifest.preview)) return fail('FIELD_TYPE', 'preview', 'preview 必须是对象');
+  error = requiredFields(manifest.preview, ['dir', 'kinds'], 'preview');
+  if (error) return error;
+  error = validatePath(manifest.preview.dir, { path: 'preview.dir' });
+  if (error) return error;
+  if (!Array.isArray(manifest.preview.kinds)) return fail('FIELD_TYPE', 'preview.kinds', 'preview.kinds 必须是数组');
+  for (const kind of ['normal', 'empty', 'error', 'long']) {
+    if (!manifest.preview.kinds.includes(kind)) {
+      return fail('PREVIEW_DATA_MISSING', 'preview.kinds', '缺少预览类型：' + kind, { missing: kind });
+    }
+  }
+
+  if (!isPlainObject(manifest.release)) return fail('FIELD_TYPE', 'release', 'release 必须是对象');
+  error = requiredFields(manifest.release, ['stage', 'knownLimits'], 'release');
+  if (error) return error;
+  if (!['online-ready', 'preview-only', 'blocked', 'candidate'].includes(manifest.release.stage)) {
+    return fail('FIELD_ENUM', 'release.stage', 'release.stage 不支持：' + manifest.release.stage);
+  }
+  if (!Array.isArray(manifest.release.knownLimits)) {
+    return fail('FIELD_TYPE', 'release.knownLimits', 'knownLimits 必须是数组');
   }
 
   return ok();
@@ -1070,6 +1238,7 @@ module.exports = {
   fail,
   validatePlan,
   validateManifest,
+  validateFrontendPackManifest,
   validateBaseManifest,
   validateSlots,
   validateLock,
@@ -1097,6 +1266,8 @@ module.exports = {
   SIZE_STEPS,
   PLAN_SIZE_TOKEN_KEYS,
   DEFAULT_PRESENTATION_TOKENS,
+  FRONTEND_PACK_PAGE_FILE,
+  FRONTEND_PACK_PAGE_JSON_KEYS,
   PRESENTATION_SLOT_PAGE_IDS,
   PRESENTATION_SLOT_DATA_KEYS,
   PRESENTATION_SLOT_IDS,

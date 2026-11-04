@@ -105,6 +105,20 @@ async function seedTables() {
   }
 }
 
+async function seedPosters() {
+  const posters = [
+    { id: 'pst_signature', productId: 'prd_beef_rice', title: '招牌柑橘牛肉饭', subtitle: '现炒牛肉，今天的主角', sortOrder: 1 },
+    { id: 'pst_chicken', productId: 'prd_chicken_rice', title: '清新柠香鸡腿饭', subtitle: '慢烤入味，清爽不腻', sortOrder: 2 },
+  ];
+  for (const poster of posters) {
+    await prisma.storePoster.upsert({
+      where: { id: poster.id },
+      update: { ...poster, storeId: STORE_ID, active: true, updatedAt: now },
+      create: { ...poster, storeId: STORE_ID, active: true, createdAt: now, updatedAt: now },
+    });
+  }
+}
+
 async function seedUsers() {
   const users = [
     { id: 'usr_demo_owner', openId: process.env.DEMO_OWNER_OPEN_ID || 'demo-owner-001', displayName: '演示店主', role: Role.OWNER },
@@ -139,12 +153,14 @@ async function main() {
   await seedStore();
   await seedCategories();
   await seedProducts();
+  await seedPosters();
   await seedTables();
   await seedUsers();
   const summary = {
     store: STORE_ID,
     categories: await prisma.category.count({ where: { storeId: STORE_ID } }),
     products: await prisma.product.count({ where: { storeId: STORE_ID } }),
+    posters: await prisma.storePoster.count({ where: { storeId: STORE_ID } }),
     tables: await prisma.storeTable.count({ where: { storeId: STORE_ID } }),
     members: await prisma.storeMember.count({ where: { storeId: STORE_ID } }),
   };

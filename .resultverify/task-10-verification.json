@@ -1,0 +1,140 @@
+{
+  "taskId": 10,
+  "plan": ".codeartsdoer/plans/agent-realtime-preview/plan.md",
+  "verdict": "FAIL",
+  "reason": "STORE_INFO 的真实 compact React DOM 在 collecting 部分 turn、reviewing 完整 turn 及手动编辑后都没有展示已接受草稿的营业时间；compact 与 full 的营业时间事实也不一致。R1 未满足，不能被全量 Node 测试和 Vite build 通过所抵消。",
+  "failedAcceptanceCases": [
+    {
+      "id": "T5-R1-DOM-PARTIAL-HOURS",
+      "input": "collecting 部分 turn：店名是夜航食堂；品类是深夜家常菜；18:00-23:00；只做堂食；夜航炒饭 23.45 元",
+      "expected": "STORE_INFO React DOM 投影五类安全草稿字段，包括 18:00-23:00",
+      "actual": "店名、品类、堂食、夜航炒饭和 ¥23.45 均更新；预览 innerText 不含 18:00-23:00；agent 状态为 collecting（还差 1 项）"
+    },
+    {
+      "id": "T5-R1-DOM-FULL-HOURS",
+      "input": "reviewing 完整 turn：店名夜航食堂总店；社区餐馆；08:30-21:30；堂食和自取；三道菜",
+      "expected": "完整 turn 后 React DOM 更新五类字段，包括 08:30-21:30",
+      "actual": "店名、品类、履约、三道菜及整数分价格均更新；预览 innerText 不含 08:30-21:30"
+    },
+    {
+      "id": "T5-R1-COMPACT-FULL-HOURS-CONSISTENCY",
+      "expected": "compact/full 仅允许商品数量和布局密度不同，营业时间事实应一致",
+      "actual": "STORE_INFO 只渲染 compact；CompactPreview 不读取 store.businessHoursText，而 full 仅 MineTab 读取并展示该字段，因此 compact 无法呈现同一营业时间事实"
+    },
+    {
+      "id": "T5-R3-MANUAL-HOURS-DOM",
+      "input": "confirm/reopen 后将营业时间手动编辑为 07:00-08:00",
+      "expected": "手动编辑按同一投影规则更新预览",
+      "actual": "compact 预览 innerText 仍不含 07:00-08:00"
+    }
+  ],
+  "runtimeEvidence": {
+    "command": "node .resultverify/cdp-runtime-check.mjs",
+    "exitCode": 0,
+    "driver": "真实 Vite 页面 + Headless Chrome 156.0.8078.74 + Chrome DevTools Protocol；无 React state 注入",
+    "url": "http://127.0.0.1:5187/",
+    "runtimeErrors": [],
+    "partialTurn": {
+      "status": "collecting / 还差 1 项",
+      "storeName": "夜航食堂",
+      "subtitle": "深夜家常菜 · 堂食",
+      "products": [{ "name": "夜航炒饭", "price": "¥23.45" }],
+      "businessHoursExpected": "18:00-23:00",
+      "businessHoursDomVisible": false
+    },
+    "fullTurn": {
+      "storeName": "夜航食堂总店",
+      "subtitle": "社区餐馆 · 堂食 · 到店自取",
+      "products": [
+        { "name": "夜航炒饭", "price": "¥23.45" },
+        { "name": "番茄炒蛋", "price": "¥16.00" },
+        { "name": "米饭", "price": "¥3.00" }
+      ],
+      "businessHoursExpected": "08:30-21:30",
+      "businessHoursDomVisible": false
+    },
+    "layouts": ["menu", "catalog", "editorial"],
+    "candidateCount": 3,
+    "tabs": ["home", "menu", "orders", "mine"],
+    "tabRetainedAfterTemplateViewModelUpdate": "我的",
+    "failureAndRetry": "模拟失败后已接受预览深相等，错误条可见；手动重试后新草稿真实更新 DOM",
+    "confirmReopen": "确认摘要包含完整草稿；reopen 后店名编辑真实更新预览",
+    "manualHoursAfterReopen": { "value": "07:00-08:00", "domVisible": false },
+    "xssProbe": { "input": "<img src=x onerror=window.__xss=1>", "renderedAsText": true, "imgInjected": false, "scriptExecuted": false }
+  },
+  "commands": [
+    {
+      "command": "node --test test/preview-view-model.test.cjs test/compose-plan-from-session.test.cjs test/mini-program-preview-structure.test.cjs test/agent-intake-flow.test.cjs test/app-imports.test.cjs test/agent-preview-integration.test.cjs",
+      "exitCode": 0,
+      "tests": 65,
+      "pass": 65,
+      "fail": 0,
+      "todo": 0
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "tests": 419,
+      "pass": 418,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 1,
+      "durationMs": 6897.2183
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "vite": "6.4.5",
+      "modulesTransformed": 1643,
+      "duration": "3.84s",
+      "artifacts": {
+        "dist/index.html": "0.60 kB / gzip 0.44 kB",
+        "CSS": "93.41 kB / gzip 14.40 kB",
+        "JS": "410.62 kB / gzip 128.86 kB"
+      }
+    }
+  ],
+  "independentAdversarialProbes": [
+    {
+      "scope": "重复完成响应、重复菜品 key、负价菜品、transient 快照",
+      "result": "PASS",
+      "evidence": "重复 success/failure 均保持原 state 引用；key 为 same、same#2；非法菜被过滤；activeRequestId 未落盘"
+    },
+    {
+      "scope": "confirm/reopen/export/snapshot/晚响应",
+      "result": "PASS",
+      "evidence": "snapshot schema=1，草稿和消息往返一致；确认只晋升 storeName/category；reopen 后 confirmed store 不变；导出默认 confirmed-first；旧 failure 保持原 state 引用"
+    },
+    {
+      "scope": "React 文本注入",
+      "result": "PASS",
+      "evidence": "HTML 字符串只作为文本显示，无 img 注入、无 onerror 执行"
+    }
+  ],
+  "requirementVerdicts": {
+    "R1": "FAIL：五类字段中营业时间未进入 STORE_INFO 实际 compact DOM，compact/full 营业时间事实不一致；其余四类字段和部分/完整 turn 已实测更新",
+    "R2": "PASS（除 R1 的一致性失败外）：真实页面三布局、四 tab、tab 切换与更新后 tab 保留通过；唯一 VM 接线存在",
+    "R3": "PASS（请求生命周期）：失败保留旧预览并重试成功；独立 reducer 探针证明重复/过期完成安全；手动营业时间显示缺陷归入 R1",
+    "R4": "PASS：confirm/reopen/export/snapshot 独立探针通过，schema 未变，activeRequestId 未落盘",
+    "R5": "PASS（范围口径）：仅验证 Web React DOM 近似预览；P95≤150ms 仍为 commit→paint 目标，未实测；未宣称微信运行时或 v2",
+    "R6": "FAIL（文档真实性随功能缺陷）：测试与 build 结果真实，但构建说明第 1 节声称店主能看到营业时间，与实际 STORE_INFO DOM 不符；第 9 节需加入该阻断问题。其余 v1/v2、性能未实测和文件清单口径基本一致"
+  },
+  "rootCauseLocations": [
+    "src/App.jsx:223-228：STORE_INFO 右侧只使用 size=compact 的 MiniProgramPreview",
+    "src/components/preview/MiniProgramPreview.jsx:10-41：CompactPreview 没有渲染 store.businessHoursText",
+    "src/components/preview/PreviewTabs.jsx:85-94：businessHoursText 只在 full 的 MineTab 展示"
+  ],
+  "documents": [
+    "docs/2026-11-03-Agent草稿实时预览-构建说明.md",
+    "docs/agent-turn-contract.md",
+    "docs/后端待实现接口清单.md"
+  ],
+  "outOfScopeOrOpen": [
+    "P95 commit→paint 未实测，只保留目标，未虚构通过",
+    "真实微信运行时、WXML/WXSS、agent-turn.v2 不在本轮验收范围",
+    "Node MODULE_TYPELESS_PACKAGE_JSON 警告仍存在但测试退出码为 0",
+    "scenario-recognition/new-feature-verification skills 在环境不可用；已生成 .resultverify/verification_scenario.json 并手工执行等价 new-feature 验收"
+  ],
+  "modificationBoundary": "未修改业务代码、项目测试、项目文档或桌面文件；仅在 .resultverify 写入场景、CDP 驱动和本机器可读验收报告。build 产生正常 dist 产物。"
+}

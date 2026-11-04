@@ -12,6 +12,7 @@ const { registerProjectIpc } = require('./project-ipc.cjs');
 const { registerFlushGuard, recoverPendingWrites } = require('./flush-guard.cjs');
 const { createDiagnostics } = require('./diagnostics.cjs');
 const { probeDevtools } = require('./devtools-probe.cjs');
+const { registerPreviewIpc } = require('./preview-channel.cjs');
 
 const userDataDir = app.getPath('userData');
 
@@ -83,6 +84,10 @@ registerProjectIpc(ipcMain, {
   dialog,
   shell,
 });
+
+// 真实渲染截图回传（C-REAL-PREVIEW@1）：只打开已导出工程目录 + 读取本地截图，
+// 不上传网络、不写入导出工程、不执行 shell 命令，也不声称完成渲染。
+registerPreviewIpc(ipcMain, { dialog, shell });
 
 registerFlushGuard({
   app,

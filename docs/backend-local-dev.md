@@ -3,6 +3,35 @@
 > 目标：在一台干净的 Windows 机器上，按本文可以从零启动 MySQL、迁移、种子、后端服务，并验证 `/health` 与 `/readyz`。
 > 生产目标仍是华为云 RDS MySQL + DCS Redis；本文只描述本地开发。
 
+## 0. 一键启动（推荐）
+
+在工作区根目录执行：
+
+```bash
+npm start
+```
+
+`scripts/start-all.ps1` 按顺序完成：
+
+1. 检测 `3306`，未监听则用 `E:\smartstore-tools\mysql` 的 ZIP 实例启动 MySQL（`--basedir/--datadir` 均为纯 ASCII 路径）；
+2. 检测 `3000` 与 `http://127.0.0.1:3000/api/v1/health`，未就绪则后台启动后端，并注入 `CACHE_DRIVER=memory`（`server/.env` 默认 `redis`，6379 不可达会让 Nest 启动中止）；
+3. 检测 `5173`，若已有桌面端实例则明确报错退出（Electron 固定加载 `http://127.0.0.1:5173`，重复启动只会连到旧 Vite 的旧代码）；否则清除 `ELECTRON_RUN_AS_NODE` 后启动 Vite + Electron。
+
+常用变体：
+
+| 命令 | 作用 |
+| --- | --- |
+| `npm start` / `npm run start:all` | MySQL → 后端 → 桌面端 |
+| `npm run start:all -- -ServerOnly` | 只起 MySQL + 后端 |
+| `npm run start:all -- -SkipMysql` | 跳过 MySQL |
+| `npm run start:all -- -RestartBackend` | 杀掉旧 `3000` 监听后重启后端 |
+| `npm stop` | 停止后端与 MySQL（Electron 窗口需手动关闭） |
+
+日志落在 `.npm-logs/start-all/`（已被 `.gitignore` 忽略），文件名带启动时间戳；失败时脚本会直接打印对应日志尾部。
+
+> 脚本内提示语保持纯 ASCII：Windows PowerShell 5.1 按 ANSI 解析无 BOM 的 UTF-8 文件，中文会导致语法错误。
+> 想验证真实 Redis 链路时，先用进程环境变量 `CACHE_DRIVER=redis` 启动并确认 `6379` 可达；否则保持 `memory` 降级。
+
 ## 1. 前置
 
 - Node.js 22+（本机实测 24.14.0）
@@ -108,17 +137,34 @@ npm run db:seed        # tsx prisma/seed.ts
 
 ## 6. 启动后端
 
+推荐从**工作区根目录**启动（脚本自动注入 `CACHE_DRIVER=memory`，避免 6379 未开时 Nest 启动中止）：
+
+```powershell
+npm run server:dev
+```
+
+脚本入口是 `scripts/start-server-local.ps1`，等价于在 `server/` 下执行：
+
+```bash
+CACHE_DRIVER=memory PORT=3000 npm run start:dev
+```
+
+生产模式（需要先确认 `3306` 已监听）：
+
 ```bash
 cd server
 npm run build
 npm run start:prod
 ```
 
-或开发模式：
+手动开发模式：
 
 ```bash
+cd server
 npm run start:dev
 ```
+
+> 前置：`3306` 必须已监听，否则 Prisma 初始化直接抛 `P1001` 并中止启动；`6379` 不可达时必须带 `CACHE_DRIVER=memory`。
 
 ## 7. 验证
 
@@ -162,7 +208,9 @@ node -e "require('reflect-metadata');require('dotenv').config();const{validateEn
 REJECTED: 生产环境禁止开启 ALLOW_DEMO_LOGIN / ALLOW_DEMO_PAYMENT
 ```
 
-## 10. Redis（WSL 本地实例，已验收）
+## 10. Redis（WSL 本地实例，2026-11-01 起网络不可达，链路待复验）
+
+> 状态更正：2026-10-31 曾在 mirrored 网络下以 `CACHE_DRIVER=redis` 验收通过；2026-11-01 实测 Windows 侧 `6379` 不再监听（`.wslconfig` 的 mirrored 未生效），**当前本地默认走 `CACHE_DRIVER=memory`**。下列步骤保留，恢复镜像网络后需重新验收。
 
 当前机器无 Windows 管理员权限，Redis 通过 **WSL Ubuntu 24.04 + mirrored 网络** 提供，已在 Windows 侧以 `CACHE_DRIVER=redis` 验收通过。
 

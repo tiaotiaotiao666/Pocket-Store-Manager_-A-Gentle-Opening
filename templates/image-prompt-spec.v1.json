@@ -1,0 +1,68 @@
+{
+  "contract": "image-prompt-spec.v1",
+  "status": "frozen",
+  "templates": {
+    "menu": {
+      "templateId": "warm-bistro",
+      "composition": "近景平视，主体占画面 60%，左上 1/4 留白给标题",
+      "subject": "家常菜与木质餐桌",
+      "palette": ["暖橙", "木色", "米白"],
+      "lighting": "傍晚暖光，侧逆光打在菜品边缘",
+      "whiteSpace": "左上角留一块干净的木质桌面，不放餐具、纸巾与小摆件",
+      "negative": [
+        "不得出现文字/水印",
+        "不得出现可识别真人正脸",
+        "不得生成二维码",
+        "不得出现平台 Logo",
+        "不得暗示医疗或保健功效"
+      ]
+    },
+    "catalog": {
+      "templateId": "modern-coffee",
+      "composition": "俯拍或 45 度，极简桌面，主体略偏右下，大块留白",
+      "subject": "咖啡、烘焙与轻食",
+      "palette": ["墨绿", "奶油白", "浅木"],
+      "lighting": "清晨自然柔光，避免硬阴影",
+      "whiteSpace": "画面上方与左侧保持整块浅色空镜，只放一处极简器物",
+      "negative": [
+        "不得出现文字/水印",
+        "不得出现可识别真人正脸",
+        "不得生成二维码",
+        "不得出现平台 Logo",
+        "不得堆叠促销贴纸与价签"
+      ]
+    },
+    "editorial": {
+      "templateId": "signature-kitchen",
+      "composition": "特写主厨招牌菜，浅景深，主体居中，暗背景包裹主体",
+      "subject": "一道招牌菜与餐具细节",
+      "palette": ["深棕", "琥珀", "暖白"],
+      "lighting": "低位暖聚光，只照亮主体轮廓与质感",
+      "whiteSpace": "四周压暗留出负空间，只用暗部纹理衬托主体",
+      "negative": [
+        "不得出现文字/水印",
+        "不得出现可识别真人正脸",
+        "不得生成二维码",
+        "不得出现平台 Logo",
+        "不得出现杂乱的厨房背景"
+      ]
+    }
+  },
+  "aspectBySize": {
+    "homeHero": {
+      "sm": { "value": "1:1", "hint": "近方形，单菜特写" },
+      "md": { "value": "4:3", "hint": "标准横幅，主体居中偏右" },
+      "lg": { "value": "16:9", "hint": "宽幅主视觉，左右留白更充裕" }
+    },
+    "carousel": {
+      "sm": { "value": "3:2", "hint": "矮轮播，主体水平展开" },
+      "md": { "value": "16:9", "hint": "标准轮播横幅" },
+      "lg": { "value": "21:9", "hint": "高轮播，电影感宽幅" }
+    }
+  },
+  "defaults": {
+    "aspect": "4:3",
+    "maxPromptLength": 1200,
+    "maxExtraRequirement": 200
+  }
+}

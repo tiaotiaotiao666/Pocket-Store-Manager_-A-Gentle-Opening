@@ -267,9 +267,10 @@ describe('安全边界静态检查', () => {
     }
   });
 
-  it('main.ts 的 CORS allowedHeaders 包含 X-Agent-Contract，并暴露 X-Request-Id', () => {
+  it('main.ts 的 CORS allowedHeaders 包含 X-Agent-Contract 与 X-Agent-Request-Id，并暴露 X-Request-Id', () => {
     const source = readFileSync(join(process.cwd(), 'src/main.ts'), 'utf8');
     expect(source).toContain("'X-Agent-Contract'");
+    expect(source).toContain("'X-Agent-Request-Id'");
     expect(source).toContain("exposedHeaders: ['X-Request-Id']");
   });
 

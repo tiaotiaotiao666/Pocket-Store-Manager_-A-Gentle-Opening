@@ -1,0 +1,26 @@
+{
+  "contract": "preview-size-tokens.v1",
+  "status": "frozen",
+  "sizes": {
+    "homeHero": {
+      "sm": { "px": 72, "rpx": 150, "label": "紧凑" },
+      "md": { "px": 92, "rpx": 190, "label": "标准" },
+      "lg": { "px": 120, "rpx": 250, "label": "醒目" }
+    },
+    "productCard": {
+      "sm": { "px": 52, "rpx": 110, "label": "紧凑" },
+      "md": { "px": 68, "rpx": 140, "label": "标准" },
+      "lg": { "px": 88, "rpx": 180, "label": "大图" }
+    },
+    "carousel": {
+      "sm": { "px": 100, "rpx": 200, "label": "矮" },
+      "md": { "px": 118, "rpx": 240, "label": "标准" },
+      "lg": { "px": 150, "rpx": 310, "label": "高" }
+    }
+  },
+  "defaults": {
+    "homeHero": "md",
+    "productCard": "md",
+    "carousel": "md"
+  }
+}

@@ -5,6 +5,9 @@
   "description": "Windows-first guided generator for individual restaurant WeChat mini-program projects",
   "main": "desktop/main.cjs",
   "scripts": {
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-all.ps1",
+    "start:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-all.ps1",
+    "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-all.ps1 -Stop",
     "dev": "vite --host 127.0.0.1",
     "desktop": "electron .",
     "desktop:dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
@@ -21,6 +24,7 @@
     "mini:dup-check": "node scripts/mini-dup-check.cjs",
     "mini:smoke": "node scripts/miniprogram-smoke.cjs",
     "mini:pages": "node scripts/miniprogram-pages-smoke.cjs",
+    "server:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-server-local.ps1",
     "check:packaging": "node scripts/check-packaging.cjs"
   },
   "dependencies": {
@@ -33,6 +37,7 @@
     "concurrently": "^9.1.0",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8",
+    "miniprogram-automator": "^0.13.0",
     "vite": "^6.0.1",
     "wait-on": "^8.0.1"
   },

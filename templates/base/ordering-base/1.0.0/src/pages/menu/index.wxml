@@ -41,6 +41,10 @@
   </view>
 
   <view wx:else class="menu__body">
+    <!-- @slot:menu-hero -->
+    <!-- @slot-fallback:menu-hero -->
+    <!-- @slot-fallback:menu-hero:end -->
+    <!-- @slot:menu-hero:end -->
     <!-- @slot:menu-aside -->
     <!-- @slot-fallback:menu-aside -->
     <!-- @slot-fallback:menu-aside:end -->

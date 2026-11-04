@@ -21,7 +21,7 @@
 **硬规则**
 
 1. 模型只提取和草拟资料，后端与前端领域层负责校验。
-2. 店主确认前不得保存、不得发布、不得写库；本轮连 `localStorage` 都不写。
+2. 店主确认前不得写入后端业务库、不得发布。桌面端可按既有 `project.json`（`schemaVersion=1`）保存未确认 `agentDraft` 与会话消息，并沿用自动保存和 pending flush；这是**本机草稿快照**，不等于后端确认、业务写库或发布，二者不冲突。本轮不改变 snapshot schema。
 3. `priceCents` 是对外唯一金额事实，整数分；`priceText` 只存在于本地编辑态，永不进入契约。
 4. 本契约的 `sessionId` / `turnId` 与 B1 点餐业务**不是同一概念**，详见第 2 节。
 
@@ -32,12 +32,12 @@
 | 项目 | B1 点餐 `sessions` | Agent 单轮 `agent-turn.v1` |
 | --- | --- | --- |
 | 归属 | 顾客扫码登录会话 | 店主开店资料收集回合 |
-| 存储 | MySQL，已有 B1 表结构 | **本轮不落库、不持久化** |
+| 存储 | MySQL，已有 B1 表结构 | **后端本轮不写业务库、不做云端会话持久化**；本机 `project.json` 草稿快照是另一边界 |
 | 标识 | B1 的 `sessionId` | 本轮 `turnId` 为单个回合标识；未来可扩展 `agentSessionId`，但**不得复用 B1 `sessions` 表** |
-| 生命周期 | 登录态、有效期、可撤销 | 单次请求/响应；草稿只存在前端内存 reducer |
+| 生命周期 | 登录态、有效期、可撤销 | 单次请求/响应；草稿由前端 reducer 管理，可随本机快照恢复；`activeRequestId` 仅为内存 transient |
 | 权限 | 顾客身份 | 未来店主身份，独立鉴权 |
 
-`docs/api.md` 中的 B1 契约保持不变；本契约不修改、不覆盖 B1 的任何接口。若未来需要 Agent 会话持久化，应新增独立表（如 `agent_sessions` / `agent_turns`）并单独立项，而不是复用 `sessions`。
+`docs/api.md` 中的 B1 契约保持不变；本契约不修改、不覆盖 B1 的任何接口。若未来需要云端 Agent 会话持久化，应新增独立表（如 `agent_sessions` / `agent_turns`）并单独立项，而不是复用 `sessions`。
 
 ---
 
@@ -264,6 +264,14 @@ Authorization: Bearer <未来由宿主注入的短期 Token，本轮不发>
 4. 请求中禁止再次提交；失败后输入框必须保持可编辑、提交按钮可用。
 5. 4xx / 契约不匹配 / 响应非法不提供重试，应重新描述或更新应用。
 
+### 6.3 前端请求身份与晚响应（不改变 v1 wire contract）
+
+- App 为每次新请求/重试生成非空、进程内单调递增的 `requestId`，在 request/retry 及对应 success/failure action 中原样传递；RESET 或项目切换不倒退、不复用该计数。
+- request/retry 进入 `requesting` 时记录 `agent.activeRequestId`。success/failure 仅当当前状态为 `requesting` 且活动 ID 与 action ID 一致时接受；接受后清空活动 ID。
+- 过期 success/failure 返回原 state，不得修改草稿、预览、消息、attempts 或错误。项目重置/重新打开后的旧响应，以及 reset 后新请求期间到达的旧响应，都按此规则忽略。
+- 旧 Node 调用可保留缺省 `null` 身份的兼容路径；App 新代码必须提供非空 ID。
+- 此 `requestId` 是**前端 reducer 的本地关联标识**，不属于 `agent-turn.v1` 请求/响应字段，不要求后端生成或返回，也不进入 `project.json`。它与服务端 `turnId`、HTTP 错误体 `requestId` / `X-Request-Id` 不是同一概念；本节不把 v1 伪升为 v2。
+
 ---
 
 ## 7. 实现映射
@@ -343,7 +351,7 @@ confirmed → reviewing（再次编辑）→ confirmed（重新确认）
 | Q5 是否流式 | 是否需要 SSE/流式返回 | 本轮非流式；流式需新增事件协议 |
 | Q6 内容审核/脱敏 | 输入输出审核、敏感信息脱敏责任方 | 本轮无；后端接入时确认 |
 | Q7 日志与可观测性 | 请求 ID、模型调用日志、保留周期、脱敏字段 | 前端只保留 `requestId`；不记录原文 |
-| Q8 会话归属/多租户 | Agent 会话如何归属店主、如何隔离 | 本轮无持久化；**不复用 B1 `sessions`** |
+| Q8 会话归属/多租户 | Agent 会话如何归属店主、如何隔离 | 本轮无云端 Agent 会话持久化；**不复用 B1 `sessions`**；本机 `project.json` 快照不属于云端会话 |
 | Q9 幂等 | 重试是否会产生重复回合/重复扣费 | 建议后端支持 `Idempotency-Key` + `turnId` 去重 |
 | Q10 最终校验责任 | 价格、营业时间、菜品数量的最终校验方 | 前端领域层已是门槛；后端必须二次校验后才允许保存 |
 

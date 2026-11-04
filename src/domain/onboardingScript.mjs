@@ -24,6 +24,20 @@ export const TEMPLATE_INTRO = '我按你的功能清单匹配了几套页面骨�
 
 export const SATISFACTION = { question: '对于当前页面满意？', action: '下一步' };
 
+/**
+ * 模板页的「不满意 → 重新用语言描述」入口。
+ * 提交后不离开模板页，本页内重新排序并给出新骨架；用户不需要先删掉已选模板或已选功能。
+ */
+export const TEMPLATE_REFINE = {
+  title: '不满意这几套骨架？',
+  caption: '用一句话描述你想要的页面，我会重新匹配骨架。',
+  placeholder: '例如：想要大图招牌菜和门店故事，配色偏暖',
+  action: '重新匹配骨架',
+  reply: '收到，我按你的描述重新排了一遍页面骨架，你看看这版是否更接近。',
+  failed: '重新匹配没有成功，你刚才的描述还在，可以再试一次。',
+  maxLength: 300,
+};
+
 export const STORE_INTRO = '接下来把这间店装修一下：先给我一些店铺信息，再选一个你喜欢的风格。';
 
 export const PROMPT_INTRO = '我会根据你的店铺信息写一版生图提示词，你可以告诉我哪里想改，我们一起打磨到满意。';

@@ -30,7 +30,8 @@
             ],
             "autoplay": true,
             "interval": 4000,
-            "showIndicator": true
+            "showIndicator": true,
+            "size": "md"
           }
         }
       ]

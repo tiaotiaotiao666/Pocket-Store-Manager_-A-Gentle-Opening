@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const REPO = path.resolve(__dirname, '..');
@@ -40,12 +41,12 @@ test('app.json 页面与磁盘一致且覆盖 7 页闭环', () => {
   assert.deepStrictEqual([...appJson.pages].sort(), diskPages.sort());
 });
 
-test('Base Manifest 声明 7 页、7 个主题 Token 与 3 个插槽', () => {
+test('Base Manifest 声明 7 页、7 个主题 Token 与 4 个插槽', () => {
   const manifest = readJson(path.join(BASE_DIR, 'manifest.json'));
   assert.strictEqual(manifest.pages.length, 7);
   assert.ok(manifest.themeTokens.length >= 4);
   assert.ok(manifest.themeTokens.some((token) => token.key === 'textColor' && token.contrastWith === 'pageBackground'));
-  assert.deepStrictEqual(manifest.slots.map((slot) => slot.slotId).sort(), ['home-hero', 'home-marketing', 'menu-aside']);
+  assert.deepStrictEqual(manifest.slots.map((slot) => slot.slotId).sort(), ['home-hero', 'home-marketing', 'menu-aside', 'menu-hero']);
   assert.deepStrictEqual(manifest.excludedCapabilities.sort(), ['ad-slot', 'coupon', 'poster-carousel']);
 
   const theme = readJson(path.join(BASE_DIR, 'theme.tokens.json'));
@@ -64,6 +65,7 @@ test('插槽锚点三段式完整且每段只出现一次', () => {
     [homeWxml, 'home-hero'],
     [homeWxml, 'home-marketing'],
     [menuWxml, 'menu-aside'],
+    [menuWxml, 'menu-hero'],
   ];
   pairs.forEach(([content, slotId]) => {
     const anchors = [
@@ -126,11 +128,41 @@ test('UI Block 资产边界四项必须为 false 且零越界调用', () => {
   });
 });
 
-test('可删除性占位：无可选 Block 时 Plan 仍满足 Base 必需页', { todo: 'M7 注册表冻结后打开 order-poster 真实产物断言' }, () => {
+test('可删除性：无可选 Block 时产物仍满足 Base 必需页，且关闭海报后首页回落', async () => {
+  const { compose } = require(path.join(REPO, 'scripts', 'composer', 'index.cjs'));
   const manifest = readJson(path.join(BASE_DIR, 'manifest.json'));
   const requiredPages = manifest.pages.filter((page) => page.required).map((page) => page.pageId);
   assert.ok(requiredPages.includes('home'));
   assert.ok(requiredPages.includes('menu'));
+
+  const family = fs.mkdtempSync(path.join(os.tmpdir(), 'm7-assets-'));
+  const posterPlan = readJson(path.join(REPO, 'templates', 'recipes', 'order-poster', '1.0.0', 'plan.json'));
+
+  const full = await compose({ plan: posterPlan, parentDir: family, projectName: 'm7-poster', mode: 'development' });
+  assert.strictEqual(full.ok, true, JSON.stringify(full));
+  const fullRoot = path.join(family, 'm7-poster');
+  requiredPages.forEach((pageId) => {
+    assert.ok(fs.existsSync(path.join(fullRoot, 'pages', pageId, 'index.js')), '缺少必需页 ' + pageId);
+    const pageJson = readJson(path.join(fullRoot, 'pages', pageId, 'index.json'));
+    Object.entries(pageJson.usingComponents || {}).forEach(([tag, target]) => {
+      const componentId = String(target).split('/')[2];
+      assert.ok(
+        fs.existsSync(path.join(fullRoot, 'components', componentId, 'index.js')),
+        pageId + ' 的 ' + tag + ' 指向不存在的组件',
+      );
+    });
+  });
+
+  const soloPlan = { ...posterPlan, planId: 'order-poster-solo', features: [] };
+  const solo = await compose({ plan: soloPlan, parentDir: family, projectName: 'm7-solo', mode: 'development' });
+  assert.strictEqual(solo.ok, true, JSON.stringify(solo));
+  const soloRoot = path.join(family, 'm7-solo');
+  const soloHome = read(path.join(soloRoot, 'pages', 'home', 'index.wxml'));
+  assert.ok(!soloHome.includes('poster-carousel'), '关闭海报后首页不得残留 poster-carousel 标签');
+  assert.ok(soloHome.includes('store-header'), '关闭海报后首页应回落到 store-header');
+  requiredPages.forEach((pageId) => {
+    assert.ok(fs.existsSync(path.join(soloRoot, 'pages', pageId, 'index.js')), '关闭海报后缺少必需页 ' + pageId);
+  });
 });
 
 test('M7 首批资产目录完整：3 UI Block + 1 Feature Pack + 3 Recipe', () => {

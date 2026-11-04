@@ -1,0 +1,202 @@
+{
+  "ok": true,
+  "total": 20,
+  "passed": 20,
+  "failed": [],
+  "results": [
+    {
+      "name": "validate：合法补丁 ok",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "name": "validate：小写墨绿归一为 #0E4D3A",
+      "pass": true,
+      "expected": "#0E4D3A",
+      "actual": "#0E4D3A"
+    },
+    {
+      "name": "validate：productCard=sm",
+      "pass": true,
+      "expected": "sm",
+      "actual": "sm"
+    },
+    {
+      "name": "validate：tagline 去空白",
+      "pass": true,
+      "expected": "每天现做，只做当天",
+      "actual": "每天现做，只做当天"
+    },
+    {
+      "name": "validate：changes 含主色/尺寸/口号",
+      "pass": true,
+      "expected": true,
+      "actual": [
+        "theme.primaryColor",
+        "sizes.productCard",
+        "copy.tagline"
+      ]
+    },
+    {
+      "name": "merge：合并 ok",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "name": "merge：保留上一轮主色",
+      "pass": true,
+      "expected": "#0E4D3A",
+      "actual": "#0E4D3A"
+    },
+    {
+      "name": "merge：保留上一轮商品卡尺寸",
+      "pass": true,
+      "expected": "sm",
+      "actual": "sm"
+    },
+    {
+      "name": "merge：新增落位 menu-hero",
+      "pass": true,
+      "expected": [
+        {
+          "featureId": "poster-carousel",
+          "pageId": "menu",
+          "slotId": "menu-hero"
+        }
+      ],
+      "actual": [
+        {
+          "featureId": "poster-carousel",
+          "pageId": "menu",
+          "slotId": "menu-hero"
+        }
+      ]
+    },
+    {
+      "name": "merge：changes 只含本轮新增（slotOrder）",
+      "pass": true,
+      "expected": true,
+      "actual": [
+        "slotOrder.poster-carousel"
+      ]
+    },
+    {
+      "name": "diff：产出可读中文 label",
+      "pass": true,
+      "expected": true,
+      "actual": [
+        "theme.primaryColor=主色",
+        "sizes.productCard=商品卡尺寸",
+        "slotOrder.poster-carousel=区块位置",
+        "copy.tagline=门店口号"
+      ]
+    },
+    {
+      "name": "对抗：3 位颜色被拒（PATCH_THEME_COLOR_INVALID）",
+      "pass": true,
+      "expected": [
+        false,
+        "PATCH_THEME_COLOR_INVALID"
+      ],
+      "actual": [
+        false,
+        "PATCH_THEME_COLOR_INVALID"
+      ]
+    },
+    {
+      "name": "对抗：非法尺寸档位被拒（PRESENTATION_PATCH_INVALID）",
+      "pass": true,
+      "expected": [
+        false,
+        "PRESENTATION_PATCH_INVALID"
+      ],
+      "actual": [
+        false,
+        "PRESENTATION_PATCH_INVALID"
+      ]
+    },
+    {
+      "name": "对抗：无轮播模板改 carousel 被拒（PATCH_SIZE_UNSUPPORTED）",
+      "pass": true,
+      "expected": [
+        false,
+        "PATCH_SIZE_UNSUPPORTED"
+      ],
+      "actual": [
+        false,
+        "PATCH_SIZE_UNSUPPORTED"
+      ]
+    },
+    {
+      "name": "对抗：pageId/slotId 错配被拒（PATCH_SLOT_TARGET_INVALID）",
+      "pass": true,
+      "expected": [
+        false,
+        "PATCH_SLOT_TARGET_INVALID"
+      ],
+      "actual": [
+        false,
+        "PATCH_SLOT_TARGET_INVALID"
+      ]
+    },
+    {
+      "name": "对抗：未知顶层键被拒（PRESENTATION_PATCH_INVALID）",
+      "pass": true,
+      "expected": [
+        false,
+        "PRESENTATION_PATCH_INVALID"
+      ],
+      "actual": [
+        false,
+        "PRESENTATION_PATCH_INVALID"
+      ]
+    },
+    {
+      "name": "对抗：__proto__ 原型污染被拒（PRESENTATION_PATCH_INVALID）",
+      "pass": true,
+      "expected": [
+        false,
+        "PRESENTATION_PATCH_INVALID"
+      ],
+      "actual": [
+        false,
+        "PRESENTATION_PATCH_INVALID"
+      ]
+    },
+    {
+      "name": "对抗：口号 41 码点被拒",
+      "pass": true,
+      "expected": true,
+      "actual": {
+        "ok": false,
+        "code": "PRESENTATION_PATCH_INVALID"
+      }
+    },
+    {
+      "name": "对抗：未知菜品被拒（PATCH_COPY_DISH_UNKNOWN）",
+      "pass": true,
+      "expected": [
+        false,
+        "PATCH_COPY_DISH_UNKNOWN"
+      ],
+      "actual": [
+        false,
+        "PATCH_COPY_DISH_UNKNOWN"
+      ]
+    },
+    {
+      "name": "对抗：merge 中任一非法 → 整包失败且不返回部分补丁",
+      "pass": true,
+      "expected": [
+        false,
+        null
+      ],
+      "actual": [
+        false,
+        null
+      ]
+    }
+  ]
+}

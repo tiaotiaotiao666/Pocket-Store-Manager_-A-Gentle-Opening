@@ -104,7 +104,7 @@ async function probeBackend(config) {
     return {
       line: backendLine({
         result: DIAGNOSTIC_RESULTS.FAIL,
-        message: '服务未启动，请运行 npm run start:dev（server 目录）',
+        message: '服务未启动，请在工作区根目录运行 npm start（或 npm run server:dev）',
         action: '启动后端后重新自检',
       }),
       json: { baseUrl: base, health: { ok: false, status: 0, failure: 'network' }, readyz: null },

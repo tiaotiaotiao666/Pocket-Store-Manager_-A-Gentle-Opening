@@ -10,6 +10,12 @@ import {
 import { AGENT_CONTRACT_VERSION } from './agentServiceConfig.js';
 import { createAgentTurnError } from './agentTurnError.js';
 
+/**
+ * v2 契约常量与 httpAgentTransport 保持一致，但本地定义，
+ * 避免修改由其它任务独占的 `agentServiceConfig.js`。
+ */
+const AGENT_TURN_V2_CONTRACT_VERSION = 'agent-turn.v2';
+
 const MAX_UTTERANCE = 500;
 const MAX_DISHES = 5;
 const MAX_HOURS_SEGMENTS = 3;
@@ -260,6 +266,30 @@ function buildMockReply({ draft, validation, recognized, notes }) {
   return [main, ...suffix].join(' ');
 }
 
+/**
+ * Mock 不伪造视觉识别结果：
+ * - 仅统计请求里真正携带的图片张数；
+ * - `analyzed` 恒为 false，提示调用方「本地 Mock 未看图片」；
+ * - 无图片时返回 null，与 v2 契约一致。
+ */
+function buildMockVisionMeta(request) {
+  if (!request || request.contractVersion !== AGENT_TURN_V2_CONTRACT_VERSION) {
+    return undefined;
+  }
+  const images = Array.isArray(request.images) ? request.images : [];
+  if (!images.length) return null;
+
+  let menuImages = 0;
+  let storeImages = 0;
+  for (const image of images) {
+    if (!image || typeof image !== 'object') continue;
+    if (image.kind === 'menu') menuImages += 1;
+    else if (image.kind === 'store') storeImages += 1;
+  }
+
+  return { menuImages, storeImages, analyzed: false, degraded: false };
+}
+
 export function createMockTransport(options = {}) {
   let turnCounter = 0;
   return {
@@ -279,7 +309,7 @@ export function createMockTransport(options = {}) {
         recognized: parsed.recognized,
         notes: parsed.notes,
       });
-      return {
+      const response = {
         contractVersion: request?.contractVersion ?? AGENT_CONTRACT_VERSION,
         turnId: `${options.turnIdPrefix ?? 'turn-mock'}-${turnCounter}`,
         status: validation.readyForReview ? 'reviewing' : 'collecting',
@@ -296,10 +326,15 @@ export function createMockTransport(options = {}) {
           latencyMs: 0,
         },
       };
+
+      const vision = buildMockVisionMeta(request);
+      // v1 响应保持原样，绝不新增字段；v2 才写入 vision。
+      if (vision !== undefined) response.vision = vision;
+      return response;
     },
   };
 }
 
 export function createDraftForMock() {
-  return createDishId([]);
+  return normalizeAgentDraft();
 }

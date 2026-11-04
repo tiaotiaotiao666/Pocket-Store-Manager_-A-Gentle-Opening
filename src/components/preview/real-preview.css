@@ -1,0 +1,418 @@
+/*
+ * 组件级样式：真实渲染截图回传面板（C-REAL-PREVIEW@1）。
+ * 与全局预览样式（src/styles/preview.css，归 T2）隔离，全部类名以 real-preview 前缀命名。
+ */
+
+.real-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--line, #e9e5df);
+  border-radius: var(--radius, 14px);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(250, 249, 247, 0.98) 100%);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(31, 29, 26, 0.06));
+  color: var(--ink, #1f1d1a);
+  font-family: var(--font-sans, -apple-system, 'Segoe UI', sans-serif);
+}
+
+/* ---------- 头部 ---------- */
+
+.real-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.real-preview-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.real-preview-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.real-preview-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted, #8c887f);
+}
+
+.real-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid rgba(200, 132, 60, 0.28);
+  background: var(--warn-soft, #f8efe2);
+  color: var(--warn, #c8843c);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---------- 免责声明 ---------- */
+
+.real-preview-disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm, 10px);
+  border: 1px solid rgba(109, 94, 252, 0.18);
+  background: var(--accent-soft, #efeafe);
+  color: var(--ink-soft, #4f4b45);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.real-preview-disclaimer svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent-strong, #5a48f0);
+}
+
+/* ---------- 浏览器模式说明 ---------- */
+
+.real-preview-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm, 10px);
+  border: 1px dashed var(--gray-box-line, #e3dfd8);
+  background: var(--bg-sunken, #f2f0ec);
+  color: var(--muted, #8c887f);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.real-preview-notice svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---------- 错误态 ---------- */
+
+.real-preview-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm, 10px);
+  border: 1px solid rgba(181, 84, 74, 0.26);
+  background: rgba(181, 84, 74, 0.07);
+  color: var(--danger, #b5544a);
+}
+
+.real-preview-error > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.real-preview-error-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.real-preview-error-body b {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.real-preview-error-body p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-soft, #4f4b45);
+  word-break: break-word;
+}
+
+.real-preview-error-body code {
+  align-self: flex-start;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs, 6px);
+  background: rgba(181, 84, 74, 0.12);
+  font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- 操作区 ---------- */
+
+.real-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.real-preview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: var(--radius-sm, 10px);
+  border: 1px solid var(--line, #e9e5df);
+  background: var(--bg-elev, #ffffff);
+  color: var(--ink, #1f1d1a);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s var(--ease-soft, ease), border-color 0.16s var(--ease-soft, ease),
+    transform 0.16s var(--ease-soft, ease), box-shadow 0.16s var(--ease-soft, ease);
+}
+
+.real-preview-btn:hover:not(:disabled) {
+  border-color: var(--accent-ring, #d9d1ff);
+  background: var(--accent-soft, #efeafe);
+  color: var(--accent-strong, #5a48f0);
+}
+
+.real-preview-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.real-preview-btn:focus-visible {
+  outline: 2px solid var(--accent, #6d5efc);
+  outline-offset: 2px;
+}
+
+.real-preview-btn.is-primary {
+  border-color: transparent;
+  background: var(--accent, #6d5efc);
+  color: var(--accent-ink, #ffffff);
+  box-shadow: 0 6px 16px rgba(109, 94, 252, 0.24);
+}
+
+.real-preview-btn.is-primary:hover:not(:disabled) {
+  background: var(--accent-strong, #5a48f0);
+  color: var(--accent-ink, #ffffff);
+}
+
+.real-preview-btn.is-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted, #8c887f);
+}
+
+.real-preview-btn.is-ghost:hover:not(:disabled) {
+  background: var(--gray-box, #f1efeb);
+  color: var(--ink-soft, #4f4b45);
+}
+
+.real-preview-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  box-shadow: none;
+}
+
+/* ---------- 工程路径 ---------- */
+
+.real-preview-path {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 11.5px;
+  min-width: 0;
+}
+
+.real-preview-path-label {
+  flex: none;
+  color: var(--faint, #b8b3aa);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.real-preview-path code {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs, 6px);
+  background: var(--bg-sunken, #f2f0ec);
+  color: var(--ink-soft, #4f4b45);
+  font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  font-size: 11px;
+}
+
+.real-preview-path code.is-empty {
+  direction: ltr;
+  color: var(--faint, #b8b3aa);
+  background: transparent;
+  border: 1px dashed var(--line, #e9e5df);
+}
+
+/* ---------- 截图区 ---------- */
+
+.real-preview-shot {
+  border-radius: var(--radius-sm, 10px);
+  border: 1px solid var(--line, #e9e5df);
+  background:
+    repeating-conic-gradient(rgba(0, 0, 0, 0.024) 0% 25%, transparent 0% 50%) 50% / 14px 14px,
+    var(--bg-sunken, #f2f0ec);
+  overflow: hidden;
+}
+
+.real-preview-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.real-preview-image {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  background: #ffffff;
+}
+
+.real-preview-caption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--line, #e9e5df);
+  background: var(--bg-elev, #ffffff);
+  font-size: 11.5px;
+  color: var(--ink-soft, #4f4b45);
+}
+
+.real-preview-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.real-preview-meta {
+  flex: none;
+  color: var(--muted, #8c887f);
+}
+
+.real-preview-local {
+  flex: none;
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--success-soft, #e8f3ec);
+  color: var(--success, #3f8a6b);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.real-preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 26px 18px;
+  color: var(--muted, #8c887f);
+  text-align: center;
+}
+
+.real-preview-placeholder svg {
+  color: var(--faint, #b8b3aa);
+  margin-bottom: 2px;
+}
+
+.real-preview-placeholder b {
+  font-size: 12.5px;
+  color: var(--ink-soft, #4f4b45);
+}
+
+.real-preview-placeholder span {
+  font-size: 11.5px;
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+/* ---------- 人工步骤 ---------- */
+
+.real-preview-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.real-preview-step {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+
+.real-preview-step-index {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--accent-soft, #efeafe);
+  color: var(--accent-strong, #5a48f0);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.real-preview-step-body {
+  min-width: 0;
+}
+
+.real-preview-step-body b {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink, #1f1d1a);
+}
+
+.real-preview-step-body p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted, #8c887f);
+}
+
+/* ---------- 页脚 ---------- */
+
+.real-preview-footer {
+  padding-top: 9px;
+  border-top: 1px dashed var(--line, #e9e5df);
+  font-size: 11px;
+  color: var(--faint, #b8b3aa);
+}
+
+@media (max-width: 520px) {
+  .real-preview {
+    padding: 14px;
+  }
+
+  .real-preview-image {
+    max-height: 220px;
+  }
+}

@@ -164,7 +164,13 @@ function pickBuild(build) {
   const selectedId = candidates.some((item) => item.id === source.selectedId)
     ? source.selectedId
     : (candidates[0] ? candidates[0].id : null);
-  return { candidates, selectedId };
+  // 模板页「重新描述」的累积文本要能随项目保存，打开项目后还能继续沿用；
+  // 只留最近 8 条、每条 300 字，避免 project.json 被无意义的长文本撑大。
+  const feedback = arrayOf(source.feedback)
+    .map((item) => text(item, 300))
+    .filter(Boolean)
+    .slice(-8);
+  return { candidates, selectedId, feedback };
 }
 
 function pickRounds(rounds, withAsset) {

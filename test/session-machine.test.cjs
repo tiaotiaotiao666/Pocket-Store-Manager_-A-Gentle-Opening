@@ -143,6 +143,11 @@ test('CONFIRM_TEMPLATE opens a new step session with a system handoff', async ()
   assert.equal(active.kind, 'step');
   assert.equal(active.messages[0].role, 'system');
   assert.ok(active.messages[0].text.includes('会话交接'));
+  assert.equal(active.messages[0].meta.kind, 'handoff');
+  assert.deepEqual(active.messages[0].meta.fields, [
+    { label: '店铺名', value: '松月食堂' },
+    { label: '页面风格', value: '街巷食集', note: '已确认的页面骨架' },
+  ]);
   const previous = storeInfo.sessions.find((session) => session.id === 'session-main');
   assert.equal(previous.status, 'done');
 });
@@ -163,6 +168,11 @@ test('SUBMIT_STORE_INFO enters prompt studio and keeps the chosen style', async 
   });
   assert.equal(next.phase, PHASES.PROMPT_STUDIO);
   assert.equal(next.visual.styleId, 'fresh');
+  const visualSession = next.sessions.find((session) => session.id === 'session-visual');
+  assert.deepEqual(visualSession.messages[0].meta.fields, [
+    { label: '店铺名', value: '松月食堂' },
+    { label: '装修风格', value: '清爽青绿', note: '自然青绿，适合轻食与茶饮' },
+  ]);
 });
 
 test('CONFIRM_PROMPT switches phase but keeps the same session for image review', async () => {

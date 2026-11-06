@@ -533,8 +533,9 @@
 
 .template-detail-preview {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .template-detail-info {
@@ -757,4 +758,51 @@
   height: 34px;
   font-size: 6px;
   letter-spacing: 2px;
+}
+/* ---------- 预览新模块入口 ---------- */
+.preview-launch-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-launch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.preview-launch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--bg-elev);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  font-weight: 600;
+  transition: background 0.18s var(--ease-soft), color 0.18s var(--ease-soft);
+}
+
+.preview-launch-btn:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.preview-launch-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.preview-launch-note {
+  max-width: 320px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--muted);
 }

@@ -64,6 +64,7 @@ contextBridge.exposeInMainWorld('smartStore', Object.freeze({
   // 只打开已导出工程目录 / 读取本地截图；不上传、不写入导出工程。
   openPreviewProject: (payload) => ipcRenderer.invoke('preview:open-project', payload),
   pickPreviewScreenshot: () => ipcRenderer.invoke('preview:pick-screenshot'),
+  openPreviewDevtools: (payload) => ipcRenderer.invoke('preview:open-devtools', payload),
   onProjectFlushRequest: (listener) => {
     if (typeof listener !== 'function') return () => {};
     flushRequestListeners.add(listener);

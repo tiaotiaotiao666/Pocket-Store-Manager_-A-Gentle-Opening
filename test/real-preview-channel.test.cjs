@@ -16,6 +16,7 @@ const vm = require('node:vm');
 
 const REPO = path.resolve(__dirname, '..');
 const channel = require(path.join(REPO, 'desktop', 'preview-channel.cjs'));
+const launcher = require(path.join(REPO, 'desktop', 'devtools-launch.cjs'));
 
 const {
   PREVIEW_CHANNELS,
@@ -176,7 +177,7 @@ test('validateScreenshotFile：非 PNG/JPEG 内容与非法扩展名都被拒绝
 test('通道名与契约一致，且 preload 方法名固定', () => {
   assert.equal(PREVIEW_CHANNELS.openProject, 'preview:open-project');
   assert.equal(PREVIEW_CHANNELS.pickScreenshot, 'preview:pick-screenshot');
-  assert.deepEqual([...PREVIEW_BRIDGE_METHODS], ['openPreviewProject', 'pickPreviewScreenshot']);
+  assert.deepEqual([...PREVIEW_BRIDGE_METHODS], ['openPreviewProject', 'pickPreviewScreenshot', 'openPreviewDevtools']);
 });
 
 test('preload 暴露 openPreviewProject / pickPreviewScreenshot，且不影响现有 smartStore 方法', async () => {
@@ -349,4 +350,80 @@ test('RealPreviewPanel 文案明确“截图回传 ≠ 实时渲染”并含代�
 
   const css = fs.readFileSync(path.join(REPO, 'src', 'components', 'preview', 'real-preview.css'), 'utf8');
   assert.match(css, /\.real-preview/);
+});
+// ---------- 预览新模块：微信开发者工具调起 ----------
+
+test('preview:open-devtools 通道与桥接方法已登记', () => {
+  assert.equal(PREVIEW_CHANNELS.openDevtools, 'preview:open-devtools');
+  assert.ok(PREVIEW_BRIDGE_METHODS.includes('openPreviewDevtools'));
+
+  const preload = fs.readFileSync(path.join(REPO, 'desktop', 'preload.cjs'), 'utf8');
+  assert.match(preload, /openPreviewDevtools/);
+  assert.match(preload, /preview:open-devtools/);
+
+  const ipcMain = createIpcMainStub();
+  registerPreviewIpc(ipcMain, {
+    dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) },
+    shell: { openPath: async () => '' },
+  });
+  assert.equal(typeof ipcMain.handlers.get('preview:open-devtools'), 'function');
+});
+
+test('resolveDevtoolsCli：优先 WX_CLI_PATH，找不到时返回 null', () => {
+  const env = { WX_CLI_PATH: 'D:\\wx\\cli.bat' };
+  assert.equal(
+    launcher.resolveDevtoolsCli({ env, existsSync: (target) => target === env.WX_CLI_PATH }),
+    env.WX_CLI_PATH,
+  );
+  assert.equal(launcher.resolveDevtoolsCli({ env: {}, existsSync: () => false }), null);
+});
+
+test('isShellSafePath 拒绝 cmd 特殊字符', () => {
+  assert.equal(launcher.isShellSafePath('C:\\work\\shop'), true);
+  assert.equal(launcher.isShellSafePath('C:\\work\\shop&calc'), false);
+  assert.equal(launcher.isShellSafePath('C:\\work\\a"b'), false);
+});
+
+test('openPreviewInDevtools：目录不存在回传 PATH_MISSING', async () => {
+  const result = await channel.openPreviewInDevtools({
+    projectPath: path.join(makeTempDir('real-preview-devtools-'), 'nope'),
+  }, {});
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'PATH_MISSING');
+});
+
+test('openPreviewInDevtools：找到 CLI 时以 open --project 调起并 unref', async () => {
+  const dir = makeTempDir('real-preview-devtools-ok-');
+  writeFile(dir, 'project.config.json', Buffer.from('{}', 'utf8'));
+  const calls = [];
+  let unreffed = false;
+
+  const result = await channel.openPreviewInDevtools({ projectPath: dir }, {
+    env: { WX_CLI_PATH: 'D:\\wx\\cli.bat' },
+    existsSync: (target) => target === 'D:\\wx\\cli.bat',
+    launcher: (command, args, options) => {
+      calls.push({ command, args, options });
+      return { unref() { unreffed = true; } };
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, null);
+  assert.equal(unreffed, true);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].command, /cli\.bat/);
+  assert.equal(calls[0].args[0], 'open');
+  assert.equal(calls[0].args[1], '--project');
+  assert.match(calls[0].args[2], /real-preview-devtools-ok-/);
+});
+
+test('openPreviewInDevtools：缺少 CLI 回传 DEVTOOLS_NOT_FOUND', async () => {
+  const dir = makeTempDir('real-preview-devtools-missing-');
+  const result = await channel.openPreviewInDevtools({ projectPath: dir }, {
+    env: {},
+    existsSync: () => false,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'DEVTOOLS_NOT_FOUND');
+  assert.match(result.message, /WX_CLI_PATH/);
 });

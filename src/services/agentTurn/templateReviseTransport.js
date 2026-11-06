@@ -519,13 +519,26 @@ export function buildMockRevisePatch(request = {}) {
   const patch = {};
   const labels = [];
 
-  const color = COLOR_HINTS.find((rule) => rule.pattern.test(utterance));
-  if (color) {
-    patch.theme = { primaryColor: color.primary, accentColor: color.accent };
-    labels.push(color.label);
-  } else if (/深色|夜间|黑金|暗色/.test(utterance)) {
-    patch.theme = { pageBackground: '#171614', textColor: '#F7F3EA', tabBarBackground: '#171614' };
-    labels.push('深色夜间主题');
+  if (/黑白|去色|无彩色|灰度|灰阶|极简黑白/.test(utterance)) {
+    patch.theme = {
+      pageBackground: '#FFFFFF',
+      primaryColor: '#111111',
+      accentColor: '#333333',
+      textColor: '#111111',
+      tabBarBackground: '#FFFFFF',
+      tabBarColor: '#666666',
+      tabBarSelectedColor: '#111111',
+    };
+    labels.push('黑白极简主题');
+  } else {
+    const color = COLOR_HINTS.find((rule) => rule.pattern.test(utterance));
+    if (color) {
+      patch.theme = { primaryColor: color.primary, accentColor: color.accent };
+      labels.push(color.label);
+    } else if (/深色|夜间|黑金|暗色/.test(utterance)) {
+      patch.theme = { pageBackground: '#171614', textColor: '#F7F3EA', tabBarBackground: '#171614' };
+      labels.push('深色夜间主题');
+    }
   }
 
   if (/更大|大气|醒目|放大|再大/.test(utterance)) {

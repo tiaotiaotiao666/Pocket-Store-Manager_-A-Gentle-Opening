@@ -14,7 +14,71 @@ const { createDiagnostics } = require('./diagnostics.cjs');
 const { probeDevtools } = require('./devtools-probe.cjs');
 const { registerPreviewIpc } = require('./preview-channel.cjs');
 
-const userDataDir = app.getPath('userData');
+/**
+ * 选择一个真正可写的用户数据目录。
+ *
+ * 默认仍用系统 userData，正常机器行为不变。但实测存在这样的 Windows 环境：
+ * Electron 主进程对 %APPDATA% 写入一律 EPERM（同一目录下 node 进程写入正常），
+ * 表现为「本地数据目录不可写」并导致项目无法保存。此时按顺序回退到其它
+ * 用户可写位置，保证「产出能保存在电脑上」这条底线不被环境击穿。
+ */
+function resolveUserDataDir(defaultDir) {
+  const candidates = [];
+  const push = (dir) => {
+    if (typeof dir === 'string' && dir && !candidates.includes(dir)) candidates.push(dir);
+  };
+
+  push(defaultDir);
+  try { push(path.join(app.getPath('appData'), 'smart-store-generator')); } catch (error) { /* ignore */ }
+  try { push(path.join(process.env.LOCALAPPDATA || '', 'smart-store-generator')); } catch (error) { /* ignore */ }
+  try { push(path.join(app.getPath('documents'), 'smart-store-generator')); } catch (error) { /* ignore */ }
+  try { push(path.join(app.getPath('desktop'), 'smart-store-generator')); } catch (error) { /* ignore */ }
+  try { push(path.join(require('node:os').homedir(), 'smart-store-generator')); } catch (error) { /* ignore */ }
+  // 某些受限环境只允许写应用自身所在目录，最后再试这两处
+  try { push(path.join(process.cwd(), 'app-data')); } catch (error) { /* ignore */ }
+  try { push(path.join(path.dirname(app.getPath('exe')), 'app-data')); } catch (error) { /* ignore */ }
+
+  const syncFs = require('node:fs');
+  for (const dir of candidates) {
+    try {
+      syncFs.mkdirSync(dir, { recursive: true });
+      const probe = path.join(dir, `write-probe-${process.pid}.tmp`);
+      syncFs.writeFileSync(probe, 'ok', 'utf8');
+      syncFs.unlinkSync(probe);
+      return dir;
+    } catch (error) {
+      // 该位置不可写，继续尝试下一个候选
+    }
+  }
+  return null;
+}
+
+function migrateUserData(legacyDir, targetDir) {
+  if (!legacyDir || !targetDir) return;
+  if (path.resolve(legacyDir) === path.resolve(targetDir)) return;
+  const syncFs = require('node:fs');
+  for (const name of ['projects', 'config.json']) {
+    try {
+      const src = path.join(legacyDir, name);
+      const dst = path.join(targetDir, name);
+      if (syncFs.existsSync(src) && !syncFs.existsSync(dst)) {
+        syncFs.cpSync(src, dst, { recursive: true });
+      }
+    } catch (error) {
+      // 迁移尽力而为，失败不影响启动
+    }
+  }
+}
+
+let legacyUserDataDir = null;
+try { legacyUserDataDir = app.getPath('userData'); } catch (error) { /* ignore */ }
+
+const resolvedUserDataDir = resolveUserDataDir(legacyUserDataDir);
+if (resolvedUserDataDir) {
+  try { app.setPath('userData', resolvedUserDataDir); } catch (error) { /* ignore */ }
+  migrateUserData(legacyUserDataDir, resolvedUserDataDir);
+}
+const userDataDir = resolvedUserDataDir || legacyUserDataDir || app.getPath('userData');
 
 const imageAdapter = {
   resize(buffer, maxWidth) {

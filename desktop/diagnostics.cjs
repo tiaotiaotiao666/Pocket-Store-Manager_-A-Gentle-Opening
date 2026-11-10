@@ -35,9 +35,15 @@ async function probeStorage(userDataDir) {
   const result = { writable: false, freeSpaceMb: null, projectCount: 0, corruptProjectCount: 0, cause: null };
   try {
     await fsp.mkdir(userDataDir, { recursive: true });
-    const probe = path.join(userDataDir, '.probe');
+  } catch (error) {
+    result.cause = `MKDIR_${error && error.code ? error.code : 'FAILED'}`;
+    return result;
+  }
+  try {
+    // 用唯一临时名：点前缀文件在部分 Windows 安全软件下会被拒绝写入（EPERM）。
+    const probe = path.join(userDataDir, `probe-${process.pid}-${Date.now()}.tmp`);
     await fsp.writeFile(probe, 'ok', 'utf8');
-    await fsp.unlink(probe);
+    await fsp.unlink(probe).catch(() => {});
     result.writable = true;
   } catch (error) {
     result.cause = error && error.code ? error.code : 'WRITE_FAILED';
@@ -123,7 +129,7 @@ function createDiagnostics(options) {
       let message = '数据目录可写';
       let action = null;
       if (!storageProbe.writable) {
-        message = '数据目录不可写（权限或磁盘已满）';
+        message = `数据目录不可写（${storageProbe.cause || '权限或磁盘已满'}）`;
         action = '检查用户目录权限，或清理磁盘后重试';
       } else if (storageProbe.freeSpaceMb !== null && storageProbe.freeSpaceMb <= MIN_FREE_SPACE_MB) {
         message = `剩余空间不足 ${MIN_FREE_SPACE_MB} MB`;
@@ -140,6 +146,7 @@ function createDiagnostics(options) {
         projectCount: storageProbe.projectCount,
         corruptProjectCount: storageProbe.corruptProjectCount,
         lastSaveBytes: 0,
+        cause: storageProbe.cause || null,
       };
     }
 

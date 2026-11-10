@@ -24,7 +24,34 @@ const DEVTOOLS_CLI_CANDIDATES = Object.freeze([
   '%LOCALAPPDATA%\\微信web开发者工具\\cli.bat',
   '%ProgramFiles%\\Tencent\\微信web开发者工具\\cli.bat',
   '%ProgramFiles(x86)%\\Tencent\\微信web开发者工具\\cli.bat',
+  // 2.x 起安装包把产品名从「微信web开发者工具」改为「微信开发者工具」，
+  // 目录名随之变化；只保留旧名候选会导致新版永远命中不了。
+  '%LOCALAPPDATA%\\Programs\\微信开发者工具\\cli.bat',
+  '%LOCALAPPDATA%\\微信开发者工具\\cli.bat',
+  '%ProgramFiles%\\Tencent\\微信开发者工具\\cli.bat',
+  '%ProgramFiles(x86)%\\Tencent\\微信开发者工具\\cli.bat',
+  'D:\\微信开发者工具\\cli.bat',
+  'E:\\微信开发者工具\\cli.bat',
 ]);
+
+/**
+ * 目录扫描兜底：安装位置可以是任意目录（例如用户把便携版解压到
+ * `D:\Downloads\微信web开发者工具`），靠固定候选无法穷举。
+ * 这里只扫固定父目录的一层子目录名，不做递归，成本可控。
+ */
+const DEVTOOLS_SCAN_ROOTS = Object.freeze([
+  'D:\\Downloads',
+  'D:\\',
+  'E:\\Downloads',
+  'E:\\',
+  'C:\\Downloads',
+  '%LOCALAPPDATA%\\Programs',
+  '%LOCALAPPDATA%',
+  '%ProgramFiles%',
+  '%ProgramFiles(x86)%',
+]);
+
+const DEVTOOLS_DIR_PATTERN = /(微信.*开发者工具|wechat.*devtools)$/i;
 
 const UNSAFE_SHELL_CHARS = /["&|<>^%\r\n]/;
 const MAX_PATH_LENGTH = 1200;
@@ -61,6 +88,35 @@ function resolveDevtoolsCli(options) {
       if (existsSync(candidate)) return candidate;
     } catch (error) {
       /* 候选路径不可读时继续下一个 */
+    }
+  }
+  return scanDevtoolsCli(env, existsSync);
+}
+
+/**
+ * 在固定父目录下按目录名匹配开发者工具安装目录，返回其中的 cli.bat。
+ * 只读一层目录，任何 IO 失败都静默跳过，不影响既有候选逻辑。
+ * @param {object} env
+ * @param {(target: string) => boolean} existsSync
+ * @returns {string|null}
+ */
+function scanDevtoolsCli(env, existsSync) {
+  for (const raw of DEVTOOLS_SCAN_ROOTS) {
+    const root = expandEnvPath(raw, env);
+    let entries;
+    try {
+      entries = fs.readdirSync(root, { withFileTypes: true });
+    } catch (error) {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !DEVTOOLS_DIR_PATTERN.test(entry.name)) continue;
+      const candidate = path.join(root, entry.name, 'cli.bat');
+      try {
+        if (existsSync(candidate)) return candidate;
+      } catch (error) {
+        /* 该候选不可读时继续 */
+      }
     }
   }
   return null;

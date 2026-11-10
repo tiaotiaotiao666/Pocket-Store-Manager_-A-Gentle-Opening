@@ -137,6 +137,7 @@ registerComposerIpc(ipcMain, {
   shell,
   compose: composer.compose,
   validateComposition: composer.validateComposition,
+  previewParentDir: path.join(app.getPath('userData'), 'preview-projects'),
 });
 
 registerProjectIpc(ipcMain, {
@@ -151,7 +152,24 @@ registerProjectIpc(ipcMain, {
 
 // 真实渲染截图回传（C-REAL-PREVIEW@1）：只打开已导出工程目录 + 读取本地截图，
 // 不上传网络、不写入导出工程、不执行 shell 命令，也不声称完成渲染。
-registerPreviewIpc(ipcMain, { dialog, shell });
+// 「预览新模块」按钮复用同一模块，通过微信开发者工具 CLI 打开工程。
+const defaultPreviewProject = [
+  path.join(app.getAppPath(), 'miniprogram'),
+  path.join(process.cwd(), 'miniprogram'),
+].find((candidate) => {
+  try {
+    return require('node:fs').existsSync(candidate);
+  } catch (error) {
+    return false;
+  }
+}) || '';
+
+registerPreviewIpc(ipcMain, {
+  dialog,
+  shell,
+  defaultProjectPath: defaultPreviewProject,
+  fallbackAppidFile: path.join(app.getAppPath(), 'miniprogram', 'project.config.json'),
+});
 
 registerFlushGuard({
   app,

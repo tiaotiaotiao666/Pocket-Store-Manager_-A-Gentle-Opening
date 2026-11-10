@@ -44,6 +44,20 @@ function createComposerIpc(options) {
   const exportedOutputs = new Set();
   let active = null;
 
+  // 应用内「预览新模块」专用目录：不需要每次弹系统对话框选位置。
+  const PREVIEW_PARENT_TOKEN = '__preview__';
+  const previewParentDir = typeof opts.previewParentDir === 'string' && opts.previewParentDir.trim()
+    ? path.resolve(opts.previewParentDir)
+    : null;
+  if (previewParentDir) {
+    try {
+      fs.mkdirSync(previewParentDir, { recursive: true });
+    } catch (error) {
+      /* 目录创建失败时仍让后续流程给出明确错误 */
+    }
+    approvedParents.add(previewParentDir);
+  }
+
   function resultError(code, message, details) {
     return { ok: false, code, message, details: details || null };
   }
@@ -74,10 +88,13 @@ function createComposerIpc(options) {
     if (active) return resultError('EXPORT_BUSY', '已有导出任务正在运行');
     if (payloadSize(payload) > MAX_PAYLOAD_BYTES) return resultError('PAYLOAD_TOO_LARGE', '配置内容超过 256 KB');
     if (payloadSize(payload && payload.plan) > MAX_PLAN_BYTES) return resultError('PAYLOAD_TOO_LARGE', 'Plan 超过 64 KB');
-    if (!payload || typeof payload.parentDir !== 'string') {
+    const requestedParent = payload && payload.parentDir === PREVIEW_PARENT_TOKEN
+      ? previewParentDir
+      : (payload && payload.parentDir);
+    if (typeof requestedParent !== 'string' || !requestedParent) {
       return resultError('TARGET_PARENT_MISSING', '未选择导出位置');
     }
-    const parentDir = path.resolve(payload.parentDir);
+    const parentDir = path.resolve(requestedParent);
     if (!approvedParents.has(parentDir)) {
       return resultError('TARGET_NOT_WRITABLE', '导出位置未经系统对话框确认');
     }

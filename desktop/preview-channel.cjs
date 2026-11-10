@@ -16,6 +16,8 @@
 const nodePath = require('node:path');
 const fsPromises = require('node:fs/promises');
 
+const devtoolsLauncher = require('./devtools-launch.cjs');
+
 const { isTrustedSender } = require('./composer-ipc.cjs');
 
 const PREVIEW_CONTRACT = 'real-preview-channel.v1';
@@ -24,10 +26,11 @@ const PREVIEW_CONTRACT = 'real-preview-channel.v1';
 const PREVIEW_CHANNELS = Object.freeze({
   openProject: 'preview:open-project',
   pickScreenshot: 'preview:pick-screenshot',
+  openDevtools: 'preview:open-devtools',
 });
 
 /** preload 暴露到 window.smartStore 的方法名。 */
-const PREVIEW_BRIDGE_METHODS = Object.freeze(['openPreviewProject', 'pickPreviewScreenshot']);
+const PREVIEW_BRIDGE_METHODS = Object.freeze(['openPreviewProject', 'pickPreviewScreenshot', 'openPreviewDevtools']);
 
 const PREVIEW_MAX_PATH_LENGTH = 1200;
 const PREVIEW_MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024;
@@ -347,10 +350,19 @@ async function openPreviewProject(payload, deps) {
 }
 
 /**
+ * 在微信开发者工具里打开工程目录。
+ * 具体调起逻辑在 `devtools-launch.cjs`，本模块只做 IPC 适配，保持不直接执行子进程的约束。
+ */
+function openPreviewInDevtools(payload, options) {
+  return devtoolsLauncher.openProjectInDevtools(payload, options);
+}
+
+/**
  * 注册 `preview:open-project` 与 `preview:pick-screenshot` 两个 IPC 通道。
  *
  * @param {import('electron').IpcMain} ipcMain
- * @param {{ dialog?: object, shell?: object, fs?: typeof fsPromises, path?: typeof nodePath }} options
+ * @param {{ dialog?: object, shell?: object, fs?: typeof fsPromises, path?: typeof nodePath,
+ *   defaultProjectPath?: string, launcher?: Function, env?: object, existsSync?: Function }} options
  */
 function registerPreviewIpc(ipcMain, options) {
   const opts = options || {};
@@ -358,6 +370,11 @@ function registerPreviewIpc(ipcMain, options) {
   const shell = opts.shell;
   const fsOverride = opts.fs;
   const pathOverride = opts.path;
+  const defaultProjectPath = opts.defaultProjectPath;
+  const fallbackAppidFile = opts.fallbackAppidFile;
+  const launcherOverride = opts.launcher;
+  const envOverride = opts.env;
+  const existsSyncOverride = opts.existsSync;
 
   const withSenderCheck = (handler) => async (event, payload) => {
     if (!isTrustedSender(event)) {
@@ -451,13 +468,36 @@ function registerPreviewIpc(ipcMain, options) {
     };
   });
 
+  const openDevtoolsHandler = withSenderCheck(async (payload) => {
+    try {
+      return await openPreviewInDevtools(payload, {
+        defaultProjectPath,
+        fallbackAppidFile,
+        launcher: launcherOverride,
+        env: envOverride,
+        existsSync: existsSyncOverride,
+        fs: fsOverride,
+        path: pathOverride,
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        cancelled: false,
+        code: 'PATH_INVALID',
+        message: `调起微信开发者工具预览失败：${(error && error.message) || '未知错误'}`,
+      };
+    }
+  });
+
   ipcMain.handle(PREVIEW_CHANNELS.openProject, openProjectHandler);
   ipcMain.handle(PREVIEW_CHANNELS.pickScreenshot, pickScreenshotHandler);
+  ipcMain.handle(PREVIEW_CHANNELS.openDevtools, openDevtoolsHandler);
 
   return {
     handlers: {
       [PREVIEW_CHANNELS.openProject]: openProjectHandler,
       [PREVIEW_CHANNELS.pickScreenshot]: pickScreenshotHandler,
+      [PREVIEW_CHANNELS.openDevtools]: openDevtoolsHandler,
     },
   };
 }
@@ -473,10 +513,14 @@ module.exports = {
   PREVIEW_SCREENSHOT_MIME_TYPES,
   PREVIEW_SCREENSHOT_EXTENSIONS,
   PREVIEW_SCREENSHOT_FILTERS,
+  DEVTOOLS_CLI_CANDIDATES: devtoolsLauncher.DEVTOOLS_CLI_CANDIDATES,
   toContractCode,
   detectImageMime,
+  isShellSafePath: devtoolsLauncher.isShellSafePath,
+  resolveDevtoolsCli: devtoolsLauncher.resolveDevtoolsCli,
   validateProjectPath,
   validateScreenshotFile,
   openPreviewProject,
+  openPreviewInDevtools,
   registerPreviewIpc,
 };

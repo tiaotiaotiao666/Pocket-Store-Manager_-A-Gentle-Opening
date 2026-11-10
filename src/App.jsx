@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import { features as catalogFeatures } from './domain/catalog.mjs';
 import { STORE_TYPES, STYLE_PRESETS } from './domain/storeBrief.mjs';
@@ -1246,6 +1246,42 @@ export default function App() {
     }
   };
 
+  /**
+   * 模板页「预览新模块」：把当前定制需求（presentation patch）导出成真实工程，
+   * 再交给微信开发者工具打开。只在桌面端可用。
+   */
+  const handlePreparePreviewProject = useCallback(async () => {
+    const api = typeof window !== 'undefined' ? window.smartStore : null;
+    if (!api || api.isDesktop !== true || typeof api.composerExport !== 'function') {
+      return { ok: false, message: '需要在桌面应用中生成并预览工程。' };
+    }
+
+    const { plan, warnings } = buildPlanFromSession(state);
+    const baseName = String(
+      (state.store && state.store.name)
+      || (state.agentDraft && state.agentDraft.storeName)
+      || '小程序预览',
+    ).trim() || '小程序预览';
+    const projectName = `${baseName}-预览-${Date.now().toString().slice(-6)}`;
+
+    const result = await exportProject({
+      parentDir: '__preview__',
+      plan,
+      projectName,
+      mode: 'development',
+    });
+    if (result.status !== 'ok') {
+      return { ok: false, message: result.message || '生成预览工程失败。' };
+    }
+
+    const payload = result.result || {};
+    return {
+      ok: true,
+      path: payload.outputPath || '',
+      warnings: [...(warnings || []), ...(payload.warnings || [])],
+    };
+  }, [state]);
+
   const handlePickPreviewScreenshot = async () => {
     const api = typeof window !== 'undefined' ? window.smartStore : null;
     if (!api || typeof api.pickPreviewScreenshot !== 'function') {
@@ -1825,6 +1861,8 @@ export default function App() {
             compareIds={compareIds}
             onCompareChange={setCompareIds}
             mockRevise={templateReviseTransport.mock}
+            previewProjectPath={null}
+            onPrepareProject={handlePreparePreviewProject}
           />
         );
       case PHASES.STORE_INFO: {

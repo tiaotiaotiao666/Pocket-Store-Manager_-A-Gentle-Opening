@@ -3,6 +3,7 @@ import SatisfactionPrompt from './SatisfactionPrompt.jsx';
 import TemplateCompare from './TemplateCompare.jsx';
 import TemplateRevisePanel from './TemplateRevisePanel.jsx';
 import MiniProgramPreview from '../preview/MiniProgramPreview.jsx';
+import PreviewLaunchButton from '../preview/PreviewLaunchButton.jsx';
 import { describeTemplateReviseTransport } from '../../services/agentTurn/templateReviseService.js';
 import { SATISFACTION, TEMPLATE_REFINE } from '../../domain/onboardingScript.mjs';
 
@@ -36,6 +37,8 @@ export default function TemplateGallery({
   compareIds = null,
   onCompareChange,
   mockRevise = null,
+  previewProjectPath = null,
+  onPrepareProject = null,
 }) {
   const list = Array.isArray(candidates) ? candidates : [];
   const selected = list.find((item) => item.id === selectedId) ?? list[0];
@@ -180,6 +183,12 @@ export default function TemplateGallery({
               <MiniProgramPreview
                 viewModel={viewModelsByTemplateId[selected.id]}
                 size="full"
+              />
+              <PreviewLaunchButton
+                projectPath={previewProjectPath}
+                viewModel={viewModelsByTemplateId[selected.id]}
+                templateName={selected.name}
+                onPrepareProject={onPrepareProject}
               />
             </div>
           )}

@@ -444,7 +444,14 @@ function modelBody(content: string): unknown {
   return { choices: [{ message: { role: 'assistant', content } }] };
 }
 
+/**
+ * 单元测试必须与环境隔离：ConfigService 在内部配置缺失时会回落到 process.env，
+ * 而开发机的 .env 允许配置自定义 DEEPSEEK_VISION_MODEL（见 .env.example）。
+ * 这里显式清掉该键，保证"未配置时的默认值"这类断言在任何机器上都可复现；
+ * 需要自定义值时由 overrides 显式传入。
+ */
 function makeConfig(overrides: Record<string, unknown> = {}): ConfigService {
+  delete process.env.DEEPSEEK_VISION_MODEL;
   return new ConfigService({
     DEEPSEEK_API_BASE_URL: 'https://api.deepseek.com',
     DEEPSEEK_API_KEY: 'sk-test-key-never-real',

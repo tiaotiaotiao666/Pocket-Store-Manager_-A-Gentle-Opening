@@ -1,0 +1,136 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "product-detail",
+  "version": "1.0.0",
+  "displayName": "菜品详情弹层",
+  "category": "menu",
+  "summary": "底部弹层的菜品详情，展示大图或首字占位、描述、价格、数量与加入购物车按钮。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/product-detail",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:1e4fc0a509fcf9b5af96b6a020d2875d741337cff42d8138443ea7dc8b6dfaae"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "product",
+        "type": "object",
+        "required": true,
+        "defaultValue": {},
+        "description": "菜品对象；必读 id、name、priceCents、available"
+      },
+      {
+        "name": "quantity",
+        "type": "number",
+        "required": false,
+        "defaultValue": 0,
+        "description": "当前已选数量"
+      },
+      {
+        "name": "visible",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": false,
+        "description": "是否显示弹层；显隐由页面控制"
+      }
+    ],
+    "events": [
+      {
+        "name": "add",
+        "payload": [
+          "productId"
+        ],
+        "description": "加入购物车；停售不派发"
+      },
+      {
+        "name": "close",
+        "payload": [],
+        "description": "点击遮罩或关闭按钮"
+      },
+      {
+        "name": "remove",
+        "payload": [
+          "productId"
+        ],
+        "description": "减少数量；数量为 0 不派发"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "product-detail",
+    "wxmlExample": "<product-detail visible=\"{{detailVisible}}\" product=\"{{detailProduct}}\" quantity=\"{{detailQuantity}}\" bind:close=\"onDetailClose\" bind:add=\"onDetailAdd\" bind:remove=\"onDetailRemove\" />",
+    "whenToUse": [
+      "菜单页需要在当前页查看菜品详情并直接加购",
+      "需要一个带遮罩的底部弹层"
+    ],
+    "avoidWhen": [
+      "需要独立路由的商品详情页时，参考 product-detail 页面而不是这个弹层",
+      "停售菜品不应提供可点击的加购按钮"
+    ],
+    "notes": [
+      "与 product-card 成对使用：卡片负责列表，弹层负责详情与加购"
+    ]
+  },
+  "pages": [
+    "menu"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [
+      "product.id",
+      "product.name",
+      "product.description",
+      "product.priceCents",
+      "product.imageUrl",
+      "product.available"
+    ],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "wxss",
+    "themeVars": [
+      "--color-muted",
+      "--color-primary"
+    ],
+    "sharedClasses": [
+      "ss-btn",
+      "ss-btn--disabled",
+      "ss-btn--primary",
+      "ss-mask",
+      "ss-sheet"
+    ],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 16
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "弹层可见性完全由 visible 控制，组件不自行导航",
+    "停售时按钮文案为「暂不可售」且不派发 add",
+    "金额只读 priceCents"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:1e4fc0a509fcf9b5af96b6a020d2875d741337cff42d8138443ea7dc8b6dfaae"
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "mine-profile",
+  "displayName": "身份与门店卡",
+  "summary": "头像首字、显示名、身份与登录态、右侧门店标签组成的身份卡。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "mine",
+  "order": 2,
+  "locator": {
+    "selector": "mine__profile",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
+    "lineStart": 10,
+    "lineEnd": 17,
+    "digest": "sha256:40e24184f14d14ddf93d7afc464af191cb1dd6c21078df9b7ed7db08c1bf998c"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 10,
+        "lineEnd": 17,
+        "code": "<view class=\"mine__profile\">\r\n      <view class=\"mine__avatar\">{{avatarText}}</view>\r\n      <view class=\"mine__profile-body\">\r\n        <text class=\"mine__profile-name\">{{user.displayName || '未登录'}}</text>\r\n        <text class=\"mine__profile-meta\">{{identity.label}}{{loggedIn ? ' · 已登录' : ' · 未登录'}}</text>\r\n      </view>\r\n      <view class=\"mine__profile-tag\">{{storeName || '门店'}}</view>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "avatarText",
+      "displayName",
+      "identity",
+      "label",
+      "loggedIn",
+      "storeName",
+      "user"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/mine/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "mine__profile",
+      "mine__avatar",
+      "mine__profile-body",
+      "mine__profile-name",
+      "mine__profile-meta",
+      "mine__profile-tag"
+    ],
+    "selectors": [
+      {
+        "selector": ".mine__profile",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "margin-top: 26rpx",
+          "padding: 28rpx",
+          "border-radius: 28rpx",
+          "background: linear-gradient(135deg, var(--color-text) 0%, #4a4138 100%)",
+          "color: var(--color-surface)",
+          "box-shadow: 0 16rpx 36rpx rgba(47, 42, 37, 0.2)"
+        ]
+      },
+      {
+        "selector": ".mine__avatar",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: center",
+          "width: 96rpx",
+          "height: 96rpx",
+          "border-radius: 999rpx",
+          "background: linear-gradient(140deg, #f3a55f 0%, var(--color-primary) 100%)",
+          "font-size: 40rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".mine__profile-body",
+        "declarations": [
+          "flex: 1",
+          "min-width: 0",
+          "margin-left: 22rpx",
+          "display: flex",
+          "flex-direction: column"
+        ]
+      },
+      {
+        "selector": ".mine__profile-name",
+        "declarations": [
+          "font-size: 32rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".mine__profile-meta",
+        "declarations": [
+          "margin-top: 6rpx",
+          "font-size: 22rpx",
+          "color: rgba(255, 250, 243, 0.62)"
+        ]
+      },
+      {
+        "selector": ".mine__profile-tag",
+        "declarations": [
+          "flex: none",
+          "max-width: 220rpx",
+          "padding: 6rpx 16rpx",
+          "border-radius: 999rpx",
+          "background: rgba(255, 250, 243, 0.14)",
+          "font-size: 20rpx",
+          "overflow: hidden",
+          "white-space: nowrap",
+          "text-overflow: ellipsis"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-primary",
+      "--color-surface",
+      "--color-text"
+    ],
+    "selectorCount": 6
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "结构固定，复制 WXML 与 mine__ 样式即可；数据来自 me 视图模型。",
+    "whenToUse": [
+      "需要展示当前登录身份",
+      "需要把门店归属挂在身份旁"
+    ],
+    "avoidWhen": [
+      "需要切换身份，用 mine__identities 演示块"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "头像用 displayName 首字生成，不加载网络图",
+    "身份与登录态由 identity.label 与 loggedIn 决定"
+  ],
+  "knownLimits": [
+    "不支持上传头像"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:40e24184f14d14ddf93d7afc464af191cb1dd6c21078df9b7ed7db08c1bf998c"
+  }
+}

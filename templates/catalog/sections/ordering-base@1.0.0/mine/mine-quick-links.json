@@ -1,0 +1,164 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "mine-quick-links",
+  "displayName": "快捷入口卡",
+  "summary": "「我的订单」「回到首页」两行入口，带右箭头。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "mine",
+  "order": 5,
+  "locator": {
+    "selector": "mine__links",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
+    "lineStart": 69,
+    "lineEnd": 78,
+    "digest": "sha256:597dc783db61b8aae5a0d8c7d2f58c6f6474e3417ae0d6867f73cba9d7967f24"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 69,
+        "lineEnd": 78,
+        "code": "<view class=\"surface-card mine__links\">\r\n        <view class=\"mine__link\" bind:tap=\"goOrders\">\r\n          <text class=\"mine__link-label\">我的订单</text>\r\n          <text class=\"mine__link-arrow\">›</text>\r\n        </view>\r\n        <view class=\"mine__link\" bind:tap=\"goHome\">\r\n          <text class=\"mine__link-label\">回到首页</text>\r\n          <text class=\"mine__link-arrow\">›</text>\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "goOrders"
+      },
+      {
+        "type": "tap",
+        "handler": "goHome"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/mine/index.js",
+    "handlers": [
+      "goHome",
+      "goOrders"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "surface-card",
+      "mine__links",
+      "mine__link",
+      "mine__link-label",
+      "mine__link-arrow"
+    ],
+    "selectors": [
+      {
+        "selector": ".mine__links",
+        "declarations": [
+          "padding: 6rpx 24rpx"
+        ]
+      },
+      {
+        "selector": ".mine__link",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "padding: 24rpx 0",
+          "border-bottom: 2rpx solid rgba(230, 222, 210, 0.55)"
+        ]
+      },
+      {
+        "selector": ".mine__link:last-child",
+        "declarations": [
+          "border-bottom: none"
+        ]
+      },
+      {
+        "selector": ".mine__link-label",
+        "declarations": [
+          "font-size: 27rpx"
+        ]
+      },
+      {
+        "selector": ".mine__link-arrow",
+        "declarations": [
+          "font-size: 34rpx",
+          "color: var(--color-muted)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted"
+    ],
+    "selectorCount": 5
+  },
+  "reuse": {
+    "level": "promote-to-ui-block",
+    "reason": "通用导航卡，跨模板复用需要 items 与 select 契约；建议提升为快捷入口 UI Block。",
+    "whenToUse": [
+      "「我的」页需要常用入口",
+      "需要按身份裁剪入口列表"
+    ],
+    "avoidWhen": [
+      "只有单个入口时直接用一行 view，不必建组件"
+    ],
+    "uiBlockBlueprint": {
+      "suggestedId": "quick-links",
+      "displayName": "快捷入口卡",
+      "props": [
+        {
+          "name": "items",
+          "type": "array",
+          "required": true,
+          "description": "入口列表：key、label；由页面决定跳转目标"
+        }
+      ],
+      "events": [
+        {
+          "name": "select",
+          "payload": [
+            {
+              "name": "key",
+              "type": "string",
+              "description": "被点击入口的 key"
+            }
+          ],
+          "description": "点击入口；路由由页面处理"
+        }
+      ],
+      "promotionSteps": [
+        "按组件入库标准新增 templates/components/quick-links/1.0.0",
+        "在 Base 页面 index.json 的 usingComponents 声明后才能进入 FrontendPack 视图",
+        "登记 registry.v1.json 并执行 node scripts/registry-check.cjs --write"
+      ]
+    }
+  },
+  "constraints": [
+    "入口只上报点击，不在组件内做路由"
+  ],
+  "knownLimits": [
+    "当前入口写死为我的订单与回到首页"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:597dc783db61b8aae5a0d8c7d2f58c6f6474e3417ae0d6867f73cba9d7967f24"
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "order-card",
+  "version": "1.0.0",
+  "displayName": "订单卡片",
+  "category": "order",
+  "summary": "顾客与店主共用的订单卡，展示订单号、时间、状态、履约方式、菜品摘要、合计金额与角色相关动作。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/order-card",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:29f4ea135a8eca8a92546c5e39fa2a4cf3ae9336daca67753edbb9d9bf3f5cb2"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "actingId",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "正在推进状态的订单 ID；非空时禁用推进按钮"
+      },
+      {
+        "name": "actingStatus",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "正在推进到的目标状态，用于显示处理中"
+      },
+      {
+        "name": "actionable",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": false,
+        "description": "是否展示动作按钮"
+      },
+      {
+        "name": "order",
+        "type": "object",
+        "required": true,
+        "defaultValue": {},
+        "description": "订单投影对象；含 id、shortId、statusText、statusTone、fulfillmentText、totalText、itemViews、canPay、canCancel、actions、unpaid 等"
+      },
+      {
+        "name": "role",
+        "type": "string",
+        "required": false,
+        "defaultValue": "CUSTOMER",
+        "description": "CUSTOMER 或 MERCHANT，决定动作区"
+      }
+    ],
+    "events": [
+      {
+        "name": "advance",
+        "payload": [
+          "orderId",
+          "toStatus"
+        ],
+        "description": "店主推进状态；detail.orderId 与 toStatus"
+      },
+      {
+        "name": "cancel",
+        "payload": [
+          "orderId",
+          "reason"
+        ],
+        "description": "顾客取消订单；detail.orderId 与空 reason"
+      },
+      {
+        "name": "open",
+        "payload": [
+          "orderId"
+        ],
+        "description": "点击卡片打开详情；detail.orderId"
+      },
+      {
+        "name": "pay",
+        "payload": [
+          "orderId"
+        ],
+        "description": "顾客点击演示模拟支付；detail.orderId"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "order-card",
+    "wxmlExample": "<order-card order=\"{{item}}\" role=\"CUSTOMER\" actionable=\"{{false}}\" bind:open=\"onOpenOrder\" />",
+    "whenToUse": [
+      "顾客订单列表、首页进行中订单、店主订单台",
+      "需要根据 role 展示支付/取消或状态推进按钮"
+    ],
+    "avoidWhen": [
+      "只需要展示状态徽标时，用 order-status",
+      "需要展示完整状态日志时，用 status-timeline"
+    ],
+    "notes": [
+      "店主订单台传 role=\"MERCHANT\"、actionable=\"{{true}}\" 并绑定 bind:advance"
+    ]
+  },
+  "pages": [
+    "home",
+    "merchant-orders",
+    "orders"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [
+      "order.id",
+      "order.shortId",
+      "order.createdAtText",
+      "order.statusText",
+      "order.statusTone",
+      "order.fulfillmentText",
+      "order.paymentText",
+      "order.itemViews[]",
+      "order.itemSummary",
+      "order.totalText",
+      "order.canPay",
+      "order.canCancel",
+      "order.actions[]",
+      "order.unpaid"
+    ],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "order-card",
+    "themeVars": [
+      "--color-muted",
+      "--color-primary",
+      "--color-primary-soft",
+      "--color-success",
+      "--color-surface",
+      "--color-text"
+    ],
+    "sharedClasses": [
+      "ss-btn",
+      "ss-btn--danger",
+      "ss-btn--ghost",
+      "ss-btn--primary",
+      "ss-btn--success"
+    ],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 31
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "组件不判断状态机是否允许推进，只展示 order.actions 给定的动作",
+    "actingId 非空时禁止再次派发 advance",
+    "金额展示 order.totalText，不接收 priceText 之外的第二事实"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:29f4ea135a8eca8a92546c5e39fa2a4cf3ae9336daca67753edbb9d9bf3f5cb2"
+  }
+}

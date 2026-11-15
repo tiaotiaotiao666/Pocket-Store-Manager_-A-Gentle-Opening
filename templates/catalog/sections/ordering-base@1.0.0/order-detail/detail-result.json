@@ -1,0 +1,163 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "detail-result",
+  "displayName": "支付结果整屏",
+  "summary": "pay-result 组件整屏结果态：状态、短号、合计、履约文案与主次操作。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "order-detail",
+  "order": 1,
+  "locator": {
+    "selector": "detail__result",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
+    "lineStart": 9,
+    "lineEnd": 22,
+    "digest": "sha256:520905f1d3c528842f33b85aeb02560a78bfbe67599de6f61b23f219bf5f8518"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 9,
+        "lineEnd": 22,
+        "code": "<view wx:elif=\"{{payResult}}\" class=\"detail__result\">\r\n    <pay-result\r\n      state=\"{{payResult.state}}\"\r\n      short-id=\"{{payResult.shortId}}\"\r\n      total-text=\"{{payResult.totalText}}\"\r\n      fulfillment-text=\"{{payResult.fulfillmentText}}\"\r\n      title=\"{{payResult.title}}\"\r\n      description=\"{{payResult.description}}\"\r\n      request-id=\"{{payResult.requestId}}\"\r\n      bind:primary=\"onResultPrimary\"\r\n      bind:secondary=\"onResultSecondary\"\r\n      bind:retry=\"onResultRetry\"\r\n    />\r\n  </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "pay-result",
+      "bindings": [
+        {
+          "attr": "state",
+          "expression": "{{payResult.state}}"
+        },
+        {
+          "attr": "short-id",
+          "expression": "{{payResult.shortId}}"
+        },
+        {
+          "attr": "total-text",
+          "expression": "{{payResult.totalText}}"
+        },
+        {
+          "attr": "fulfillment-text",
+          "expression": "{{payResult.fulfillmentText}}"
+        },
+        {
+          "attr": "title",
+          "expression": "{{payResult.title}}"
+        },
+        {
+          "attr": "description",
+          "expression": "{{payResult.description}}"
+        },
+        {
+          "attr": "request-id",
+          "expression": "{{payResult.requestId}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "primary",
+          "handler": "onResultPrimary"
+        },
+        {
+          "name": "secondary",
+          "handler": "onResultSecondary"
+        },
+        {
+          "name": "retry",
+          "handler": "onResultRetry"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "description",
+      "fulfillmentText",
+      "payResult",
+      "requestId",
+      "shortId",
+      "state",
+      "title",
+      "totalText"
+    ],
+    "handlers": [
+      {
+        "type": "primary",
+        "handler": "onResultPrimary"
+      },
+      {
+        "type": "secondary",
+        "handler": "onResultSecondary"
+      },
+      {
+        "type": "retry",
+        "handler": "onResultRetry"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/order-detail/index.js",
+    "handlers": [
+      "onResultPrimary",
+      "onResultRetry",
+      "onResultSecondary"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "detail__result"
+    ],
+    "selectors": [
+      {
+        "selector": ".detail__result",
+        "declarations": [
+          "margin-top: 8rpx"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 1
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "直接复用 Base pay-result，不需要新组件；参数由 payResult 视图模型给出。",
+    "whenToUse": [
+      "支付完成后需要独立结果页",
+      "需要成功/失败/处理中三态统一"
+    ],
+    "avoidWhen": [
+      "订单仍在详情浏览阶段，用 detail__hero"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "payResult 存在时整页只渲染该块",
+    "primary/secondary/retry 三个事件必须接到页面控制器"
+  ],
+  "knownLimits": [
+    "结果态不展示订单进度时间线"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:520905f1d3c528842f33b85aeb02560a78bfbe67599de6f61b23f219bf5f8518"
+  }
+}

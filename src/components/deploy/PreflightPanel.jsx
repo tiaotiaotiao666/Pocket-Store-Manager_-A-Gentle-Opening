@@ -21,14 +21,19 @@ function RuleRow({ rule, acknowledged, onToggleAck, onGoto }) {
       </div>
       <div className="preflight-tail">
         {isWarn ? (
-          <label className="preflight-ack">
-            <input
-              type="checkbox"
-              checked={acknowledged.includes(rule.ruleId)}
-              onChange={() => onToggleAck?.(rule.ruleId)}
-            />
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={acknowledged.includes(rule.ruleId)}
+            aria-label={`我已了解：${rule.ruleId}`}
+            className="preflight-ack"
+            onClick={() => onToggleAck?.(rule.ruleId)}
+          >
+            <span className="preflight-ack-box" aria-hidden="true">
+              {acknowledged.includes(rule.ruleId) ? '✓' : ''}
+            </span>
             我已了解
-          </label>
+          </button>
         ) : null}
         {rule.action?.phase ? (
           <button type="button" className="preflight-goto" onClick={() => onGoto?.(rule.action.phase)}>
@@ -57,6 +62,7 @@ export default function PreflightPanel({
   const errorCount = errors.length;
   const ackedSet = new Set(acknowledged || []);
   const pendingWarns = warns.filter((item) => !ackedSet.has(item.ruleId));
+  const targetConflict = errors.some((item) => item && item.ruleId === 'E-TARGET-EXISTS');
   const errorHeadline = errorCount > 0
     ? `有 ${errorCount} 项需要先修正`
     : (pendingWarns.length > 0 ? `可以继续，但有 ${pendingWarns.length} 项提示需要确认` : `可以导出${warns.length ? `（已确认 ${warns.length} 项提示）` : ''}`);
@@ -89,6 +95,12 @@ export default function PreflightPanel({
           </button>
         </div>
       </header>
+
+      {targetConflict ? (
+        <p className="preflight-target-hint" role="note">
+          目标目录已有同名工程，不会覆盖：先确认上方提示，再点「选择导出位置」换一个目录，或修改项目名。
+        </p>
+      ) : null}
 
       {status === 'idle' ? (
         <div className="preflight-empty">

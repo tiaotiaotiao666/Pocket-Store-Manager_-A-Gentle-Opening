@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "orders-pending-notice",
+  "displayName": "待支付提醒条",
+  "summary": "有未支付订单且不在历史筛选时，提示还有几笔等待演示模拟支付。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "orders",
+  "order": 3,
+  "locator": {
+    "selector": "orders__notice",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxss",
+    "lineStart": 20,
+    "lineEnd": 23,
+    "digest": "sha256:19a14e866a1082b39facd17e6bf28d8c231ad6acc342d65e90e1142d1572d57b"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 20,
+        "lineEnd": 23,
+        "code": "<view wx:if=\"{{pendingPaymentCount > 0 && filter !== 'history'}}\" class=\"orders__notice\">\r\n    <text class=\"orders__notice-dot\"></text>\r\n    <text>有 {{pendingPaymentCount}} 笔订单等待演示模拟支付</text>\r\n  </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "filter",
+      "history",
+      "pendingPaymentCount"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/orders/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "orders__notice",
+      "orders__notice-dot"
+    ],
+    "selectors": [
+      {
+        "selector": ".orders__notice",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "margin-top: 22rpx",
+          "padding: 18rpx 22rpx",
+          "border-radius: 16rpx",
+          "background: #fdf0e4",
+          "font-size: 22rpx",
+          "color: #8a5a2b"
+        ]
+      },
+      {
+        "selector": ".orders__notice-dot",
+        "declarations": [
+          "width: 12rpx",
+          "height: 12rpx",
+          "margin-right: 12rpx",
+          "border-radius: 999rpx",
+          "background: var(--color-primary)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-primary"
+    ],
+    "selectorCount": 2
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "单行提示，复制 WXML 与样式即可。",
+    "whenToUse": [
+      "需要把待支付订单数前置提醒"
+    ],
+    "avoidWhen": [
+      "历史筛选下不应出现，条件里已排除"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "条件是 pendingPaymentCount > 0 && filter !== history"
+  ],
+  "knownLimits": [
+    "文案里的「演示模拟支付」写死"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:19a14e866a1082b39facd17e6bf28d8c231ad6acc342d65e90e1142d1572d57b"
+  }
+}

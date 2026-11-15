@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "detail-pay-hint",
+  "displayName": "未支付提示条",
+  "summary": "提醒还需完成演示模拟支付，说明不产生真实支付。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "order-detail",
+  "order": 3,
+  "locator": {
+    "selector": "detail__pay-hint",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
+    "lineStart": 44,
+    "lineEnd": 47,
+    "digest": "sha256:db06c596a94b1c4f7db73647e719a259e8d78ae84ecd47eb08c0a1c779f1e79a"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 44,
+        "lineEnd": 47,
+        "code": "<view wx:if=\"{{showPayHint}}\" class=\"detail__pay-hint\">\r\n      <text class=\"detail__pay-hint-title\">还差一步：完成演示模拟支付</text>\r\n      <text class=\"detail__pay-hint-text\">点击下方「演示模拟支付」，订单才会进入店主待接单列表。本演示不产生真实支付。</text>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "showPayHint"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/order-detail/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "detail__pay-hint",
+      "detail__pay-hint-title",
+      "detail__pay-hint-text"
+    ],
+    "selectors": [
+      {
+        "selector": ".detail__pay-hint",
+        "declarations": [
+          "margin-top: 22rpx",
+          "padding: 24rpx",
+          "border-radius: 20rpx",
+          "background: #fdf0e4",
+          "border: 2rpx solid rgba(232, 106, 23, 0.18)"
+        ]
+      },
+      {
+        "selector": ".detail__pay-hint-title",
+        "declarations": [
+          "display: block",
+          "font-size: 27rpx",
+          "font-weight: 700",
+          "color: #8a4c17"
+        ]
+      },
+      {
+        "selector": ".detail__pay-hint-text",
+        "declarations": [
+          "display: block",
+          "margin-top: 8rpx",
+          "font-size: 22rpx",
+          "line-height: 1.6",
+          "color: #9a6b3b"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 3
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "两行提示，复制 WXML 即可。",
+    "whenToUse": [
+      "订单未支付时需要解释下一步"
+    ],
+    "avoidWhen": [
+      "已支付订单不渲染，条件由 showPayHint 控制"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "显隐由 showPayHint 控制"
+  ],
+  "knownLimits": [
+    "文案写死，包含「演示」字样"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:db06c596a94b1c4f7db73647e719a259e8d78ae84ecd47eb08c0a1c779f1e79a"
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "page-catalog-entry.v1",
+  "pageId": "mine",
+  "title": "我的",
+  "audience": "customer",
+  "required": true,
+  "summary": "我的页面：身份信息、订单入口与店主入口。",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/pages/mine",
+    "files": [
+      "extensions.generated.js",
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "digest": "sha256:ee57d675401b48490de8b3b0b8415b26b6984d21f5f2d113662e71a765140d67"
+  },
+  "components": [
+    {
+      "tag": "state-view",
+      "componentId": "state-view",
+      "mode": "conditional",
+      "sourceLine": 7,
+      "usage": "<state-view wx:if=\"{{loading}}\" state=\"loading\" title=\"正在读取身份信息\" />"
+    },
+    {
+      "tag": "error-banner",
+      "componentId": "error-banner",
+      "mode": "always",
+      "sourceLine": 20,
+      "usage": "<error-banner message=\"{{error}}\" action=\"重新登录\" bind:retry=\"onRefreshMe\" bind:close=\"onRefreshMe\" />"
+    }
+  ],
+  "slots": [],
+  "controller": {
+    "methods": [
+      "applyUser",
+      "goHome",
+      "goOrders",
+      "onOpenMerchant",
+      "onRefreshMe",
+      "onSwitchIdentity",
+      "refresh"
+    ],
+    "lifecycle": [
+      "onShow"
+    ],
+    "dataKeys": [
+      "avatarText",
+      "demoMode",
+      "error",
+      "expiresText",
+      "identity",
+      "identityOptions",
+      "loading",
+      "loggedIn",
+      "memberships",
+      "merchantEntries",
+      "storeName",
+      "switching",
+      "user"
+    ]
+  },
+  "pageJson": {
+    "navigationBarTitleText": "我的",
+    "enablePullDownRefresh": false,
+    "usingComponents": {
+      "state-view": "/components/state-view/index",
+      "error-banner": "/components/error-banner/index"
+    }
+  },
+  "notes": [
+    "只使用基础状态组件"
+  ]
+}

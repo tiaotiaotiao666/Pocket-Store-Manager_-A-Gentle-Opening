@@ -1,0 +1,133 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "merchant-order-segments",
+  "displayName": "订单分段筛选",
+  "summary": "按 segments 渲染的新单、进行中、历史等分段，当前项加 active。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "merchant-orders",
+  "order": 4,
+  "locator": {
+    "selector": "merchant__segments",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
+    "lineStart": 73,
+    "lineEnd": 83,
+    "digest": "sha256:fea6ba057b6ffc32a343dd5d155c75b29a5e6198939e2aff81548b648f88d0e3"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 73,
+        "lineEnd": 83,
+        "code": "<view class=\"merchant__segments\">\r\n        <view\r\n          wx:for=\"{{segments}}\"\r\n          wx:key=\"key\"\r\n          class=\"merchant__segment {{segment === item.key ? 'merchant__segment--active' : ''}}\"\r\n          data-key=\"{{item.key}}\"\r\n          bind:tap=\"onChangeSegment\"\r\n        >\r\n          {{item.label}}\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "active",
+      "key",
+      "label",
+      "merchant__segment",
+      "segment",
+      "segments"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onChangeSegment"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/merchant-orders/index.js",
+    "handlers": [
+      "onChangeSegment"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "merchant__segments",
+      "merchant__segment",
+      "{{segment",
+      "===",
+      "item.key",
+      "?",
+      "'merchant__segment--active'",
+      ":",
+      "''}}"
+    ],
+    "selectors": [
+      {
+        "selector": ".merchant__segments",
+        "declarations": [
+          "display: flex",
+          "margin-top: 20rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__segment",
+        "declarations": [
+          "margin-right: 14rpx",
+          "padding: 12rpx 32rpx",
+          "border-radius: 999rpx",
+          "background: rgba(35, 35, 35, 0.05)",
+          "font-size: 24rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".merchant__segment--active",
+        "declarations": [
+          "background: var(--color-text)",
+          "color: var(--color-surface)",
+          "font-weight: 700"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-surface",
+      "--color-text"
+    ],
+    "selectorCount": 3
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "循环渲染加事件，复制 WXML 与样式即可。",
+    "whenToUse": [
+      "店主订单台需要按状态分段"
+    ],
+    "avoidWhen": [
+      "顾客侧筛选，用 orders__filters"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "点击只上报 onChangeSegment 与 data-key"
+  ],
+  "knownLimits": [
+    "分段定义来自 segments 视图模型"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:fea6ba057b6ffc32a343dd5d155c75b29a5e6198939e2aff81548b648f88d0e3"
+  }
+}

@@ -122,6 +122,10 @@ function OrdersTab({ viewModel }) {
 
 function MineTab({ viewModel }) {
   const { theme, store, capabilities } = viewModel;
+  const exportedCount = capabilities.filter((capability) => capability.exported).length;
+  const summary = exportedCount === capabilities.length
+    ? `${capabilities.length} 项均随模板导出`
+    : `${exportedCount}/${capabilities.length} 项随模板导出`;
 
   return (
     <>
@@ -130,15 +134,19 @@ function MineTab({ viewModel }) {
         <small>{store.businessHoursText}</small>
         <small>地址与联系方式可在「我的」中查看</small>
       </div>
-      <div className="mini-sec"><b>已启用的能力</b><span>{capabilities.length} 项</span></div>
+      <div className="mini-sec"><b>能力与导出状态</b><span>{summary}</span></div>
       <div className="mini-chips">
         {capabilities.map((capability) => (
           <span
             className="mini-chip"
             key={capability.key}
-            style={{ borderColor: `${theme.primaryColor}33`, color: theme.primaryColor }}
+            style={{
+              borderColor: `${theme.primaryColor}33`,
+              color: capability.exported ? theme.primaryColor : undefined,
+              opacity: capability.exported ? 1 : 0.55,
+            }}
           >
-            {capability.label}
+            {capability.label}{capability.exported ? '' : ' · 未导出'}
           </span>
         ))}
       </div>

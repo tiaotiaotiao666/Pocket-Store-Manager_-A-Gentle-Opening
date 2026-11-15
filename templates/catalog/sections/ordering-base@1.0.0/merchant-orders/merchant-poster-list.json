@@ -1,0 +1,233 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "merchant-poster-list",
+  "displayName": "海报卡片列表",
+  "summary": "海报卡：图片或占位、标题、副标题与价格、跳转商品、启用开关、编辑、上移下移与删除。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "merchant-orders",
+  "order": 10,
+  "locator": {
+    "selector": "merchant__poster-list",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
+    "lineStart": 321,
+    "lineEnd": 338,
+    "digest": "sha256:59b417e07339174efd8e0a51276072d98a8d333b42b8b245851ed6032c6d7aa5"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 321,
+        "lineEnd": 338,
+        "code": "<view wx:else class=\"merchant__poster-list\">\r\n        <view wx:for=\"{{posters}}\" wx:key=\"id\" class=\"surface-card merchant__poster-card\">\r\n          <image wx:if=\"{{item.imageUrl}}\" class=\"merchant__poster-image\" src=\"{{item.imageUrl}}\" mode=\"aspectFill\" />\r\n          <view wx:else class=\"merchant__poster-image merchant__poster-image--empty\">{{item.product.name}}</view>\r\n          <view class=\"merchant__poster-body\">\r\n            <text class=\"merchant__product-name\">{{item.title}}</text>\r\n            <text class=\"merchant__product-desc\">{{item.subtitle || item.product.name}} · ¥{{item.product.amountText}}</text>\r\n            <text class=\"merchant__poster-product\">跳转商品：{{item.product.name}}</text>\r\n            <view wx:if=\"{{isOwner}}\" class=\"merchant__poster-actions\">\r\n              <switch checked=\"{{item.active}}\" color=\"#E86A17\" disabled=\"{{productWriting}}\" data-id=\"{{item.id}}\" bindchange=\"onTogglePoster\" />\r\n              <button class=\"merchant__text-button\" size=\"mini\" data-id=\"{{item.id}}\" disabled=\"{{productWriting}}\" bind:tap=\"onOpenPosterForm\">编辑</button>\r\n              <button class=\"merchant__text-button\" size=\"mini\" data-index=\"{{index}}\" data-direction=\"-1\" disabled=\"{{productWriting || index === 0}}\" bind:tap=\"onMovePoster\">上移</button>\r\n              <button class=\"merchant__text-button\" size=\"mini\" data-index=\"{{index}}\" data-direction=\"1\" disabled=\"{{productWriting || index === posters.length - 1}}\" bind:tap=\"onMovePoster\">下移</button>\r\n              <button class=\"merchant__text-button merchant__delete-button\" size=\"mini\" data-id=\"{{item.id}}\" disabled=\"{{productWriting}}\" bind:tap=\"onDeletePoster\">删除</button>\r\n            </view>\r\n          </view>\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "active",
+      "amountText",
+      "id",
+      "imageUrl",
+      "isOwner",
+      "name",
+      "posters",
+      "product",
+      "productWriting",
+      "subtitle",
+      "title"
+    ],
+    "handlers": [
+      {
+        "type": "change",
+        "handler": "onTogglePoster"
+      },
+      {
+        "type": "tap",
+        "handler": "onOpenPosterForm"
+      },
+      {
+        "type": "tap",
+        "handler": "onMovePoster"
+      },
+      {
+        "type": "tap",
+        "handler": "onMovePoster"
+      },
+      {
+        "type": "tap",
+        "handler": "onDeletePoster"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/merchant-orders/index.js",
+    "handlers": [
+      "onDeletePoster",
+      "onMovePoster",
+      "onOpenPosterForm",
+      "onTogglePoster"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "merchant__poster-list",
+      "surface-card",
+      "merchant__poster-card",
+      "merchant__poster-image",
+      "merchant__poster-image--empty",
+      "merchant__poster-body",
+      "merchant__product-name",
+      "merchant__product-desc",
+      "merchant__poster-product",
+      "merchant__poster-actions",
+      "merchant__text-button",
+      "merchant__delete-button"
+    ],
+    "selectors": [
+      {
+        "selector": ".merchant__text-button",
+        "declarations": [
+          "margin: 0",
+          "padding: 0 12rpx",
+          "background: rgba(35, 35, 35, 0.05)",
+          "color: var(--color-primary)",
+          "font-size: 21rpx",
+          "line-height: 2"
+        ]
+      },
+      {
+        "selector": ".merchant__product-name",
+        "declarations": [
+          "font-size: 26rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".merchant__product-desc",
+        "declarations": [
+          "margin-top: 4rpx",
+          "font-size: 21rpx",
+          "color: var(--color-muted)",
+          "overflow: hidden",
+          "white-space: nowrap",
+          "text-overflow: ellipsis"
+        ]
+      },
+      {
+        "selector": ".merchant__poster-list",
+        "declarations": [
+          "margin-top: 22rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__poster-card",
+        "declarations": [
+          "overflow: hidden",
+          "margin-bottom: 20rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__poster-image",
+        "declarations": [
+          "display: block",
+          "width: 100%",
+          "height: 330rpx",
+          "background: linear-gradient(135deg, #a84420 0%, #e28b48 55%, #f3c27a 100%)"
+        ]
+      },
+      {
+        "selector": ".merchant__poster-image--empty",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: center",
+          "color: rgba(255, 250, 243, 0.9)",
+          "font-size: 30rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__poster-body",
+        "declarations": [
+          "padding: 20rpx 22rpx 22rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__poster-product",
+        "declarations": [
+          "display: block",
+          "margin-top: 8rpx",
+          "color: var(--color-muted)",
+          "font-size: 20rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__poster-actions",
+        "declarations": [
+          "display: flex",
+          "flex-wrap: wrap",
+          "align-items: center",
+          "margin-top: 16rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__poster-actions switch,\r\n.merchant__poster-actions button",
+        "declarations": [
+          "margin: 0 10rpx 8rpx 0"
+        ]
+      },
+      {
+        "selector": ".merchant__delete-button",
+        "declarations": [
+          "color: var(--color-danger)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-danger",
+      "--color-muted",
+      "--color-primary"
+    ],
+    "selectorCount": 12
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "海报卡的完整交互结构，复制 WXML 与样式即可；排序与删除逻辑在控制器。",
+    "whenToUse": [
+      "店主需要排序与启停首页海报"
+    ],
+    "avoidWhen": [
+      "海报只读展示，用 Base poster-carousel"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "上移按钮在 index 0 时禁用，下移在末项禁用",
+    "启用开关只上报 onTogglePoster",
+    "删除是演示环境的真实写入"
+  ],
+  "knownLimits": [
+    "最多展示 posters 全量，没有分页"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:59b417e07339174efd8e0a51276072d98a8d333b42b8b245851ed6032c6d7aa5"
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "mine-identities",
+  "displayName": "演示身份切换卡",
+  "summary": "仅 demoMode 渲染的演示身份列表，含当前标记与「切换中」忙碌态。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "mine",
+  "order": 4,
+  "locator": {
+    "selector": "mine__identities",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
+    "lineStart": 47,
+    "lineEnd": 62,
+    "digest": "sha256:3e86ebe63624fd6a3e9a7bf3b157f62606b5748916e9fcf1f84f9582fe7de8fd"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 47,
+        "lineEnd": 62,
+        "code": "<view class=\"mine__identities\">\r\n        <view\r\n          wx:for=\"{{identityOptions}}\"\r\n          wx:key=\"key\"\r\n          class=\"mine__identity {{identity.key === item.key ? 'mine__identity--active' : ''}}\"\r\n          data-key=\"{{item.key}}\"\r\n          bind:tap=\"onSwitchIdentity\"\r\n        >\r\n          <view class=\"mine__identity-main\">\r\n            <text class=\"mine__identity-label\">{{item.label}}</text>\r\n            <text class=\"mine__identity-desc\">{{item.description}}</text>\r\n          </view>\r\n          <view wx:if=\"{{identity.key === item.key}}\" class=\"mine__identity-badge\">当前</view>\r\n          <view wx:elif=\"{{switching === item.key}}\" class=\"mine__identity-badge mine__identity-badge--busy\">切换中</view>\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "active",
+      "description",
+      "identity",
+      "identityOptions",
+      "key",
+      "label",
+      "mine__identity",
+      "switching"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onSwitchIdentity"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/mine/index.js",
+    "handlers": [
+      "onSwitchIdentity"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "mine__identities",
+      "mine__identity",
+      "{{identity.key",
+      "===",
+      "item.key",
+      "?",
+      "'mine__identity--active'",
+      ":",
+      "''}}",
+      "mine__identity-main",
+      "mine__identity-label",
+      "mine__identity-desc",
+      "mine__identity-badge",
+      "mine__identity-badge--busy"
+    ],
+    "selectors": [
+      {
+        "selector": ".mine__identities",
+        "declarations": [
+          "display: flex",
+          "flex-direction: column"
+        ]
+      },
+      {
+        "selector": ".mine__identity",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "margin-bottom: 14rpx",
+          "padding: 22rpx 24rpx",
+          "border-radius: 20rpx",
+          "background: var(--color-surface)",
+          "border: 2rpx solid transparent",
+          "box-shadow: 0 6rpx 20rpx rgba(35, 35, 35, 0.05)"
+        ]
+      },
+      {
+        "selector": ".mine__identity--active",
+        "declarations": [
+          "border-color: rgba(232, 106, 23, 0.45)",
+          "background: #fff8f1"
+        ]
+      },
+      {
+        "selector": ".mine__identity-main",
+        "declarations": [
+          "flex: 1",
+          "display: flex",
+          "flex-direction: column"
+        ]
+      },
+      {
+        "selector": ".mine__identity-label",
+        "declarations": [
+          "font-size: 27rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".mine__identity-desc",
+        "declarations": [
+          "margin-top: 4rpx",
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".mine__identity-badge",
+        "declarations": [
+          "flex: none",
+          "padding: 6rpx 16rpx",
+          "border-radius: 999rpx",
+          "background: rgba(232, 106, 23, 0.12)",
+          "color: #b5530f",
+          "font-size: 20rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".mine__identity-badge--busy",
+        "declarations": [
+          "background: rgba(35, 35, 35, 0.08)",
+          "color: var(--color-muted)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-surface"
+    ],
+    "selectorCount": 8
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "演示专用结构，复制 WXML 与样式即可；切换逻辑在页面控制器。",
+    "whenToUse": [
+      "开发演示需要在顾客与店主之间切换",
+      "需要展示身份说明与当前态"
+    ],
+    "avoidWhen": [
+      "生产模板不需要演示身份，直接删掉该块"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "仅在 demoMode 为真时渲染",
+    "当前项加 mine__identity--active，切换中的项加 --busy"
+  ],
+  "knownLimits": [
+    "依赖 demoOpenId 登录，服务端只在开发环境允许"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:3e86ebe63624fd6a3e9a7bf3b157f62606b5748916e9fcf1f84f9582fe7de8fd"
+  }
+}

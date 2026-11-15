@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-marketing-slot",
+  "displayName": "首页营销插槽位",
+  "summary": "home-marketing 插槽的容器，当前为空，预留给接受 feature-pack 的营销区块。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 6,
+  "locator": {
+    "selector": "fp-home__marketing",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 40,
+    "lineEnd": 45,
+    "digest": "sha256:06bc381446a3117b1598f5a5a565763fb60417445f45f774e2303db576d5ad6a"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 40,
+        "lineEnd": 45,
+        "code": "<view class=\"fp-home__marketing\">\r\n        <!-- @slot:home-marketing -->\r\n        <!-- @slot-fallback:home-marketing -->\r\n        <!-- @slot-fallback:home-marketing:end -->\r\n        <!-- @slot:home-marketing:end -->\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [
+    "home-marketing"
+  ],
+  "bindings": {
+    "dataFields": [],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-home__marketing",
+    "classTokens": [
+      "fp-home__marketing"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-home__marketing",
+        "declarations": [
+          "margin-top: 4rpx"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 1
+  },
+  "reuse": {
+    "level": "slot-only",
+    "reason": "这是纯插槽容器，没有自有内容；复用方式是 Plan 的 features[].slots[] 声明，而不是复制 WXML。",
+    "whenToUse": [
+      "需要插入营销海报、优惠券或活动区块"
+    ],
+    "avoidWhen": [
+      "需要插入纯展示 UI Block 时，先确认插槽 accepts 是否包含 ui-block"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "必须保留 home-marketing 的四段锚点",
+    "插槽最大容量为 2，超过会被 Plan 校验拒绝"
+  ],
+  "knownLimits": [
+    "当前没有任何 Feature Pack 占用该插槽"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:06bc381446a3117b1598f5a5a565763fb60417445f45f774e2303db576d5ad6a"
+  }
+}

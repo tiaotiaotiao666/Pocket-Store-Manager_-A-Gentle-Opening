@@ -1,0 +1,202 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "detail-hero",
+  "displayName": "订单头部摘要",
+  "summary": "订单号与下单时间、状态徽标、履约方式与明细摘要、合计金额。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "order-detail",
+  "order": 2,
+  "locator": {
+    "selector": "detail__hero",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
+    "lineStart": 25,
+    "lineEnd": 42,
+    "digest": "sha256:1f0d774d305df40e0b25b02dfb3bb1d43ee3500f4039c738a290d88353c0d61d"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 25,
+        "lineEnd": 42,
+        "code": "<view wx:if=\"{{order}}\" class=\"detail__hero\">\r\n      <view class=\"detail__hero-top\">\r\n        <view class=\"detail__hero-id\">\r\n          <text class=\"detail__hero-label\">订单号</text>\r\n          <text class=\"detail__hero-number\">#{{order.shortId}}</text>\r\n        </view>\r\n        <text class=\"detail__hero-time\">{{order.createdAtFullText}}</text>\r\n      </view>\r\n      <order-status status=\"{{order.status}}\" payment-status=\"{{order.paymentStatus}}\" />\r\n      <view class=\"detail__hero-foot\">\r\n        <view class=\"detail__hero-mode\">\r\n          <text>{{order.fulfillmentText}}</text>\r\n          <text class=\"detail__hero-dot\">·</text>\r\n          <text>{{order.itemSummary || '无明细'}}</text>\r\n        </view>\r\n        <text class=\"detail__hero-total\">{{order.totalText}}</text>\r\n      </view>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "order-status",
+      "bindings": [
+        {
+          "attr": "status",
+          "expression": "{{order.status}}"
+        },
+        {
+          "attr": "payment-status",
+          "expression": "{{order.paymentStatus}}"
+        }
+      ],
+      "events": []
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "createdAtFullText",
+      "fulfillmentText",
+      "itemSummary",
+      "order",
+      "paymentStatus",
+      "shortId",
+      "status",
+      "totalText"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/order-detail/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "detail__hero",
+      "detail__hero-top",
+      "detail__hero-id",
+      "detail__hero-label",
+      "detail__hero-number",
+      "detail__hero-time",
+      "detail__hero-foot",
+      "detail__hero-mode",
+      "detail__hero-dot",
+      "detail__hero-total"
+    ],
+    "selectors": [
+      {
+        "selector": ".detail__hero",
+        "declarations": [
+          "padding: 30rpx 28rpx",
+          "border-radius: 28rpx",
+          "background: linear-gradient(135deg, var(--color-text) 0%, #3b352f 100%)",
+          "color: var(--color-surface)",
+          "box-shadow: 0 16rpx 36rpx rgba(35, 35, 35, 0.22)"
+        ]
+      },
+      {
+        "selector": ".detail__hero-top",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".detail__hero-id",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline"
+        ]
+      },
+      {
+        "selector": ".detail__hero-label",
+        "declarations": [
+          "font-size: 20rpx",
+          "color: rgba(255, 250, 243, 0.55)"
+        ]
+      },
+      {
+        "selector": ".detail__hero-number",
+        "declarations": [
+          "margin-left: 10rpx",
+          "font-size: 34rpx",
+          "font-weight: 700",
+          "letter-spacing: 2rpx"
+        ]
+      },
+      {
+        "selector": ".detail__hero-time",
+        "declarations": [
+          "font-size: 21rpx",
+          "color: rgba(255, 250, 243, 0.55)"
+        ]
+      },
+      {
+        "selector": ".detail__hero-foot",
+        "declarations": [
+          "display: flex",
+          "align-items: flex-end",
+          "justify-content: space-between",
+          "margin-top: 20rpx"
+        ]
+      },
+      {
+        "selector": ".detail__hero-mode",
+        "declarations": [
+          "flex: 1",
+          "min-width: 0",
+          "font-size: 22rpx",
+          "color: rgba(255, 250, 243, 0.72)",
+          "overflow: hidden",
+          "white-space: nowrap",
+          "text-overflow: ellipsis"
+        ]
+      },
+      {
+        "selector": ".detail__hero-dot",
+        "declarations": [
+          "margin: 0 8rpx"
+        ]
+      },
+      {
+        "selector": ".detail__hero-total",
+        "declarations": [
+          "flex: none",
+          "margin-left: 16rpx",
+          "font-size: 40rpx",
+          "font-weight: 700",
+          "color: #f3a55f"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-surface",
+      "--color-text"
+    ],
+    "selectorCount": 10
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "展示结构，复制 WXML 与 detail__ 样式即可；状态徽标复用 Base order-status。",
+    "whenToUse": [
+      "订单详情首屏需要一眼看到状态与金额"
+    ],
+    "avoidWhen": [
+      "仅需状态文案时直接用 order-status"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "状态与支付状态都交给 order-status 渲染"
+  ],
+  "knownLimits": [
+    "明细摘要只显示前几项，完整明细在 detail__card 第二块"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:1f0d774d305df40e0b25b02dfb3bb1d43ee3500f4039c738a290d88353c0d61d"
+  }
+}

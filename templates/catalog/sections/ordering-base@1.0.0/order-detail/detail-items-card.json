@@ -1,0 +1,235 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "detail-items-card",
+  "displayName": "订单菜品明细卡",
+  "summary": "菜品行、分隔线、合计与可选备注。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "order-detail",
+  "order": 5,
+  "locator": {
+    "selector": "detail__card",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": 2,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
+    "lineStart": 67,
+    "lineEnd": 89,
+    "digest": "sha256:ce56a40553f6f1d562b97dc2d6cd1f62ec0f704d25562aa5d4d26904fc7f0c45"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 67,
+        "lineEnd": 89,
+        "code": "<view wx:if=\"{{order}}\" class=\"surface-card detail__card\">\r\n      <view class=\"detail__card-head\">\r\n        <text class=\"detail__card-title\">菜品明细</text>\r\n        <text class=\"detail__card-extra\">{{order.items.length}} 项</text>\r\n      </view>\r\n      <view class=\"detail__divider\"></view>\r\n      <view wx:for=\"{{order.itemViews}}\" wx:key=\"productId\" class=\"detail__item\">\r\n        <view class=\"detail__item-main\">\r\n          <text class=\"detail__item-name\">{{item.name}}</text>\r\n          <text class=\"detail__item-unit\">{{item.unitPriceText}} × {{item.quantity}}</text>\r\n        </view>\r\n        <text class=\"detail__item-line\">{{item.lineTotalText}}</text>\r\n      </view>\r\n      <view class=\"detail__divider\"></view>\r\n      <view class=\"detail__total\">\r\n        <text class=\"detail__total-label\">合计</text>\r\n        <text class=\"detail__total-value\">{{order.totalText}}</text>\r\n      </view>\r\n      <view wx:if=\"{{order.noteText}}\" class=\"detail__note\">\r\n        <text class=\"detail__note-label\">备注</text>\r\n        <text class=\"detail__note-text\">{{order.noteText}}</text>\r\n      </view>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "itemViews",
+      "items",
+      "lineTotalText",
+      "name",
+      "noteText",
+      "order",
+      "quantity",
+      "totalText",
+      "unitPriceText"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/order-detail/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "surface-card",
+      "detail__card",
+      "detail__card-head",
+      "detail__card-title",
+      "detail__card-extra",
+      "detail__divider",
+      "detail__item",
+      "detail__item-main",
+      "detail__item-name",
+      "detail__item-unit",
+      "detail__item-line",
+      "detail__total",
+      "detail__total-label",
+      "detail__total-value",
+      "detail__note",
+      "detail__note-label",
+      "detail__note-text"
+    ],
+    "selectors": [
+      {
+        "selector": ".detail__card",
+        "declarations": [
+          "margin-top: 24rpx",
+          "padding: 26rpx"
+        ]
+      },
+      {
+        "selector": ".detail__card-head",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".detail__card-title",
+        "declarations": [
+          "font-size: 28rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".detail__card-extra",
+        "declarations": [
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".detail__divider",
+        "declarations": [
+          "height: 2rpx",
+          "margin: 16rpx 0",
+          "background: rgba(230, 222, 210, 0.62)"
+        ]
+      },
+      {
+        "selector": ".detail__item",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "padding: 12rpx 0"
+        ]
+      },
+      {
+        "selector": ".detail__item-main",
+        "declarations": [
+          "flex: 1",
+          "min-width: 0",
+          "display: flex",
+          "flex-direction: column"
+        ]
+      },
+      {
+        "selector": ".detail__item-name",
+        "declarations": [
+          "font-size: 27rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".detail__item-unit",
+        "declarations": [
+          "margin-top: 4rpx",
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".detail__item-line",
+        "declarations": [
+          "min-width: 120rpx",
+          "text-align: right",
+          "font-size: 26rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".detail__total",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".detail__total-label",
+        "declarations": [
+          "font-size: 23rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".detail__total-value",
+        "declarations": [
+          "font-size: 38rpx",
+          "font-weight: 700",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".detail__note",
+        "declarations": [
+          "margin-top: 18rpx",
+          "padding: 16rpx 18rpx",
+          "border-radius: 14rpx",
+          "background: rgba(35, 35, 35, 0.04)"
+        ]
+      },
+      {
+        "selector": ".detail__note-label",
+        "declarations": [
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".detail__note-text",
+        "declarations": [
+          "display: block",
+          "margin-top: 4rpx",
+          "font-size: 24rpx"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-primary"
+    ],
+    "selectorCount": 16
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "只读明细结构，复制 WXML 与样式即可。",
+    "whenToUse": [
+      "订单详情需要完整菜品与合计"
+    ],
+    "avoidWhen": [
+      "只需金额时用 detail__hero 的合计"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "行金额与合计都来自 order 视图模型，不在 WXML 计算"
+  ],
+  "knownLimits": [
+    "没有退菜或改量入口"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:ce56a40553f6f1d562b97dc2d6cd1f62ec0f704d25562aa5d4d26904fc7f0c45"
+  }
+}

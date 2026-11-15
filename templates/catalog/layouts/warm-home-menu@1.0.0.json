@@ -1,0 +1,674 @@
+{
+  "schemaVersion": "layout-catalog-entry.v1",
+  "id": "warm-home-menu",
+  "version": "1.0.0",
+  "kind": "frontend-pack",
+  "displayName": "暖橙首页与菜单视图包",
+  "summary": "暖橙风格的首页与菜单页视图包，只覆盖 WXML/WXSS/页面 JSON，页面控制器与服务层仍来自 Base。",
+  "source": {
+    "root": "templates/frontend-packs/warm-home-menu/1.0.0",
+    "manifest": "templates/frontend-packs/warm-home-menu/1.0.0/manifest.json",
+    "digest": "sha256:ae3e56f4dd936fd082e3804a321c69389008f2bc4e7505eadf8268056bee4581"
+  },
+  "pages": [
+    {
+      "pageId": "home",
+      "source": {
+        "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+        "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+        "json": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.json"
+      },
+      "pageJson": {
+        "navigationBarTitleText": "扫码点餐",
+        "usingComponents": {}
+      },
+      "slots": [
+        {
+          "slotId": "home-hero",
+          "anchorsPresent": true
+        },
+        {
+          "slotId": "home-marketing",
+          "anchorsPresent": true
+        }
+      ],
+      "blocks": [
+        {
+          "className": "fp-home",
+          "parentClass": null,
+          "depth": 1,
+          "sourceLine": 2,
+          "purpose": "",
+          "components": [
+            "state-view"
+          ],
+          "slots": [
+            "home-hero",
+            "home-marketing"
+          ]
+        },
+        {
+          "className": "fp-home__hero",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 3,
+          "purpose": "首屏主视觉区，承载 home-hero 插槽或 store-header fallback",
+          "components": [
+            "store-header"
+          ],
+          "slots": [
+            "home-hero"
+          ]
+        },
+        {
+          "className": "fp-home__head",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 17,
+          "purpose": "品牌标题、副标题与身份入口",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__brand",
+          "parentClass": "fp-home__head",
+          "depth": 3,
+          "sourceLine": 18,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__eyebrow",
+          "parentClass": "fp-home__brand",
+          "depth": 4,
+          "sourceLine": 19,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__title",
+          "parentClass": "fp-home__brand",
+          "depth": 4,
+          "sourceLine": 20,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__sub",
+          "parentClass": "fp-home__brand",
+          "depth": 4,
+          "sourceLine": 21,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__identity",
+          "parentClass": "fp-home__head",
+          "depth": 3,
+          "sourceLine": 23,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__identity-dot",
+          "parentClass": "fp-home__identity",
+          "depth": 4,
+          "sourceLine": 24,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__error",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 31,
+          "purpose": "",
+          "components": [
+            "error-banner"
+          ],
+          "slots": []
+        },
+        {
+          "className": "fp-home__retry",
+          "parentClass": "fp-home__error",
+          "depth": 3,
+          "sourceLine": 33,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__hint",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 37,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__hint",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 38,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__marketing",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 40,
+          "purpose": "首页营销插槽区，当前为空",
+          "components": [],
+          "slots": [
+            "home-marketing"
+          ]
+        },
+        {
+          "className": "fp-home__section",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 47,
+          "purpose": "用餐方式区块，含 fulfillment-switch 与桌号选择",
+          "components": [
+            "fulfillment-switch"
+          ],
+          "slots": []
+        },
+        {
+          "className": "fp-home__section-head",
+          "parentClass": "fp-home__section",
+          "depth": 3,
+          "sourceLine": 48,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__section-title",
+          "parentClass": "fp-home__section-head",
+          "depth": 4,
+          "sourceLine": 49,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__section-extra",
+          "parentClass": "fp-home__section-head",
+          "depth": 4,
+          "sourceLine": 50,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__tables",
+          "parentClass": "fp-home__section",
+          "depth": 3,
+          "sourceLine": 60,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__tables-label",
+          "parentClass": "fp-home__tables",
+          "depth": 4,
+          "sourceLine": 61,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__table",
+          "parentClass": "fp-home__tables",
+          "depth": 4,
+          "sourceLine": 62,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__cta",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 75,
+          "purpose": "开始点餐主行动区",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__cta-copy",
+          "parentClass": "fp-home__cta",
+          "depth": 3,
+          "sourceLine": 76,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__cta-title",
+          "parentClass": "fp-home__cta-copy",
+          "depth": 4,
+          "sourceLine": 77,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__cta-sub",
+          "parentClass": "fp-home__cta-copy",
+          "depth": 4,
+          "sourceLine": 78,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__cta-arrow",
+          "parentClass": "fp-home__cta",
+          "depth": 3,
+          "sourceLine": 80,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__notice",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 83,
+          "purpose": "待演示付款提醒",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__notice-dot",
+          "parentClass": "fp-home__notice",
+          "depth": 3,
+          "sourceLine": 84,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__notice-text",
+          "parentClass": "fp-home__notice",
+          "depth": 3,
+          "sourceLine": 85,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__notice-arrow",
+          "parentClass": "fp-home__notice",
+          "depth": 3,
+          "sourceLine": 86,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__orders",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 89,
+          "purpose": "进行中订单区块",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__section-head",
+          "parentClass": "fp-home__orders",
+          "depth": 3,
+          "sourceLine": 90,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__section-title",
+          "parentClass": "fp-home__section-head",
+          "depth": 4,
+          "sourceLine": 91,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__section-extra",
+          "parentClass": "fp-home__section-head",
+          "depth": 4,
+          "sourceLine": 92,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__order",
+          "parentClass": "fp-home__orders",
+          "depth": 3,
+          "sourceLine": 94,
+          "purpose": "",
+          "components": [
+            "order-card"
+          ],
+          "slots": []
+        },
+        {
+          "className": "fp-home__merchant",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 99,
+          "purpose": "店主订单台入口",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__merchant-body",
+          "parentClass": "fp-home__merchant",
+          "depth": 3,
+          "sourceLine": 100,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__merchant-title",
+          "parentClass": "fp-home__merchant-body",
+          "depth": 4,
+          "sourceLine": 101,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__merchant-sub",
+          "parentClass": "fp-home__merchant-body",
+          "depth": 4,
+          "sourceLine": 102,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__merchant-arrow",
+          "parentClass": "fp-home__merchant",
+          "depth": 3,
+          "sourceLine": 104,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-home__foot",
+          "parentClass": "fp-home",
+          "depth": 2,
+          "sourceLine": 107,
+          "purpose": "演示环境说明",
+          "components": [],
+          "slots": []
+        }
+      ],
+      "style": {
+        "themeVars": [
+          "--color-accent",
+          "--color-border",
+          "--color-muted",
+          "--color-primary",
+          "--color-success",
+          "--color-surface",
+          "--color-text"
+        ],
+        "selectorCount": 37,
+        "imports": []
+      },
+      "controllerSource": "Base pages/home/index.js（FrontendPack 不包含 JS）"
+    },
+    {
+      "pageId": "menu",
+      "source": {
+        "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+        "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+        "json": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.json"
+      },
+      "pageJson": {
+        "navigationBarTitleText": "菜单",
+        "usingComponents": {}
+      },
+      "slots": [
+        {
+          "slotId": "menu-hero",
+          "anchorsPresent": true
+        },
+        {
+          "slotId": "menu-aside",
+          "anchorsPresent": true
+        }
+      ],
+      "blocks": [
+        {
+          "className": "fp-menu",
+          "parentClass": null,
+          "depth": 1,
+          "sourceLine": 2,
+          "purpose": "",
+          "components": [
+            "state-view",
+            "cart-bar",
+            "cart-panel",
+            "product-detail"
+          ],
+          "slots": [
+            "menu-hero",
+            "menu-aside"
+          ]
+        },
+        {
+          "className": "fp-menu__top",
+          "parentClass": "fp-menu",
+          "depth": 2,
+          "sourceLine": 3,
+          "purpose": "菜单页紧凑头部与履约方式",
+          "components": [
+            "store-header"
+          ],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__switch",
+          "parentClass": "fp-menu__top",
+          "depth": 3,
+          "sourceLine": 12,
+          "purpose": "",
+          "components": [
+            "fulfillment-switch"
+          ],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__tables",
+          "parentClass": "fp-menu__switch",
+          "depth": 4,
+          "sourceLine": 21,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__tables-label",
+          "parentClass": "fp-menu__tables",
+          "depth": 5,
+          "sourceLine": 22,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__table",
+          "parentClass": "fp-menu__tables",
+          "depth": 5,
+          "sourceLine": 23,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__error",
+          "parentClass": "fp-menu",
+          "depth": 2,
+          "sourceLine": 39,
+          "purpose": "",
+          "components": [
+            "error-banner"
+          ],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__retry",
+          "parentClass": "fp-menu__error",
+          "depth": 3,
+          "sourceLine": 41,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__body",
+          "parentClass": "fp-menu",
+          "depth": 2,
+          "sourceLine": 44,
+          "purpose": "",
+          "components": [
+            "category-nav"
+          ],
+          "slots": [
+            "menu-hero",
+            "menu-aside"
+          ]
+        },
+        {
+          "className": "fp-menu__headline",
+          "parentClass": "fp-menu__body",
+          "depth": 3,
+          "sourceLine": 45,
+          "purpose": "菜单标题、分类名与菜品数量",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__eyebrow",
+          "parentClass": "fp-menu__headline",
+          "depth": 4,
+          "sourceLine": 46,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__title",
+          "parentClass": "fp-menu__headline",
+          "depth": 4,
+          "sourceLine": 47,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__meta",
+          "parentClass": "fp-menu__headline",
+          "depth": 4,
+          "sourceLine": 48,
+          "purpose": "",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__list",
+          "parentClass": "fp-menu__body",
+          "depth": 3,
+          "sourceLine": 63,
+          "purpose": "菜品滚动列表",
+          "components": [
+            "state-view"
+          ],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__products",
+          "parentClass": "fp-menu__list",
+          "depth": 4,
+          "sourceLine": 64,
+          "purpose": "菜品卡片网格",
+          "components": [],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__product",
+          "parentClass": "fp-menu__products",
+          "depth": 5,
+          "sourceLine": 65,
+          "purpose": "",
+          "components": [
+            "product-card"
+          ],
+          "slots": []
+        },
+        {
+          "className": "fp-menu__spacer",
+          "parentClass": "fp-menu__list",
+          "depth": 4,
+          "sourceLine": 82,
+          "purpose": "底部安全区占位",
+          "components": [],
+          "slots": []
+        }
+      ],
+      "style": {
+        "themeVars": [
+          "--color-bg",
+          "--color-border",
+          "--color-muted",
+          "--color-primary",
+          "--color-surface"
+        ],
+        "selectorCount": 17,
+        "imports": []
+      },
+      "controllerSource": "Base pages/menu/index.js（FrontendPack 不包含 JS）"
+    }
+  ],
+  "requiresSlots": [
+    "home-hero",
+    "home-marketing",
+    "menu-hero",
+    "menu-aside"
+  ],
+  "constraints": [
+    "只覆盖 WXML/WXSS/页面 JSON，不包含任何 JS；页面控制器始终来自 Base。",
+    "WXSS 追加在 Base 页面样式之后，不删除 Base 原有样式。",
+    "页面 JSON 只允许白名单键，usingComponents 只能是 Base 页面的子集。",
+    "事件绑定必须命中 Base 控制器已有方法，否则构建期 FRONTEND_PACK_EVENT_UNKNOWN。",
+    "只覆盖首页与菜单页的视图层，页面控制器、服务层与领域逻辑仍来自 Base",
+    "WXSS 在 Base 页面样式之后追加，不删除 Base 原有样式"
+  ],
+  "preview": {
+    "dir": "templates/frontend-packs/warm-home-menu/1.0.0/preview",
+    "kinds": [
+      "normal",
+      "empty",
+      "error",
+      "long"
+    ]
+  }
+}

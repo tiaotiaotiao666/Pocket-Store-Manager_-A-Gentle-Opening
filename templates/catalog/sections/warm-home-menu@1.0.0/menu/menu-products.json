@@ -1,0 +1,243 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-products",
+  "displayName": "菜品滚动列表",
+  "summary": "scroll-view 滚动容器内的 product-card 网格、空态与底部安全区占位。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 8,
+  "locator": {
+    "selector": "fp-menu__list",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 63,
+    "lineEnd": 83,
+    "digest": "sha256:e0a49e5a9b1f8654c3978520369bfaab249d663f1e994079c7f3ec2dc4339657"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "scroll-view",
+    "snippets": [
+      {
+        "lineStart": 63,
+        "lineEnd": 83,
+        "code": "<scroll-view class=\"fp-menu__list\" scroll-y>\r\n        <view wx:if=\"{{products.length > 0}}\" class=\"fp-menu__products\">\r\n          <view wx:for=\"{{products}}\" wx:key=\"id\" class=\"fp-menu__product\">\r\n            <product-card\r\n              product=\"{{item}}\"\r\n              quantity=\"{{quantityMap[item.id] || 0}}\"\r\n              disabled=\"{{item.available === false}}\"\r\n              bind:add=\"onProductAdd\"\r\n              bind:remove=\"onProductRemove\"\r\n              bind:openDetail=\"onOpenDetail\"\r\n            />\r\n          </view>\r\n        </view>\r\n        <state-view\r\n          wx:else\r\n          state=\"empty\"\r\n          title=\"这个分类还没有上架菜品\"\r\n          description=\"换一个分类看看，或稍后下拉刷新\"\r\n        />\r\n        <view class=\"fp-menu__spacer\"></view>\r\n      </scroll-view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "product-card",
+      "bindings": [
+        {
+          "attr": "product",
+          "expression": "{{item}}"
+        },
+        {
+          "attr": "quantity",
+          "expression": "{{quantityMap[item.id] || 0}}"
+        },
+        {
+          "attr": "disabled",
+          "expression": "{{item.available === false}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "add",
+          "handler": "onProductAdd"
+        },
+        {
+          "name": "remove",
+          "handler": "onProductRemove"
+        },
+        {
+          "name": "openDetail",
+          "handler": "onOpenDetail"
+        }
+      ]
+    },
+    {
+      "tag": "state-view",
+      "bindings": [
+        {
+          "attr": "state",
+          "expression": "empty"
+        },
+        {
+          "attr": "title",
+          "expression": "这个分类还没有上架菜品"
+        },
+        {
+          "attr": "description",
+          "expression": "换一个分类看看，或稍后下拉刷新"
+        }
+      ],
+      "events": []
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "available",
+      "id",
+      "products",
+      "quantityMap"
+    ],
+    "handlers": [
+      {
+        "type": "add",
+        "handler": "onProductAdd"
+      },
+      {
+        "type": "remove",
+        "handler": "onProductRemove"
+      },
+      {
+        "type": "openDetail",
+        "handler": "onOpenDetail"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [
+      "onOpenDetail",
+      "onProductAdd",
+      "onProductRemove"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-menu__list",
+    "classTokens": [
+      "fp-menu__list",
+      "fp-menu__products",
+      "fp-menu__product",
+      "fp-menu__spacer"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-menu__list",
+        "declarations": [
+          "flex: 1",
+          "height: 100%",
+          "padding: 0 18rpx 0 16rpx",
+          "box-sizing: border-box"
+        ]
+      },
+      {
+        "selector": ".fp-menu__products",
+        "declarations": [
+          "margin-top: 14rpx"
+        ]
+      },
+      {
+        "selector": ".fp-menu__product",
+        "declarations": [
+          "margin-bottom: 18rpx"
+        ]
+      },
+      {
+        "selector": ".fp-menu__spacer",
+        "declarations": [
+          "height: 220rpx"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 4
+  },
+  "reuse": {
+    "level": "promote-to-ui-block",
+    "reason": "列表容器把滚动、空态与卡片网格打包，是菜单页密度最高的区块；直接复制容易漏掉空态与底部占位。",
+    "whenToUse": [
+      "菜单页需要可滚动的菜品列表",
+      "需要同时处理空分类与长列表"
+    ],
+    "avoidWhen": [
+      "需要分组吸顶或双列瀑布流时，先扩展布局契约"
+    ],
+    "uiBlockBlueprint": {
+      "suggestedId": "product-grid",
+      "displayName": "菜品滚动列表",
+      "props": [
+        {
+          "name": "products",
+          "type": "array",
+          "required": true,
+          "description": "菜品数组，元素契约同 product-card 的 product"
+        },
+        {
+          "name": "quantityMap",
+          "type": "object",
+          "required": false,
+          "description": "商品 ID 到已选数量的映射"
+        },
+        {
+          "name": "emptyTitle",
+          "type": "string",
+          "required": false,
+          "description": "空态标题"
+        },
+        {
+          "name": "emptyDescription",
+          "type": "string",
+          "required": false,
+          "description": "空态说明"
+        }
+      ],
+      "events": [
+        {
+          "name": "add",
+          "payload": [
+            "productId"
+          ],
+          "description": "加购"
+        },
+        {
+          "name": "remove",
+          "payload": [
+            "productId"
+          ],
+          "description": "减购"
+        },
+        {
+          "name": "openDetail",
+          "payload": [
+            "productId"
+          ],
+          "description": "打开菜品详情"
+        }
+      ],
+      "promotionSteps": [
+        "内部继续使用 product-card 与 state-view empty",
+        "底部 spacer 保留，避免被购物车条遮挡",
+        "登记 registry 并在 Base 页面声明后再进入视图包"
+      ]
+    }
+  },
+  "constraints": [
+    "必须保留底部安全区占位，否则购物车条会遮挡最后一行",
+    "空列表使用 state-view empty，不渲染空网格",
+    "数量映射以页面 quantityMap 为准，组件不维护购物车状态"
+  ],
+  "knownLimits": [
+    "没有下拉刷新与分页加载，长列表一次性渲染"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:e0a49e5a9b1f8654c3978520369bfaab249d663f1e994079c7f3ec2dc4339657"
+  }
+}

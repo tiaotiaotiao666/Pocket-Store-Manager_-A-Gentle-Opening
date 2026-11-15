@@ -81,6 +81,7 @@ export default function ProjectCard({ project, active, thumbnail, onOpen, onReve
         onClick={() => onOpen?.(project.projectId)}
         disabled={corrupt}
         title={corrupt ? '项目文件损坏，无法打开' : `打开「${project.name}」`}
+        aria-label={`打开项目：${project.name || '未命名项目'}`}
       >
         <span className="project-card-thumb" style={{ background: `linear-gradient(140deg, ${background}, ${background}dd)`, color: foreground }}>
           {showThumbnail ? (

@@ -25,6 +25,13 @@ export const AGENT_PROVIDER = 'SMART_STORE_AGENT_PROVIDER';
 /** fetch 实现的注入令牌，测试时可替换为 stub，禁止真实请求 DeepSeek。 */
 export const AGENT_FETCH = 'SMART_STORE_AGENT_FETCH';
 
+/**
+ * 多轮 function calling 使用的 ChatModel 注入令牌。
+ * 与 AGENT_PROVIDER 分开：单轮抽取与多轮 runtime 可以独立替换、独立测试。
+ */
+export const AGENT_CHAT_MODEL = 'SMART_STORE_AGENT_CHAT_MODEL';
+
+
 export interface ContractFulfillment {
   dineIn: boolean;
   takeaway: boolean;

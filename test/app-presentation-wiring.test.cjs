@@ -143,8 +143,8 @@ test('导出完成视图：渲染 RealPreviewPanel 并接 preload 打开工程/�
   );
   assert.match(
     source,
-    /<RealPreviewPanel[\s\S]*?projectPath=\{exportedProjectPath\}[\s\S]*?screenshot=\{realPreview\.screenshot\}[\s\S]*?onOpen=\{handleOpenPreviewProject\}[\s\S]*?onPickScreenshot=\{handlePickPreviewScreenshot\}[\s\S]*?onClear=\{handleClearPreviewScreenshot\}/,
-    '面板必须接 projectPath/screenshot/onOpen/onPickScreenshot/onClear',
+    /<RealPreviewPanel[\s\S]*?projectPath=\{exportedProjectPath\}[\s\S]*?screenshots=\{realPreview\.screenshots\}[\s\S]*?onOpen=\{handleOpenPreviewProject\}[\s\S]*?onPickScreenshot=\{handlePickPreviewScreenshot\}[\s\S]*?onClear=\{handleClearPreviewScreenshot\}/,
+    '面板必须接 projectPath/screenshots/onOpen/onPickScreenshot/onClear',
   );
   assert.match(
     source,
@@ -166,6 +166,31 @@ test('导出完成视图：渲染 RealPreviewPanel 并接 preload 打开工程/�
     /function readExportedProjectPath\(result\)[\s\S]*?result\.outputPath/,
     '工程目录必须来自导出结果 outputPath',
   );
+});
+
+test('真实渲染截图可回填多张：数组状态、追加、上限丢最旧', () => {
+  const source = readApp();
+  assert.match(
+    source,
+    /const \[realPreview, setRealPreview\] = useState\(\{\s*screenshots:\s*\[\]/,
+    'realPreview 初始状态必须使用 screenshots 数组',
+  );
+  assert.match(
+    source,
+    /\[\.\.\.prev\.screenshots,\s*shot\]/,
+    '选择截图成功后必须追加而不是替换',
+  );
+  assert.match(
+    source,
+    /prev\.screenshots\.length >= 4[\s\S]{0,120}prev\.screenshots\.slice\(1\)/,
+    '超过 4 张时必须丢弃最旧一张，避免无限增长',
+  );
+  const panel = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'components', 'preview', 'RealPreviewPanel.jsx'),
+    'utf8',
+  );
+  assert.match(panel, /shots\.map\(/, '面板必须渲染多张截图');
+  assert.match(panel, /可回填多张/, '占位文案必须说明可回填多张');
 });
 
 test('提示词接线：composePrompt 带 layout，revisePrompt 兼容结构化返回', () => {

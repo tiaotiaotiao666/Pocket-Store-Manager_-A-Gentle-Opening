@@ -1,0 +1,203 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-brand-head",
+  "displayName": "首页品牌标题与身份入口",
+  "summary": "品牌眉标、主标题、副标题与右侧身份入口组成的首屏标题区。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 3,
+  "locator": {
+    "selector": "fp-home__head",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 17,
+    "lineEnd": 27,
+    "digest": "sha256:64a9959d3e6b97d46f2fcf12eaf46040a38cfbbc591961ac48cac66d28df5809"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 17,
+        "lineEnd": 27,
+        "code": "<view class=\"fp-home__head\">\r\n      <view class=\"fp-home__brand\">\r\n        <text class=\"fp-home__eyebrow\">SMART STORE · 扫码点餐</text>\r\n        <text class=\"fp-home__title\">今天想吃点什么？</text>\r\n        <text class=\"fp-home__sub\">选好用餐方式，直接开始点单。</text>\r\n      </view>\r\n      <view class=\"fp-home__identity\" bind:tap=\"goMine\">\r\n        <text class=\"fp-home__identity-dot\"></text>\r\n        <text>{{identityLabel}}</text>\r\n      </view>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "identityLabel"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "goMine"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [
+      "goMine"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-home__head",
+    "classTokens": [
+      "fp-home__head",
+      "fp-home__brand",
+      "fp-home__eyebrow",
+      "fp-home__title",
+      "fp-home__sub",
+      "fp-home__identity",
+      "fp-home__identity-dot"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-home__head",
+        "declarations": [
+          "display: flex",
+          "align-items: flex-start",
+          "justify-content: space-between",
+          "margin: 34rpx 0 24rpx"
+        ]
+      },
+      {
+        "selector": ".fp-home__brand",
+        "declarations": [
+          "display: flex",
+          "flex-direction: column",
+          "padding-right: 20rpx"
+        ]
+      },
+      {
+        "selector": ".fp-home__eyebrow",
+        "declarations": [
+          "font-size: 20rpx",
+          "letter-spacing: 4rpx",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".fp-home__title",
+        "declarations": [
+          "margin-top: 10rpx",
+          "font-size: 48rpx",
+          "font-weight: 700",
+          "line-height: 1.2"
+        ]
+      },
+      {
+        "selector": ".fp-home__sub",
+        "declarations": [
+          "margin-top: 10rpx",
+          "font-size: 23rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".fp-home__identity",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "flex: none",
+          "max-width: 210rpx",
+          "padding: 10rpx 18rpx",
+          "border-radius: 999rpx",
+          "background: var(--color-surface)",
+          "border: 2rpx solid var(--color-border)",
+          "font-size: 21rpx",
+          "color: var(--color-muted)",
+          "overflow: hidden",
+          "white-space: nowrap",
+          "text-overflow: ellipsis"
+        ]
+      },
+      {
+        "selector": ".fp-home__identity-dot",
+        "declarations": [
+          "width: 12rpx",
+          "height: 12rpx",
+          "margin-right: 10rpx",
+          "border-radius: 999rpx",
+          "background: var(--color-success)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-border",
+      "--color-muted",
+      "--color-primary",
+      "--color-success",
+      "--color-surface"
+    ],
+    "selectorCount": 7
+  },
+  "reuse": {
+    "level": "promote-to-ui-block",
+    "reason": "这是暖橙视图包自有视觉，未登记为资产；其他模板要复用只能复制 WXML，缺少 props/事件契约。",
+    "whenToUse": [
+      "新模板需要在首屏放置品牌口号与身份入口",
+      "需要用同一套排版承载不同门店文案"
+    ],
+    "avoidWhen": [
+      "只需要纯标题时，直接用 text 元素，不必新增组件"
+    ],
+    "uiBlockBlueprint": {
+      "suggestedId": "brand-head",
+      "displayName": "品牌标题与身份入口",
+      "props": [
+        {
+          "name": "identityLabel",
+          "type": "string",
+          "required": false,
+          "description": "右侧身份文案，例如「顾客」或店主名称"
+        },
+        {
+          "name": "eyebrow",
+          "type": "string",
+          "required": false,
+          "description": "品牌眉标文案；为空时回落 SMART STORE · 扫码点餐"
+        }
+      ],
+      "events": [
+        {
+          "name": "identity",
+          "payload": [],
+          "description": "点击身份入口；路由由页面处理"
+        }
+      ],
+      "promotionSteps": [
+        "按组件入库标准新增 templates/components/brand-head/1.0.0",
+        "登记 registry.v1.json 并执行 node scripts/registry-check.cjs --write",
+        "在 Base 页面 usingComponents 声明后才能进入 FrontendPack 视图"
+      ]
+    }
+  },
+  "constraints": [
+    "身份入口只上报点击，不在组件内做路由",
+    "标题层级与字号不进入 themeTokens，尺寸走组件样式"
+  ],
+  "knownLimits": [
+    "当前文案写死，多语言需要先提升为 UI Block"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:64a9959d3e6b97d46f2fcf12eaf46040a38cfbbc591961ac48cac66d28df5809"
+  }
+}

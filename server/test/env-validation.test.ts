@@ -40,6 +40,9 @@ const MANAGED_KEYS = [
   'DEEPSEEK_MAX_TOKENS',
   'AGENT_REQUIRE_AUTH',
   'AGENT_MAX_BODY_BYTES',
+  'AGENT_RUN_MAX_STEPS',
+  'AGENT_RUN_MAX_TOOL_CALLS',
+  'AGENT_RUN_TIMEOUT_MS',
 ];
 
 function withCleanEnv<T>(overrides: Record<string, string>, run: () => T): T {
@@ -117,6 +120,61 @@ describe('C-SERVER-ENV@1 新增变量非法值', () => {
   it('AGENT_MAX_BODY_BYTES 边界值 262144 与 8388608 合法', () => {
     expect(Number(runValidate({ AGENT_MAX_BODY_BYTES: '262144' }).AGENT_MAX_BODY_BYTES)).toBe(262144);
     expect(Number(runValidate({ AGENT_MAX_BODY_BYTES: '8388608' }).AGENT_MAX_BODY_BYTES)).toBe(8388608);
+  });
+});
+
+describe('C-SERVER-ENV@1 Agent Runtime 变量', () => {
+  it('未配置时默认 6 步 / 12 次工具调用 / 60000ms', () => {
+    const result = runValidate();
+
+    expect(Number(result.AGENT_RUN_MAX_STEPS)).toBe(6);
+    expect(Number(result.AGENT_RUN_MAX_TOOL_CALLS)).toBe(12);
+    expect(Number(result.AGENT_RUN_TIMEOUT_MS)).toBe(60000);
+  });
+
+  it('支持显式覆盖且空值回落默认', () => {
+    const overridden = runValidate({
+      AGENT_RUN_MAX_STEPS: '9',
+      AGENT_RUN_MAX_TOOL_CALLS: '20',
+      AGENT_RUN_TIMEOUT_MS: '30000',
+    });
+    expect(Number(overridden.AGENT_RUN_MAX_STEPS)).toBe(9);
+    expect(Number(overridden.AGENT_RUN_MAX_TOOL_CALLS)).toBe(20);
+    expect(Number(overridden.AGENT_RUN_TIMEOUT_MS)).toBe(30000);
+
+    const empty = runValidate({
+      AGENT_RUN_MAX_STEPS: '',
+      AGENT_RUN_MAX_TOOL_CALLS: '   ',
+      AGENT_RUN_TIMEOUT_MS: '',
+    });
+    expect(Number(empty.AGENT_RUN_MAX_STEPS)).toBe(6);
+    expect(Number(empty.AGENT_RUN_MAX_TOOL_CALLS)).toBe(12);
+    expect(Number(empty.AGENT_RUN_TIMEOUT_MS)).toBe(60000);
+  });
+
+  it('越界或非整数时启动失败', () => {
+    for (const invalid of ['0', '13', '1.5', 'abc']) {
+      expect(() => runValidate({ AGENT_RUN_MAX_STEPS: invalid })).toThrow(/AGENT_RUN_MAX_STEPS/);
+    }
+    for (const invalid of ['0', '51', '2.5', 'abc']) {
+      expect(() => runValidate({ AGENT_RUN_MAX_TOOL_CALLS: invalid })).toThrow(
+        /AGENT_RUN_MAX_TOOL_CALLS/,
+      );
+    }
+    for (const invalid of ['999', '300001', '1000.5', 'abc']) {
+      expect(() => runValidate({ AGENT_RUN_TIMEOUT_MS: invalid })).toThrow(
+        /AGENT_RUN_TIMEOUT_MS/,
+      );
+    }
+  });
+
+  it('边界值 1/12、1/50、1000/300000 合法', () => {
+    expect(Number(runValidate({ AGENT_RUN_MAX_STEPS: '1' }).AGENT_RUN_MAX_STEPS)).toBe(1);
+    expect(Number(runValidate({ AGENT_RUN_MAX_STEPS: '12' }).AGENT_RUN_MAX_STEPS)).toBe(12);
+    expect(Number(runValidate({ AGENT_RUN_MAX_TOOL_CALLS: '1' }).AGENT_RUN_MAX_TOOL_CALLS)).toBe(1);
+    expect(Number(runValidate({ AGENT_RUN_MAX_TOOL_CALLS: '50' }).AGENT_RUN_MAX_TOOL_CALLS)).toBe(50);
+    expect(Number(runValidate({ AGENT_RUN_TIMEOUT_MS: '1000' }).AGENT_RUN_TIMEOUT_MS)).toBe(1000);
+    expect(Number(runValidate({ AGENT_RUN_TIMEOUT_MS: '300000' }).AGENT_RUN_TIMEOUT_MS)).toBe(300000);
   });
 });
 

@@ -111,6 +111,31 @@ test('模板外能力、菜品丢弃与缺少 AppID 产生 warn', async () => {
   assert.ok(ids(result.warns).includes('W-NO-APPID'));
 });
 
+test('未勾选的基础能力仍随模板导出：W-BASE-FEATURE-UNCHECKED 只披露不裁剪', async () => {
+  const { machine, rules } = await load();
+  const result = rules.evaluateLocal(baseState(machine));
+  const hits = result.warns.filter((item) => item.ruleId === 'W-BASE-FEATURE-UNCHECKED');
+  assert.strictEqual(hits.length, 1);
+  assert.ok(hits[0].message.includes('堂食'));
+  assert.ok(hits[0].message.includes('不会从导出工程移除'));
+  assert.strictEqual(hits[0].fieldPath, 'features.selected');
+  assert.deepStrictEqual(hits[0].action, { label: '去确认能力勾选', phase: 'features' });
+  // 9 个基础能力全部勾选时不再提示
+  const all = baseState(machine, {
+    features: {
+      selected: [
+        'scan-order', 'product-catalog', 'cart-checkout', 'order-tracking',
+        'table-dining', 'takeaway', 'merchant-orders', 'product-availability', 'store-profile',
+      ],
+      custom: '',
+    },
+  });
+  assert.ok(!ids(rules.evaluateLocal(all).warns).includes('W-BASE-FEATURE-UNCHECKED'));
+  // 一个都没勾（边界）时也不提示，避免首屏噪音
+  const none = baseState(machine, { features: { selected: [], custom: '' } });
+  assert.ok(!ids(rules.evaluateLocal(none).warns).includes('W-BASE-FEATURE-UNCHECKED'));
+});
+
 test('图片、长会话与开发者工具缺失进入 info', async () => {
   const { machine, rules } = await load();
   const state = baseState(machine);

@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-hints",
+  "displayName": "首页提示条",
+  "summary": "演示提示与版本提示两条纯展示提示条，分别绑定 demoHint 与 versionNotice。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 5,
+  "locator": {
+    "selector": "fp-home__hint",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 2
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 37,
+    "lineEnd": 38,
+    "digest": "sha256:184f5f689afb6996ebb4476970b9d0f41cf94fbb5e7c1811fbc25878e1a1e110"
+  },
+  "template": {
+    "occurrences": 2,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 37,
+        "lineEnd": 37,
+        "code": "<view wx:if=\"{{demoHint}}\" class=\"fp-home__hint\">{{demoHint}}</view>"
+      },
+      {
+        "lineStart": 38,
+        "lineEnd": 38,
+        "code": "<view wx:if=\"{{versionNotice}}\" class=\"fp-home__hint\">{{versionNotice}}</view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "demoHint",
+      "versionNotice"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-home__hint",
+    "classTokens": [
+      "fp-home__hint"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-home__hint",
+        "declarations": [
+          "margin-top: 16rpx",
+          "padding: 14rpx 20rpx",
+          "border-radius: 14rpx",
+          "background: rgba(47, 125, 79, 0.09)",
+          "color: var(--color-success)",
+          "font-size: 22rpx"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-success"
+    ],
+    "selectorCount": 1
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "纯展示的单行提示，没有交互与数据契约负担，直接复制 WXML 与样式最经济。",
+    "whenToUse": [
+      "演示环境声明",
+      "版本升级或灰度提示"
+    ],
+    "avoidWhen": [
+      "需要关闭按钮或跳转时，改用 error-banner 或 notice 区块"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "两条提示都受 wx:if 控制，空字符串不渲染",
+    "提示只读页面字段，不在组件内生成文案"
+  ],
+  "knownLimits": [
+    "当前只有两条固定文案位，新增提示需要改页面 WXML"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:184f5f689afb6996ebb4476970b9d0f41cf94fbb5e7c1811fbc25878e1a1e110"
+  }
+}

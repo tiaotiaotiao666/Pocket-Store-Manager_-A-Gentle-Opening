@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-aside-slot",
+  "displayName": "菜单页侧栏插槽位",
+  "summary": "menu-aside 插槽容器，当前为空，只接受 ui-block。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 6,
+  "locator": {
+    "selector": null,
+    "componentTag": null,
+    "slotId": "menu-aside",
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 56,
+    "lineEnd": 59,
+    "digest": "sha256:9b403e59b0bf9599b9903db813f51375332a4aa255e4e701ca522f36e880dba0"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "#slot",
+    "snippets": [
+      {
+        "lineStart": 56,
+        "lineEnd": 59,
+        "code": "<!-- @slot-fallback:menu-aside -->\r\n      <!-- @slot-fallback:menu-aside:end -->\r\n      <!-- @slot:menu-aside:end -->"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [],
+    "selectors": [],
+    "themeVars": [],
+    "selectorCount": 0
+  },
+  "reuse": {
+    "level": "slot-only",
+    "reason": "纯插槽位，只能通过 Plan 声明落位。",
+    "whenToUse": [
+      "需要在菜单列表旁插入筛选、公告等纯展示区块"
+    ],
+    "avoidWhen": [
+      "需要网络请求或业务状态时，应走 Feature Pack 而不是 UI Block"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "只接受 ui-block",
+    "插槽容量为 1"
+  ],
+  "knownLimits": [
+    "当前没有 UI Block 占用"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:9b403e59b0bf9599b9903db813f51375332a4aa255e4e701ca522f36e880dba0"
+  }
+}

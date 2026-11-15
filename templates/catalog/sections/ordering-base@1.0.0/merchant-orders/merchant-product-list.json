@@ -1,0 +1,575 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "merchant-product-list",
+  "displayName": "分类商品列表",
+  "summary": "按分类分组渲染商品行：图片、名称、描述、价格、改价、编辑资料、上下架开关，并内联展开编辑表单。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "merchant-orders",
+  "order": 8,
+  "locator": {
+    "selector": "merchant__products",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
+    "lineStart": 191,
+    "lineEnd": 272,
+    "digest": "sha256:5e1dbda85b98548f9a047880f956bfecda74e078d804bc9f4af12da8343e8f8f"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 191,
+        "lineEnd": 272,
+        "code": "<view wx:else class=\"merchant__products\">\r\n        <view wx:for=\"{{categories}}\" wx:key=\"id\" wx:for-item=\"category\" class=\"merchant__category\">\r\n          <view class=\"merchant__category-head\">\r\n            <text class=\"merchant__category-name\">{{category.name}}</text>\r\n            <view class=\"merchant__category-actions\">\r\n              <text class=\"merchant__category-count\">{{category.products.length}} 项</text>\r\n              <button wx:if=\"{{isOwner && categoryEditorId !== category.id}}\" class=\"merchant__text-button\" size=\"mini\" data-id=\"{{category.id}}\" disabled=\"{{productWriting}}\" bind:tap=\"onOpenCategoryEditor\">重命名</button>\r\n            </view>\r\n          </view>\r\n          <view wx:if=\"{{isOwner && categoryEditorId === category.id}}\" class=\"merchant__category-editor\">\r\n            <input class=\"merchant__input\" value=\"{{categoryEditorName}}\" bindinput=\"onCategoryEditorNameInput\" />\r\n            <view class=\"merchant__editor-actions\">\r\n              <button class=\"merchant__primary-button\" size=\"mini\" loading=\"{{productWriting && productAction === 'rename-category'}}\" disabled=\"{{productWriting}}\" bind:tap=\"onRenameCategory\">保存名称</button>\r\n              <button class=\"merchant__secondary-button\" size=\"mini\" disabled=\"{{productWriting}}\" bind:tap=\"onCloseCategoryEditor\">取消</button>\r\n            </view>\r\n          </view>\r\n          <view class=\"surface-card merchant__product-list\">\r\n            <view\r\n              wx:for=\"{{category.products}}\"\r\n              wx:key=\"id\"\r\n              wx:for-item=\"product\"\r\n              class=\"merchant__product-wrap\"\r\n            >\r\n              <view class=\"merchant__product\">\r\n                <image wx:if=\"{{product.imageUrl}}\" class=\"merchant__product-image\" src=\"{{product.imageUrl}}\" mode=\"aspectFill\" />\r\n                <view wx:else class=\"merchant__product-image merchant__product-image--empty\">商品</view>\r\n                <view class=\"merchant__product-main\">\r\n                  <view class=\"merchant__product-title\">\r\n                    <text class=\"merchant__product-name\">{{product.name}}</text>\r\n                    <text wx:if=\"{{!product.available}}\" class=\"merchant__product-tag\">已下架</text>\r\n                  </view>\r\n                  <text class=\"merchant__product-desc\">{{product.description || '暂无描述'}}</text>\r\n                  <text class=\"merchant__product-price\">{{product.amountText}}</text>\r\n                  <button wx:if=\"{{isOwner}}\" class=\"merchant__text-button merchant__price-button\" size=\"mini\" data-id=\"{{product.id}}\" disabled=\"{{productWriting}}\" bind:tap=\"onOpenProductEditor\">编辑资料</button>\r\n                  <button wx:if=\"{{isOwner && priceEditorId !== product.id}}\" class=\"merchant__text-button merchant__price-button\" size=\"mini\" data-id=\"{{product.id}}\" disabled=\"{{productWriting}}\" bind:tap=\"onOpenPriceEditor\">改价</button>\r\n                  <view wx:if=\"{{isOwner && priceEditorId === product.id}}\" class=\"merchant__price-editor\">\r\n                    <input class=\"merchant__input\" type=\"digit\" value=\"{{priceValue}}\" bindinput=\"onPriceValueInput\" />\r\n                    <view class=\"merchant__editor-actions\">\r\n                      <button class=\"merchant__primary-button\" size=\"mini\" loading=\"{{productWriting && productAction === 'update-price'}}\" disabled=\"{{productWriting}}\" bind:tap=\"onSavePrice\">保存价格</button>\r\n                      <button class=\"merchant__secondary-button\" size=\"mini\" disabled=\"{{productWriting}}\" bind:tap=\"onClosePriceEditor\">取消</button>\r\n                    </view>\r\n                  </view>\r\n                </view>\r\n                <switch checked=\"{{product.available}}\" color=\"#E86A17\" disabled=\"{{productWriting}}\" data-id=\"{{product.id}}\" data-name=\"{{product.name}}\" bindchange=\"onToggleProduct\" />\r\n              </view>\r\n              <view wx:if=\"{{isOwner && editProductId === product.id}}\" class=\"merchant__editor merchant__product-editor\">\r\n                <view class=\"merchant__field\">\r\n                  <text class=\"merchant__field-label\">商品名称</text>\r\n                  <input class=\"merchant__input\" value=\"{{editProductName}}\" data-field=\"name\" bindinput=\"onEditProductFieldInput\" />\r\n                </view>\r\n                <view wx:if=\"{{categories.length > 0}}\" class=\"merchant__field\">\r\n                  <text class=\"merchant__field-label\">商品分类</text>\r\n                  <picker mode=\"selector\" range=\"{{categories}}\" range-key=\"name\" value=\"{{editProductCategoryIndex}}\" bindchange=\"onEditProductCategoryChange\">\r\n                    <view class=\"merchant__picker\">{{categories[editProductCategoryIndex].name}}</view>\r\n                  </picker>\r\n                </view>\r\n                <view class=\"merchant__field\">\r\n                  <text class=\"merchant__field-label\">价格（元）</text>\r\n                  <input class=\"merchant__input\" type=\"digit\" value=\"{{editProductPrice}}\" data-field=\"price\" bindinput=\"onEditProductFieldInput\" />\r\n                </view>\r\n                <view class=\"merchant__field\">\r\n                  <text class=\"merchant__field-label\">商品描述</text>\r\n                  <textarea class=\"merchant__input merchant__textarea\" value=\"{{editProductDescription}}\" data-field=\"description\" bindinput=\"onEditProductFieldInput\" />\r\n                </view>\r\n                <view class=\"merchant__field\">\r\n                  <text class=\"merchant__field-label\">商品图片地址</text>\r\n                  <view class=\"merchant__image-upload\">\r\n                    <image wx:if=\"{{editProductImageUrl}}\" class=\"merchant__image-preview\" src=\"{{editProductImageUrl}}\" mode=\"aspectFill\" />\r\n                    <button class=\"merchant__secondary-button\" size=\"mini\" loading=\"{{productWriting && productAction === 'upload-image'}}\" disabled=\"{{productWriting}}\" bind:tap=\"onChooseEditProductImage\">替换商品图片</button>\r\n                    <button wx:if=\"{{editProductImageUrl}}\" class=\"merchant__text-button\" size=\"mini\" data-field=\"edit\" disabled=\"{{productWriting}}\" bind:tap=\"onClearImage\">移除</button>\r\n                  </view>\r\n                  <input class=\"merchant__input\" value=\"{{editProductImageUrl}}\" placeholder=\"图片地址，可留空\" data-field=\"imageUrl\" bindinput=\"onEditProductFieldInput\" />\r\n                </view>\r\n                <view class=\"merchant__editor-actions\">\r\n                  <button class=\"merchant__primary-button\" size=\"mini\" loading=\"{{productWriting && productAction === 'edit-product'}}\" disabled=\"{{productWriting}}\" bind:tap=\"onSaveProductEdit\">保存修改</button>\r\n                  <button class=\"merchant__secondary-button\" size=\"mini\" disabled=\"{{productWriting}}\" bind:tap=\"onCloseProductEditor\">取消</button>\r\n                </view>\r\n              </view>\r\n            </view>\r\n          </view>\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "amountText",
+      "available",
+      "categories",
+      "category",
+      "categoryEditorId",
+      "categoryEditorName",
+      "description",
+      "edit",
+      "editProductCategoryIndex",
+      "editProductDescription",
+      "editProductId",
+      "editProductImageUrl",
+      "editProductName",
+      "editProductPrice",
+      "id",
+      "image",
+      "imageUrl",
+      "isOwner",
+      "name",
+      "price",
+      "priceEditorId",
+      "priceValue",
+      "product",
+      "productAction",
+      "productWriting",
+      "products",
+      "rename",
+      "update",
+      "upload"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onOpenCategoryEditor"
+      },
+      {
+        "type": "input",
+        "handler": "onCategoryEditorNameInput"
+      },
+      {
+        "type": "tap",
+        "handler": "onRenameCategory"
+      },
+      {
+        "type": "tap",
+        "handler": "onCloseCategoryEditor"
+      },
+      {
+        "type": "tap",
+        "handler": "onOpenProductEditor"
+      },
+      {
+        "type": "tap",
+        "handler": "onOpenPriceEditor"
+      },
+      {
+        "type": "input",
+        "handler": "onPriceValueInput"
+      },
+      {
+        "type": "tap",
+        "handler": "onSavePrice"
+      },
+      {
+        "type": "tap",
+        "handler": "onClosePriceEditor"
+      },
+      {
+        "type": "change",
+        "handler": "onToggleProduct"
+      },
+      {
+        "type": "input",
+        "handler": "onEditProductFieldInput"
+      },
+      {
+        "type": "change",
+        "handler": "onEditProductCategoryChange"
+      },
+      {
+        "type": "input",
+        "handler": "onEditProductFieldInput"
+      },
+      {
+        "type": "input",
+        "handler": "onEditProductFieldInput"
+      },
+      {
+        "type": "tap",
+        "handler": "onChooseEditProductImage"
+      },
+      {
+        "type": "tap",
+        "handler": "onClearImage"
+      },
+      {
+        "type": "input",
+        "handler": "onEditProductFieldInput"
+      },
+      {
+        "type": "tap",
+        "handler": "onSaveProductEdit"
+      },
+      {
+        "type": "tap",
+        "handler": "onCloseProductEditor"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/merchant-orders/index.js",
+    "handlers": [
+      "onCategoryEditorNameInput",
+      "onChooseEditProductImage",
+      "onClearImage",
+      "onCloseCategoryEditor",
+      "onClosePriceEditor",
+      "onCloseProductEditor",
+      "onEditProductCategoryChange",
+      "onEditProductFieldInput",
+      "onOpenCategoryEditor",
+      "onOpenPriceEditor",
+      "onOpenProductEditor",
+      "onPriceValueInput",
+      "onRenameCategory",
+      "onSavePrice",
+      "onSaveProductEdit",
+      "onToggleProduct"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "merchant__products",
+      "merchant__category",
+      "merchant__category-head",
+      "merchant__category-name",
+      "merchant__category-actions",
+      "merchant__category-count",
+      "merchant__text-button",
+      "merchant__category-editor",
+      "merchant__input",
+      "merchant__editor-actions",
+      "merchant__primary-button",
+      "merchant__secondary-button",
+      "surface-card",
+      "merchant__product-list",
+      "merchant__product-wrap",
+      "merchant__product",
+      "merchant__product-image",
+      "merchant__product-image--empty",
+      "merchant__product-main",
+      "merchant__product-title",
+      "merchant__product-name",
+      "merchant__product-tag",
+      "merchant__product-desc",
+      "merchant__product-price",
+      "merchant__price-button",
+      "merchant__price-editor",
+      "merchant__editor",
+      "merchant__product-editor",
+      "merchant__field",
+      "merchant__field-label",
+      "merchant__picker",
+      "merchant__textarea",
+      "merchant__image-upload",
+      "merchant__image-preview"
+    ],
+    "selectors": [
+      {
+        "selector": ".merchant__product-summary",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "margin-top: 22rpx",
+          "padding: 18rpx 22rpx",
+          "border-radius: 16rpx",
+          "background: rgba(35, 35, 35, 0.04)"
+        ]
+      },
+      {
+        "selector": ".merchant__product-stat",
+        "declarations": [
+          "margin-right: 22rpx",
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".merchant__product-stat--ok",
+        "declarations": [
+          "color: var(--color-success)"
+        ]
+      },
+      {
+        "selector": ".merchant__product-stat--off",
+        "declarations": [
+          "color: var(--color-danger)"
+        ]
+      },
+      {
+        "selector": ".merchant__editor",
+        "declarations": [
+          "margin-top: 18rpx",
+          "padding: 22rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__editor-title",
+        "declarations": [
+          "font-size: 27rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".merchant__field",
+        "declarations": [
+          "margin-top: 18rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__field-label",
+        "declarations": [
+          "display: block",
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".merchant__input",
+        "declarations": [
+          "box-sizing: border-box",
+          "width: 100%",
+          "margin-top: 8rpx",
+          "padding: 14rpx 16rpx",
+          "border: 2rpx solid rgba(35, 35, 35, 0.12)",
+          "border-radius: 12rpx",
+          "background: var(--color-surface)",
+          "font-size: 25rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__textarea",
+        "declarations": [
+          "min-height: 120rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__picker",
+        "declarations": [
+          "margin-top: 8rpx",
+          "padding: 14rpx 16rpx",
+          "border: 2rpx solid rgba(35, 35, 35, 0.12)",
+          "border-radius: 12rpx",
+          "background: var(--color-surface)",
+          "font-size: 25rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__editor-actions",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "margin-top: 18rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__primary-button",
+        "declarations": [
+          "margin: 0 14rpx 0 0",
+          "background: var(--color-primary)",
+          "color: var(--color-surface)",
+          "font-size: 23rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__secondary-button",
+        "declarations": [
+          "margin: 0",
+          "background: rgba(35, 35, 35, 0.06)",
+          "color: var(--color-text)",
+          "font-size: 23rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__text-button",
+        "declarations": [
+          "margin: 0",
+          "padding: 0 12rpx",
+          "background: rgba(35, 35, 35, 0.05)",
+          "color: var(--color-primary)",
+          "font-size: 21rpx",
+          "line-height: 2"
+        ]
+      },
+      {
+        "selector": ".merchant__products",
+        "declarations": [
+          "margin-top: 22rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__category",
+        "declarations": [
+          "margin-bottom: 24rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__category-head",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline",
+          "justify-content: space-between",
+          "margin: 0 4rpx 12rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__category-name",
+        "declarations": [
+          "font-size: 27rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".merchant__category-actions",
+        "declarations": [
+          "display: flex",
+          "align-items: center"
+        ]
+      },
+      {
+        "selector": ".merchant__category-count",
+        "declarations": [
+          "margin-right: 12rpx",
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".merchant__category-editor",
+        "declarations": [
+          "margin: 0 4rpx 14rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__product-list",
+        "declarations": [
+          "padding: 4rpx 22rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__product-wrap",
+        "declarations": [
+          "border-bottom: 2rpx solid rgba(230, 222, 210, 0.55)"
+        ]
+      },
+      {
+        "selector": ".merchant__product-wrap:last-child",
+        "declarations": [
+          "border-bottom: none"
+        ]
+      },
+      {
+        "selector": ".merchant__product",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "min-width: 0",
+          "padding: 20rpx 0"
+        ]
+      },
+      {
+        "selector": ".merchant__product-main",
+        "declarations": [
+          "flex: 1",
+          "min-width: 0",
+          "display: flex",
+          "flex-direction: column"
+        ]
+      },
+      {
+        "selector": ".merchant__product-image",
+        "declarations": [
+          "flex: 0 0 144rpx",
+          "width: 144rpx",
+          "height: 144rpx",
+          "margin-right: 18rpx",
+          "border-radius: 16rpx",
+          "background: #f2e9dd"
+        ]
+      },
+      {
+        "selector": ".merchant__product-image--empty",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: center",
+          "color: #a27654",
+          "font-size: 22rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__product-title",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "min-width: 0"
+        ]
+      },
+      {
+        "selector": ".merchant__product-name",
+        "declarations": [
+          "font-size: 26rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".merchant__product-tag",
+        "declarations": [
+          "margin-left: 10rpx",
+          "padding: 2rpx 12rpx",
+          "border-radius: 999rpx",
+          "background: rgba(178, 58, 47, 0.1)",
+          "color: var(--color-danger)",
+          "font-size: 19rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__product-desc",
+        "declarations": [
+          "margin-top: 4rpx",
+          "font-size: 21rpx",
+          "color: var(--color-muted)",
+          "overflow: hidden",
+          "white-space: nowrap",
+          "text-overflow: ellipsis"
+        ]
+      },
+      {
+        "selector": ".merchant__product-price",
+        "declarations": [
+          "margin-top: 6rpx",
+          "font-size: 24rpx",
+          "font-weight: 700",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".merchant__price-button",
+        "declarations": [
+          "align-self: flex-start",
+          "margin-top: 8rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__price-editor",
+        "declarations": [
+          "margin-top: 10rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__product-editor",
+        "declarations": [
+          "margin: 0 0 20rpx 162rpx",
+          "padding: 20rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__image-upload",
+        "declarations": [
+          "display: flex",
+          "flex-wrap: wrap",
+          "align-items: center",
+          "margin-top: 10rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__image-preview",
+        "declarations": [
+          "width: 180rpx",
+          "height: 132rpx",
+          "margin: 0 14rpx 10rpx 0",
+          "border-radius: 14rpx",
+          "background: #f1e9de"
+        ]
+      },
+      {
+        "selector": ".merchant__image-preview--wide",
+        "declarations": [
+          "flex: 0 0 100%",
+          "width: 100%",
+          "height: 300rpx",
+          "margin-right: 0"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-danger",
+      "--color-muted",
+      "--color-primary",
+      "--color-success",
+      "--color-surface",
+      "--color-text"
+    ],
+    "selectorCount": 40
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "这是店主商品管理的主结构，复制 WXML 与 merchant__ 样式可整体复用；增删改逻辑留在控制器。",
+    "whenToUse": [
+      "店主需要管理分类与商品",
+      "需要行内改价与上下架"
+    ],
+    "avoidWhen": [
+      "只读菜单展示，用 product-card 列表"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "分类为空时整块被 merchant__empty 空态替代",
+    "所有写操作按钮在 productWriting 时禁用",
+    "编辑表单与列表行共用一个卡片，展开状态由 priceEditorId/editProductId 控制"
+  ],
+  "knownLimits": [
+    "商品删除不在视图内，当前只有上下架",
+    "图片上传只写 URL，不做裁剪"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:5e1dbda85b98548f9a047880f956bfecda74e078d804bc9f4af12da8343e8f8f"
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "merchant-pagination",
+  "displayName": "订单分页条",
+  "summary": "已加载 n / total 单与加载更多按钮，加载中显示禁用样式。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "merchant-orders",
+  "order": 6,
+  "locator": {
+    "selector": "merchant__pagination",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
+    "lineStart": 108,
+    "lineEnd": 113,
+    "digest": "sha256:3a9db93b9d445ae1c1599b55f98258d9ff31148d2a4b9cf14ea246dfba9778b8"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 108,
+        "lineEnd": 113,
+        "code": "<view wx:if=\"{{orders.length > 0}}\" class=\"merchant__pagination\">\r\n        <text class=\"merchant__total\">已加载 {{orders.length}} / {{total}} 单</text>\r\n        <view wx:if=\"{{hasMore}}\" class=\"merchant__more {{ordersLoading ? 'merchant__more--disabled' : ''}}\" bind:tap=\"onLoadMore\">\r\n          {{ordersLoading ? '正在加载…' : '加载更多'}}\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "disabled",
+      "hasMore",
+      "merchant__more",
+      "orders",
+      "ordersLoading",
+      "total"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onLoadMore"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/merchant-orders/index.js",
+    "handlers": [
+      "onLoadMore"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "merchant__pagination",
+      "merchant__total",
+      "merchant__more",
+      "{{ordersLoading",
+      "?",
+      "'merchant__more--disabled'",
+      ":",
+      "''}}"
+    ],
+    "selectors": [
+      {
+        "selector": ".merchant__pagination",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "margin-top: 4rpx",
+          "padding: 0 4rpx 20rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__total",
+        "declarations": [
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".merchant__more",
+        "declarations": [
+          "padding: 12rpx 24rpx",
+          "border-radius: 999rpx",
+          "background: rgba(35, 35, 35, 0.06)",
+          "color: var(--color-primary)",
+          "font-size: 23rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".merchant__more--disabled",
+        "declarations": [
+          "opacity: 0.55"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-primary"
+    ],
+    "selectorCount": 4
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "两段文本加按钮，复制即可。",
+    "whenToUse": [
+      "订单列表需要增量加载"
+    ],
+    "avoidWhen": [
+      "已一次性取全量时删除"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "orders.length > 0 才渲染",
+    "hasMore 为假时只留统计文案"
+  ],
+  "knownLimits": [
+    "没有上一页，只能向前加载"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:3a9db93b9d445ae1c1599b55f98258d9ff31148d2a4b9cf14ea246dfba9778b8"
+  }
+}

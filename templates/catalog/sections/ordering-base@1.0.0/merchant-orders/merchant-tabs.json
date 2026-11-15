@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "merchant-tabs",
+  "displayName": "工作台三段标签",
+  "summary": "订单台、商品管理、海报装修三个标签，当前项加 active 样式。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "merchant-orders",
+  "order": 3,
+  "locator": {
+    "selector": "merchant__tabs",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
+    "lineStart": 48,
+    "lineEnd": 70,
+    "digest": "sha256:e474b5e15dc6a243a368d9c5dc67f7ab8b17372aa95a026d5293377df09d0143"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 48,
+        "lineEnd": 70,
+        "code": "<view class=\"merchant__tabs\">\r\n      <view\r\n        class=\"merchant__tab {{tab === 'orders' ? 'merchant__tab--active' : ''}}\"\r\n        data-tab=\"orders\"\r\n        bind:tap=\"onChangeTab\"\r\n      >\r\n        订单台\r\n      </view>\r\n      <view\r\n        class=\"merchant__tab {{tab === 'products' ? 'merchant__tab--active' : ''}}\"\r\n        data-tab=\"products\"\r\n        bind:tap=\"onChangeTab\"\r\n      >\r\n        商品管理\r\n      </view>\r\n      <view\r\n        class=\"merchant__tab {{tab === 'posters' ? 'merchant__tab--active' : ''}}\"\r\n        data-tab=\"posters\"\r\n        bind:tap=\"onChangeTab\"\r\n      >\r\n        海报装修\r\n      </view>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "active",
+      "merchant__tab",
+      "orders",
+      "posters",
+      "products",
+      "tab"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onChangeTab"
+      },
+      {
+        "type": "tap",
+        "handler": "onChangeTab"
+      },
+      {
+        "type": "tap",
+        "handler": "onChangeTab"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/merchant-orders/index.js",
+    "handlers": [
+      "onChangeTab"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "merchant__tabs",
+      "merchant__tab",
+      "{{tab",
+      "===",
+      "'orders'",
+      "?",
+      "'merchant__tab--active'",
+      ":",
+      "''}}",
+      "'products'",
+      "'posters'"
+    ],
+    "selectors": [
+      {
+        "selector": ".merchant__tabs",
+        "declarations": [
+          "display: flex",
+          "margin-top: 24rpx",
+          "padding: 8rpx",
+          "border-radius: 999rpx",
+          "background: rgba(35, 35, 35, 0.06)"
+        ]
+      },
+      {
+        "selector": ".merchant__tab",
+        "declarations": [
+          "flex: 1",
+          "padding: 16rpx 0",
+          "border-radius: 999rpx",
+          "text-align: center",
+          "font-size: 26rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".merchant__tab--active",
+        "declarations": [
+          "background: var(--color-surface)",
+          "color: var(--color-text)",
+          "font-weight: 700",
+          "box-shadow: 0 6rpx 16rpx rgba(35, 35, 35, 0.08)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-surface",
+      "--color-text"
+    ],
+    "selectorCount": 3
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "三个静态标签加事件，复制 WXML 即可。",
+    "whenToUse": [
+      "店主工作台需要多面板切换"
+    ],
+    "avoidWhen": [
+      "面板超过 4 个时改用横向滚动或侧边栏"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "点击只上报 onChangeTab 与 data-tab",
+    "标签内容写死，不循环"
+  ],
+  "knownLimits": [
+    "新增标签需要同步改页面控制器的 tab 分支"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:e474b5e15dc6a243a368d9c5dc67f7ab8b17372aa95a026d5293377df09d0143"
+  }
+}

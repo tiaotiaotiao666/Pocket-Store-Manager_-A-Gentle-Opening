@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "loading-block",
+  "version": "1.0.0",
+  "displayName": "列表骨架屏",
+  "category": "shell",
+  "summary": "按行渲染的缩略图与文本骨架，用于订单列表、菜单等列表加载态。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/loading-block",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:20b43a52380611a15d24998640d33921e68c6c02d395afa17ca96a890dc97418"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "rows",
+        "type": "number",
+        "required": false,
+        "defaultValue": 3,
+        "description": "骨架行数，实现内钳制在 1–8"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "底部可选说明文案"
+      }
+    ],
+    "events": []
+  },
+  "usage": {
+    "tag": "loading-block",
+    "wxmlExample": "<loading-block rows=\"4\" text=\"正在加载订单\" />",
+    "whenToUse": [
+      "列表首次加载，需要保持页面结构稳定",
+      "不希望用整页 spinner 打断布局"
+    ],
+    "avoidWhen": [
+      "只需一句加载文案时，用 state-view 的 loading 态"
+    ],
+    "notes": [
+      "orders、merchant-orders、menu 三个页面声明了它"
+    ]
+  },
+  "pages": [
+    "menu",
+    "merchant-orders",
+    "orders"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "loading-block",
+    "themeVars": [
+      "--color-muted"
+    ],
+    "sharedClasses": [],
+    "imports": [],
+    "selectorCount": 7
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "rows 越界不会报错，按 1–8 钳制",
+    "纯展示，不触网、不发事件"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:20b43a52380611a15d24998640d33921e68c6c02d395afa17ca96a890dc97418"
+  }
+}

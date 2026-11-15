@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "orders-head",
+  "displayName": "订单列表标题区",
+  "summary": "眉标「我的订单」、门店名与下单身份摘要。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "orders",
+  "order": 1,
+  "locator": {
+    "selector": "orders__head",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxss",
+    "lineStart": 2,
+    "lineEnd": 6,
+    "digest": "sha256:5ff0cf153715876a9591af6bc1c4a4376ed5ebf11f3c383dfbd91d924e96d6e7"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 2,
+        "lineEnd": 6,
+        "code": "<view class=\"orders__head\">\r\n    <text class=\"orders__eyebrow\">我的订单</text>\r\n    <text class=\"orders__title\">{{storeName || '当前门店'}}</text>\r\n    <text class=\"orders__sub\">下单身份：{{identityLabel}}</text>\r\n  </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "identityLabel",
+      "storeName"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/orders/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "orders__head",
+      "orders__eyebrow",
+      "orders__title",
+      "orders__sub"
+    ],
+    "selectors": [
+      {
+        "selector": ".orders__head",
+        "declarations": [
+          "padding: 0 6rpx"
+        ]
+      },
+      {
+        "selector": ".orders__eyebrow",
+        "declarations": [
+          "font-size: 22rpx",
+          "letter-spacing: 4rpx",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".orders__title",
+        "declarations": [
+          "display: block",
+          "margin-top: 8rpx",
+          "font-size: 42rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".orders__sub",
+        "declarations": [
+          "display: block",
+          "margin-top: 6rpx",
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-primary"
+    ],
+    "selectorCount": 4
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "纯展示结构，复制 WXML 即可。",
+    "whenToUse": [
+      "顾客订单列表页头部"
+    ],
+    "avoidWhen": [
+      "需要筛选与统计，用 orders__filters 与 orders__notice"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "storeName 为空时回落「当前门店」"
+  ],
+  "knownLimits": [
+    "不含订单数量统计"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:5ff0cf153715876a9591af6bc1c4a4376ed5ebf11f3c383dfbd91d924e96d6e7"
+  }
+}

@@ -24,6 +24,9 @@ let state = {
   warnings: [],
 };
 
+// 组件目录会被多个页面的 usingComponents 重复引用；每目录只校验一次，避免同一缺陷重复计数。
+const checkedComponentDirs = new Set();
+
 const BUILTIN_TAGS = new Set([
   'view', 'scroll-view', 'swiper', 'swiper-item', 'movable-area', 'movable-view', 'cover-view',
   'cover-image', 'icon', 'text', 'rich-text', 'progress', 'button', 'checkbox', 'checkbox-group',
@@ -208,11 +211,16 @@ function resolveComponentDir(baseDir, target) {
 }
 
 function checkComponentFiles(componentDir) {
+  const key = path.resolve(componentDir);
+  if (checkedComponentDirs.has(key)) {
+    return;
+  }
+  checkedComponentDirs.add(key);
   const base = path.join(componentDir, 'index');
   ['js', 'json', 'wxml', 'wxss'].forEach((ext) => {
     const file = base + '.' + ext;
     if (!fs.existsSync(file)) {
-      errors.push(rel(componentDir) + ': 缺少 index.' + ext);
+      addError(componentDir, '缺少 index.' + ext);
     }
   });
   const jsonFile = base + '.json';
@@ -329,7 +337,7 @@ function checkPage(pageDir) {
   const base = path.join(pageDir, 'index');
   ['js', 'json', 'wxml'].forEach((ext) => {
     if (!fs.existsSync(base + '.' + ext)) {
-      errors.push(rel(pageDir) + ': 缺少 index.' + ext);
+      addError(pageDir, '缺少 index.' + ext);
     }
   });
 

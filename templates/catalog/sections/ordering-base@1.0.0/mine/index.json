@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "section-page-index.v1",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "mine",
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss"
+  },
+  "counts": {
+    "sections": 6
+  },
+  "sections": [
+    {
+      "id": "mine-head",
+      "displayName": "我的页标题区",
+      "order": 1,
+      "locator": {
+        "selector": "mine__head",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 2,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "mine-head.json"
+    },
+    {
+      "id": "mine-profile",
+      "displayName": "身份与门店卡",
+      "order": 2,
+      "locator": {
+        "selector": "mine__profile",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 10,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "mine-profile.json"
+    },
+    {
+      "id": "mine-memberships",
+      "displayName": "门店权限卡",
+      "order": 3,
+      "locator": {
+        "selector": "mine__membership",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 28,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "mine-memberships.json"
+    },
+    {
+      "id": "mine-identities",
+      "displayName": "演示身份切换卡",
+      "order": 4,
+      "locator": {
+        "selector": "mine__identities",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 47,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "mine-identities.json"
+    },
+    {
+      "id": "mine-quick-links",
+      "displayName": "快捷入口卡",
+      "order": 5,
+      "locator": {
+        "selector": "mine__links",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 69,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "promote-to-ui-block",
+      "card": "mine-quick-links.json"
+    },
+    {
+      "id": "mine-demo-foot",
+      "displayName": "演示免责说明",
+      "order": 6,
+      "locator": {
+        "selector": "mine__foot",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 81,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "mine-demo-foot.json"
+    }
+  ]
+}

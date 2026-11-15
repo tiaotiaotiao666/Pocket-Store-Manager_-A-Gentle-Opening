@@ -109,18 +109,25 @@ export default function DeployStep({
         </>
       ) : null}
 
-      {(status === 'idle' || status === 'choosing' || status === 'cancelled') ? (
+      {(status === 'idle' || status === 'choosing' || status === 'cancelled' || status === 'done') ? (
         <div className="deploy-actions deploy-actions--start">
           <button
             type="button"
-            className="primary-button deploy-action"
+            className={status === 'done' ? 'secondary-button deploy-action' : 'primary-button deploy-action'}
             onClick={onChooseDirectory}
             disabled={status === 'choosing' || busy || Boolean(blockedReason)}
           >
-            {status === 'choosing' ? '正在打开目录选择器…' : (status === 'cancelled' ? '重新选择导出位置' : '选择导出位置')}
+            {status === 'choosing'
+              ? '正在打开目录选择器…'
+              : status === 'done'
+                ? '换一个目录重新导出'
+                : (status === 'cancelled' ? '重新选择导出位置' : '选择导出位置')}
           </button>
           <span className="deploy-actions-note">
-            {blockedReason || '仅写本地目录；不会上传、发布或提交审核。'}
+            {blockedReason
+              || (status === 'done'
+                ? '重新导出会生成到新目录，不会覆盖已完成工程。'
+                : '仅写本地目录；不会上传、发布或提交审核。')}
           </span>
         </div>
       ) : null}

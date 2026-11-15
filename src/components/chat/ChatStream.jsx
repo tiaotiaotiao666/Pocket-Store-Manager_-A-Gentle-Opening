@@ -3,8 +3,8 @@ import { useSequentialReveal } from '../../hooks/useSequentialReveal.js';
 import MessageBubble from './MessageBubble.jsx';
 import TypingDots from './TypingDots.jsx';
 
-export default function ChatStream({ messages = [], revealKey, flushKey = 0, children }) {
-  const { visible, typing } = useSequentialReveal(messages, { revealKey, flushKey });
+export default function ChatStream({ messages = [], revealKey, flushKey = 0, revealAll = false, children }) {
+  const { visible, typing } = useSequentialReveal(messages, { revealKey, flushKey, revealAll });
   const scrollRef = useRef(null);
 
   useEffect(() => {

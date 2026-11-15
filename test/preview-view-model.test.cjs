@@ -97,7 +97,7 @@ test('完整公共形状由 Plan 投影，整数分格式化且紧凑/完整可�
     thumbnail: 'theme-gradient',
   }]);
   assert.strictEqual(viewModel.menuCountText, '共 1 道');
-  assert.deepStrictEqual(viewModel.capabilities, [{ key: 'scan-order', label: '扫码点餐' }]);
+  assert.deepStrictEqual(viewModel.capabilities, [{ key: 'scan-order', label: '扫码点餐', exported: true }]);
 });
 
 test('draft 只提供本地菜品 key，任何草稿展示值都不得覆盖 Plan', async () => {
@@ -376,7 +376,7 @@ test('主题颜色逐项校验 #RRGGBB，缺失或非法项回落 warm-orange', 
   assert.strictEqual(mixed.theme.accentColor, VALID_THEME.accentColor);
 });
 
-test('capabilities 使用 catalog label、去重且最多四项', async () => {
+test('capabilities 使用 catalog label、标记是否随模板导出、去重且最多四项', async () => {
   const { buildPreviewViewModel } = await import('../src/composition/previewViewModel.mjs');
   const viewModel = buildPreviewViewModel({
     plan: createPlan(),
@@ -390,10 +390,10 @@ test('capabilities 使用 catalog label、去重且最多四项', async () => {
     ],
   });
   assert.deepStrictEqual(viewModel.capabilities, [
-    { key: 'scan-order', label: '扫码点餐' },
-    { key: 'loyalty-membership', label: '会员积分' },
-    { key: 'not-in-catalog', label: 'not-in-catalog' },
-    { key: 'product-catalog', label: '商品与菜单' },
+    { key: 'scan-order', label: '扫码点餐', exported: true },
+    { key: 'loyalty-membership', label: '会员积分', exported: false },
+    { key: 'not-in-catalog', label: 'not-in-catalog', exported: false },
+    { key: 'product-catalog', label: '商品与菜单', exported: true },
   ]);
 });
 

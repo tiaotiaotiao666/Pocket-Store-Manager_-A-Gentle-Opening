@@ -1,0 +1,171 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "checkout-submit-bar",
+  "displayName": "结算提交底栏",
+  "summary": "固定底栏：合计金额与「提交订单」按钮，提交中显示禁用样式与「提交中…」。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "checkout",
+  "order": 6,
+  "locator": {
+    "selector": "checkout__bar",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
+    "lineStart": 102,
+    "lineEnd": 110,
+    "digest": "sha256:9df20ad7c937a4b88dee8ecbfb4e71700a5837ec76bee2da6e8be5b423c89483"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 102,
+        "lineEnd": 110,
+        "code": "<view wx:if=\"{{!loading && !emptyCart}}\" class=\"checkout__bar\">\r\n    <view class=\"checkout__bar-total\">\r\n      <text class=\"checkout__bar-label\">合计</text>\r\n      <text class=\"checkout__bar-value\">{{totalText}}</text>\r\n    </view>\r\n    <view class=\"checkout__bar-button {{submitting ? 'checkout__bar-button--off' : ''}}\" bind:tap=\"onSubmit\">\r\n      {{submitting ? '提交中…' : '提交订单'}}\r\n    </view>\r\n  </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "button",
+      "checkout__bar",
+      "emptyCart",
+      "loading",
+      "off",
+      "submitting",
+      "totalText"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onSubmit"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/checkout/index.js",
+    "handlers": [
+      "onSubmit"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "checkout__bar",
+      "checkout__bar-total",
+      "checkout__bar-label",
+      "checkout__bar-value",
+      "checkout__bar-button",
+      "{{submitting",
+      "?",
+      "'checkout__bar-button--off'",
+      ":",
+      "''}}"
+    ],
+    "selectors": [
+      {
+        "selector": ".checkout__bar",
+        "declarations": [
+          "position: fixed",
+          "right: 0",
+          "bottom: 0",
+          "left: 0",
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom))",
+          "background: rgba(255, 253, 249, 0.96)",
+          "border-top: 2rpx solid rgba(230, 222, 210, 0.8)",
+          "box-shadow: 0 -12rpx 30rpx rgba(35, 35, 35, 0.06)",
+          "z-index: 30"
+        ]
+      },
+      {
+        "selector": ".checkout__bar-total",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline"
+        ]
+      },
+      {
+        "selector": ".checkout__bar-label",
+        "declarations": [
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".checkout__bar-value",
+        "declarations": [
+          "margin-left: 10rpx",
+          "font-size: 40rpx",
+          "font-weight: 700",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".checkout__bar-button",
+        "declarations": [
+          "min-width: 280rpx",
+          "padding: 24rpx 40rpx",
+          "border-radius: 999rpx",
+          "background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%)",
+          "color: #fff",
+          "font-size: 29rpx",
+          "font-weight: 700",
+          "text-align: center",
+          "box-shadow: 0 12rpx 26rpx rgba(232, 106, 23, 0.26)"
+        ]
+      },
+      {
+        "selector": ".checkout__bar-button--off",
+        "declarations": [
+          "opacity: 0.6"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-accent",
+      "--color-muted",
+      "--color-primary"
+    ],
+    "selectorCount": 6
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "固定定位底栏，复制 WXML 与样式即可；提交逻辑在页面控制器 onSubmitting。",
+    "whenToUse": [
+      "结算页需要常驻提交入口",
+      "需要展示合计并显示提交中状态"
+    ],
+    "avoidWhen": [
+      "页面已有底部 tabBar 的场景，需先处理安全区与遮挡"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "按钮宽度、安全区与固定定位由页面样式控制，FrontendPack 覆盖时必须保留",
+    "submitting 时追加 checkout__bar-button--off 并改为「提交中…」"
+  ],
+  "knownLimits": [
+    "没有支付方式选择，提交后走演示模拟支付"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:9df20ad7c937a4b88dee8ecbfb4e71700a5837ec76bee2da6e8be5b423c89483"
+  }
+}

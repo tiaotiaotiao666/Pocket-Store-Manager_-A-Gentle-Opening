@@ -204,6 +204,7 @@ test('toDocument → fromDocument 往返：业务切片保持一致', async () =
   assert.strictEqual(hydrated.sessions.length, 2);
   assert.strictEqual(hydrated.sessions[0].messages[0].staged, false);
   assert.strictEqual(hydrated.sessions[0].messages[0].instant, true);
+  assert.strictEqual(hydrated.sessions[0].revealAll, true);
 
   assert.strictEqual(hydrated.agent.status, 'confirmed');
   assert.strictEqual(hydrated.agent.confirmedAtSeq, 2);

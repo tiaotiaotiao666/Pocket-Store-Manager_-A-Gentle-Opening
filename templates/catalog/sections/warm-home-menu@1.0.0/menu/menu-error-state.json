@@ -1,0 +1,143 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-error-state",
+  "displayName": "菜单错误态",
+  "summary": "菜单加载失败时的 error-banner 与重试按钮。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 3,
+  "locator": {
+    "selector": "fp-menu__error",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 39,
+    "lineEnd": 42,
+    "digest": "sha256:2fd3fc2e95c0561735bbefac6caa4eb5296c4af9cf00b376991f53ece2005810"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 39,
+        "lineEnd": 42,
+        "code": "<view wx:elif=\"{{error}}\" class=\"fp-menu__error\">\r\n      <error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onRetry\" />\r\n      <view class=\"ghost-button fp-menu__retry\" bind:tap=\"onRetry\">重新加载</view>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "error-banner",
+      "bindings": [
+        {
+          "attr": "message",
+          "expression": "{{error}}"
+        },
+        {
+          "attr": "action",
+          "expression": "{{errorAction}}"
+        },
+        {
+          "attr": "request-id",
+          "expression": "{{requestId}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "retry",
+          "handler": "onRetry"
+        },
+        {
+          "name": "close",
+          "handler": "onRetry"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "error",
+      "errorAction",
+      "requestId"
+    ],
+    "handlers": [
+      {
+        "type": "retry",
+        "handler": "onRetry"
+      },
+      {
+        "type": "close",
+        "handler": "onRetry"
+      },
+      {
+        "type": "tap",
+        "handler": "onRetry"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [
+      "onRetry"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-menu__error",
+    "classTokens": [
+      "fp-menu__error",
+      "ghost-button",
+      "fp-menu__retry"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-menu__error",
+        "declarations": [
+          "padding: 26rpx 24rpx"
+        ]
+      },
+      {
+        "selector": ".fp-menu__retry",
+        "declarations": [
+          "margin-top: 20rpx"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 2
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "与首页错误态同构，使用 Base error-banner，可直接复制 WXML 与类名。",
+    "whenToUse": [
+      "菜单请求失败但保留头部"
+    ],
+    "avoidWhen": [
+      "整页不可渲染时，用 state-view error 态"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "retry 与 close 都绑定 onRetry",
+    "重试按钮复用 ghost-button 外观类"
+  ],
+  "knownLimits": [
+    "与首页错误态样式类不同，复制时需同步换 fp-menu__ 前缀"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:2fd3fc2e95c0561735bbefac6caa4eb5296c4af9cf00b376991f53ece2005810"
+  }
+}

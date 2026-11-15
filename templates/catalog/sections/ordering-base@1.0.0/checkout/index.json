@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "section-page-index.v1",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "checkout",
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss"
+  },
+  "counts": {
+    "sections": 6
+  },
+  "sections": [
+    {
+      "id": "checkout-head",
+      "displayName": "结算页标题区",
+      "order": 1,
+      "locator": {
+        "selector": "checkout__head",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 5,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "checkout-head.json"
+    },
+    {
+      "id": "checkout-empty",
+      "displayName": "空购物车空态",
+      "order": 2,
+      "locator": {
+        "selector": "checkout__empty",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 11,
+      "components": [
+        "state-view"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "checkout-empty.json"
+    },
+    {
+      "id": "checkout-meal-card",
+      "displayName": "用餐信息卡",
+      "order": 3,
+      "locator": {
+        "selector": "checkout__card",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": 1,
+        "occurrences": 1
+      },
+      "lineStart": 22,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "checkout-meal-card.json"
+    },
+    {
+      "id": "checkout-items-card",
+      "displayName": "菜品明细卡",
+      "order": 4,
+      "locator": {
+        "selector": "checkout__card",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": 2,
+        "occurrences": 1
+      },
+      "lineStart": 50,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "promote-to-ui-block",
+      "card": "checkout-items-card.json"
+    },
+    {
+      "id": "checkout-note-card",
+      "displayName": "订单备注卡",
+      "order": 5,
+      "locator": {
+        "selector": "checkout__card",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": 3,
+        "occurrences": 1
+      },
+      "lineStart": 70,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "checkout-note-card.json"
+    },
+    {
+      "id": "checkout-submit-bar",
+      "displayName": "结算提交底栏",
+      "order": 6,
+      "locator": {
+        "selector": "checkout__bar",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 102,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "checkout-submit-bar.json"
+    }
+  ]
+}

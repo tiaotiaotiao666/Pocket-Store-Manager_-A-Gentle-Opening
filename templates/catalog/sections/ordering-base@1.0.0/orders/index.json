@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "section-page-index.v1",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "orders",
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxss"
+  },
+  "counts": {
+    "sections": 4
+  },
+  "sections": [
+    {
+      "id": "orders-head",
+      "displayName": "订单列表标题区",
+      "order": 1,
+      "locator": {
+        "selector": "orders__head",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 2,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "orders-head.json"
+    },
+    {
+      "id": "orders-filters",
+      "displayName": "订单状态筛选条",
+      "order": 2,
+      "locator": {
+        "selector": "orders__filters",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 8,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "orders-filters.json"
+    },
+    {
+      "id": "orders-pending-notice",
+      "displayName": "待支付提醒条",
+      "order": 3,
+      "locator": {
+        "selector": "orders__notice",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 20,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "orders-pending-notice.json"
+    },
+    {
+      "id": "orders-list",
+      "displayName": "订单卡片列表",
+      "order": 4,
+      "locator": {
+        "selector": "orders__list",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 40,
+      "components": [
+        "order-card"
+      ],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "orders-list.json"
+    }
+  ]
+}

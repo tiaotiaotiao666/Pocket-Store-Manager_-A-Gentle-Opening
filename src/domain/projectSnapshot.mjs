@@ -381,11 +381,14 @@ function resolveSessions(sessions, activeSessionId) {
       messages: [],
       handoff: null,
       revealFlush: 0,
+      revealAll: true,
     }];
   }
   return sessions.map((session) => ({
     ...session,
     revealFlush: 0,
+    // 打开项目时这些消息都是历史：进入任意会话都直接整段显示，不重播交接对白。
+    revealAll: true,
     messages: session.messages.map((message) => ({
       ...message,
       staged: false,

@@ -1,0 +1,156 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "product-cart-panel",
+  "displayName": "商品页购物车弹层",
+  "summary": "复用 Base cart-panel：行项目、加减、去结算。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "product-detail",
+  "order": 5,
+  "locator": {
+    "selector": null,
+    "componentTag": "cart-panel",
+    "slotId": null,
+    "occurrence": 1,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxss",
+    "lineStart": 42,
+    "lineEnd": 53,
+    "digest": "sha256:96bceb4cc98238c38bf333d9d19376178a199e5b05faf06e72c6b3f46777900e"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "cart-panel",
+    "snippets": [
+      {
+        "lineStart": 42,
+        "lineEnd": 53,
+        "code": "<cart-panel\n    wx:if=\"{{product}}\"\n    visible=\"{{cartVisible}}\"\n    items=\"{{cartSummary.items}}\"\n    total-cents=\"{{cartSummary.totalCents}}\"\n    total-quantity=\"{{cartSummary.totalQuantity}}\"\n    submitting=\"{{false}}\"\n    bind:close=\"onCloseCart\"\n    bind:add=\"onCartAdd\"\n    bind:remove=\"onCartRemove\"\n    bind:checkout=\"onCheckout\"\n  />"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "cart-panel",
+      "bindings": [
+        {
+          "attr": "wx:if",
+          "expression": "{{product}}"
+        },
+        {
+          "attr": "visible",
+          "expression": "{{cartVisible}}"
+        },
+        {
+          "attr": "items",
+          "expression": "{{cartSummary.items}}"
+        },
+        {
+          "attr": "total-cents",
+          "expression": "{{cartSummary.totalCents}}"
+        },
+        {
+          "attr": "total-quantity",
+          "expression": "{{cartSummary.totalQuantity}}"
+        },
+        {
+          "attr": "submitting",
+          "expression": "{{false}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "close",
+          "handler": "onCloseCart"
+        },
+        {
+          "name": "add",
+          "handler": "onCartAdd"
+        },
+        {
+          "name": "remove",
+          "handler": "onCartRemove"
+        },
+        {
+          "name": "checkout",
+          "handler": "onCheckout"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "cartSummary",
+      "cartVisible",
+      "items",
+      "product",
+      "totalCents",
+      "totalQuantity"
+    ],
+    "handlers": [
+      {
+        "type": "close",
+        "handler": "onCloseCart"
+      },
+      {
+        "type": "add",
+        "handler": "onCartAdd"
+      },
+      {
+        "type": "remove",
+        "handler": "onCartRemove"
+      },
+      {
+        "type": "checkout",
+        "handler": "onCheckout"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/product-detail/index.js",
+    "handlers": [
+      "onCartAdd",
+      "onCartRemove",
+      "onCheckout",
+      "onCloseCart"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [],
+    "selectors": [],
+    "themeVars": [],
+    "selectorCount": 0
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "Base 内置组件，直接调用即可。",
+    "whenToUse": [
+      "商品页需要展开购物车明细"
+    ],
+    "avoidWhen": [
+      "只需要金额条，用 product-cart-bar"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "visible 由 cartVisible 控制",
+    "add/remove/close/checkout 四个事件都要接控制器"
+  ],
+  "knownLimits": [
+    "弹层样式随 Base 主题，单独换肤需先提升为 UI Block"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:96bceb4cc98238c38bf333d9d19376178a199e5b05faf06e72c6b3f46777900e"
+  }
+}

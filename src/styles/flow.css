@@ -1209,6 +1209,20 @@
 .template-revise-change-label {
   font-size: 11.5px;
   color: rgba(244, 242, 255, 0.6);
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.template-revise-change-path {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(207, 198, 255, 0.85);
+  word-break: break-all;
 }
 
 .template-revise-change-values {
@@ -1276,4 +1290,19 @@
     width: 100%;
     justify-content: space-between;
   }
+}
+
+.phase-return-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: var(--radius-sm, 10px);
+  background: var(--bg-raised, #fff);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-soft);
 }

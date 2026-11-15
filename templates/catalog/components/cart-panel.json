@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "cart-panel",
+  "version": "1.0.0",
+  "displayName": "购物车弹层",
+  "category": "cart",
+  "summary": "底部购物车面板，按行展示菜品、单价、数量与行小计，支持加减与去结算。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/cart-panel",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:c20cdf8ad49a31bea327b9924253ebfe175d765991fc58f27df457167fe57334"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "items",
+        "type": "array",
+        "required": true,
+        "defaultValue": [],
+        "description": "购物车行数组；每行含 productId、name、unitPriceCents、quantity、lineTotalCents"
+      },
+      {
+        "name": "submitting",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": false,
+        "description": "提交中状态"
+      },
+      {
+        "name": "totalCents",
+        "type": "number",
+        "required": true,
+        "defaultValue": 0,
+        "description": "合计金额，整数分"
+      },
+      {
+        "name": "totalQuantity",
+        "type": "number",
+        "required": true,
+        "defaultValue": 0,
+        "description": "合计数量"
+      },
+      {
+        "name": "visible",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": false,
+        "description": "是否显示弹层"
+      }
+    ],
+    "events": [
+      {
+        "name": "add",
+        "payload": [
+          "productId"
+        ],
+        "description": "行内加一；detail.productId"
+      },
+      {
+        "name": "checkout",
+        "payload": [
+          "items",
+          "totalCents"
+        ],
+        "description": "去结算；detail 含 totalCents 与 items"
+      },
+      {
+        "name": "close",
+        "payload": [],
+        "description": "关闭面板"
+      },
+      {
+        "name": "remove",
+        "payload": [
+          "productId"
+        ],
+        "description": "行内减一；detail.productId"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "cart-panel",
+    "wxmlExample": "<cart-panel visible=\"{{cartVisible}}\" items=\"{{cartSummary.items}}\" total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" bind:close=\"onPanelClose\" bind:add=\"onPanelAdd\" bind:remove=\"onPanelRemove\" bind:checkout=\"onCheckout\" />",
+    "whenToUse": [
+      "菜单页需要查看和编辑已选菜品",
+      "需要在结算前做最后一次数量调整"
+    ],
+    "avoidWhen": [
+      "只需展示合计金额时，用 cart-bar",
+      "需要优惠券、备注、餐具等扩展字段时，先确认 Base 之外的数据契约"
+    ],
+    "notes": [
+      "与 cart-bar 成对使用：bar 负责摘要，panel 负责编辑"
+    ]
+  },
+  "pages": [
+    "menu",
+    "product-detail"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [
+      "items[].productId",
+      "items[].name",
+      "items[].unitPriceCents",
+      "items[].quantity",
+      "items[].lineTotalCents"
+    ],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "cart-panel",
+    "themeVars": [
+      "--color-muted",
+      "--color-primary",
+      "--color-text"
+    ],
+    "sharedClasses": [
+      "ss-btn",
+      "ss-btn--disabled",
+      "ss-btn--primary",
+      "ss-divider",
+      "ss-mask",
+      "ss-muted",
+      "ss-sheet"
+    ],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 19
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "组件只格式化金额，不重新计算总价",
+    "空车或提交中不派发 checkout",
+    "行数据必须以页面传入的 items 为准，组件不维护购物车事实"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:c20cdf8ad49a31bea327b9924253ebfe175d765991fc58f27df457167fe57334"
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "product-card",
+  "version": "1.0.0",
+  "displayName": "菜品卡片",
+  "category": "menu",
+  "summary": "菜单列表中的菜品卡，展示图片或首字占位、名称、描述、整数分价格与加减步进。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/product-card",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": {
+      "id": "product-card",
+      "version": "1.0.0",
+      "kind": "ui-block",
+      "path": "templates/components/product-card/1.0.0"
+    },
+    "registryMirror": {
+      "assetId": "product-card",
+      "assetVersion": "1.0.0",
+      "assetPath": "templates/components/product-card/1.0.0",
+      "sameImplementation": true,
+      "comparisons": [
+        {
+          "file": "index.js",
+          "base": true,
+          "registry": true,
+          "same": true
+        },
+        {
+          "file": "index.json",
+          "base": true,
+          "registry": true,
+          "same": true
+        },
+        {
+          "file": "index.wxml",
+          "base": true,
+          "registry": true,
+          "same": true
+        },
+        {
+          "file": "index.wxss",
+          "base": true,
+          "registry": true,
+          "same": true
+        }
+      ]
+    },
+    "digest": "sha256:f4de30515655bce86069d4d71ba1ddb6dd4155c6c8d07d80172c500cd43c4a40"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "disabled",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": false,
+        "description": "是否售罄；由页面传入"
+      },
+      {
+        "name": "product",
+        "type": "object",
+        "required": true,
+        "defaultValue": {},
+        "description": "菜品对象，金额只读 priceCents"
+      },
+      {
+        "name": "quantity",
+        "type": "number",
+        "required": false,
+        "defaultValue": 0,
+        "description": "已选数量"
+      }
+    ],
+    "events": [
+      {
+        "name": "add",
+        "payload": [
+          "productId"
+        ],
+        "description": "加入购物车"
+      },
+      {
+        "name": "openDetail",
+        "payload": [
+          "productId"
+        ],
+        "description": "打开菜品详情"
+      },
+      {
+        "name": "remove",
+        "payload": [
+          "productId"
+        ],
+        "description": "从购物车移除"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "product-card",
+    "wxmlExample": "<product-card product=\"{{item}}\" quantity=\"{{quantityMap[item.id] || 0}}\" disabled=\"{{item.available === false}}\" bind:add=\"onProductAdd\" bind:remove=\"onProductRemove\" bind:openDetail=\"onOpenDetail\" />",
+    "whenToUse": [
+      "菜单列表需要标准菜品卡",
+      "需要同时支持打开详情、加购、减购三个意图"
+    ],
+    "avoidWhen": [
+      "需要展示规格、口味、加料等多维选项时，先扩展数据契约或使用详情弹层",
+      "只是展示订单行项目时，用 order-card"
+    ],
+    "notes": [
+      "templates/components/product-card/1.0.0 是它的登记副本，用于 Manifest 校验；Composer 实际从 Base 同名组件复制"
+    ]
+  },
+  "pages": [
+    "menu"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [
+      "product.id（string，必填）",
+      "product.name（string）",
+      "product.description（string）",
+      "product.priceCents（integer，金额唯一事实）",
+      "product.imageUrl（string，可为空）",
+      "product.available（boolean）"
+    ],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "product-card",
+    "themeVars": [
+      "--color-muted",
+      "--color-primary",
+      "--color-surface",
+      "--color-text",
+      "--store-product-card-min-height"
+    ],
+    "sharedClasses": [],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 19
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "金额只读整数分 priceCents，不接收 priceText",
+    "图片为空或加载失败时回落到名称首字",
+    "组件不请求图片接口、不写购物车状态"
+  ],
+  "knownLimits": [
+    "菜品图片为空时使用首字占位",
+    "金额只展示 priceCents 派生文本"
+  ],
+  "preview": {
+    "dir": "templates/components/product-card/1.0.0/preview",
+    "kinds": [
+      "normal",
+      "empty",
+      "error",
+      "long"
+    ]
+  },
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:f4de30515655bce86069d4d71ba1ddb6dd4155c6c8d07d80172c500cd43c4a40"
+  }
+}

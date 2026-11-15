@@ -36,6 +36,7 @@
 | `order-state.md` | 六态订单、权限和 S1–S12 |
 | `backend-data-model.md` | MySQL 表、事务、并发和种子契约 |
 | `agent-turn-contract.md` | 已实现的 `agent-turn.v1` 资料收集契约 |
+| `agent-runtime.md` | 已实现的 `agent-run.v1` 多轮 function calling 运行时、工具契约、错误码与安全边界 |
 | `component-contract.md` | 小程序组件通信及未来可插拔约束 |
 | `template-schema.md` | 当前门店配置与未来组合规格的职责边界 |
 
@@ -50,6 +51,7 @@
 | `B2小程序实现说明.md` | B2 领域层、服务层、组件、页面、验证方法与演示排查 |
 | `2026-10-31-两轮提交验收与修复说明.md` | B1/B2 两轮提交验收、BUG-010 至 BUG-012 修复与真实复验记录 |
 | `面向AI的桌面端构建文档.md` | 当前桌面架构、状态流和扩展方式 |
+| `agent-accessibility-debugging.md` | agent-desktop 无障碍调试：命令、ref 生命周期、可访问名称约定与真实闭环证据（2026-11-12） |
 | `M5-M7-本地Composer与模板资产扩展-构建说明.md` | M5–M7 模块、契约、命令、真实结果与恢复步骤（**新会话先读**） |
 | `evidence/README.md` | 证据索引与 L1–L4/W/R 等级说明 |
 | `windows-deployment.md` | Windows 开发、打包和验收 |
@@ -66,6 +68,8 @@
 | `2026-11-03-全链路Agent打通-构建说明.md` | 本轮 12 个契约、T1–T16 任务、改动文件清单、真实门禁结果、VERDICT 与未解决问题（**新会话先读**） |
 | `2026-11-03-全链路Agent打通-人工走查清单.md` | 把 T16 的 INCOMPLETE 补齐：7 步点击走查、判定口径与回填表 |
 | `模板库/README.md` | 组件入库与模板生成规范的总入口 |
+| `模板库/组件库索引标准.md` | Agent 读取组件/页面/布局/区块目录的阅读协议、字段契约与门禁命令（2026-11-12） |
+| `模板库/组件库总览.md` | 人工速查：15 个组件、8 个页面、1 个布局、61 个区块（视图包 23 + Base 6 页 38）的清单与已知缺口（2026-11-12） |
 | `模板库/组件入库标准.md` | UI Block / Feature Pack 的 Manifest、边界、插槽与发布门禁 |
 | `模板库/组件入库范例.md` | 可直接照做的 UI Block / Feature Pack 完整范例与反面示例 |
 | `模板库/FrontendPack视图包标准与范例.md` | 受控视图包契约、覆盖语义、安全门禁与 `warm-home-menu` 实测范例 |
@@ -84,7 +88,7 @@ handoff/
 └─ archive/              已完成或 superseded 的历史摘要
 ```
 
-当前活动任务：**全链路 Agent 打通的真实环境验收**。2026-11-03 已完成 12 个契约与 T1–T14 实现；根目录 622 项（621 pass / 1 todo）、本轮新增服务端 127 项、注册表与小程序门禁均通过；`composer:verify` 的 `PATH_ESCAPE` 为既有缺陷。**T15/T16 判 `INCOMPLETE`**：本机 MySQL 未启动、Electron 与微信 GUI 走查未执行。下一步先执行 `npm start`（一键拉起 MySQL + 后端，见 `docs/backend-local-dev.md` §0），再按 `docs/2026-11-03-全链路Agent打通-人工走查清单.md` 逐项点击并回填。
+当前活动任务：**全链路 Agent 打通的真实环境验收**。2026-11-03 已完成 12 个契约与 T1–T14 实现；2026-11-09 新增组件库目录与其门禁 `catalog:check`，并完成能力勾选的如实披露（`W-BASE-FEATURE-UNCHECKED` + 预览 `exported` 标记），根目录测试增至 647 项（647 pass / 0 fail）；同日拉起 MySQL+后端复跑 `server` 318/318，真实 v2 带图 turn 已走通；2026-11-12 区块目录扩到 61（Base 8 页全覆盖，新增 `pageSource` 与 `occurrence` 单点定位），并完成桌面 7 步走查的 0–6 步（真实模型候选/改模板/看图填表 → 导出 → 微信开发者工具 `cli preview` 编译 → 运行时四页截图并回填）。**T15/T16 仍判 `INCOMPLETE`**：T16 第 2/3/6 步有覆盖缺口、5 个 P1 缺陷待修。下一步按 `docs/2026-11-03-全链路Agent打通-人工走查清单.md` §9 关闭缺口；之后再开"参考图 → 模板"的专用入参与输出契约。
 
 直接位于 `handoff/` 的文件必须是仍可执行的活动交接。阶段完成或出现替代交接后，将有效信息压缩到 `archive/YYYY-MM-DD-主题.md`，并更新索引；不要让新会话从多份“上一轮/本轮”中猜测当前状态。
 

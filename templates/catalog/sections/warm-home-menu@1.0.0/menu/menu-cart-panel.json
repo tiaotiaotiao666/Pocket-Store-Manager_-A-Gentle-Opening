@@ -1,0 +1,151 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-cart-panel",
+  "displayName": "购物车弹层调用位",
+  "summary": "菜单页对 Base cart-panel 的直接调用，按行编辑购物车并去结算。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 10,
+  "locator": {
+    "selector": null,
+    "componentTag": "cart-panel",
+    "slotId": null,
+    "occurrence": 1,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 94,
+    "lineEnd": 104,
+    "digest": "sha256:d1b214d74162ece210a9b6e76529ad86c1f6584655c3915eb83306b50c37a508"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "cart-panel",
+    "snippets": [
+      {
+        "lineStart": 94,
+        "lineEnd": 104,
+        "code": "<cart-panel\r\n      visible=\"{{cartVisible}}\"\r\n      items=\"{{cartSummary.items}}\"\r\n      total-cents=\"{{cartSummary.totalCents}}\"\r\n      total-quantity=\"{{cartSummary.totalQuantity}}\"\r\n      submitting=\"{{false}}\"\r\n      bind:close=\"onPanelClose\"\r\n      bind:add=\"onPanelAdd\"\r\n      bind:remove=\"onPanelRemove\"\r\n      bind:checkout=\"onCheckout\"\r\n    />"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "cart-panel",
+      "bindings": [
+        {
+          "attr": "visible",
+          "expression": "{{cartVisible}}"
+        },
+        {
+          "attr": "items",
+          "expression": "{{cartSummary.items}}"
+        },
+        {
+          "attr": "total-cents",
+          "expression": "{{cartSummary.totalCents}}"
+        },
+        {
+          "attr": "total-quantity",
+          "expression": "{{cartSummary.totalQuantity}}"
+        },
+        {
+          "attr": "submitting",
+          "expression": "{{false}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "close",
+          "handler": "onPanelClose"
+        },
+        {
+          "name": "add",
+          "handler": "onPanelAdd"
+        },
+        {
+          "name": "remove",
+          "handler": "onPanelRemove"
+        },
+        {
+          "name": "checkout",
+          "handler": "onCheckout"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "cartSummary",
+      "cartVisible",
+      "items",
+      "totalCents",
+      "totalQuantity"
+    ],
+    "handlers": [
+      {
+        "type": "close",
+        "handler": "onPanelClose"
+      },
+      {
+        "type": "add",
+        "handler": "onPanelAdd"
+      },
+      {
+        "type": "remove",
+        "handler": "onPanelRemove"
+      },
+      {
+        "type": "checkout",
+        "handler": "onCheckout"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [
+      "onCheckout",
+      "onPanelAdd",
+      "onPanelClose",
+      "onPanelRemove"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [],
+    "selectors": [],
+    "themeVars": [],
+    "selectorCount": 0
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "Base 内置组件，显隐由页面 cartVisible 控制。",
+    "whenToUse": [
+      "需要查看并调整已选菜品"
+    ],
+    "avoidWhen": [
+      "只需展示合计时，用 cart-bar"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "行数据必须使用页面传入的 items",
+    "组件只格式化金额，不重新计算总价"
+  ],
+  "knownLimits": [
+    "没有优惠、备注、餐具等扩展字段"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:d1b214d74162ece210a9b6e76529ad86c1f6584655c3915eb83306b50c37a508"
+  }
+}

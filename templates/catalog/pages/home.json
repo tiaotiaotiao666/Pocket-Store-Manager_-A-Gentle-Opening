@@ -1,0 +1,157 @@
+{
+  "schemaVersion": "page-catalog-entry.v1",
+  "pageId": "home",
+  "title": "扫码点餐",
+  "audience": "customer",
+  "required": true,
+  "summary": "门店首屏：门店头部（或海报轮播）、履约方式、开始点餐、待付款提醒、进行中订单与店主入口。",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/pages/home",
+    "files": [
+      "extensions.generated.js",
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "digest": "sha256:2fde07fedd2742be2b5946e50ec0fff2e42750a11e904e35d1950b798ccf6b62"
+  },
+  "components": [
+    {
+      "tag": "state-view",
+      "componentId": "state-view",
+      "mode": "conditional",
+      "sourceLine": 13,
+      "usage": "<state-view wx:if=\"{{loading}}\" state=\"loading\" title=\"正在准备门店信息\" description=\"马上就好\" />"
+    },
+    {
+      "tag": "error-banner",
+      "componentId": "error-banner",
+      "mode": "always",
+      "sourceLine": 16,
+      "usage": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onRetry\" />"
+    },
+    {
+      "tag": "store-header",
+      "componentId": "store-header",
+      "mode": "always",
+      "sourceLine": 23,
+      "usage": "<store-header store-name=\"{{store.name || ''}}\" table-name=\"{{tableName}}\" business-hours=\"{{store.businessHours || ''}}\" mode=\"{{mode}}\" address=\"{{store.address || ''}}\" />"
+    },
+    {
+      "tag": "fulfillment-switch",
+      "componentId": "fulfillment-switch",
+      "mode": "always",
+      "sourceLine": 47,
+      "usage": "<fulfillment-switch value=\"{{mode}}\" dine-in-enabled=\"{{store.fulfillment.dineIn}}\" takeaway-enabled=\"{{store.fulfillment.takeaway}}\" table-name=\"{{tableName}}\" table-required=\"{{true}}\" bind:change=\""
+    },
+    {
+      "tag": "order-card",
+      "componentId": "order-card",
+      "mode": "always",
+      "sourceLine": 87,
+      "usage": "<order-card order=\"{{item}}\" role=\"CUSTOMER\" actionable=\"{{false}}\" bind:open=\"onOpenOrder\" />"
+    },
+    {
+      "tag": "poster-carousel",
+      "componentId": "poster-carousel",
+      "mode": "declared-only",
+      "sourceLine": 0,
+      "usage": ""
+    }
+  ],
+  "slots": [
+    {
+      "slotId": "home-hero",
+      "pageId": "home",
+      "maxItems": 1,
+      "accepts": [
+        "feature-pack",
+        "ui-block"
+      ],
+      "required": false,
+      "dataKey": "homeHero",
+      "anchorsPresent": true,
+      "anchorCounts": [
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "slotId": "home-marketing",
+      "pageId": "home",
+      "maxItems": 2,
+      "accepts": [
+        "feature-pack"
+      ],
+      "required": false,
+      "dataKey": "homeMarketing",
+      "anchorsPresent": true,
+      "anchorCounts": [
+        1,
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "controller": {
+    "methods": [
+      "goMenu",
+      "goMerchant",
+      "goMine",
+      "goOrders",
+      "loadActiveOrders",
+      "loadOverview",
+      "loadProfile",
+      "loadTables",
+      "onModeChange",
+      "onOpenOrder",
+      "onPickTable",
+      "onRetry"
+    ],
+    "lifecycle": [
+      "onLoad",
+      "onPullDownRefresh",
+      "onShow"
+    ],
+    "dataKeys": [
+      "activeOrders",
+      "demoHint",
+      "demoMode",
+      "error",
+      "errorAction",
+      "identityLabel",
+      "loading",
+      "merchantStoreId",
+      "mode",
+      "pendingPaymentCount",
+      "requestId",
+      "slotProps",
+      "store",
+      "tableName",
+      "tableOptions",
+      "versionNotice",
+      "visit"
+    ]
+  },
+  "pageJson": {
+    "navigationBarTitleText": "扫码点餐",
+    "enablePullDownRefresh": true,
+    "usingComponents": {
+      "store-header": "/components/store-header/index",
+      "fulfillment-switch": "/components/fulfillment-switch/index",
+      "state-view": "/components/state-view/index",
+      "error-banner": "/components/error-banner/index",
+      "order-card": "/components/order-card/index",
+      "poster-carousel": "/components/poster-carousel/index"
+    }
+  },
+  "notes": [
+    "home-hero 由 store-header fallback 或 poster-carousel 占据",
+    "home-marketing 当前为空的 Feature Pack 插槽，预留给首页营销区",
+    "usingComponents 声明了 poster-carousel，但当前 WXML 未使用；Composer 导出时会过滤。"
+  ]
+}

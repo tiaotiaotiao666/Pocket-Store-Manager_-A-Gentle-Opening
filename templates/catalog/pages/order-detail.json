@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "page-catalog-entry.v1",
+  "pageId": "order-detail",
+  "title": "订单详情",
+  "audience": "customer",
+  "required": true,
+  "summary": "订单详情：状态徽标、状态时间线、菜品明细与演示支付结果。",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/pages/order-detail",
+    "files": [
+      "extensions.generated.js",
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "digest": "sha256:c15ac37d0835e9bad9659bfa143b21883b1305e2c6d8d6d2147ad091e0aad49d"
+  },
+  "components": [
+    {
+      "tag": "state-view",
+      "componentId": "state-view",
+      "mode": "conditional",
+      "sourceLine": 2,
+      "usage": "<state-view wx:if=\"{{loading && !payResult}}\" state=\"loading\" title=\"正在读取订单\" />"
+    },
+    {
+      "tag": "error-banner",
+      "componentId": "error-banner",
+      "mode": "always",
+      "sourceLine": 5,
+      "usage": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"goOrders\" />"
+    },
+    {
+      "tag": "pay-result",
+      "componentId": "pay-result",
+      "mode": "always",
+      "sourceLine": 10,
+      "usage": "<pay-result state=\"{{payResult.state}}\" short-id=\"{{payResult.shortId}}\" total-text=\"{{payResult.totalText}}\" fulfillment-text=\"{{payResult.fulfillmentText}}\" title=\"{{payResult.title}}\" description=\""
+    },
+    {
+      "tag": "order-status",
+      "componentId": "order-status",
+      "mode": "always",
+      "sourceLine": 33,
+      "usage": "<order-status status=\"{{order.status}}\" payment-status=\"{{order.paymentStatus}}\" />"
+    },
+    {
+      "tag": "status-timeline",
+      "componentId": "status-timeline",
+      "mode": "always",
+      "sourceLine": 64,
+      "usage": "<status-timeline steps=\"{{order.progressSteps}}\" timeline=\"{{order.timeline}}\" status=\"{{order.status}}\" />"
+    }
+  ],
+  "slots": [],
+  "controller": {
+    "methods": [
+      "goOrders",
+      "load",
+      "onAdvance",
+      "onCancel",
+      "onCloseError",
+      "onPay",
+      "onResultPrimary",
+      "onResultRetry",
+      "onResultSecondary",
+      "onRetry",
+      "pickReason",
+      "resolvePayResult",
+      "showError"
+    ],
+    "lifecycle": [
+      "onLoad",
+      "onPullDownRefresh",
+      "onShow"
+    ],
+    "dataKeys": [
+      "acting",
+      "actionLabel",
+      "error",
+      "errorAction",
+      "loading",
+      "merchantActions",
+      "order",
+      "orderId",
+      "payResult",
+      "requestId",
+      "role",
+      "showPayHint"
+    ]
+  },
+  "pageJson": {
+    "navigationBarTitleText": "订单详情",
+    "enablePullDownRefresh": true,
+    "usingComponents": {
+      "order-status": "/components/order-status/index",
+      "status-timeline": "/components/status-timeline/index",
+      "state-view": "/components/state-view/index",
+      "error-banner": "/components/error-banner/index",
+      "pay-result": "/components/pay-result/index"
+    }
+  },
+  "notes": [
+    "pay-result 在支付结果阶段展示"
+  ]
+}

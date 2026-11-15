@@ -273,6 +273,19 @@
   overflow: hidden;
 }
 
+.real-preview-shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.real-preview-shots .real-preview-figure {
+  border-radius: var(--radius-sm, 10px);
+  border: 1px solid var(--line, #e9e5df);
+  background: var(--bg-sunken, #f2f0ec);
+  overflow: hidden;
+}
+
 .real-preview-figure {
   margin: 0;
   display: flex;

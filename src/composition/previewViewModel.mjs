@@ -1,4 +1,5 @@
 import { formatCents } from '../domain/agentDraft.mjs';
+import { isBaseCapability } from '../domain/capabilities.mjs';
 import { features as catalogFeatures } from '../domain/catalog.mjs';
 import {
   DEFAULT_SIZE_TOKENS,
@@ -395,7 +396,9 @@ function buildCapabilities(featureIds) {
     if (!id || seen.has(id)) continue;
     seen.add(id);
     const feature = catalogFeatures.find((item) => item.id === id);
-    capabilities.push({ key: id, label: feature ? feature.label : id });
+    // `exported` 只回答"会不会出现在导出工程里"：当前只有 Base 内置能力恒为 true，
+    // 其余能力没有对应资产（preflight 用 W-UNMAPPED-FEATURE 提示），预览不得暗示已启用。
+    capabilities.push({ key: id, label: feature ? feature.label : id, exported: isBaseCapability(id) });
     if (capabilities.length === 4) break;
   }
   return capabilities;

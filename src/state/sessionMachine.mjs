@@ -312,11 +312,13 @@ export function createInitialState() {
     messages: [],
     handoff: null,
     revealFlush: 0,
+    revealAll: false,
   };
   return {
     view: 'workbench',
     seq: 0,
     phase: PHASES.HOME,
+    phaseReturn: null,
     activeSessionId: mainSession.id,
     sessions: [mainSession],
     store: { name: '', type: STORE_TYPES[0], notes: '', address: '', phone: '', logoAssetId: null, imageAssetIds: [] },
@@ -384,6 +386,14 @@ function markAllDone(sessions) {
   return sessions.map((session) => ({ ...session, status: 'done' }));
 }
 
+// 会话离开后标记为「已展示过」：再次进入时直接显示全部历史，不再逐条重播。
+// 新建会话不带这个标记，因此交接后的开场白仍然有逐条展示的动画。
+function markSessionSettled(sessions, sessionId) {
+  return sessions.map((session) => (
+    session.id === sessionId ? { ...session, revealAll: true } : session
+  ));
+}
+
 function createStepSession(state, { id, title, summary, payload, phase, intro, followUp, fields = [] }) {
   const from = state.store.name || NEW_PROJECT_LABEL;
   const handoff = buildHandoff({ from, to: title, summary, payload });
@@ -395,6 +405,7 @@ function createStepSession(state, { id, title, summary, payload, phase, intro, f
     messages: [],
     handoff,
     revealFlush: 0,
+    revealAll: false,
   };
   const opening = intro ?? (title === '店铺装修' ? STORE_INTRO : DEPLOY_INTRO);
   const after = followUp ?? (
@@ -404,7 +415,8 @@ function createStepSession(state, { id, title, summary, payload, phase, intro, f
         ? '这是演示环境，不含真实发布。'
         : ''
   );
-  const base = { ...state, phase, sessions: [...markAllDone(state.sessions.filter((item) => item.id !== id)), session], activeSessionId: id };
+  const leaving = markSessionSettled(state.sessions.filter((item) => item.id !== id), state.activeSessionId);
+  const base = { ...state, phase, sessions: [...markAllDone(leaving), session], activeSessionId: id };
   return appendMessagesWithSeq({ ...base, sessions: base.sessions.map((item) => item.id === id ? { ...item, messages: [] } : item) }, id, handoff, [
     { text: opening, staged: true },
     ...(after ? [{ text: after, staged: false, instant: true, meta: { kind: 'muted' } }] : []),
@@ -431,11 +443,37 @@ function baseReducer(state, action) {
       };
       const targetSession = sessionByPhase[action.phase];
       const hasSession = state.sessions.some((session) => session.id === targetSession);
+      const nextSessionId = hasSession ? targetSession : state.activeSessionId;
+      const leavingDeploy = state.phase === PHASES.DEPLOY && action.phase !== PHASES.DEPLOY;
       return {
         ...state,
         view: 'flow',
         phase: action.phase,
-        activeSessionId: hasSession ? targetSession : state.activeSessionId,
+        activeSessionId: nextSessionId,
+        sessions: nextSessionId !== state.activeSessionId
+          ? markSessionSettled(state.sessions, state.activeSessionId)
+          : state.sessions,
+        // 离开部署页去改能力勾选时留一条回路：回来时不需要重走整条流程。
+        phaseReturn: leavingDeploy
+          ? { phase: state.phase, sessionId: state.activeSessionId || 'session-deploy' }
+          : (action.phase === PHASES.DEPLOY ? null : (state.phaseReturn ?? null)),
+      };
+    }
+
+    case 'PHASE_RETURN': {
+      const back = state.phaseReturn;
+      if (!back) return state;
+      const hasSession = state.sessions.some((session) => session.id === back.sessionId);
+      const nextSessionId = hasSession ? back.sessionId : state.activeSessionId;
+      return {
+        ...state,
+        view: 'flow',
+        phase: back.phase,
+        activeSessionId: nextSessionId,
+        sessions: nextSessionId !== state.activeSessionId
+          ? markSessionSettled(state.sessions, state.activeSessionId)
+          : state.sessions,
+        phaseReturn: null,
       };
     }
 
@@ -909,6 +947,7 @@ function baseReducer(state, action) {
       return {
         ...next,
         phase: PHASES.BUILDING,
+        phaseReturn: null,
         build: { ...next.build, status: 'building', candidates: [], selectedId: null, feedback: [], refineError: null },
       };
     }
@@ -1731,8 +1770,15 @@ function baseReducer(state, action) {
     case 'DEPLOY_DONE':
       return { ...state, deploy: { ...state.deploy, status: 'done', step: 4, progress: 100 } };
 
-    case 'SWITCH_SESSION':
-      return { ...state, activeSessionId: action.id };
+    case 'SWITCH_SESSION': {
+      if (action.id === state.activeSessionId) return state;
+      if (!state.sessions.some((session) => session.id === action.id)) return state;
+      return {
+        ...state,
+        activeSessionId: action.id,
+        sessions: markSessionSettled(state.sessions, state.activeSessionId),
+      };
+    }
 
     default:
       return state;

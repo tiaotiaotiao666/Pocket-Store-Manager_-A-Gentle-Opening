@@ -61,11 +61,11 @@ export default function ProjectWorkbench({
   const hasActive = Boolean(activeId);
 
   return (
-    <div className="workbench">
+    <div className="workbench" role="region" aria-label="项目工作台">
       <header className="workbench-top">
         <div className="workbench-heading">
           <span className="workbench-eyebrow">智能开店</span>
-          <h1>我的项目</h1>
+          <h1 id="workbench-title">我的项目</h1>
           <p>每个门店一个项目：资料、图片、会话与导出进度都在本机保存。</p>
         </div>
         <div className="workbench-tools">
@@ -83,7 +83,7 @@ export default function ProjectWorkbench({
             <Settings size={15} />
             设置与自检
           </button>
-          <button type="button" className="primary-button workbench-tool" onClick={onCreate}>
+          <button type="button" className="primary-button workbench-tool" onClick={onCreate} aria-label="新建项目：创建空白门店项目">
             <Plus size={16} />
             新建项目
           </button>

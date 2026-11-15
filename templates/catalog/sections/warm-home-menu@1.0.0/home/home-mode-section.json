@@ -1,0 +1,273 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-mode-section",
+  "displayName": "用餐方式选择区",
+  "summary": "标题行、履约方式切换与演示桌号选择组成的用餐方式区块。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 7,
+  "locator": {
+    "selector": "fp-home__section",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 47,
+    "lineEnd": 73,
+    "digest": "sha256:94d898a143aa2fe497c1972efde911e2e35e0efdfe0815c98ab2cfeb2f0cff1b"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 47,
+        "lineEnd": 73,
+        "code": "<view class=\"fp-home__section\">\r\n        <view class=\"fp-home__section-head\">\r\n          <text class=\"fp-home__section-title\">用餐方式</text>\r\n          <text class=\"fp-home__section-extra\">{{mode === 'DINE_IN' ? '堂食' : '到店自取'}}</text>\r\n        </view>\r\n        <fulfillment-switch\r\n          value=\"{{mode}}\"\r\n          dine-in-enabled=\"{{store.fulfillment.dineIn}}\"\r\n          takeaway-enabled=\"{{store.fulfillment.takeaway}}\"\r\n          table-name=\"{{tableName}}\"\r\n          table-required=\"{{true}}\"\r\n          bind:change=\"onModeChange\"\r\n        />\r\n        <view wx:if=\"{{mode === 'DINE_IN' && !tableName}}\" class=\"fp-home__tables\">\r\n          <text class=\"fp-home__tables-label\">演示桌号</text>\r\n          <view\r\n            wx:for=\"{{tableOptions}}\"\r\n            wx:key=\"id\"\r\n            class=\"fp-home__table\"\r\n            data-id=\"{{item.id}}\"\r\n            data-name=\"{{item.name}}\"\r\n            bind:tap=\"onPickTable\"\r\n          >\r\n            {{item.name}}\r\n          </view>\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "fulfillment-switch",
+      "bindings": [
+        {
+          "attr": "value",
+          "expression": "{{mode}}"
+        },
+        {
+          "attr": "dine-in-enabled",
+          "expression": "{{store.fulfillment.dineIn}}"
+        },
+        {
+          "attr": "takeaway-enabled",
+          "expression": "{{store.fulfillment.takeaway}}"
+        },
+        {
+          "attr": "table-name",
+          "expression": "{{tableName}}"
+        },
+        {
+          "attr": "table-required",
+          "expression": "{{true}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "change",
+          "handler": "onModeChange"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "DINE_IN",
+      "dineIn",
+      "fulfillment",
+      "id",
+      "mode",
+      "name",
+      "store",
+      "tableName",
+      "tableOptions",
+      "takeaway"
+    ],
+    "handlers": [
+      {
+        "type": "change",
+        "handler": "onModeChange"
+      },
+      {
+        "type": "tap",
+        "handler": "onPickTable"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [
+      "onModeChange",
+      "onPickTable"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-home__section",
+    "classTokens": [
+      "fp-home__section",
+      "fp-home__section-head",
+      "fp-home__section-title",
+      "fp-home__section-extra",
+      "fp-home__tables",
+      "fp-home__tables-label",
+      "fp-home__table"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-home__section",
+        "declarations": [
+          "margin-top: 30rpx",
+          "padding: 26rpx",
+          "border-radius: 26rpx",
+          "background: var(--color-surface)",
+          "border: 2rpx solid var(--color-border)"
+        ]
+      },
+      {
+        "selector": ".fp-home__section-head",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "margin-bottom: 18rpx"
+        ]
+      },
+      {
+        "selector": ".fp-home__section-title",
+        "declarations": [
+          "font-size: 28rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".fp-home__section-extra",
+        "declarations": [
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".fp-home__tables",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "margin-top: 16rpx"
+        ]
+      },
+      {
+        "selector": ".fp-home__tables-label",
+        "declarations": [
+          "margin-right: 14rpx",
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".fp-home__table",
+        "declarations": [
+          "margin-right: 12rpx",
+          "padding: 9rpx 24rpx",
+          "border-radius: 999rpx",
+          "background: var(--color-surface)",
+          "border: 2rpx solid var(--color-border)",
+          "font-size: 23rpx",
+          "font-weight: 600"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-border",
+      "--color-muted",
+      "--color-surface"
+    ],
+    "selectorCount": 7
+  },
+  "reuse": {
+    "level": "promote-to-ui-block",
+    "reason": "区块同时包含 Base 组件与自有桌号选择器，直接复制会丢失 props 契约与桌号条件逻辑。",
+    "whenToUse": [
+      "首屏需要让顾客选择堂食或自取",
+      "需要在堂食缺桌号时快速补桌号"
+    ],
+    "avoidWhen": [
+      "只展示当前履约方式时，用 store-header 的 mode 文案"
+    ],
+    "uiBlockBlueprint": {
+      "suggestedId": "mode-section",
+      "displayName": "用餐方式选择区",
+      "props": [
+        {
+          "name": "mode",
+          "type": "string",
+          "required": false,
+          "description": "当前履约方式 DINE_IN / TAKEAWAY"
+        },
+        {
+          "name": "dineInEnabled",
+          "type": "boolean",
+          "required": false,
+          "description": "门店是否支持堂食"
+        },
+        {
+          "name": "takeawayEnabled",
+          "type": "boolean",
+          "required": false,
+          "description": "门店是否支持到店自取"
+        },
+        {
+          "name": "tableName",
+          "type": "string",
+          "required": false,
+          "description": "当前桌号；为空且堂食时展示桌号选择"
+        },
+        {
+          "name": "tableRequired",
+          "type": "boolean",
+          "required": false,
+          "description": "堂食是否必须桌号"
+        },
+        {
+          "name": "tableOptions",
+          "type": "array",
+          "required": false,
+          "description": "演示桌号数组，元素含 id 与 name"
+        }
+      ],
+      "events": [
+        {
+          "name": "change",
+          "payload": [
+            "mode"
+          ],
+          "description": "用户切换履约方式"
+        },
+        {
+          "name": "pickTable",
+          "payload": [
+            "id",
+            "name"
+          ],
+          "description": "用户选择演示桌号"
+        }
+      ],
+      "promotionSteps": [
+        "组件内部继续复用 fulfillment-switch，不复制其实现",
+        "桌号条件渲染与选项都来自 props，不读全局状态",
+        "登记 registry 并在 Base 页面声明后再进入视图包"
+      ]
+    }
+  },
+  "constraints": [
+    "桌号选择只在 mode=DINE_IN 且 tableName 为空时出现",
+    "桌号选择只上报意图，不写入 globalData",
+    "fulfillment-switch 的禁用与去重逻辑仍由它自身负责"
+  ],
+  "knownLimits": [
+    "演示桌号是写死的选项，真实桌号扫描不在当前范围"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:94d898a143aa2fe497c1972efde911e2e35e0efdfe0815c98ab2cfeb2f0cff1b"
+  }
+}

@@ -1,0 +1,162 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "mine-memberships",
+  "displayName": "门店权限卡",
+  "summary": "memberships 行（门店、角色、可进入订单台）与「只有顾客权限」空态。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "mine",
+  "order": 3,
+  "locator": {
+    "selector": "mine__membership",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
+    "lineStart": 28,
+    "lineEnd": 39,
+    "digest": "sha256:750b89e07d2427120e6d6466a6e97da09770de3ffdc963803565c98a24193804"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 28,
+        "lineEnd": 39,
+        "code": "<view class=\"surface-card mine__membership\">\r\n        <view wx:for=\"{{merchantEntries}}\" wx:key=\"storeId\" class=\"mine__membership-row\" data-store=\"{{item.storeId}}\" bind:tap=\"onOpenMerchant\">\r\n          <view class=\"mine__membership-main\">\r\n            <text class=\"mine__membership-name\">{{item.storeId}}</text>\r\n            <text class=\"mine__membership-role\">{{item.roleLabel}} · 可进入订单台</text>\r\n          </view>\r\n          <text class=\"mine__membership-arrow\">›</text>\r\n        </view>\r\n        <view wx:if=\"{{merchantEntries.length === 0}}\" class=\"mine__membership-empty\">\r\n          当前身份只有顾客权限，没有门店管理入口\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "merchantEntries",
+      "roleLabel",
+      "storeId"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onOpenMerchant"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/mine/index.js",
+    "handlers": [
+      "onOpenMerchant"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "surface-card",
+      "mine__membership",
+      "mine__membership-row",
+      "mine__membership-main",
+      "mine__membership-name",
+      "mine__membership-role",
+      "mine__membership-arrow",
+      "mine__membership-empty"
+    ],
+    "selectors": [
+      {
+        "selector": ".mine__membership",
+        "declarations": [
+          "padding: 6rpx 24rpx"
+        ]
+      },
+      {
+        "selector": ".mine__membership-row",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "padding: 22rpx 0",
+          "border-bottom: 2rpx solid rgba(230, 222, 210, 0.55)"
+        ]
+      },
+      {
+        "selector": ".mine__membership-row:last-child",
+        "declarations": [
+          "border-bottom: none"
+        ]
+      },
+      {
+        "selector": ".mine__membership-main",
+        "declarations": [
+          "display: flex",
+          "flex-direction: column"
+        ]
+      },
+      {
+        "selector": ".mine__membership-name",
+        "declarations": [
+          "font-size: 27rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".mine__membership-role",
+        "declarations": [
+          "margin-top: 4rpx",
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".mine__membership-arrow",
+        "declarations": [
+          "font-size: 36rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".mine__membership-empty",
+        "declarations": [
+          "padding: 26rpx 0",
+          "font-size: 23rpx",
+          "color: var(--color-muted)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted"
+    ],
+    "selectorCount": 8
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "卡片加行循环，复制 WXML 与样式即可；点击只上报 onOpenMerchant。",
+    "whenToUse": [
+      "需要从顾客侧进入店主订单台",
+      "需要展示多门店角色"
+    ],
+    "avoidWhen": [
+      "没有 memberships 时不必渲染整卡，页面已用 wx:if 包住"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "行点击只上报 onOpenMerchant，路由由页面处理",
+    "merchantEntries 为空时显示固定空态文案"
+  ],
+  "knownLimits": [
+    "角色文案来自后端 roleLabel，前端不推断"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:750b89e07d2427120e6d6466a6e97da09770de3ffdc963803565c98a24193804"
+  }
+}

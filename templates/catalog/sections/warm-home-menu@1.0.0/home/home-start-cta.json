@@ -1,0 +1,175 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-start-cta",
+  "displayName": "开始点餐主行动区",
+  "summary": "首页最大的行动区，按履约方式显示副标题，点击进入菜单页。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 8,
+  "locator": {
+    "selector": "fp-home__cta",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 75,
+    "lineEnd": 81,
+    "digest": "sha256:f85ec34f79db3364b74ca1dd117bda4e05a005eae0345427d502840cbec06e69"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 75,
+        "lineEnd": 81,
+        "code": "<view class=\"fp-home__cta\" bind:tap=\"goMenu\">\r\n        <view class=\"fp-home__cta-copy\">\r\n          <text class=\"fp-home__cta-title\">开始点餐</text>\r\n          <text class=\"fp-home__cta-sub\">{{mode === 'DINE_IN' ? '堂食 · 请先确认桌号' : '到店自取 · 免排队'}}</text>\r\n        </view>\r\n        <text class=\"fp-home__cta-arrow\">→</text>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "DINE_IN",
+      "mode"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "goMenu"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [
+      "goMenu"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-home__cta",
+    "classTokens": [
+      "fp-home__cta",
+      "fp-home__cta-copy",
+      "fp-home__cta-title",
+      "fp-home__cta-sub",
+      "fp-home__cta-arrow"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-home__cta",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "margin-top: 30rpx",
+          "padding: 28rpx 30rpx",
+          "border-radius: 26rpx",
+          "background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+          "color: #fffdf9",
+          "box-shadow: 0 16rpx 34rpx rgba(179, 74, 15, 0.28)"
+        ]
+      },
+      {
+        "selector": ".fp-home__cta-copy",
+        "declarations": [
+          "display: flex",
+          "flex-direction: column"
+        ]
+      },
+      {
+        "selector": ".fp-home__cta-title",
+        "declarations": [
+          "font-size: 34rpx",
+          "font-weight: 700",
+          "letter-spacing: 2rpx"
+        ]
+      },
+      {
+        "selector": ".fp-home__cta-sub",
+        "declarations": [
+          "margin-top: 6rpx",
+          "font-size: 21rpx",
+          "color: rgba(255, 253, 249, 0.72)"
+        ]
+      },
+      {
+        "selector": ".fp-home__cta-arrow",
+        "declarations": [
+          "font-size: 42rpx",
+          "font-weight: 300"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-accent",
+      "--color-primary"
+    ],
+    "selectorCount": 5
+  },
+  "reuse": {
+    "level": "promote-to-ui-block",
+    "reason": "这是暖橙视图包的核心 CTA，被多个模板复用的概率最高，但目前只有 WXML 没有 props/事件契约。",
+    "whenToUse": [
+      "首屏需要一个明确的主行动入口",
+      "需要用一句话解释当前履约方式的下一步"
+    ],
+    "avoidWhen": [
+      "页面上已经有底部购物车条作为主行动时，不再叠加 CTA"
+    ],
+    "uiBlockBlueprint": {
+      "suggestedId": "start-cta",
+      "displayName": "开始点餐主行动区",
+      "props": [
+        {
+          "name": "mode",
+          "type": "string",
+          "required": false,
+          "description": "DINE_IN / TAKEAWAY，决定副标题文案"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": false,
+          "description": "主标题，缺省「开始点餐」"
+        }
+      ],
+      "events": [
+        {
+          "name": "start",
+          "payload": [
+            "mode"
+          ],
+          "description": "点击行动区；路由由页面处理"
+        }
+      ],
+      "promotionSteps": [
+        "新增 templates/components/start-cta/1.0.0 并登记注册表",
+        "组件只上报 start，不调用 navigateTo",
+        "在 Base 页面 usingComponents 声明后才可用于 FrontendPack"
+      ]
+    }
+  },
+  "constraints": [
+    "副标题随 mode 切换，不在组件内推断桌号是否合法",
+    "整块可点击，但不在组件内导航"
+  ],
+  "knownLimits": [
+    "没有禁用态；提交中或门店关闭时需要页面自行控制显隐"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:f85ec34f79db3364b74ca1dd117bda4e05a005eae0345427d502840cbec06e69"
+  }
+}

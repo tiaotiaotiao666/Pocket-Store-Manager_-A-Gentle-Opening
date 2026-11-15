@@ -1,0 +1,190 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "checkout-meal-card",
+  "displayName": "用餐信息卡",
+  "summary": "用餐方式、桌号、下单身份三行信息；堂食且未带桌号时列出演示桌号可点选。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "checkout",
+  "order": 3,
+  "locator": {
+    "selector": "checkout__card",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": 1,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
+    "lineStart": 22,
+    "lineEnd": 48,
+    "digest": "sha256:0fe8557960bb66ba94b24cabf88c43a16554c15921e97e1ec5b3d7bfb34a582c"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 22,
+        "lineEnd": 48,
+        "code": "<view class=\"surface-card checkout__card\">\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">用餐方式</text>\r\n          <text class=\"checkout__row-value\">{{modeText}}</text>\r\n        </view>\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">桌号</text>\r\n          <text class=\"checkout__row-value\">{{tableName || '无需桌号'}}</text>\r\n        </view>\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">下单身份</text>\r\n          <text class=\"checkout__row-value\">{{identityLabel}}</text>\r\n        </view>\r\n        <view wx:if=\"{{mode === 'DINE_IN' && !tableName}}\" class=\"checkout__tables\">\r\n          <text class=\"checkout__tables-label\">演示桌号</text>\r\n          <view\r\n            wx:for=\"{{tableOptions}}\"\r\n            wx:key=\"id\"\r\n            class=\"checkout__table\"\r\n            data-id=\"{{item.id}}\"\r\n            data-name=\"{{item.name}}\"\r\n            bind:tap=\"onPickTable\"\r\n          >\r\n            {{item.name}}\r\n          </view>\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "DINE_IN",
+      "id",
+      "identityLabel",
+      "mode",
+      "modeText",
+      "name",
+      "tableName",
+      "tableOptions"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onPickTable"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/checkout/index.js",
+    "handlers": [
+      "onPickTable"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "surface-card",
+      "checkout__card",
+      "checkout__row",
+      "checkout__row-label",
+      "checkout__row-value",
+      "checkout__tables",
+      "checkout__tables-label",
+      "checkout__table"
+    ],
+    "selectors": [
+      {
+        "selector": ".checkout__card",
+        "declarations": [
+          "margin-top: 24rpx",
+          "padding: 24rpx"
+        ]
+      },
+      {
+        "selector": ".checkout__row",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "padding: 14rpx 0"
+        ]
+      },
+      {
+        "selector": ".checkout__row-label",
+        "declarations": [
+          "font-size: 24rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".checkout__row-value",
+        "declarations": [
+          "font-size: 26rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".checkout__tables",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "margin-top: 12rpx",
+          "padding-top: 16rpx",
+          "border-top: 2rpx solid rgba(230, 222, 210, 0.6)"
+        ]
+      },
+      {
+        "selector": ".checkout__tables-label",
+        "declarations": [
+          "margin-right: 14rpx",
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".checkout__table",
+        "declarations": [
+          "margin-right: 12rpx",
+          "padding: 8rpx 22rpx",
+          "border-radius: 999rpx",
+          "background: #fdf0e4",
+          "color: #8a5a2b",
+          "font-size: 22rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".checkout__card-head",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".checkout__card-title",
+        "declarations": [
+          "font-size: 28rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".checkout__card-extra",
+        "declarations": [
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted"
+    ],
+    "selectorCount": 10
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "卡片结构简单，复制 WXML 与 checkout__ 样式即可；桌号选择逻辑留在页面控制器。",
+    "whenToUse": [
+      "结算页需要展示用餐方式与桌号",
+      "需要在结算页补选桌号"
+    ],
+    "avoidWhen": [
+      "需要可编辑的履约方式，改 Base 的 fulfillment-switch 而不是这里"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "演示桌号只在 mode === DINE_IN 且 !tableName 时渲染",
+    "点击桌号只上报 onPickTable，不在区块内改状态"
+  ],
+  "knownLimits": [
+    "桌号来自 tableOptions，不支持自由输入"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:0fe8557960bb66ba94b24cabf88c43a16554c15921e97e1ec5b3d7bfb34a582c"
+  }
+}

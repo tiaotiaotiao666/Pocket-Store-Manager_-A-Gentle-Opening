@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-loading",
+  "displayName": "首页加载态",
+  "summary": "首页数据加载中使用的 state-view loading 态，占据内容流位置，避免布局跳动。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 1,
+  "locator": {
+    "selector": null,
+    "componentTag": "state-view",
+    "slotId": null,
+    "occurrence": 1,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 29,
+    "lineEnd": 29,
+    "digest": "sha256:e4eacb710116e26e7d1db1f2ff3e2a9cd67a0d47e62ee9ffb2ebcfee17d11e53"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "state-view",
+    "snippets": [
+      {
+        "lineStart": 29,
+        "lineEnd": 29,
+        "code": "<state-view wx:if=\"{{loading}}\" state=\"loading\" title=\"正在准备门店信息\" description=\"马上就好\" />"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "state-view",
+      "bindings": [
+        {
+          "attr": "wx:if",
+          "expression": "{{loading}}"
+        },
+        {
+          "attr": "state",
+          "expression": "loading"
+        },
+        {
+          "attr": "title",
+          "expression": "正在准备门店信息"
+        },
+        {
+          "attr": "description",
+          "expression": "马上就好"
+        }
+      ],
+      "events": []
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "loading"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [],
+    "selectors": [],
+    "themeVars": [],
+    "selectorCount": 0
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "直接调用 Base 内置 state-view，不需要新组件；换标题与描述即可复用到其他首屏。",
+    "whenToUse": [
+      "首页首屏等待门店配置返回",
+      "需要保持页面结构不跳动的加载态"
+    ],
+    "avoidWhen": [
+      "只有局部请求失败时，用 home-error-state 的 error-banner"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "state 固定为 loading",
+    "不传 action-text，加载态不显示按钮"
+  ],
+  "knownLimits": [
+    "只覆盖首页这一个调用点，标题与描述写死在 WXML"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:e4eacb710116e26e7d1db1f2ff3e2a9cd67a0d47e62ee9ffb2ebcfee17d11e53"
+  }
+}

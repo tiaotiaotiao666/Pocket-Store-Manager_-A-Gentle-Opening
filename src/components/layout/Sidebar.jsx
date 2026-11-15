@@ -31,23 +31,23 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="sidebar-nav">
-        <button type="button" className="sidebar-nav-item" onClick={onOpenWorkbench}>
+      <div className="sidebar-nav" role="navigation" aria-label="主导航">
+        <button type="button" className="sidebar-nav-item" onClick={onOpenWorkbench} aria-label="我的项目：打开工作台">
           <FolderKanban size={15} />
           我的项目
         </button>
-        <button type="button" className="sidebar-nav-item" onClick={onOpenSettings}>
+        <button type="button" className="sidebar-nav-item" onClick={onOpenSettings} aria-label="设置与自检：打开设置面板">
           <Settings size={15} />
           设置与自检
         </button>
       </div>
 
       <div className="sidebar-cta">
-        <button type="button" className="sidebar-primary" onClick={onStartOnboarding}>
+        <button type="button" className="sidebar-primary" onClick={onStartOnboarding} aria-label="轻启：开始开店流程">
           轻启
         </button>
         {currentStoreName ? null : (
-          <button type="button" className="sidebar-subitem" onClick={onStartOnboarding}>
+          <button type="button" className="sidebar-subitem" onClick={onStartOnboarding} aria-label="待命名项目：开始命名">
             待命名项目
           </button>
         )}
@@ -64,6 +64,8 @@ export default function Sidebar({
                   type="button"
                   className={`sidebar-session${step ? ' is-step' : ' is-main'}${session.id === activeSessionId ? ' is-active' : ''}`}
                   onClick={() => onSelectSession?.(session.id)}
+                  aria-label={`会话：${session.title}`}
+                  aria-current={session.id === activeSessionId ? 'true' : undefined}
                 >
                   <span className="sidebar-session-dot" aria-hidden="true" />
                   <span className="sidebar-session-title">{session.title}</span>
@@ -83,7 +85,7 @@ export default function Sidebar({
           </span>
           <span className="sidebar-status-line is-agent">{agentLabel}</span>
         </div>
-        <button type="button" className="sidebar-reset" onClick={onReset}>
+        <button type="button" className="sidebar-reset" onClick={onReset} aria-label="重置项目：清空当前会话">
           重置项目
         </button>
       </div>

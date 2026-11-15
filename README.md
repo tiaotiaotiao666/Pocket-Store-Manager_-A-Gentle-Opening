@@ -26,6 +26,18 @@ npm test
 npm run build
 ```
 
+## Agent 无障碍调试
+
+桌面界面已接入 [`vercel-labs/agent-desktop`](https://github.com/vercel-labs/agent-desktop)：agent 通过 Windows UI Automation 读取窗口、按 `@ref` 点击/输入，再快照复查，不使用像素截图。
+
+```powershell
+npm run agent:app      # 启动桌面应用（agent 友好，会清掉 ELECTRON_RUN_AS_NODE）
+npm run agent:smoke    # 真实闭环：工作台 → 设置页 → 返回工作台
+npm run agent:snapshot # 打印可操作元素（role | name | ref）
+```
+
+命令、可访问名称约定、ref 生命周期与已知坑见 [`docs/agent-accessibility-debugging.md`](docs/agent-accessibility-debugging.md)。
+
 独立生成静态示例小程序：
 
 ```powershell

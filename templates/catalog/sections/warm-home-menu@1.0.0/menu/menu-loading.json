@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-loading",
+  "displayName": "菜单加载态",
+  "summary": "菜单数据加载中使用 state-view loading 态，位于头部与列表之间。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 1,
+  "locator": {
+    "selector": null,
+    "componentTag": "state-view",
+    "slotId": null,
+    "occurrence": 1,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 37,
+    "lineEnd": 37,
+    "digest": "sha256:befba1e9cfb97caa40fd8bf898366cc5d47f060b5d1351571603d482f1e11a8b"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "state-view",
+    "snippets": [
+      {
+        "lineStart": 37,
+        "lineEnd": 37,
+        "code": "<state-view wx:if=\"{{loading}}\" state=\"loading\" title=\"正在加载菜单\" />"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "state-view",
+      "bindings": [
+        {
+          "attr": "wx:if",
+          "expression": "{{loading}}"
+        },
+        {
+          "attr": "state",
+          "expression": "loading"
+        },
+        {
+          "attr": "title",
+          "expression": "正在加载菜单"
+        }
+      ],
+      "events": []
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "loading"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [],
+    "selectors": [],
+    "themeVars": [],
+    "selectorCount": 0
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "直接调用 Base 内置 state-view；菜单页的第二个 state-view 是空态，不要混用。",
+    "whenToUse": [
+      "菜单首屏等待目录接口"
+    ],
+    "avoidWhen": [
+      "列表局部刷新需要保持行结构时，用 loading-block"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "state 固定 loading",
+    "第一个 state-view 是加载态，第二个是空态，定位时按出现顺序"
+  ],
+  "knownLimits": [
+    "文案写死为「正在加载菜单」"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:befba1e9cfb97caa40fd8bf898366cc5d47f060b5d1351571603d482f1e11a8b"
+  }
+}

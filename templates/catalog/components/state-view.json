@@ -1,0 +1,128 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "state-view",
+  "version": "1.0.0",
+  "displayName": "通用状态壳",
+  "category": "shell",
+  "summary": "统一的加载、错误与空态占位组件，可带一个重试/行动按钮。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/state-view",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:45603905161efd404521aecf9abf629f7ec1fa43f6077a84b4f827ebb96547cb"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "actionText",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "按钮文案；非空才显示按钮"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "补充说明"
+      },
+      {
+        "name": "state",
+        "type": "string",
+        "required": false,
+        "defaultValue": "loading",
+        "description": "loading / error / 其它值按空态渲染"
+      },
+      {
+        "name": "title",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "主标题；为空时按状态回落默认文案"
+      }
+    ],
+    "events": [
+      {
+        "name": "retry",
+        "payload": [],
+        "description": "用户点击 actionText 按钮；空态下也使用 retry 事件名"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "state-view",
+    "wxmlExample": "<state-view wx:if=\"{{loading}}\" state=\"loading\" title=\"正在加载菜单\" />",
+    "whenToUse": [
+      "页面或区块处于加载中、加载失败或空列表",
+      "需要一个不依赖业务数据的通用空态"
+    ],
+    "avoidWhen": [
+      "错误已经能通过 error-banner 展示在内容流中且保留了页面结构",
+      "需要骨架屏列表时，用 loading-block"
+    ],
+    "notes": [
+      "8 个 Base 页面都声明了这个组件，是最通用的状态组件"
+    ]
+  },
+  "pages": [
+    "checkout",
+    "home",
+    "menu",
+    "merchant-orders",
+    "mine",
+    "order-detail",
+    "orders",
+    "product-detail"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "state-view",
+    "themeVars": [
+      "--color-danger",
+      "--color-muted",
+      "--color-primary",
+      "--color-text"
+    ],
+    "sharedClasses": [
+      "ss-btn",
+      "ss-btn--ghost",
+      "ss-btn--primary"
+    ],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 11
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "组件不判断错误类型，也不隐藏 requestId",
+    "按钮事件统一为 retry，不携带路由或业务 payload"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:45603905161efd404521aecf9abf629f7ec1fa43f6077a84b4f827ebb96547cb"
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-headline",
+  "displayName": "菜单标题区",
+  "summary": "菜单眉标、当前分类名与菜品数量/桌号的元信息行。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 4,
+  "locator": {
+    "selector": "fp-menu__headline",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 45,
+    "lineEnd": 49,
+    "digest": "sha256:a719377dd466166ef5f67fac7bbfae20967148f55de4ddc2ef724e8a54863234"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 45,
+        "lineEnd": 49,
+        "code": "<view class=\"fp-menu__headline\">\r\n        <text class=\"fp-menu__eyebrow\">TODAY'S MENU</text>\r\n        <text class=\"fp-menu__title\">{{activeCategoryName || '全部菜品'}}</text>\r\n        <text class=\"fp-menu__meta\">{{products.length}} 道菜 · {{tableName ? tableName + ' 桌' : '到店自取'}}</text>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "activeCategoryName",
+      "products",
+      "tableName"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-menu__headline",
+    "classTokens": [
+      "fp-menu__headline",
+      "fp-menu__eyebrow",
+      "fp-menu__title",
+      "fp-menu__meta"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-menu__headline",
+        "declarations": [
+          "display: flex",
+          "flex-direction: column",
+          "padding: 0 24rpx 18rpx"
+        ]
+      },
+      {
+        "selector": ".fp-menu__eyebrow",
+        "declarations": [
+          "font-size: 19rpx",
+          "letter-spacing: 4rpx",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".fp-menu__title",
+        "declarations": [
+          "margin-top: 6rpx",
+          "font-size: 40rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".fp-menu__meta",
+        "declarations": [
+          "margin-top: 6rpx",
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-primary"
+    ],
+    "selectorCount": 4
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "纯展示标题区，数据来自页面已有字段，直接复制 WXML 与样式即可。",
+    "whenToUse": [
+      "菜单页需要说明当前分类与菜品数量"
+    ],
+    "avoidWhen": [
+      "需要交互式筛选时，用 category-nav"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "分类名缺失时回落「全部菜品」",
+    "桌号缺失时显示「到店自取」"
+  ],
+  "knownLimits": [
+    "文案结构固定为 3 行，自定义排版需要改 WXML"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:a719377dd466166ef5f67fac7bbfae20967148f55de4ddc2ef724e8a54863234"
+  }
+}

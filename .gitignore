@@ -95,6 +95,10 @@ generated-projects/
 .resultverify/chrome-profile-*/
 .resultverify/**/*.log
 
+# ---------- 本机权限修复备份 ----------
+# diagnose-windows-sandbox-acl 生成的 ACL 备份，只属于本机，不入库
+.dsh-acl-recovery/
+
 # ---------- 本地历史归档 ----------
 # 大体积二进制归档不进入仓库（本地文件保留）
 docs.rar

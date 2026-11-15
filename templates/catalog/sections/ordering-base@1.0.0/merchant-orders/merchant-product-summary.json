@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "merchant-product-summary",
+  "displayName": "商品统计条",
+  "summary": "共 n 个商品、在售、下架三项统计。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "merchant-orders",
+  "order": 7,
+  "locator": {
+    "selector": "merchant__product-summary",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
+    "lineStart": 117,
+    "lineEnd": 121,
+    "digest": "sha256:b4f020522c229493c9e0659c7d2601dff5cddd5bbc44b6285a792f288c2cb938"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 117,
+        "lineEnd": 121,
+        "code": "<view class=\"merchant__product-summary\">\r\n        <text class=\"merchant__product-stat\">共 {{productCount}} 个商品</text>\r\n        <text class=\"merchant__product-stat merchant__product-stat--ok\">在售 {{availableCount}}</text>\r\n        <text class=\"merchant__product-stat merchant__product-stat--off\">下架 {{productCount - availableCount}}</text>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "availableCount",
+      "productCount"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/merchant-orders/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "merchant__product-summary",
+      "merchant__product-stat",
+      "merchant__product-stat--ok",
+      "merchant__product-stat--off"
+    ],
+    "selectors": [
+      {
+        "selector": ".merchant__product-summary",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "margin-top: 22rpx",
+          "padding: 18rpx 22rpx",
+          "border-radius: 16rpx",
+          "background: rgba(35, 35, 35, 0.04)"
+        ]
+      },
+      {
+        "selector": ".merchant__product-stat",
+        "declarations": [
+          "margin-right: 22rpx",
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".merchant__product-stat--ok",
+        "declarations": [
+          "color: var(--color-success)"
+        ]
+      },
+      {
+        "selector": ".merchant__product-stat--off",
+        "declarations": [
+          "color: var(--color-danger)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-danger",
+      "--color-muted",
+      "--color-success"
+    ],
+    "selectorCount": 4
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "三行统计文本，复制即可。",
+    "whenToUse": [
+      "商品管理页需要数量概览"
+    ],
+    "avoidWhen": [
+      "需要图表时另建区块"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "下架数由 productCount - availableCount 计算"
+  ],
+  "knownLimits": [
+    "统计范围是本店全部商品，不含已删除"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:b4f020522c229493c9e0659c7d2601dff5cddd5bbc44b6285a792f288c2cb938"
+  }
+}

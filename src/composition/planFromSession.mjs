@@ -1,3 +1,4 @@
+import { BASE_CAPABILITIES } from '../domain/capabilities.mjs';
 import { features as catalogFeatures } from '../domain/catalog.mjs';
 import { normalizePresentationTokens, SIZE_STEPS } from '../domain/previewSizeTokens.mjs';
 import { REGISTRY_VERSION, resolveRecipe } from '../domain/recipeCatalog.mjs';
@@ -28,18 +29,6 @@ const SLOT_PAGE = Object.freeze({
 
 /** 补丁输入允许小写十六进制；写入 Plan 前统一大写。 */
 const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
-
-const BASE_CAPABILITIES = new Set([
-  'scan-order',
-  'product-catalog',
-  'cart-checkout',
-  'order-tracking',
-  'table-dining',
-  'takeaway',
-  'merchant-orders',
-  'product-availability',
-  'store-profile',
-]);
 
 
 const PAGES = [

@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxss",
     "lineStart": 12,
     "lineEnd": 31,
-    "digest": "sha256:fda9200683d8a70174ac8226c5b49f6b5bec2a1b55b97d10a856eb846ee58166"
+    "digest": "sha256:e36ea9e1ecac3054315f6a21fd8aaaca8ab38213300fb0c5a101776a2bdbd5c8"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 12,
         "lineEnd": 31,
-        "code": "<view class=\"product-page__body surface-card\">\n      <view class=\"product-page__topline\">\n        <text class=\"product-page__eyebrow\">本店精选</text>\n        <text wx:if=\"{{product.available === false}}\" class=\"product-page__soldout\">暂时售罄</text>\n      </view>\n      <text class=\"product-page__name\">{{product.name}}</text>\n      <text class=\"product-page__description\">{{product.description || '门店用心制作，欢迎品尝。'}}</text>\n      <view class=\"product-page__divider\"></view>\n      <view class=\"product-page__buyrow\">\n        <view class=\"product-page__price\"><text>¥</text><text>{{amount}}</text></view>\n        <view class=\"product-page__stepper\">\n          <view class=\"product-page__step {{quantity > 0 ? '' : 'product-page__step--off'}}\" bind:tap=\"onRemove\">−</view>\n          <text class=\"product-page__quantity\">{{quantity}}</text>\n          <view class=\"product-page__step product-page__step--add {{product.available === false ? 'product-page__step--disabled' : ''}}\" bind:tap=\"onAdd\">+</view>\n        </view>\n      </view>\n      <view class=\"primary-button product-page__add {{product.available === false ? 'primary-button--off' : ''}}\" bind:tap=\"onAdd\">\n        {{product.available === false ? '暂不可售' : '加入购物车'}}\n      </view>\n    </view>"
+        "code": "<view class=\"product-page__body surface-card\">\r\n      <view class=\"product-page__topline\">\r\n        <text class=\"product-page__eyebrow\">本店精选</text>\r\n        <text wx:if=\"{{product.available === false}}\" class=\"product-page__soldout\">暂时售罄</text>\r\n      </view>\r\n      <text class=\"product-page__name\">{{product.name}}</text>\r\n      <text class=\"product-page__description\">{{product.description || '门店用心制作，欢迎品尝。'}}</text>\r\n      <view class=\"product-page__divider\"></view>\r\n      <view class=\"product-page__buyrow\">\r\n        <view class=\"product-page__price\"><text>¥</text><text>{{amount}}</text></view>\r\n        <view class=\"product-page__stepper\">\r\n          <view class=\"product-page__step {{quantity > 0 ? '' : 'product-page__step--off'}}\" bind:tap=\"onRemove\">−</view>\r\n          <text class=\"product-page__quantity\">{{quantity}}</text>\r\n          <view class=\"product-page__step product-page__step--add {{product.available === false ? 'product-page__step--disabled' : ''}}\" bind:tap=\"onAdd\">+</view>\r\n        </view>\r\n      </view>\r\n      <view class=\"primary-button product-page__add {{product.available === false ? 'primary-button--off' : ''}}\" bind:tap=\"onAdd\">\r\n        {{product.available === false ? '暂不可售' : '加入购物车'}}\r\n      </view>\r\n    </view>"
       }
     ]
   },
@@ -119,7 +119,7 @@
         ]
       },
       {
-        "selector": ".product-page__topline,\n.product-page__buyrow",
+        "selector": ".product-page__topline,\r\n.product-page__buyrow",
         "declarations": [
           "display: flex",
           "align-items: center",
@@ -268,6 +268,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:fda9200683d8a70174ac8226c5b49f6b5bec2a1b55b97d10a856eb846ee58166"
+    "digest": "sha256:e36ea9e1ecac3054315f6a21fd8aaaca8ab38213300fb0c5a101776a2bdbd5c8"
   }
 }

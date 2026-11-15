@@ -1,6 +1,7 @@
 const { app, BrowserWindow, dialog, ipcMain, shell, nativeImage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const fsSync = require('node:fs');
 const { pathToFileURL } = require('node:url');
 
 const composer = require('../scripts/composer/index.cjs');
@@ -79,6 +80,22 @@ if (resolvedUserDataDir) {
   migrateUserData(legacyUserDataDir, resolvedUserDataDir);
 }
 const userDataDir = resolvedUserDataDir || legacyUserDataDir || app.getPath('userData');
+
+/**
+ * 把「最终选定的数据目录」写成一个固定位置的指针文件（W0 / P0-1）。
+ *
+ * 一键启动脚本需要显示实际数据目录，但它不该重新实现一遍上面的可写性探测：
+ * 两处各算一次必然会在「%APPDATA% 对 Electron 不可写、对 node 可写」这类环境里
+ * 给出不同答案。这里由主进程写入唯一事实，启动脚本只读。
+ * app-data/ 已在 .gitignore 内；写失败不影响启动。
+ */
+try {
+  const markerDir = path.join(__dirname, '..', 'app-data');
+  fsSync.mkdirSync(markerDir, { recursive: true });
+  fsSync.writeFileSync(path.join(markerDir, 'userdata-path.txt'), `${userDataDir}\r\n`, 'utf8');
+} catch (error) {
+  // 指针文件只是给人看的，失败不影响客户端启动与保存。
+}
 
 const imageAdapter = {
   resize(buffer, maxWidth) {

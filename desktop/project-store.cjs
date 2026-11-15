@@ -45,6 +45,9 @@ const KNOWN_TOP_KEYS = Object.freeze([
   'features',
   'build',
   'visual',
+  // 展示补丁必须留在顶层：否则会被搬进 unmappedFields，
+  // 重开项目时 fromDocument 读不到，用户改的主题/尺寸/文案就丢了。
+  'presentation',
   'agentDraft',
   'agentConfirmedSeq',
   'assets',

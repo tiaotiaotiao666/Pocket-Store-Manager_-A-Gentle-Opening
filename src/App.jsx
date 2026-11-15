@@ -634,6 +634,9 @@ export default function App() {
     state.features,
     state.build,
     state.visual,
+    // 展示补丁（templateId + patch）现在会进 project.json，必须参与自动保存触发，
+    // 否则「只改主题色/文案/尺寸」不会落盘，重开就丢。
+    state.presentation,
     state.agentDraft,
     state.sessions,
     state.seq,
@@ -865,6 +868,8 @@ export default function App() {
       savedAt: result.savedAt,
       bytes: result.bytes,
     });
+    const presentationNotice = hydrated.presentationRestore;
+    if (presentationNotice && presentationNotice.message) setNotice(presentationNotice.message);
     if (result.recoveredFrom) {
       setNotice('项目文件损坏，已从最近一次备份恢复。原文件已保留在项目目录内。');
     } else if (result.corrupt) {

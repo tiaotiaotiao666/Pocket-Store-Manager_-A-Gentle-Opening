@@ -36,7 +36,7 @@ $mysqldPath = Join-Path $mysqlHome 'bin\mysqld.exe'
 $mysqlAdminPath = Join-Path $mysqlHome 'bin\mysqladmin.exe'
 
 $serverScript = Join-Path $workspaceRoot 'scripts\start-server-local.ps1'
-$healthUrl = 'http://127.0.0.1:3000/api/v1/health'
+$readinessScript = Join-Path $workspaceRoot 'scripts\backend-readiness.cjs'
 
 function Write-Step {
   param([string]$Text)
@@ -108,23 +108,90 @@ function Wait-MysqlAlive {
   return $false
 }
 
-function Test-BackendHealth {
+function Invoke-BackendReadiness {
+  param([int]$WaitSeconds = 0)
+  # Single implementation lives in scripts/backend-readiness.cjs:
+  # ready === readyz HTTP 200 && body.database === 'ok'. A reachable port is not "ready".
+  # (This file stays ASCII-only: Windows PowerShell 5.1 mis-parses UTF-8 without BOM.)
+  if (-not (Test-Path $readinessScript)) {
+    return [pscustomobject]@{ ready = $false; code = 'READINESS_SCRIPT_MISSING'
+      message = "readiness probe not found: $readinessScript"; httpStatus = $null
+      database = $null; cache = $null; cacheDegraded = $false }
+  }
+  $probeArgs = @($readinessScript, '--port', '3000', '--wait-seconds', "$WaitSeconds")
+  $raw = & node @probeArgs 2>$null
+  $exitCode = $LASTEXITCODE
+  $parsed = $null
+  if ($raw) {
+    try { $parsed = ($raw | Out-String).Trim() | ConvertFrom-Json } catch { $parsed = $null }
+  }
+  if (-not $parsed) {
+    return [pscustomobject]@{ ready = $false; code = 'READINESS_PROBE_FAILED'
+      message = "readiness probe returned no parsable output (node exit $exitCode)"; httpStatus = $null
+      database = $null; cache = $null; cacheDegraded = $false }
+  }
+  return $parsed
+}
+
+function Get-PortOwners {
+  param([int]$Port)
+  $ownerIds = @()
   try {
-    $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 3
-    return ($response.StatusCode -ge 200 -and $response.StatusCode -lt 300)
+    $ownerIds = @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+      Select-Object -ExpandProperty OwningProcess -Unique)
   } catch {
-    return $false
+    $ownerIds = @()
+  }
+  if ($ownerIds.Count -eq 0) {
+    # Get-NetTCPConnection misses dual-stack listeners; netstat is the fallback.
+    foreach ($row in @(netstat -ano)) {
+      if ($row -match ":$Port\s") {
+        $fields = @($row -split '\s+' | Where-Object { $_ })
+        if ($fields.Count -ge 5 -and $fields[-2] -eq 'LISTENING') { $ownerIds += [int]$fields[-1] }
+      }
+    }
+  }
+  $owners = @()
+  foreach ($ownerId in @($ownerIds | Select-Object -Unique)) {
+    if (-not $ownerId) { continue }
+    $proc = Get-Process -Id $ownerId -ErrorAction SilentlyContinue
+    $cim = Get-CimInstance Win32_Process -Filter "ProcessId=$ownerId" -ErrorAction SilentlyContinue
+    $cmd = ''
+    if ($cim -and $cim.CommandLine) {
+      $cmd = $cim.CommandLine
+      if ($cmd.Length -gt 180) { $cmd = $cmd.Substring(0, 180) + '...' }
+    }
+    $owners += [pscustomobject]@{
+      Pid = $ownerId
+      Name = $(if ($proc) { $proc.ProcessName } else { 'unknown' })
+      Started = $(if ($proc -and $proc.StartTime) { $proc.StartTime.ToString('HH:mm:ss') } else { '' })
+      CommandLine = $cmd
+    }
+  }
+  return $owners
+}
+
+function Show-PortOccupancy {
+  param([int]$Port)
+  $owners = @(Get-PortOwners -Port $Port)
+  if ($owners.Count -eq 0) {
+    Write-Host "    port $Port is listening but the owner cannot be resolved (permissions?)" -ForegroundColor DarkGray
+    return
+  }
+  foreach ($owner in $owners) {
+    Write-Host "    port $Port held by PID $($owner.Pid)  $($owner.Name)  started $($owner.Started)" -ForegroundColor DarkGray
+    if ($owner.CommandLine) { Write-Host "      cmd: $($owner.CommandLine)" -ForegroundColor DarkGray }
   }
 }
 
-function Wait-BackendHealth {
-  param([int]$TimeoutSeconds)
-  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-  while ((Get-Date) -lt $deadline) {
-    if (Test-BackendHealth) { return $true }
-    Start-Sleep -Milliseconds 1500
+function Get-ActualDataDir {
+  # Single source of truth: the desktop main process writes its resolved dir here.
+  $marker = Join-Path $workspaceRoot 'app-data\userdata-path.txt'
+  if (Test-Path $marker) {
+    $value = @(Get-Content $marker -Encoding utf8 -ErrorAction SilentlyContinue) | Select-Object -First 1
+    if ($value) { return $value.Trim() }
   }
-  return $false
+  return $null
 }
 
 function Show-LogTail {
@@ -218,6 +285,7 @@ if ($SkipMysql) {
 
 Write-Step '[2/3] backend (127.0.0.1:3000)'
 $backendReady = $false
+$backendProbe = $null
 if ($RestartBackend) {
   if (Test-TcpPort -TargetHost '127.0.0.1' -Port 3000) {
     Stop-Listener -Port 3000 | Out-Null
@@ -226,17 +294,17 @@ if ($RestartBackend) {
   }
 }
 
-if (Test-BackendHealth) {
-  Write-Ok 'backend already healthy'
-  $backendReady = $true
-} elseif (Test-TcpPort -TargetHost '127.0.0.1' -Port 3000) {
-  Write-Info 'port 3000 is listening, waiting for /api/v1/health ...'
-  if (Wait-BackendHealth -TimeoutSeconds 45) {
-    Write-Ok 'backend healthy'
+if (Test-TcpPort -TargetHost '127.0.0.1' -Port 3000) {
+  $backendProbe = Invoke-BackendReadiness -WaitSeconds 12
+  if ($backendProbe.ready) {
+    Write-Ok "backend already ready (database=$($backendProbe.database), cache=$($backendProbe.cache))"
     $backendReady = $true
   } else {
-    Write-Fail 'port 3000 is occupied but health check keeps failing'
-    Write-Info 'rerun with -RestartBackend to replace the old process'
+    # A listening port is NOT a healthy backend. Never skip silently.
+    Write-Fail "port 3000 is occupied but the backend is not ready: $($backendProbe.code)"
+    Write-Info "reason: $($backendProbe.message)"
+    Show-PortOccupancy -Port 3000
+    Write-Info 'fix: rerun with -RestartBackend to replace the old process, or free port 3000 and retry'
     exit 1
   }
 }
@@ -265,21 +333,27 @@ if (-not $backendReady) {
     -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr
   Write-Info "CACHE_DRIVER=$env:CACHE_DRIVER PORT=$env:PORT"
   Write-Info "starting backend, log: $serverOut"
-  if (-not (Wait-BackendHealth -TimeoutSeconds $BackendTimeoutSeconds)) {
-    Write-Fail "backend did not become healthy within $BackendTimeoutSeconds s"
+  $backendProbe = Invoke-BackendReadiness -WaitSeconds $BackendTimeoutSeconds
+  if (-not $backendProbe.ready) {
+    Write-Fail "backend did not become ready within $BackendTimeoutSeconds s: $($backendProbe.code)"
+    Write-Info "reason: $($backendProbe.message)"
     Show-LogTail -Path $serverOut
     Show-LogTail -Path $serverErr
     Write-Info 'common cause: MySQL is down, or CACHE_DRIVER=redis while 6379 is unreachable'
     exit 1
   }
-  Write-Ok 'backend ready'
+  Write-Ok "backend ready (database=$($backendProbe.database), cache=$($backendProbe.cache))"
 }
 
-try {
-  $ready = Invoke-WebRequest -Uri 'http://127.0.0.1:3000/api/v1/readyz' -UseBasicParsing -TimeoutSec 3
-  Write-Info "readyz HTTP $($ready.StatusCode)"
-} catch {
-  Write-Warn 'readyz did not respond (backend may still be warming up)'
+if ($backendProbe -and $backendProbe.ready -and $backendProbe.cache -eq 'memory') {
+  Write-Warn 'redis is unreachable: cache degraded to in-process memory (cleared on restart, expected)'
+}
+
+$dataDir = Get-ActualDataDir
+if ($dataDir) {
+  Write-Info "data dir: $dataDir"
+} else {
+  Write-Info 'data dir: not recorded yet (written by the desktop client on first launch)'
 }
 
 if ($ServerOnly) {

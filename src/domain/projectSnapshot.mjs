@@ -13,6 +13,8 @@ import { PHASES } from '../state/constants.mjs';
 import { features as catalogFeatures } from './catalog.mjs';
 import { STYLE_PRESETS } from './storeBrief.mjs';
 import { normalizeAgentDraft, validateAgentDraft, buildNextQuestion } from './agentDraft.mjs';
+import { validatePresentationPatch } from './presentationPatch.mjs';
+import { resolveRecipe } from './recipeCatalog.mjs';
 
 export const SNAPSHOT_SCHEMA_VERSION = 1;
 export const MAX_SESSIONS = 20;
@@ -32,6 +34,7 @@ export const KNOWN_TOP_KEYS = Object.freeze([
   'features',
   'build',
   'visual',
+  'presentation',
   'agentDraft',
   'agentConfirmedSeq',
   'assets',
@@ -121,6 +124,125 @@ export function createEmptyAgentState() {
     simulateFailure: false,
     turnId: null,
     confirmedAtSeq: null,
+  };
+}
+
+/**
+ * 展示补丁进磁盘的白名单键（W0 / P0-2）。
+ *
+ * 只持久化「已确认的展示结果」：模板身份 + 过校验的补丁本体。
+ * `status` / `requestId` / `error` / `lastUtterance` / 撤销栈都属于请求期状态，
+ * 一律不落盘，重开项目时按 idle 重新构造。
+ */
+export const PRESENTATION_SNAPSHOT_KEYS = Object.freeze(['templateId', 'patch']);
+
+/**
+ * `C-SESSION-PRESENTATION@1` 的持久化友好初始切片。
+ *
+ * 字段与 `sessionMachine.createInitialPresentationSlice()` 严格一致（plan.md 2.2.3），
+ * 不额外加字段：切片形状本身是被测试锁住的契约。
+ * 恢复阶段的异常原因走 `fromDocument().presentationRestore`，不塞进切片。
+ */
+export function createEmptyPresentationSlice() {
+  return {
+    templateId: null,
+    patch: {},
+    changes: [],
+    status: 'idle',
+    requestId: null,
+    lastUtterance: '',
+    error: null,
+  };
+}
+
+const PRESENTATION_FEATURE_KIND = Object.freeze({ 'poster-carousel': 'feature-pack' });
+
+/**
+ * 构造展示补丁校验上下文。
+ *
+ * 与 `sessionMachine.presentationContext` 口径一致：已占用 feature 来自当前模板的
+ * Recipe 投影，`baseDraft.dishes` 决定菜品文案能否按 id 落位。
+ *
+ * @param {string|null} templateId
+ * @param {Array} dishes
+ */
+export function buildPresentationContext(templateId, dishes) {
+  const { recipe } = resolveRecipe(templateId ?? null);
+  const features = Array.isArray(recipe && recipe.features) ? recipe.features : [];
+  const occupiedFeatures = features.map((feature) => ({
+    id: feature.id,
+    kind: PRESENTATION_FEATURE_KIND[feature.id] ?? 'feature-pack',
+  }));
+  return {
+    occupiedFeatures,
+    hasCarousel: occupiedFeatures.some((feature) => feature.id === 'poster-carousel'),
+    baseDraft: { dishes: Array.isArray(dishes) ? dishes : [] },
+  };
+}
+
+/** 内存 → 磁盘：只留 templateId 与通过校验的 patch。 */
+function pickPresentation(presentation, selectedId, dishes) {
+  const source = isPlainObject(presentation) ? presentation : {};
+  const templateId = typeof source.templateId === 'string' && source.templateId
+    ? source.templateId
+    : (typeof selectedId === 'string' && selectedId ? selectedId : null);
+  const raw = isPlainObject(source.patch) ? source.patch : {};
+  if (Object.keys(raw).length === 0) return { templateId, patch: {} };
+  const validated = validatePresentationPatch(raw, buildPresentationContext(templateId, dishes));
+  // 落盘只存规范化后的补丁；校验不过就不写，避免把非法内容固化进项目文件。
+  return { templateId, patch: validated.ok ? validated.patch : {} };
+}
+
+/**
+ * 磁盘 → 内存：旧快照兼容 + 非法内容安全回退。
+ *
+ * - 文档里没有 `presentation`（旧项目）：返回空补丁，模板身份取当前选中模板。
+ * - 补丁属于另一个模板：丢弃补丁并给出 notice，绝不错配应用。
+ * - 补丁校验不通过：丢弃补丁并给出 notice。
+ *
+ * @returns {{presentation: object, notice: null|{code: string, message: string}}}
+ */
+export function restorePresentationSlice(saved, selectedId, dishes) {
+  const slice = createEmptyPresentationSlice();
+  const source = isPlainObject(saved) ? saved : {};
+  const fallbackTemplateId = typeof selectedId === 'string' && selectedId ? selectedId : null;
+  const savedTemplateId = typeof source.templateId === 'string' && source.templateId ? source.templateId : null;
+  const raw = isPlainObject(source.patch) ? source.patch : {};
+
+  if (Object.keys(raw).length === 0) {
+    return { presentation: { ...slice, templateId: savedTemplateId ?? fallbackTemplateId }, notice: null };
+  }
+  if (savedTemplateId && fallbackTemplateId && savedTemplateId !== fallbackTemplateId) {
+    return {
+      presentation: { ...slice, templateId: fallbackTemplateId },
+      notice: {
+        code: 'PRESENTATION_PATCH_TEMPLATE_MISMATCH',
+        message: '保存的展示修改属于另一个模板，已忽略；当前模板沿用默认外观。',
+      },
+    };
+  }
+
+  const templateId = savedTemplateId ?? fallbackTemplateId;
+  const validated = validatePresentationPatch(raw, buildPresentationContext(templateId, dishes));
+  if (!validated.ok) {
+    const first = Array.isArray(validated.details) && validated.details.length > 0 ? validated.details[0] : null;
+    return {
+      presentation: { ...slice, templateId },
+      notice: {
+        code: 'PRESENTATION_PATCH_DISCARDED',
+        message: `保存的展示修改无法应用（${first && first.code ? first.code : 'PRESENTATION_PATCH_INVALID'}），已回退到默认外观。`,
+      },
+    };
+  }
+
+  return {
+    presentation: {
+      ...slice,
+      templateId,
+      patch: validated.patch,
+      changes: Array.isArray(validated.changes) ? validated.changes : [],
+    },
+    notice: null,
   };
 }
 
@@ -305,6 +427,9 @@ export function toDocument(state, meta) {
   const agent = isPlainObject(input.agent) ? input.agent : {};
   const store = pickStore(input.store);
   const agentDraft = pickAgentDraft(input.agentDraft);
+  const build = pickBuild(input.build);
+  const visual = pickVisual(input.visual);
+  const presentation = pickPresentation(input.presentation, build.selectedId, agentDraft.dishes);
   const sessions = pickSessions(input.sessions);
   const activeSessionId = sessions.some((session) => session.id === input.activeSessionId)
     ? input.activeSessionId
@@ -319,8 +444,9 @@ export function toDocument(state, meta) {
     activeSessionId,
     store,
     features: pickFeatures(input.features),
-    build: pickBuild(input.build),
-    visual: pickVisual(input.visual),
+    build,
+    visual,
+    presentation,
     agentDraft,
     agentConfirmedSeq: agent.status === 'confirmed' ? integerOrNull(agent.confirmedAtSeq) : null,
     assets: { images: pickImages(input.assets?.images ?? input.assetImages) },
@@ -415,6 +541,7 @@ export function fromDocument(doc) {
   const buildSource = pickBuild(source.build);
   const visual = pickVisual(source.visual);
   const phase = resolvePhase(source.phase, buildSource.candidates, visual);
+  const restoredPresentation = restorePresentationSlice(source.presentation, buildSource.selectedId, draft.dishes);
 
   const sessions = pickSessions(source.sessions);
   const activeSessionId = sessions.some((session) => session.id === source.activeSessionId)
@@ -448,6 +575,9 @@ export function fromDocument(doc) {
     features,
     build: { ...buildSource, status: buildSource.candidates.length > 0 ? 'ready' : 'idle' },
     visual: { ...visual, image: null },
+    presentation: restoredPresentation.presentation,
+    // 恢复期的异常原因（模板错配 / 补丁被丢弃），交给 UI 提示；不进 project.json。
+    presentationRestore: restoredPresentation.notice,
     agentDraft: draft,
     agent,
     deploy,

@@ -139,7 +139,9 @@ function createDiagnostics(options) {
       } else {
         message = `数据目录可写 · 剩余约 ${storageProbe.freeSpaceMb} MB`;
       }
-      lines.push(line('storage', '本地数据目录', pass ? 'pass' : 'fail', message, action));
+      // 路径与一键启动脚本读的是同一个事实（主进程写入的 app-data/userdata-path.txt），
+      // 避免「设置页显示一个目录、启动脚本显示另一个」。
+      lines.push(line('storage', '本地数据目录', pass ? 'pass' : 'fail', `${message} · 路径 ${userDataDir}`, action));
       json.storage = {
         userDataWritable: storageProbe.writable,
         freeSpaceMb: storageProbe.freeSpaceMb,

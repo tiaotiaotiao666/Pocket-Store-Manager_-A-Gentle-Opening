@@ -1,0 +1,162 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "detail-action-bar",
+  "displayName": "详情操作底栏",
+  "summary": "固定底栏：取消订单、演示模拟支付、店主推进三个条件按钮。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "order-detail",
+  "order": 7,
+  "locator": {
+    "selector": "detail__bar",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
+    "lineStart": 110,
+    "lineEnd": 120,
+    "digest": "sha256:e7542f020e98fd791a539d3e83829bdd627851bbd9038d97318b6a9c7ff299cb"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 110,
+        "lineEnd": 120,
+        "code": "<view wx:if=\"{{!payResult && order && (order.canPay || order.canCancel || merchantActions.length > 0)}}\" class=\"detail__bar\">\r\n    <view wx:if=\"{{order.canCancel}}\" class=\"detail__bar-ghost\" bind:tap=\"onCancel\">\r\n      {{acting && actionLabel === 'cancel' ? '处理中…' : '取消订单'}}\r\n    </view>\r\n    <view wx:if=\"{{order.canPay}}\" class=\"detail__bar-primary\" bind:tap=\"onPay\">\r\n      {{acting && actionLabel === 'pay' ? '处理中…' : '演示模拟支付'}}\r\n    </view>\r\n    <view wx:if=\"{{role === 'MERCHANT' && merchantActions.length > 0}}\" class=\"detail__bar-primary\" bind:tap=\"onAdvance\" data-status=\"{{merchantActions[0].toStatus}}\">\r\n      {{acting && actionLabel === merchantActions[0].toStatus ? '处理中…' : merchantActions[0].label}}\r\n    </view>\r\n  </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "MERCHANT",
+      "acting",
+      "actionLabel",
+      "canCancel",
+      "canPay",
+      "cancel",
+      "label",
+      "merchantActions",
+      "order",
+      "pay",
+      "payResult",
+      "role",
+      "toStatus"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onCancel"
+      },
+      {
+        "type": "tap",
+        "handler": "onPay"
+      },
+      {
+        "type": "tap",
+        "handler": "onAdvance"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/order-detail/index.js",
+    "handlers": [
+      "onAdvance",
+      "onCancel",
+      "onPay"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "detail__bar",
+      "detail__bar-ghost",
+      "detail__bar-primary"
+    ],
+    "selectors": [
+      {
+        "selector": ".detail__bar",
+        "declarations": [
+          "position: fixed",
+          "right: 0",
+          "bottom: 0",
+          "left: 0",
+          "display: flex",
+          "align-items: center",
+          "padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom))",
+          "background: rgba(255, 253, 249, 0.97)",
+          "border-top: 2rpx solid rgba(230, 222, 210, 0.8)",
+          "box-shadow: 0 -12rpx 30rpx rgba(35, 35, 35, 0.06)",
+          "z-index: 30"
+        ]
+      },
+      {
+        "selector": ".detail__bar-ghost",
+        "declarations": [
+          "flex: none",
+          "margin-right: 18rpx",
+          "padding: 24rpx 34rpx",
+          "border-radius: 999rpx",
+          "border: 2rpx solid var(--color-border)",
+          "background: var(--color-surface)",
+          "font-size: 27rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".detail__bar-primary",
+        "declarations": [
+          "flex: 1",
+          "padding: 24rpx 20rpx",
+          "border-radius: 999rpx",
+          "background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-primary) 100%)",
+          "color: #fff",
+          "font-size: 28rpx",
+          "font-weight: 700",
+          "text-align: center",
+          "box-shadow: 0 12rpx 26rpx rgba(232, 106, 23, 0.26)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-accent",
+      "--color-border",
+      "--color-primary",
+      "--color-surface"
+    ],
+    "selectorCount": 3
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "固定定位底栏，复制 WXML 与样式即可。",
+    "whenToUse": [
+      "详情页需要常驻主操作"
+    ],
+    "avoidWhen": [
+      "支付结果态不渲染，条件已排除 payResult"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "各按钮显隐分别由 canCancel、canPay、role 与 merchantActions 控制"
+  ],
+  "knownLimits": [
+    "最多展示一个店主推进按钮，其余在详情卡内"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:e7542f020e98fd791a539d3e83829bdd627851bbd9038d97318b6a9c7ff299cb"
+  }
+}

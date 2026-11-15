@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "category-nav",
+  "version": "1.0.0",
+  "displayName": "分类导航",
+  "category": "menu",
+  "summary": "按分类列表渲染可滚动的分类导航，高亮当前分类并上报切换意图。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/category-nav",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:462cc587ef5f3cb06d2edbb63dd8810a09087b8285e1aac2c59efcecfcbabdb0"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "activeId",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "当前分类 ID；相同 ID 点击不会重复派发"
+      },
+      {
+        "name": "categories",
+        "type": "array",
+        "required": false,
+        "defaultValue": [],
+        "description": "分类数组，元素至少含 id 与 name"
+      }
+    ],
+    "events": [
+      {
+        "name": "select",
+        "payload": [
+          "id"
+        ],
+        "description": "用户选择另一个分类；detail.id 为目标分类"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "category-nav",
+    "wxmlExample": "<category-nav categories=\"{{categories}}\" active-id=\"{{activeCategoryId}}\" bind:select=\"onSelectCategory\" />",
+    "whenToUse": [
+      "菜单页需要按分类筛选菜品",
+      "分类数量可能超过一屏，需要滚动"
+    ],
+    "avoidWhen": [
+      "只有 1–2 个分类且不需要筛选时，可以直接平铺",
+      "需要多级分类树时，当前组件不承载层级"
+    ],
+    "notes": [
+      "菜单页把它放在商品列表上方；样式是独立滚动区域"
+    ]
+  },
+  "pages": [
+    "menu"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [
+      "categories[].id",
+      "categories[].name"
+    ],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "category-nav",
+    "themeVars": [
+      "--color-muted",
+      "--color-primary",
+      "--color-surface",
+      "--color-text"
+    ],
+    "sharedClasses": [],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 7
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "组件不请求目录接口，分类数据由页面传入",
+    "空数组时渲染「暂无分类」",
+    "不负责滚动到对应菜品，滚动联动属于页面层"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:462cc587ef5f3cb06d2edbb63dd8810a09087b8285e1aac2c59efcecfcbabdb0"
+  }
+}

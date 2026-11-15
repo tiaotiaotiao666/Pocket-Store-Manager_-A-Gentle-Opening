@@ -3,9 +3,9 @@
     <store-header
       store-name="{{store.name || '菜单'}}"
       table-name="{{tableName}}"
-      business-hours="{{store.businessHours}}"
+      business-hours="{{store.businessHours || ''}}"
       mode="{{mode}}"
-      address="{{store.address}}"
+      address="{{store.address || ''}}"
       compact="{{true}}"
     />
     <view class="menu__switch">

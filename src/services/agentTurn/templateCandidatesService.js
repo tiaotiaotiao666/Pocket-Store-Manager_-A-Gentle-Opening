@@ -295,8 +295,15 @@ export function describeTemplateCandidatesError(error, options = {}) {
  * @param {{fetchImpl?: Function, getAuthorization?: () => (string|null|Promise<string|null>),
  *   endpoint?: string, timeoutMs?: number, baseUrl?: string}} options
  */
+function resolveFetchImpl() {
+  if (typeof globalThis !== 'undefined' && typeof globalThis.fetch === 'function') {
+    return globalThis.fetch.bind(globalThis);
+  }
+  return null;
+}
+
 export function createTemplateCandidatesTransport(options = {}) {
-  const fetchImpl = options.fetchImpl;
+  const fetchImpl = options.fetchImpl ?? resolveFetchImpl();
 
   return {
     name: 'http',

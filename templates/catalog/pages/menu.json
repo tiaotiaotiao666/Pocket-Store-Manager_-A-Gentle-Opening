@@ -1,0 +1,202 @@
+{
+  "schemaVersion": "page-catalog-entry.v1",
+  "pageId": "menu",
+  "title": "菜单",
+  "audience": "customer",
+  "required": true,
+  "summary": "菜单页：紧凑门店头、履约方式、菜单标题、分类导航、菜品列表、购物车条/面板与菜品详情弹层。",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/pages/menu",
+    "files": [
+      "extensions.generated.js",
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "digest": "sha256:cce45ca394e543a03fd389404d1cd0124be7d1c34dad285cb9db9c77b62112f7"
+  },
+  "components": [
+    {
+      "tag": "store-header",
+      "componentId": "store-header",
+      "mode": "always",
+      "sourceLine": 3,
+      "usage": "<store-header store-name=\"{{store.name || '菜单'}}\" table-name=\"{{tableName}}\" business-hours=\"{{store.businessHours || ''}}\" mode=\"{{mode}}\" address=\"{{store.address || ''}}\" compact=\"{{true}}\" />"
+    },
+    {
+      "tag": "fulfillment-switch",
+      "componentId": "fulfillment-switch",
+      "mode": "always",
+      "sourceLine": 12,
+      "usage": "<fulfillment-switch value=\"{{mode}}\" dine-in-enabled=\"{{store.fulfillment.dineIn}}\" takeaway-enabled=\"{{store.fulfillment.takeaway}}\" table-name=\"{{tableName}}\" table-required=\"{{true}}\" bind:change=\""
+    },
+    {
+      "tag": "state-view",
+      "componentId": "state-view",
+      "mode": "conditional",
+      "sourceLine": 36,
+      "usage": "<state-view wx:if=\"{{loading}}\" state=\"loading\" title=\"正在加载菜单\" />"
+    },
+    {
+      "tag": "error-banner",
+      "componentId": "error-banner",
+      "mode": "always",
+      "sourceLine": 39,
+      "usage": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onRetry\" />"
+    },
+    {
+      "tag": "category-nav",
+      "componentId": "category-nav",
+      "mode": "always",
+      "sourceLine": 52,
+      "usage": "<category-nav categories=\"{{categories}}\" active-id=\"{{activeCategoryId}}\" bind:select=\"onSelectCategory\" />"
+    },
+    {
+      "tag": "product-card",
+      "componentId": "product-card",
+      "mode": "always",
+      "sourceLine": 64,
+      "usage": "<product-card product=\"{{item}}\" quantity=\"{{quantityMap[item.id] || 0}}\" disabled=\"{{item.available === false}}\" bind:add=\"onProductAdd\" bind:remove=\"onProductRemove\" bind:openDetail=\"onOpenDetail\" /"
+    },
+    {
+      "tag": "cart-bar",
+      "componentId": "cart-bar",
+      "mode": "always",
+      "sourceLine": 85,
+      "usage": "<cart-bar total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" submitting=\"{{false}}\" bind:expand=\"onExpandCart\" bind:checkout=\"onCheckout\" />"
+    },
+    {
+      "tag": "cart-panel",
+      "componentId": "cart-panel",
+      "mode": "modal",
+      "sourceLine": 93,
+      "usage": "<cart-panel visible=\"{{cartVisible}}\" items=\"{{cartSummary.items}}\" total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" submitting=\"{{false}}\" bind:close=\"onPanelCl"
+    },
+    {
+      "tag": "product-detail",
+      "componentId": "product-detail",
+      "mode": "modal",
+      "sourceLine": 105,
+      "usage": "<product-detail visible=\"{{detailVisible}}\" product=\"{{detailProduct}}\" quantity=\"{{detailQuantity}}\" bind:close=\"onDetailClose\" bind:add=\"onDetailAdd\" bind:remove=\"onDetailRemove\" />"
+    },
+    {
+      "tag": "loading-block",
+      "componentId": "loading-block",
+      "mode": "declared-only",
+      "sourceLine": 0,
+      "usage": ""
+    }
+  ],
+  "slots": [
+    {
+      "slotId": "menu-hero",
+      "pageId": "menu",
+      "maxItems": 1,
+      "accepts": [
+        "feature-pack",
+        "ui-block"
+      ],
+      "required": false,
+      "dataKey": "menuHero",
+      "anchorsPresent": true,
+      "anchorCounts": [
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "slotId": "menu-aside",
+      "pageId": "menu",
+      "maxItems": 1,
+      "accepts": [
+        "ui-block"
+      ],
+      "required": false,
+      "dataKey": "menuAside",
+      "anchorsPresent": true,
+      "anchorCounts": [
+        1,
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "controller": {
+    "methods": [
+      "addProduct",
+      "collectProducts",
+      "findCategoryName",
+      "loadCatalog",
+      "onCheckout",
+      "onDetailAdd",
+      "onDetailClose",
+      "onDetailRemove",
+      "onExpandCart",
+      "onModeChange",
+      "onOpenDetail",
+      "onPanelAdd",
+      "onPanelClose",
+      "onPanelRemove",
+      "onPickTable",
+      "onProductAdd",
+      "onProductRemove",
+      "onRetry",
+      "onSelectCategory",
+      "refreshCart",
+      "removeProduct"
+    ],
+    "lifecycle": [
+      "onLoad",
+      "onPullDownRefresh",
+      "onShow"
+    ],
+    "dataKeys": [
+      "activeCategoryId",
+      "activeCategoryName",
+      "cartSummary",
+      "cartVisible",
+      "categories",
+      "detailProduct",
+      "detailQuantity",
+      "detailVisible",
+      "error",
+      "errorAction",
+      "loading",
+      "mode",
+      "products",
+      "quantityMap",
+      "requestId",
+      "slotProps",
+      "store",
+      "storeId",
+      "tableName",
+      "tableOptions",
+      "visit"
+    ]
+  },
+  "pageJson": {
+    "navigationBarTitleText": "菜单",
+    "enablePullDownRefresh": true,
+    "usingComponents": {
+      "store-header": "/components/store-header/index",
+      "fulfillment-switch": "/components/fulfillment-switch/index",
+      "category-nav": "/components/category-nav/index",
+      "product-card": "/components/product-card/index",
+      "product-detail": "/components/product-detail/index",
+      "cart-bar": "/components/cart-bar/index",
+      "cart-panel": "/components/cart-panel/index",
+      "state-view": "/components/state-view/index",
+      "error-banner": "/components/error-banner/index",
+      "loading-block": "/components/loading-block/index"
+    }
+  },
+  "notes": [
+    "menu-hero 与 menu-aside 两个插槽在商品列表之前",
+    "菜单页是组件密度最高的页面，适合验证空态、长列表与弹层",
+    "usingComponents 声明了 loading-block，但当前 WXML 未使用；Composer 导出时会过滤。"
+  ]
+}

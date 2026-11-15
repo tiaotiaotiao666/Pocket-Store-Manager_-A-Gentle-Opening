@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "merchant-denied",
+  "displayName": "无门店权限空态",
+  "summary": "校验失败或 memberships 不含本店时的空态，引导去「我的」切换身份。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "merchant-orders",
+  "order": 2,
+  "locator": {
+    "selector": "merchant__denied",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
+    "lineStart": 27,
+    "lineEnd": 35,
+    "digest": "sha256:3b48f50818c726ce7fbca3f8d84a6662dfc5ef9999cb3c198598df3c9b3fa3a1"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 27,
+        "lineEnd": 35,
+        "code": "<view wx:elif=\"{{!allowed}}\" class=\"merchant__denied\">\r\n    <state-view\r\n      state=\"empty\"\r\n      title=\"{{error || '没有门店操作权限'}}\"\r\n      description=\"店主入口以后端 memberships 为准。请在「我的」切换到演示店主或店员。\"\r\n      action-text=\"去切换身份\"\r\n      bind:retry=\"onRetry\"\r\n    />\r\n  </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "state-view",
+      "bindings": [
+        {
+          "attr": "state",
+          "expression": "empty"
+        },
+        {
+          "attr": "title",
+          "expression": "{{error || '没有门店操作权限'}}"
+        },
+        {
+          "attr": "description",
+          "expression": "店主入口以后端 memberships 为准。请在「我的」切换到演示店主或店员。"
+        },
+        {
+          "attr": "action-text",
+          "expression": "去切换身份"
+        }
+      ],
+      "events": [
+        {
+          "name": "retry",
+          "handler": "onRetry"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "allowed",
+      "error"
+    ],
+    "handlers": [
+      {
+        "type": "retry",
+        "handler": "onRetry"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/merchant-orders/index.js",
+    "handlers": [
+      "onRetry"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "merchant__denied"
+    ],
+    "selectors": [
+      {
+        "selector": ".merchant__denied",
+        "declarations": [
+          "margin-top: 40rpx"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 1
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "复用 Base state-view 的 empty 态，不需要新组件。",
+    "whenToUse": [
+      "店主页需要权限兜底"
+    ],
+    "avoidWhen": [
+      "已确认有权限时不渲染"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "action-text 固定「去切换身份」",
+    "文案声明权限以后端 memberships 为准"
+  ],
+  "knownLimits": [
+    "不能在空态里直接切换身份，只能跳转"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:3b48f50818c726ce7fbca3f8d84a6662dfc5ef9999cb3c198598df3c9b3fa3a1"
+  }
+}

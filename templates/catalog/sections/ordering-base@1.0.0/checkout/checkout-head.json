@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "checkout-head",
+  "displayName": "结算页标题区",
+  "summary": "结算页头部：眉标「确认订单」、门店名、用餐方式与桌号摘要。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "checkout",
+  "order": 1,
+  "locator": {
+    "selector": "checkout__head",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
+    "lineStart": 5,
+    "lineEnd": 9,
+    "digest": "sha256:3f3cbd82866264decf4b157c16a797df96ab43b5ae877e6e1aaf4a8113d332e6"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 5,
+        "lineEnd": 9,
+        "code": "<view class=\"checkout__head\">\r\n      <text class=\"checkout__eyebrow\">确认订单</text>\r\n      <text class=\"checkout__title\">{{store.name || '门店'}}</text>\r\n      <text class=\"checkout__sub\">{{modeText}}{{tableName ? ' · ' + tableName + ' 桌' : ''}}</text>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "modeText",
+      "name",
+      "store",
+      "tableName"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/checkout/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "checkout__head",
+      "checkout__eyebrow",
+      "checkout__title",
+      "checkout__sub"
+    ],
+    "selectors": [
+      {
+        "selector": ".checkout__head",
+        "declarations": [
+          "padding: 8rpx 6rpx 0"
+        ]
+      },
+      {
+        "selector": ".checkout__eyebrow",
+        "declarations": [
+          "font-size: 22rpx",
+          "letter-spacing: 4rpx",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".checkout__title",
+        "declarations": [
+          "display: block",
+          "margin-top: 8rpx",
+          "font-size: 44rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".checkout__sub",
+        "declarations": [
+          "display: block",
+          "margin-top: 6rpx",
+          "font-size: 24rpx",
+          "color: var(--color-muted)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-primary"
+    ],
+    "selectorCount": 4
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "纯展示结构，复制 WXML 与 checkout__ 前缀样式即可用于新结算页，无需新组件。",
+    "whenToUse": [
+      "新模板需要自定义结算页头部",
+      "需要把门店名与用餐方式收在同一视觉带"
+    ],
+    "avoidWhen": [
+      "只是调整字号或颜色，改 themeTokens 或页面样式即可"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "用餐方式文案来自 modeText，不在 WXML 内推导入参"
+  ],
+  "knownLimits": [
+    "桌号为空时副标题只显示用餐方式"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:3f3cbd82866264decf4b157c16a797df96ab43b5ae877e6e1aaf4a8113d332e6"
+  }
+}

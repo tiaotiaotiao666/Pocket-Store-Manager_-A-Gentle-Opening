@@ -1,0 +1,162 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "orders-list",
+  "displayName": "订单卡片列表",
+  "summary": "按订单循环渲染 order-card（顾客角色），底部按 hasMore 显示加载更多。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "orders",
+  "order": 4,
+  "locator": {
+    "selector": "orders__list",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxss",
+    "lineStart": 40,
+    "lineEnd": 55,
+    "digest": "sha256:41b89adef233d7ccbe20585f589e01c4c5f236c744e3d91494b033de8eeb1c4c"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 40,
+        "lineEnd": 55,
+        "code": "<view wx:else class=\"orders__list\">\r\n    <view wx:for=\"{{orders}}\" wx:key=\"id\" class=\"orders__item\">\r\n      <order-card\r\n        order=\"{{item}}\"\r\n        role=\"CUSTOMER\"\r\n        actionable=\"{{true}}\"\r\n        bind:open=\"onOpen\"\r\n        bind:pay=\"onPay\"\r\n        bind:cancel=\"onCancel\"\r\n      />\r\n    </view>\r\n\r\n    <view wx:if=\"{{hasMore}}\" class=\"ghost-button orders__more\" bind:tap=\"onLoadMore\">\r\n      {{loadingMore ? '加载中…' : '加载更多'}}\r\n    </view>\r\n  </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "order-card",
+      "bindings": [
+        {
+          "attr": "order",
+          "expression": "{{item}}"
+        },
+        {
+          "attr": "role",
+          "expression": "CUSTOMER"
+        },
+        {
+          "attr": "actionable",
+          "expression": "{{true}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "open",
+          "handler": "onOpen"
+        },
+        {
+          "name": "pay",
+          "handler": "onPay"
+        },
+        {
+          "name": "cancel",
+          "handler": "onCancel"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "hasMore",
+      "loadingMore",
+      "orders"
+    ],
+    "handlers": [
+      {
+        "type": "open",
+        "handler": "onOpen"
+      },
+      {
+        "type": "pay",
+        "handler": "onPay"
+      },
+      {
+        "type": "cancel",
+        "handler": "onCancel"
+      },
+      {
+        "type": "tap",
+        "handler": "onLoadMore"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/orders/index.js",
+    "handlers": [
+      "onCancel",
+      "onLoadMore",
+      "onOpen",
+      "onPay"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "orders__list",
+      "orders__item",
+      "ghost-button",
+      "orders__more"
+    ],
+    "selectors": [
+      {
+        "selector": ".orders__list",
+        "declarations": [
+          "margin-top: 24rpx"
+        ]
+      },
+      {
+        "selector": ".orders__item",
+        "declarations": [
+          "margin-bottom: 20rpx"
+        ]
+      },
+      {
+        "selector": ".orders__more",
+        "declarations": [
+          "margin-top: 12rpx"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 3
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "列表容器加 Base order-card，复制 WXML 即可；空态与错误态在容器外。",
+    "whenToUse": [
+      "顾客订单列表",
+      "需要复用订单卡片的操作按钮"
+    ],
+    "avoidWhen": [
+      "店主侧订单台，用 merchant__orders 的 MERCHANT 角色"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "order-card 角色固定 CUSTOMER",
+    "bind:open/pay/cancel 必须接到页面控制器同名方法"
+  ],
+  "knownLimits": [
+    "加载更多只有 hasMore 一种状态，没有骨架屏"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:41b89adef233d7ccbe20585f589e01c4c5f236c744e3d91494b033de8eeb1c4c"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-demo-foot",
+  "displayName": "演示环境说明",
+  "summary": "页面底部的演示环境声明，仅在 demoMode 为真时展示。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 12,
+  "locator": {
+    "selector": "fp-home__foot",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 107,
+    "lineEnd": 109,
+    "digest": "sha256:5c68ae6bc0d5f4f44934eac503760e17249af9b86d455e5227f6048737b558cb"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 107,
+        "lineEnd": 109,
+        "code": "<view class=\"fp-home__foot\">\r\n        <text wx:if=\"{{demoMode}}\">演示环境 · 演示登录与模拟支付，不产生真实交易</text>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "demoMode"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-home__foot",
+    "classTokens": [
+      "fp-home__foot"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-home__foot",
+        "declarations": [
+          "margin-top: 40rpx",
+          "text-align: center",
+          "font-size: 20rpx",
+          "color: rgba(138, 129, 120, 0.7)"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 1
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "单行声明文案，无交互，直接复制 WXML 最经济。",
+    "whenToUse": [
+      "演示环境必须声明不产生真实交易"
+    ],
+    "avoidWhen": [
+      "正式环境不需要该声明"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "只在 demoMode 为真时渲染",
+    "文案必须明确说明不产生真实交易"
+  ],
+  "knownLimits": [
+    "文案写死在 WXML"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:5c68ae6bc0d5f4f44934eac503760e17249af9b86d455e5227f6048737b558cb"
+  }
+}

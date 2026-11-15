@@ -1,0 +1,223 @@
+{
+  "schemaVersion": "section-page-index.v1",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss"
+  },
+  "counts": {
+    "sections": 11
+  },
+  "sections": [
+    {
+      "id": "menu-loading",
+      "displayName": "菜单加载态",
+      "order": 1,
+      "locator": {
+        "selector": null,
+        "componentTag": "state-view",
+        "slotId": null,
+        "occurrence": 1,
+        "occurrences": 1
+      },
+      "lineStart": 37,
+      "components": [
+        "state-view"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "menu-loading.json"
+    },
+    {
+      "id": "menu-top",
+      "displayName": "菜单页紧凑头部",
+      "order": 2,
+      "locator": {
+        "selector": "fp-menu__top",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 3,
+      "components": [
+        "store-header",
+        "fulfillment-switch"
+      ],
+      "slots": [],
+      "reuseLevel": "promote-to-ui-block",
+      "card": "menu-top.json"
+    },
+    {
+      "id": "menu-error-state",
+      "displayName": "菜单错误态",
+      "order": 3,
+      "locator": {
+        "selector": "fp-menu__error",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 39,
+      "components": [
+        "error-banner"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "menu-error-state.json"
+    },
+    {
+      "id": "menu-headline",
+      "displayName": "菜单标题区",
+      "order": 4,
+      "locator": {
+        "selector": "fp-menu__headline",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 45,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "menu-headline.json"
+    },
+    {
+      "id": "menu-hero-slot",
+      "displayName": "菜单页主视觉插槽位",
+      "order": 5,
+      "locator": {
+        "selector": null,
+        "componentTag": null,
+        "slotId": "menu-hero",
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 51,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "slot-only",
+      "card": "menu-hero-slot.json"
+    },
+    {
+      "id": "menu-aside-slot",
+      "displayName": "菜单页侧栏插槽位",
+      "order": 6,
+      "locator": {
+        "selector": null,
+        "componentTag": null,
+        "slotId": "menu-aside",
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 56,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "slot-only",
+      "card": "menu-aside-slot.json"
+    },
+    {
+      "id": "menu-category-nav",
+      "displayName": "分类导航调用位",
+      "order": 7,
+      "locator": {
+        "selector": null,
+        "componentTag": "category-nav",
+        "slotId": null,
+        "occurrence": 1,
+        "occurrences": 1
+      },
+      "lineStart": 61,
+      "components": [
+        "category-nav"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "menu-category-nav.json"
+    },
+    {
+      "id": "menu-products",
+      "displayName": "菜品滚动列表",
+      "order": 8,
+      "locator": {
+        "selector": "fp-menu__list",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 63,
+      "components": [
+        "product-card",
+        "state-view"
+      ],
+      "slots": [],
+      "reuseLevel": "promote-to-ui-block",
+      "card": "menu-products.json"
+    },
+    {
+      "id": "menu-cart-bar",
+      "displayName": "购物车条调用位",
+      "order": 9,
+      "locator": {
+        "selector": null,
+        "componentTag": "cart-bar",
+        "slotId": null,
+        "occurrence": 1,
+        "occurrences": 1
+      },
+      "lineStart": 86,
+      "components": [
+        "cart-bar"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "menu-cart-bar.json"
+    },
+    {
+      "id": "menu-cart-panel",
+      "displayName": "购物车弹层调用位",
+      "order": 10,
+      "locator": {
+        "selector": null,
+        "componentTag": "cart-panel",
+        "slotId": null,
+        "occurrence": 1,
+        "occurrences": 1
+      },
+      "lineStart": 94,
+      "components": [
+        "cart-panel"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "menu-cart-panel.json"
+    },
+    {
+      "id": "menu-product-detail",
+      "displayName": "菜品详情弹层调用位",
+      "order": 11,
+      "locator": {
+        "selector": null,
+        "componentTag": "product-detail",
+        "slotId": null,
+        "occurrence": 1,
+        "occurrences": 1
+      },
+      "lineStart": 106,
+      "components": [
+        "product-detail"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "menu-product-detail.json"
+    }
+  ]
+}

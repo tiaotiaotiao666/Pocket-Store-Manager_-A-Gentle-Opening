@@ -1,0 +1,127 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "fulfillment-switch",
+  "version": "1.0.0",
+  "displayName": "履约方式切换",
+  "category": "shell",
+  "summary": "在堂食与到店自取之间切换，并在堂食缺桌号时给出扫描桌码提示。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/fulfillment-switch",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:65df121c8a263f2fa685f5a3c156934f4d1bd730391c9581258eb2ec1e803369"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "dineInEnabled",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": true,
+        "description": "门店是否支持堂食"
+      },
+      {
+        "name": "tableName",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "当前桌号，用于堂食副标题"
+      },
+      {
+        "name": "tableRequired",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": false,
+        "description": "堂食是否必须桌号；只控制提示，不发起校验"
+      },
+      {
+        "name": "takeawayEnabled",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": true,
+        "description": "门店是否支持到店自取"
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "required": false,
+        "defaultValue": "TAKEAWAY",
+        "description": "当前履约方式：DINE_IN / TAKEAWAY，缺省 TAKEAWAY"
+      }
+    ],
+    "events": [
+      {
+        "name": "change",
+        "payload": [
+          "value"
+        ],
+        "description": "用户切换到另一种履约方式；detail.value 为新方式"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "fulfillment-switch",
+    "wxmlExample": "<fulfillment-switch value=\"{{mode}}\" dine-in-enabled=\"{{store.fulfillment.dineIn}}\" takeaway-enabled=\"{{store.fulfillment.takeaway}}\" table-name=\"{{tableName}}\" table-required=\"{{true}}\" bind:change=\"onModeChange\" />",
+    "whenToUse": [
+      "首页或菜单页需要让顾客选择用餐方式",
+      "需要根据门店配置禁用某一种履约方式"
+    ],
+    "avoidWhen": [
+      "只是展示当前履约方式而不允许切换时，用 store-header 的 mode 文案即可",
+      "需要地址、配送等 Base 之外的能力时，先确认后端契约"
+    ],
+    "notes": [
+      "页面应在 change 后更新 mode，并在切换到 DINE_IN 且无桌号时展示桌号选择区"
+    ]
+  },
+  "pages": [
+    "home",
+    "menu"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "wxss",
+    "themeVars": [
+      "--color-muted",
+      "--color-surface",
+      "--color-text"
+    ],
+    "sharedClasses": [],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 8
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "禁用选项不会派发 change",
+    "与当前 value 相同的选项不会重复派发",
+    "桌号校验与路由都属于页面层，组件不判断合法性"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:65df121c8a263f2fa685f5a3c156934f4d1bd730391c9581258eb2ec1e803369"
+  }
+}

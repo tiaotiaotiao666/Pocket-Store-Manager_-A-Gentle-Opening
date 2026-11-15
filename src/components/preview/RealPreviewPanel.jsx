@@ -90,6 +90,7 @@ function errorTitle(code) {
 export function RealPreviewPanel({
   projectPath = null,
   screenshot = null,
+  screenshots = [],
   busy = false,
   error = null,
   onOpen,
@@ -99,12 +100,13 @@ export function RealPreviewPanel({
   const bridge = detectPreviewBridge();
   const trimmedPath = typeof projectPath === 'string' ? projectPath.trim() : '';
   const hasPath = trimmedPath.length > 0;
-  const hasScreenshot = Boolean(
-    screenshot
-    && typeof screenshot === 'object'
-    && typeof screenshot.dataUrl === 'string'
-    && screenshot.dataUrl.length > 0,
-  );
+
+  // 兼容旧的单张 screenshot 入参；新调用方传 screenshots 数组。
+  const rawShots = Array.isArray(screenshots) ? screenshots : [];
+  const shots = (rawShots.length > 0 ? rawShots : [screenshot])
+    .filter((shot) => shot && typeof shot === 'object'
+      && typeof shot.dataUrl === 'string' && shot.dataUrl.length > 0);
+  const hasScreenshot = shots.length > 0;
 
   const openDisabled = busy || !bridge.canOpenProject || typeof onOpen !== 'function';
   const pickDisabled = busy || !bridge.canPickScreenshot || typeof onPickScreenshot !== 'function';
@@ -190,14 +192,14 @@ export function RealPreviewPanel({
           title={pickHint}
         >
           <ImagePlus size={15} aria-hidden="true" />
-          选择截图
+          {hasScreenshot ? '再选一张' : '选择截图'}
         </button>
         <button
           type="button"
           className="real-preview-btn is-ghost"
           onClick={handleClear}
           disabled={clearDisabled}
-          title={hasScreenshot ? '清除当前截图' : '还没有可清除的截图'}
+          title={hasScreenshot ? `清除全部 ${shots.length} 张截图` : '还没有可清除的截图'}
         >
           <Trash2 size={15} aria-hidden="true" />
           清除
@@ -211,25 +213,31 @@ export function RealPreviewPanel({
         </code>
       </p>
 
-      <div className="real-preview-shot">
+      <div className={hasScreenshot ? 'real-preview-shots' : 'real-preview-shot'}>
         {hasScreenshot ? (
-          <figure className="real-preview-figure">
-            <img className="real-preview-image" src={screenshot.dataUrl} alt={`真实渲染截图：${screenshot.name || '未命名'}`} />
-            <figcaption className="real-preview-caption">
-              <span className="real-preview-name" title={screenshot.name || ''}>
-                {screenshot.name || '未命名截图'}
-              </span>
-              {typeof screenshot.bytes === 'number' ? (
-                <span className="real-preview-meta">{formatBytes(screenshot.bytes)}</span>
-              ) : null}
-              <span className="real-preview-local">仅本地</span>
-            </figcaption>
-          </figure>
+          shots.map((shot, index) => (
+            <figure className="real-preview-figure" key={`${shot.name || 'shot'}-${index}`}>
+              <img
+                className="real-preview-image"
+                src={shot.dataUrl}
+                alt={`真实渲染截图 ${index + 1}：${shot.name || '未命名'}`}
+              />
+              <figcaption className="real-preview-caption">
+                <span className="real-preview-name" title={shot.name || ''}>
+                  {shot.name || '未命名截图'}
+                </span>
+                {typeof shot.bytes === 'number' ? (
+                  <span className="real-preview-meta">{formatBytes(shot.bytes)}</span>
+                ) : null}
+                <span className="real-preview-local">仅本地</span>
+              </figcaption>
+            </figure>
+          ))
         ) : (
           <div className="real-preview-placeholder">
             <ImagePlus size={20} aria-hidden="true" />
             <b>还没有回传截图</b>
-            <span>按右侧步骤在开发者工具里编译截图后，点「选择截图」回填。</span>
+            <span>按右侧步骤在开发者工具里编译截图后，点「选择截图」回填（可回填多张）。</span>
           </div>
         )}
       </div>

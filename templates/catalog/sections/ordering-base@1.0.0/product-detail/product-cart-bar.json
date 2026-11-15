@@ -1,0 +1,128 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "product-cart-bar",
+  "displayName": "商品页购物车条",
+  "summary": "复用 Base cart-bar：合计件数、金额、展开与去结算。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "product-detail",
+  "order": 4,
+  "locator": {
+    "selector": null,
+    "componentTag": "cart-bar",
+    "slotId": null,
+    "occurrence": 1,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxss",
+    "lineStart": 34,
+    "lineEnd": 41,
+    "digest": "sha256:e9e8d2ec4447b3fd5dd1903ddc42fcf3aebe4e8b4972e00cb5ba6d68201f6915"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "cart-bar",
+    "snippets": [
+      {
+        "lineStart": 34,
+        "lineEnd": 41,
+        "code": "<cart-bar\n    wx:if=\"{{product}}\"\n    total-cents=\"{{cartSummary.totalCents}}\"\n    total-quantity=\"{{cartSummary.totalQuantity}}\"\n    submitting=\"{{false}}\"\n    bind:expand=\"onExpandCart\"\n    bind:checkout=\"onCheckout\"\n  />"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "cart-bar",
+      "bindings": [
+        {
+          "attr": "wx:if",
+          "expression": "{{product}}"
+        },
+        {
+          "attr": "total-cents",
+          "expression": "{{cartSummary.totalCents}}"
+        },
+        {
+          "attr": "total-quantity",
+          "expression": "{{cartSummary.totalQuantity}}"
+        },
+        {
+          "attr": "submitting",
+          "expression": "{{false}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "expand",
+          "handler": "onExpandCart"
+        },
+        {
+          "name": "checkout",
+          "handler": "onCheckout"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "cartSummary",
+      "product",
+      "totalCents",
+      "totalQuantity"
+    ],
+    "handlers": [
+      {
+        "type": "expand",
+        "handler": "onExpandCart"
+      },
+      {
+        "type": "checkout",
+        "handler": "onCheckout"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/product-detail/index.js",
+    "handlers": [
+      "onCheckout",
+      "onExpandCart"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [],
+    "selectors": [],
+    "themeVars": [],
+    "selectorCount": 0
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "Base 内置组件，直接调用并传 cartSummary 即可。",
+    "whenToUse": [
+      "商品详情需要常驻购物车入口"
+    ],
+    "avoidWhen": [
+      "购物车弹层，用 product-cart-panel"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "submitting 固定为 false，商品页不直接提交订单",
+    "expand 与 checkout 必须接到 onExpandCart 与 onCheckout"
+  ],
+  "knownLimits": [
+    "合计来自页面 cartSummary，不在此组件内计算"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:e9e8d2ec4447b3fd5dd1903ddc42fcf3aebe4e8b4972e00cb5ba6d68201f6915"
+  }
+}

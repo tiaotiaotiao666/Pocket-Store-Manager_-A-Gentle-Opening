@@ -104,7 +104,7 @@ function collectRequiredFiles() {
     }
   });
 
-  ['templates/base', 'templates/components', 'templates/features', 'templates/recipes', 'templates/registry'].forEach((dir) => {
+  ['templates/base', 'templates/catalog', 'templates/components', 'templates/features', 'templates/frontend-packs', 'templates/recipes', 'templates/registry'].forEach((dir) => {
     walk(path.join(REPO_ROOT, dir), REPO_ROOT, []).forEach((file) => required.add(file));
   });
 

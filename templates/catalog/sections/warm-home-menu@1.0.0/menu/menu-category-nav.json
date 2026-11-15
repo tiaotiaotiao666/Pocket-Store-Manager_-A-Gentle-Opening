@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-category-nav",
+  "displayName": "分类导航调用位",
+  "summary": "菜单页对 Base category-nav 的直接调用，绑定分类列表与当前分类。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 7,
+  "locator": {
+    "selector": null,
+    "componentTag": "category-nav",
+    "slotId": null,
+    "occurrence": 1,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 61,
+    "lineEnd": 61,
+    "digest": "sha256:d4cc6f53885a527dba51dd8ca720dd9e7d48bb211f1bc4b06b3d3a6806aad43e"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "category-nav",
+    "snippets": [
+      {
+        "lineStart": 61,
+        "lineEnd": 61,
+        "code": "<category-nav categories=\"{{categories}}\" active-id=\"{{activeCategoryId}}\" bind:select=\"onSelectCategory\" />"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "category-nav",
+      "bindings": [
+        {
+          "attr": "categories",
+          "expression": "{{categories}}"
+        },
+        {
+          "attr": "active-id",
+          "expression": "{{activeCategoryId}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "select",
+          "handler": "onSelectCategory"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "activeCategoryId",
+      "categories"
+    ],
+    "handlers": [
+      {
+        "type": "select",
+        "handler": "onSelectCategory"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [
+      "onSelectCategory"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [],
+    "selectors": [],
+    "themeVars": [],
+    "selectorCount": 0
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "Base 内置组件已冻结，替换视觉应使用 FrontendPack 样式覆盖或提升新 UI Block，而不是复制实现。",
+    "whenToUse": [
+      "菜单需要按分类筛选"
+    ],
+    "avoidWhen": [
+      "分类只有一两项时可以直接平铺"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "事件名固定 select，detail.id 为目标分类",
+    "分类数据由页面传入"
+  ],
+  "knownLimits": [
+    "不负责滚动联动，滚动到分类首项由页面处理"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:d4cc6f53885a527dba51dd8ca720dd9e7d48bb211f1bc4b06b3d3a6806aad43e"
+  }
+}

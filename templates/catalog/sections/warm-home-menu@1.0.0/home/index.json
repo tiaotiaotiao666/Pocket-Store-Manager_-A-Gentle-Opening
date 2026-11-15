@@ -1,0 +1,236 @@
+{
+  "schemaVersion": "section-page-index.v1",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss"
+  },
+  "counts": {
+    "sections": 12
+  },
+  "sections": [
+    {
+      "id": "home-loading",
+      "displayName": "首页加载态",
+      "order": 1,
+      "locator": {
+        "selector": null,
+        "componentTag": "state-view",
+        "slotId": null,
+        "occurrence": 1,
+        "occurrences": 1
+      },
+      "lineStart": 29,
+      "components": [
+        "state-view"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "home-loading.json"
+    },
+    {
+      "id": "home-hero",
+      "displayName": "首页首屏主视觉区",
+      "order": 2,
+      "locator": {
+        "selector": "fp-home__hero",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 3,
+      "components": [
+        "store-header"
+      ],
+      "slots": [
+        "home-hero"
+      ],
+      "reuseLevel": "slot-only",
+      "card": "home-hero.json"
+    },
+    {
+      "id": "home-brand-head",
+      "displayName": "首页品牌标题与身份入口",
+      "order": 3,
+      "locator": {
+        "selector": "fp-home__head",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 17,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "promote-to-ui-block",
+      "card": "home-brand-head.json"
+    },
+    {
+      "id": "home-error-state",
+      "displayName": "首页错误态",
+      "order": 4,
+      "locator": {
+        "selector": "fp-home__error",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 31,
+      "components": [
+        "error-banner"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "home-error-state.json"
+    },
+    {
+      "id": "home-hints",
+      "displayName": "首页提示条",
+      "order": 5,
+      "locator": {
+        "selector": "fp-home__hint",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 2
+      },
+      "lineStart": 37,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "home-hints.json"
+    },
+    {
+      "id": "home-marketing-slot",
+      "displayName": "首页营销插槽位",
+      "order": 6,
+      "locator": {
+        "selector": "fp-home__marketing",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 40,
+      "components": [],
+      "slots": [
+        "home-marketing"
+      ],
+      "reuseLevel": "slot-only",
+      "card": "home-marketing-slot.json"
+    },
+    {
+      "id": "home-mode-section",
+      "displayName": "用餐方式选择区",
+      "order": 7,
+      "locator": {
+        "selector": "fp-home__section",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 47,
+      "components": [
+        "fulfillment-switch"
+      ],
+      "slots": [],
+      "reuseLevel": "promote-to-ui-block",
+      "card": "home-mode-section.json"
+    },
+    {
+      "id": "home-start-cta",
+      "displayName": "开始点餐主行动区",
+      "order": 8,
+      "locator": {
+        "selector": "fp-home__cta",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 75,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "promote-to-ui-block",
+      "card": "home-start-cta.json"
+    },
+    {
+      "id": "home-pending-notice",
+      "displayName": "待付款提醒",
+      "order": 9,
+      "locator": {
+        "selector": "fp-home__notice",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 83,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "promote-to-ui-block",
+      "card": "home-pending-notice.json"
+    },
+    {
+      "id": "home-active-orders",
+      "displayName": "进行中订单区",
+      "order": 10,
+      "locator": {
+        "selector": "fp-home__orders",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 89,
+      "components": [
+        "order-card"
+      ],
+      "slots": [],
+      "reuseLevel": "promote-to-ui-block",
+      "card": "home-active-orders.json"
+    },
+    {
+      "id": "home-merchant-entry",
+      "displayName": "店主订单台入口",
+      "order": 11,
+      "locator": {
+        "selector": "fp-home__merchant",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 99,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "promote-to-ui-block",
+      "card": "home-merchant-entry.json"
+    },
+    {
+      "id": "home-demo-foot",
+      "displayName": "演示环境说明",
+      "order": 12,
+      "locator": {
+        "selector": "fp-home__foot",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 107,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "home-demo-foot.json"
+    }
+  ]
+}

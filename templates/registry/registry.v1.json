@@ -15,21 +15,21 @@
       "version": "1.0.0",
       "kind": "base",
       "path": "templates/base/ordering-base/1.0.0",
-      "integrity": "sha256:5cc0d0341f7b0ce2373404b7c72bd5c0af642da0663a730df1276a6e3f29a906"
+      "integrity": "sha256:b906e9bc629cb59bf4465eb9e730b71dc14a9bcb0f153ecc3bb4d784edd2063f"
     },
     {
       "id": "store-header",
       "version": "1.0.0",
       "kind": "ui-block",
       "path": "templates/components/store-header/1.0.0",
-      "integrity": "sha256:1f4c55dd97cfebb8fec3eba39528e2d3de0254354a9f0d32f4880e131fad759f"
+      "integrity": "sha256:812ee8da9860209672c443bedc40a6e82e5d6392a14ea90681d23c465a1e0772"
     },
     {
       "id": "product-card",
       "version": "1.0.0",
       "kind": "ui-block",
       "path": "templates/components/product-card/1.0.0",
-      "integrity": "sha256:2d94b502bb2537eafc9fbfcb494e1405d9a09120b1384a187a27539329f09226"
+      "integrity": "sha256:2079f83990222c281590635a17b6879397c2cd9bdaac75df82a458c50fd1fc4b"
     },
     {
       "id": "cart-bar",
@@ -43,7 +43,7 @@
       "version": "1.0.0",
       "kind": "feature-pack",
       "path": "templates/features/poster-carousel/1.0.0",
-      "integrity": "sha256:349d2e01f4c518db1de60e292fcf0bbb4b9220019256c06dff894d03db95db0e"
+      "integrity": "sha256:6aa3c9f1d847add98eb405e52162691ea4f290a5be57fbdf8c90e131baa5f112"
     },
     {
       "id": "warm-home-menu",

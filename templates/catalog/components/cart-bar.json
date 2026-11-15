@@ -1,0 +1,169 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "cart-bar",
+  "version": "1.0.0",
+  "displayName": "购物车条",
+  "category": "cart",
+  "summary": "固定在页面底部的购物车摘要，展示合计金额与数量，并提供展开与去结算两个意图。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/cart-bar",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": {
+      "id": "cart-bar",
+      "version": "1.0.0",
+      "kind": "ui-block",
+      "path": "templates/components/cart-bar/1.0.0"
+    },
+    "registryMirror": {
+      "assetId": "cart-bar",
+      "assetVersion": "1.0.0",
+      "assetPath": "templates/components/cart-bar/1.0.0",
+      "sameImplementation": true,
+      "comparisons": [
+        {
+          "file": "index.js",
+          "base": true,
+          "registry": true,
+          "same": true
+        },
+        {
+          "file": "index.json",
+          "base": true,
+          "registry": true,
+          "same": true
+        },
+        {
+          "file": "index.wxml",
+          "base": true,
+          "registry": true,
+          "same": true
+        },
+        {
+          "file": "index.wxss",
+          "base": true,
+          "registry": true,
+          "same": true
+        }
+      ]
+    },
+    "digest": "sha256:0b529a6761bc97f1dba8493e7458ab4fcd86822ed35f332095b62efdd72ac2fc"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "submitting",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": false,
+        "description": "提交中状态"
+      },
+      {
+        "name": "totalCents",
+        "type": "number",
+        "required": true,
+        "defaultValue": 0,
+        "description": "合计金额，整数分"
+      },
+      {
+        "name": "totalQuantity",
+        "type": "number",
+        "required": true,
+        "defaultValue": 0,
+        "description": "合计数量"
+      }
+    ],
+    "events": [
+      {
+        "name": "checkout",
+        "payload": [
+          "totalCents",
+          "totalQuantity"
+        ],
+        "description": "去结算"
+      },
+      {
+        "name": "expand",
+        "payload": [],
+        "description": "展开购物车"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "cart-bar",
+    "wxmlExample": "<cart-bar total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" submitting=\"{{false}}\" bind:expand=\"onExpandCart\" bind:checkout=\"onCheckout\" />",
+    "whenToUse": [
+      "菜单页需要常驻的购物车入口",
+      "需要在不离开菜单的情况下看到合计金额"
+    ],
+    "avoidWhen": [
+      "需要编辑购物车行项目时，配合 cart-panel 使用",
+      "结算页不需要底部购物车条"
+    ],
+    "notes": [
+      "templates/components/cart-bar/1.0.0 是它的登记副本"
+    ]
+  },
+  "pages": [
+    "menu"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [
+      "totalCents（integer）",
+      "totalQuantity（integer）"
+    ],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "cart-bar",
+    "themeVars": [
+      "--color-accent",
+      "--color-primary",
+      "--color-surface",
+      "--color-text"
+    ],
+    "sharedClasses": [],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 11
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "金额展示使用整数分格式化，不引入第二份金额事实",
+    "空车或提交中不派发 checkout",
+    "固定在底部，页面必须预留 safe-area padding"
+  ],
+  "knownLimits": [
+    "固定在页面底部，需要页面预留 safe-area padding",
+    "金额只展示 totalCents"
+  ],
+  "preview": {
+    "dir": "templates/components/cart-bar/1.0.0/preview",
+    "kinds": [
+      "normal",
+      "empty",
+      "error",
+      "long"
+    ]
+  },
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:0b529a6761bc97f1dba8493e7458ab4fcd86822ed35f332095b62efdd72ac2fc"
+  }
+}

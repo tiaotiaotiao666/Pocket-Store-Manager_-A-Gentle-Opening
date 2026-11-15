@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "status-timeline",
+  "version": "1.0.0",
+  "displayName": "状态时间线",
+  "category": "order",
+  "summary": "订单状态进度与操作日志时间线，展示每一步的标题、时间、操作者与原因。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/status-timeline",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:0db44ec9725f1621cd4f284275e04cd9893bdef4d2f7782020fe02c3aca375f2"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "status",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "当前订单状态，供页面传入的进度数据对齐"
+      },
+      {
+        "name": "steps",
+        "type": "array",
+        "required": false,
+        "defaultValue": [],
+        "description": "进度节点数组；元素含 status、state、text"
+      },
+      {
+        "name": "timeline",
+        "type": "array",
+        "required": false,
+        "defaultValue": [],
+        "description": "日志数组；元素含 id、title、timeText、actorText、tone、reason"
+      }
+    ],
+    "events": []
+  },
+  "usage": {
+    "tag": "status-timeline",
+    "wxmlExample": "<status-timeline steps=\"{{steps}}\" timeline=\"{{timeline}}\" status=\"{{order.status}}\" />",
+    "whenToUse": [
+      "订单详情页需要展示从下单到完成的过程",
+      "需要把取消原因或操作者展示给用户"
+    ],
+    "avoidWhen": [
+      "只需要当前状态时，用 order-status",
+      "时间线数据尚未由后端提供时，不要伪造日志"
+    ],
+    "notes": [
+      "时间线数据由订单详情接口或领域层投影提供"
+    ]
+  },
+  "pages": [
+    "order-detail"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [
+      "steps[].status",
+      "steps[].state",
+      "steps[].text",
+      "timeline[].id",
+      "timeline[].title",
+      "timeline[].timeText",
+      "timeline[].actorText",
+      "timeline[].tone",
+      "timeline[].reason"
+    ],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "wxss",
+    "themeVars": [
+      "--color-border",
+      "--color-muted",
+      "--color-primary",
+      "--color-success",
+      "--color-text"
+    ],
+    "sharedClasses": [],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 35
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "组件不生成日志，只渲染页面传入的 timeline",
+    "空时间线显示「暂无状态记录」"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:0db44ec9725f1621cd4f284275e04cd9893bdef4d2f7782020fe02c3aca375f2"
+  }
+}

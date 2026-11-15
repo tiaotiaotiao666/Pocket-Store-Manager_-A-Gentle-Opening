@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "page-catalog-entry.v1",
+  "pageId": "checkout",
+  "title": "确认订单",
+  "audience": "customer",
+  "required": true,
+  "summary": "确认订单：展示履约方式、桌号、菜品与金额，提交订单并进入演示支付。",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/pages/checkout",
+    "files": [
+      "extensions.generated.js",
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "digest": "sha256:a17a50a6a3d78912b5a3d5bec10c4dc9620d1f2d373646bc9cee0e49f9b4b91b"
+  },
+  "components": [
+    {
+      "tag": "state-view",
+      "componentId": "state-view",
+      "mode": "conditional",
+      "sourceLine": 2,
+      "usage": "<state-view wx:if=\"{{loading}}\" state=\"loading\" title=\"正在确认订单\" />"
+    },
+    {
+      "tag": "error-banner",
+      "componentId": "error-banner",
+      "mode": "always",
+      "sourceLine": 87,
+      "usage": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onCloseError\" />"
+    }
+  ],
+  "slots": [],
+  "controller": {
+    "methods": [
+      "ensureLogin",
+      "goMenu",
+      "handleSubmitError",
+      "loadStore",
+      "onCloseError",
+      "onNoteInput",
+      "onPickTable",
+      "onRetry",
+      "onSubmit",
+      "refreshCart",
+      "submitOrder"
+    ],
+    "lifecycle": [
+      "onLoad",
+      "onShow"
+    ],
+    "dataKeys": [
+      "emptyCart",
+      "error",
+      "errorAction",
+      "identityLabel",
+      "items",
+      "loading",
+      "loggedIn",
+      "mode",
+      "modeText",
+      "note",
+      "noteLength",
+      "payHint",
+      "requestId",
+      "store",
+      "submitting",
+      "tableName",
+      "tableOptions",
+      "totalCents",
+      "totalQuantity",
+      "totalText",
+      "visit"
+    ]
+  },
+  "pageJson": {
+    "navigationBarTitleText": "确认订单",
+    "enablePullDownRefresh": false,
+    "usingComponents": {
+      "state-view": "/components/state-view/index",
+      "error-banner": "/components/error-banner/index"
+    }
+  },
+  "notes": [
+    "只使用基础状态组件，无列表交互组件"
+  ]
+}

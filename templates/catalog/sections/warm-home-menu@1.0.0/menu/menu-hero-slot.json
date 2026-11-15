@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-hero-slot",
+  "displayName": "菜单页主视觉插槽位",
+  "summary": "menu-hero 插槽容器，当前为空，接受 feature-pack 或 ui-block。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 5,
+  "locator": {
+    "selector": null,
+    "componentTag": null,
+    "slotId": "menu-hero",
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 51,
+    "lineEnd": 54,
+    "digest": "sha256:4dc1e38dcb75add66326986b36327b69555e90e3381e83e5d4019edfdca7520b"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "#slot",
+    "snippets": [
+      {
+        "lineStart": 51,
+        "lineEnd": 54,
+        "code": "<!-- @slot-fallback:menu-hero -->\r\n      <!-- @slot-fallback:menu-hero:end -->\r\n      <!-- @slot:menu-hero:end -->"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [],
+    "selectors": [],
+    "themeVars": [],
+    "selectorCount": 0
+  },
+  "reuse": {
+    "level": "slot-only",
+    "reason": "纯插槽位，复用只能通过 Plan 的 features[].slots[]，不能复制 WXML。",
+    "whenToUse": [
+      "需要在菜单标题下方插入主视觉或营销区块"
+    ],
+    "avoidWhen": [
+      "需要固定内容的头部时，用 menu-top"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "必须保留四段锚点",
+    "插槽容量为 1"
+  ],
+  "knownLimits": [
+    "slots.json 人类可读镜像尚未列出该插槽，以 Base Manifest 为准"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:4dc1e38dcb75add66326986b36327b69555e90e3381e83e5d4019edfdca7520b"
+  }
+}

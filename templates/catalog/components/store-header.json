@@ -1,0 +1,175 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "store-header",
+  "version": "1.0.0",
+  "displayName": "门店头部",
+  "category": "shell",
+  "summary": "展示门店名、桌号、营业时间、地址与当前履约方式的首屏身份区，使用固定深色渐变底，不依赖实景图片。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/store-header",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": {
+      "id": "store-header",
+      "version": "1.0.0",
+      "kind": "ui-block",
+      "path": "templates/components/store-header/1.0.0"
+    },
+    "registryMirror": {
+      "assetId": "store-header",
+      "assetVersion": "1.0.0",
+      "assetPath": "templates/components/store-header/1.0.0",
+      "sameImplementation": true,
+      "comparisons": [
+        {
+          "file": "index.js",
+          "base": true,
+          "registry": true,
+          "same": true
+        },
+        {
+          "file": "index.json",
+          "base": true,
+          "registry": true,
+          "same": true
+        },
+        {
+          "file": "index.wxml",
+          "base": true,
+          "registry": true,
+          "same": true
+        },
+        {
+          "file": "index.wxss",
+          "base": true,
+          "registry": true,
+          "same": true
+        }
+      ]
+    },
+    "digest": "sha256:f327945bdd5c93e6aea2f0444582a878aa3bce11a8afe1b9c2eb3753eab807b0"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "address",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "门店地址"
+      },
+      {
+        "name": "businessHours",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "营业时间文案"
+      },
+      {
+        "name": "compact",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": false,
+        "description": "紧凑模式"
+      },
+      {
+        "name": "mode",
+        "type": "string",
+        "required": false,
+        "defaultValue": "TAKEAWAY",
+        "description": "DINE_IN / TAKEAWAY"
+      },
+      {
+        "name": "storeName",
+        "type": "string",
+        "required": true,
+        "defaultValue": "",
+        "description": "门店名称"
+      },
+      {
+        "name": "tableName",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "桌号名称"
+      }
+    ],
+    "events": []
+  },
+  "usage": {
+    "tag": "store-header",
+    "wxmlExample": "<store-header store-name=\"{{store.name}}\" table-name=\"{{tableName}}\" business-hours=\"{{store.businessHours}}\" mode=\"{{mode}}\" address=\"{{store.address}}\" />",
+    "whenToUse": [
+      "首页或菜单页需要一个稳定的门店身份区",
+      "没有门店实景图，但需要首屏视觉锚点",
+      "作为 home-hero 插槽的 fallback，海报轮播被关闭时回落"
+    ],
+    "avoidWhen": [
+      "需要大幅营销海报或图片轮播时，改用 poster-carousel",
+      "需要承载按钮、列表或交互动作时，不要把交互塞进头部"
+    ],
+    "notes": [
+      "菜单页通常传 compact=\"{{true}}\"，首页不传",
+      "它同时是 home-hero 的默认 fallback，Composer 关闭海报后会自动恢复这个标签"
+    ]
+  },
+  "pages": [
+    "home",
+    "menu"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "store-header",
+    "themeVars": [
+      "--color-surface",
+      "--color-text",
+      "--store-home-hero-min-height"
+    ],
+    "sharedClasses": [],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 13
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "不得在组件内请求门店接口；数据由页面传入",
+    "深色渐变底色固定，不随主题 Token 变化",
+    "不渲染门店实景图，缺图也不需要兜底占位"
+  ],
+  "knownLimits": [
+    "不含门店实景图",
+    "深色渐变底色固定，不随主题 Token 变化"
+  ],
+  "preview": {
+    "dir": "templates/components/store-header/1.0.0/preview",
+    "kinds": [
+      "normal",
+      "empty",
+      "error",
+      "long"
+    ]
+  },
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:f327945bdd5c93e6aea2f0444582a878aa3bce11a8afe1b9c2eb3753eab807b0"
+  }
+}

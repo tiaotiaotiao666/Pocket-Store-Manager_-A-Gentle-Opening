@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "page-catalog-entry.v1",
+  "pageId": "orders",
+  "title": "我的订单",
+  "audience": "customer",
+  "required": true,
+  "summary": "顾客订单列表：加载骨架、错误条、空态与订单卡片。",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/pages/orders",
+    "files": [
+      "extensions.generated.js",
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "digest": "sha256:ae4ecd4fe84500c317ba171179ece4c520acd21511269d5ec9627f932ca77ae6"
+  },
+  "components": [
+    {
+      "tag": "state-view",
+      "componentId": "state-view",
+      "mode": "conditional",
+      "sourceLine": 25,
+      "usage": "<state-view wx:if=\"{{loading && orders.length === 0}}\" state=\"loading\" title=\"正在加载订单\" />"
+    },
+    {
+      "tag": "error-banner",
+      "componentId": "error-banner",
+      "mode": "always",
+      "sourceLine": 28,
+      "usage": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onRetry\" />"
+    },
+    {
+      "tag": "order-card",
+      "componentId": "order-card",
+      "mode": "always",
+      "sourceLine": 42,
+      "usage": "<order-card order=\"{{item}}\" role=\"CUSTOMER\" actionable=\"{{true}}\" bind:open=\"onOpen\" bind:pay=\"onPay\" bind:cancel=\"onCancel\" />"
+    },
+    {
+      "tag": "loading-block",
+      "componentId": "loading-block",
+      "mode": "declared-only",
+      "sourceLine": 0,
+      "usage": ""
+    }
+  ],
+  "slots": [],
+  "controller": {
+    "methods": [
+      "emptyDescription",
+      "emptyTitle",
+      "goMenu",
+      "loadPage",
+      "loadStoreName",
+      "onCancel",
+      "onChangeFilter",
+      "onLoadMore",
+      "onOpen",
+      "onPay",
+      "onRetry",
+      "pickCancelReason",
+      "reload"
+    ],
+    "lifecycle": [
+      "onPullDownRefresh",
+      "onShow"
+    ],
+    "dataKeys": [
+      "actionOrderId",
+      "emptyDescription",
+      "emptyTitle",
+      "error",
+      "errorAction",
+      "filter",
+      "filters",
+      "hasMore",
+      "identityLabel",
+      "loading",
+      "loadingMore",
+      "loggedIn",
+      "orders",
+      "page",
+      "pageSize",
+      "pendingPaymentCount",
+      "requestId",
+      "storeId",
+      "storeName",
+      "total"
+    ]
+  },
+  "pageJson": {
+    "navigationBarTitleText": "我的订单",
+    "enablePullDownRefresh": true,
+    "usingComponents": {
+      "order-card": "/components/order-card/index",
+      "state-view": "/components/state-view/index",
+      "error-banner": "/components/error-banner/index",
+      "loading-block": "/components/loading-block/index"
+    }
+  },
+  "notes": [
+    "订单卡片按 role=CUSTOMER 展示支付与取消",
+    "usingComponents 声明了 loading-block，但当前 WXML 未使用；Composer 导出时会过滤。"
+  ]
+}

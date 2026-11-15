@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "page-catalog-entry.v1",
+  "pageId": "product-detail",
+  "title": "商品详情",
+  "audience": "customer",
+  "required": true,
+  "summary": "独立商品详情页：商品信息、加购、购物车条与购物车面板。",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/pages/product-detail",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "digest": "sha256:db2917a005ced76f2fa4ad0b21d2a8159a9fd9b9b2a88fa8d363d49dc82ec954"
+  },
+  "components": [
+    {
+      "tag": "state-view",
+      "componentId": "state-view",
+      "mode": "conditional",
+      "sourceLine": 2,
+      "usage": "<state-view wx:if=\"{{loading}}\" state=\"loading\" title=\"正在加载商品\" />"
+    },
+    {
+      "tag": "error-banner",
+      "componentId": "error-banner",
+      "mode": "always",
+      "sourceLine": 4,
+      "usage": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" />"
+    },
+    {
+      "tag": "cart-bar",
+      "componentId": "cart-bar",
+      "mode": "conditional",
+      "sourceLine": 34,
+      "usage": "<cart-bar wx:if=\"{{product}}\" total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" submitting=\"{{false}}\" bind:expand=\"onExpandCart\" bind:checkout=\"onCheckout\" />"
+    },
+    {
+      "tag": "cart-panel",
+      "componentId": "cart-panel",
+      "mode": "modal",
+      "sourceLine": 42,
+      "usage": "<cart-panel wx:if=\"{{product}}\" visible=\"{{cartVisible}}\" items=\"{{cartSummary.items}}\" total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" submitting=\"{{false}}\" b"
+    }
+  ],
+  "slots": [],
+  "controller": {
+    "methods": [
+      "loadProduct",
+      "onAdd",
+      "onCartAdd",
+      "onCartRemove",
+      "onCheckout",
+      "onCloseCart",
+      "onExpandCart",
+      "onRemove",
+      "onRetry",
+      "refreshCart"
+    ],
+    "lifecycle": [
+      "onLoad",
+      "onPullDownRefresh",
+      "onShow"
+    ],
+    "dataKeys": [
+      "amount",
+      "cartSummary",
+      "cartVisible",
+      "error",
+      "errorAction",
+      "loading",
+      "product",
+      "productId",
+      "quantity",
+      "requestId",
+      "storeId"
+    ]
+  },
+  "pageJson": {
+    "navigationBarTitleText": "商品详情",
+    "enablePullDownRefresh": true,
+    "usingComponents": {
+      "state-view": "/components/state-view/index",
+      "error-banner": "/components/error-banner/index",
+      "cart-bar": "/components/cart-bar/index",
+      "cart-panel": "/components/cart-panel/index"
+    }
+  },
+  "notes": [
+    "与菜单页的 product-detail 弹层是两种不同形态，注意区分"
+  ]
+}

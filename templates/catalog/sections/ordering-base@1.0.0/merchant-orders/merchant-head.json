@@ -1,0 +1,217 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "merchant-head",
+  "displayName": "店主工作台头部",
+  "summary": "门店名与角色、最后刷新时间与轮询状态、立即刷新与自动刷新开关。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "merchant-orders",
+  "order": 1,
+  "locator": {
+    "selector": "merchant__head",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
+    "lineStart": 2,
+    "lineEnd": 23,
+    "digest": "sha256:08b0a5a17d1454e854859546c05ec1a8a5c3bb5bab145ac058f12a72fea02cab"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 2,
+        "lineEnd": 23,
+        "code": "<view class=\"merchant__head\">\r\n    <view class=\"merchant__head-top\">\r\n      <view class=\"merchant__head-main\">\r\n        <text class=\"merchant__eyebrow\">店主工作台</text>\r\n        <text class=\"merchant__title\">{{storeName || storeId || '门店'}}</text>\r\n      </view>\r\n      <view class=\"merchant__role\">{{roleLabel || '—'}}</view>\r\n    </view>\r\n    <view class=\"merchant__meta\">\r\n      <text>{{lastUpdated || '尚未刷新'}}</text>\r\n      <text wx:if=\"{{allowed}}\" class=\"merchant__polling\">\r\n        {{polling ? '每 10 秒自动刷新' : '自动刷新已暂停'}}\r\n      </text>\r\n    </view>\r\n    <view wx:if=\"{{allowed}}\" class=\"merchant__actions\">\r\n      <view class=\"merchant__refresh\" bind:tap=\"onRefresh\">立即刷新</view>\r\n      <view class=\"merchant__poll-switch\">\r\n        <text class=\"merchant__poll-label\">自动刷新</text>\r\n        <switch checked=\"{{polling}}\" color=\"#E86A17\" bindchange=\"onTogglePolling\" />\r\n      </view>\r\n    </view>\r\n  </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "allowed",
+      "lastUpdated",
+      "polling",
+      "roleLabel",
+      "storeId",
+      "storeName"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onRefresh"
+      },
+      {
+        "type": "change",
+        "handler": "onTogglePolling"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/merchant-orders/index.js",
+    "handlers": [
+      "onRefresh",
+      "onTogglePolling"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "merchant__head",
+      "merchant__head-top",
+      "merchant__head-main",
+      "merchant__eyebrow",
+      "merchant__title",
+      "merchant__role",
+      "merchant__meta",
+      "merchant__polling",
+      "merchant__actions",
+      "merchant__refresh",
+      "merchant__poll-switch",
+      "merchant__poll-label"
+    ],
+    "selectors": [
+      {
+        "selector": ".merchant__head",
+        "declarations": [
+          "padding: 26rpx 28rpx",
+          "border-radius: 28rpx",
+          "background: linear-gradient(135deg, #1f2a2e 0%, #33413f 100%)",
+          "color: #f3f5f2",
+          "box-shadow: 0 16rpx 36rpx rgba(31, 42, 46, 0.24)"
+        ]
+      },
+      {
+        "selector": ".merchant__head-top",
+        "declarations": [
+          "display: flex",
+          "align-items: flex-start",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".merchant__head-main",
+        "declarations": [
+          "display: flex",
+          "flex-direction: column"
+        ]
+      },
+      {
+        "selector": ".merchant__eyebrow",
+        "declarations": [
+          "font-size: 21rpx",
+          "letter-spacing: 4rpx",
+          "color: #8fc0a9"
+        ]
+      },
+      {
+        "selector": ".merchant__title",
+        "declarations": [
+          "margin-top: 8rpx",
+          "font-size: 40rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".merchant__role",
+        "declarations": [
+          "padding: 6rpx 18rpx",
+          "border-radius: 999rpx",
+          "background: rgba(143, 192, 169, 0.16)",
+          "color: #a8d5bf",
+          "font-size: 21rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".merchant__meta",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "margin-top: 14rpx",
+          "font-size: 21rpx",
+          "color: rgba(243, 245, 242, 0.55)"
+        ]
+      },
+      {
+        "selector": ".merchant__polling",
+        "declarations": [
+          "color: rgba(168, 213, 191, 0.8)"
+        ]
+      },
+      {
+        "selector": ".merchant__actions",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "margin-top: 20rpx",
+          "padding-top: 18rpx",
+          "border-top: 2rpx solid rgba(243, 245, 242, 0.12)"
+        ]
+      },
+      {
+        "selector": ".merchant__refresh",
+        "declarations": [
+          "padding: 10rpx 24rpx",
+          "border-radius: 999rpx",
+          "background: rgba(243, 245, 242, 0.14)",
+          "font-size: 22rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".merchant__poll-switch",
+        "declarations": [
+          "display: flex",
+          "align-items: center"
+        ]
+      },
+      {
+        "selector": ".merchant__poll-label",
+        "declarations": [
+          "margin-right: 8rpx",
+          "font-size: 21rpx",
+          "color: rgba(243, 245, 242, 0.65)"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 12
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "展示加两个轻交互，复制 WXML 与 merchant__ 样式即可。",
+    "whenToUse": [
+      "店主工作台需要刷新与轮询控制"
+    ],
+    "avoidWhen": [
+      "顾客侧头部，用 orders__head 或 mine__head"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "轮询开关只上报 onTogglePolling",
+    "allowed 为假时不渲染操作区"
+  ],
+  "knownLimits": [
+    "轮询间隔固定 10 秒，写在文案里"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:08b0a5a17d1454e854859546c05ec1a8a5c3bb5bab145ac058f12a72fea02cab"
+  }
+}

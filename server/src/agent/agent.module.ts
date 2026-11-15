@@ -1,9 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SessionAuthGuard } from '../common/auth/session-auth.guard';
 import { AgentAuthGuard } from './agent-auth.guard';
 import { AgentController } from './agent.controller';
 import { AgentService } from './agent.service';
-import { AGENT_FETCH, AGENT_PROVIDER } from './agent.types';
+import { createAgentLogSink } from './agent-runtime.logger';
+import { AGENT_CHAT_MODEL, AGENT_FETCH, AGENT_PROVIDER } from './agent.types';
 import { TemplateCandidatesController } from './presentation/template-candidates.controller';
 import { TemplateCandidatesService } from './presentation/template-candidates.service';
 import { TemplateReviseController } from './presentation/template-revise.controller';
@@ -11,14 +13,25 @@ import { TemplateReviseService } from './presentation/template-revise.service';
 import { DeepseekPresentationProvider } from './presentation/template-revise.provider';
 import type { AgentFetch } from './provider/agent-provider.interface';
 import { DeepseekAgentProvider } from './provider/deepseek-agent.provider';
+import { DeepseekChatModel, readDeepseekChatSettings } from './runtime';
+import { StoreSetupAgentController } from './store-setup/store-setup.controller';
+import { StoreSetupAgentService } from './store-setup/store-setup.service';
 
 /** 默认 fetch：真实运行走 Node 全局 fetch；测试通过 AGENT_FETCH 注入 stub。 */
 const defaultAgentFetch: AgentFetch = (input, init) => fetch(input, init);
 
+const agentModelLogger = new Logger('AgentModel');
+
 @Module({
-  controllers: [AgentController, TemplateReviseController, TemplateCandidatesController],
+  controllers: [
+    AgentController,
+    StoreSetupAgentController,
+    TemplateReviseController,
+    TemplateCandidatesController,
+  ],
   providers: [
     AgentService,
+    StoreSetupAgentService,
     TemplateReviseService,
     TemplateCandidatesService,
     DeepseekAgentProvider,
@@ -27,7 +40,22 @@ const defaultAgentFetch: AgentFetch = (input, init) => fetch(input, init);
     AgentAuthGuard,
     { provide: AGENT_PROVIDER, useExisting: DeepseekAgentProvider },
     { provide: AGENT_FETCH, useValue: defaultAgentFetch },
+    {
+      provide: AGENT_CHAT_MODEL,
+      useFactory: (config: ConfigService, agentFetch: AgentFetch) =>
+        new DeepseekChatModel({
+          fetch: agentFetch,
+          settings: () => readDeepseekChatSettings((key) => config.get(key)),
+          logger: createAgentLogSink(agentModelLogger),
+        }),
+      inject: [ConfigService, AGENT_FETCH],
+    },
   ],
-  exports: [AgentService, DeepseekAgentProvider, DeepseekPresentationProvider],
+  exports: [
+    AgentService,
+    StoreSetupAgentService,
+    DeepseekAgentProvider,
+    DeepseekPresentationProvider,
+  ],
 })
 export class AgentModule {}

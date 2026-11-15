@@ -1,0 +1,192 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "detail-merchant-card",
+  "displayName": "店主操作卡",
+  "summary": "按 merchantActions 渲染的推进按钮组，tone 决定主色/成功色/危险色。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "order-detail",
+  "order": 6,
+  "locator": {
+    "selector": "detail__merchant",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
+    "lineStart": 91,
+    "lineEnd": 107,
+    "digest": "sha256:91b06ec49661d1d39797b80821c539f2ef66f765dc827f364d9e4cd18213e965"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 91,
+        "lineEnd": 107,
+        "code": "<view wx:if=\"{{order && merchantActions.length > 0}}\" class=\"surface-card detail__card detail__merchant\">\r\n      <view class=\"detail__card-head\">\r\n        <text class=\"detail__card-title\">店主操作</text>\r\n        <text class=\"detail__card-extra\">当前身份可用</text>\r\n      </view>\r\n      <view class=\"detail__merchant-actions\">\r\n        <view\r\n          wx:for=\"{{merchantActions}}\"\r\n          wx:key=\"toStatus\"\r\n          class=\"detail__merchant-btn {{item.tone === 'primary' ? 'detail__merchant-btn--primary' : item.tone === 'success' ? 'detail__merchant-btn--success' : 'detail__merchant-btn--danger'}}\"\r\n          data-status=\"{{item.toStatus}}\"\r\n          bind:tap=\"onAdvance\"\r\n        >\r\n          {{acting && actionLabel === item.toStatus ? '处理中…' : item.label}}\r\n        </view>\r\n      </view>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "acting",
+      "actionLabel",
+      "btn",
+      "danger",
+      "detail__merchant",
+      "label",
+      "merchantActions",
+      "order",
+      "primary",
+      "success",
+      "toStatus",
+      "tone"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onAdvance"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/order-detail/index.js",
+    "handlers": [
+      "onAdvance"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "surface-card",
+      "detail__card",
+      "detail__merchant",
+      "detail__card-head",
+      "detail__card-title",
+      "detail__card-extra",
+      "detail__merchant-actions",
+      "detail__merchant-btn",
+      "{{item.tone",
+      "===",
+      "'primary'",
+      "?",
+      "'detail__merchant-btn--primary'",
+      ":",
+      "item.tone",
+      "'success'",
+      "'detail__merchant-btn--success'",
+      "'detail__merchant-btn--danger'}}"
+    ],
+    "selectors": [
+      {
+        "selector": ".detail__card",
+        "declarations": [
+          "margin-top: 24rpx",
+          "padding: 26rpx"
+        ]
+      },
+      {
+        "selector": ".detail__card-head",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".detail__card-title",
+        "declarations": [
+          "font-size: 28rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".detail__card-extra",
+        "declarations": [
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".detail__merchant-actions",
+        "declarations": [
+          "display: flex",
+          "flex-wrap: wrap",
+          "margin-top: 18rpx"
+        ]
+      },
+      {
+        "selector": ".detail__merchant-btn",
+        "declarations": [
+          "margin: 0 14rpx 14rpx 0",
+          "padding: 16rpx 30rpx",
+          "border-radius: 999rpx",
+          "font-size: 25rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".detail__merchant-btn--primary",
+        "declarations": [
+          "background: var(--color-primary)",
+          "color: #fff"
+        ]
+      },
+      {
+        "selector": ".detail__merchant-btn--success",
+        "declarations": [
+          "background: var(--color-success)",
+          "color: #fff"
+        ]
+      },
+      {
+        "selector": ".detail__merchant-btn--danger",
+        "declarations": [
+          "background: #fdeceb",
+          "color: var(--color-danger)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-danger",
+      "--color-muted",
+      "--color-primary",
+      "--color-success"
+    ],
+    "selectorCount": 9
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "循环按钮组，复制 WXML 与 detail__merchant 样式即可；推进逻辑在控制器。",
+    "whenToUse": [
+      "店主身份需要推进订单状态"
+    ],
+    "avoidWhen": [
+      "顾客身份不渲染，条件由 merchantActions 长度控制"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "每个按钮只上报 onAdvance 与 toStatus",
+    "处理中显示「处理中…」并禁用重复点击"
+  ],
+  "knownLimits": [
+    "按钮集合完全由后端 merchantActions 决定"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:91b06ec49661d1d39797b80821c539f2ef66f765dc827f364d9e4cd18213e965"
+  }
+}

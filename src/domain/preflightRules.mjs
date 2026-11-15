@@ -5,6 +5,7 @@
  * 规则 ID 与判定口径见实现方案 6.3.1。
  */
 
+import { BASE_CAPABILITIES } from './capabilities.mjs';
 import { features as catalogFeatures } from './catalog.mjs';
 
 const MAX_STORE_NAME = 48;
@@ -15,11 +16,8 @@ const MAX_PRICE_CENTS = 999999;
 const MAX_HOURS_SEGMENTS = 3;
 const APPID_RE = /^wx[0-9a-f]{16}$/;
 
-const BASE_CAPABILITIES = new Set([
-  'scan-order',
-  'product-catalog',
-  'cart-checkout',
-  'order-tracking',
+/** Base 内置、但属于"可选"的能力：不勾选也不会从导出工程里消失。 */
+const OPTIONAL_BASE_CAPABILITY_IDS = Object.freeze([
   'table-dining',
   'takeaway',
   'merchant-orders',
@@ -123,6 +121,21 @@ export function evaluateLocal(state, options) {
       'features.selected',
       null,
     ));
+  }
+
+  // 反向披露：Base 自带的页面/组件不因取消勾选而消失。
+  // 只在用户真的做过勾选时提示，避免首次进入就报噪音。
+  if (selected.length > 0) {
+    const unselectedBase = OPTIONAL_BASE_CAPABILITY_IDS.filter((id) => !selected.includes(id));
+    if (unselectedBase.length > 0) {
+      warns.push(rule(
+        'W-BASE-FEATURE-UNCHECKED',
+        'warn',
+        `未勾选的「${unselectedBase.map(featureLabel).join('、')}」不会从导出工程移除：它们由基础模板自带，勾选只影响模板推荐。`,
+        'features.selected',
+        { label: '去确认能力勾选', phase: 'features' },
+      ));
+    }
   }
 
   if (dishes.length !== validDishes.length) {
@@ -268,6 +281,6 @@ export function mergeTargetPreflight(local, targetResult) {
 
 export const PREFLIGHT_RULE_IDS = Object.freeze({
   ERROR: ['E-PLAN-NAME', 'E-PLAN-DISHES', 'E-PLAN-PRICE', 'E-PLAN-HOURS', 'E-PLAN-FULFILLMENT', 'E-PLAN-CONTRACT', 'E-THEME-CONTRAST', 'E-APPID-FORMAT', 'E-DESKTOP-REQUIRED', 'E-TARGET-EXISTS', 'E-TARGET-CHECK-FAILED'],
-  WARN: ['W-PREVIEW-ONLY', 'W-VERSION-GAP', 'W-UNMAPPED-FEATURE', 'W-DISH-DROPPED', 'W-NO-APPID'],
+  WARN: ['W-PREVIEW-ONLY', 'W-VERSION-GAP', 'W-UNMAPPED-FEATURE', 'W-BASE-FEATURE-UNCHECKED', 'W-DISH-DROPPED', 'W-NO-APPID'],
   INFO: ['I-IMG-NOT-EXPORTED', 'I-SESSION-LONG', 'I-DEVTOOLS-NOT-FOUND', 'I-DEMO-PAYMENT'],
 });

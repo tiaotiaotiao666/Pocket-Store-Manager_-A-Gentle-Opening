@@ -1,0 +1,143 @@
+{
+  "schemaVersion": "section-page-index.v1",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "order-detail",
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss"
+  },
+  "counts": {
+    "sections": 7
+  },
+  "sections": [
+    {
+      "id": "detail-result",
+      "displayName": "支付结果整屏",
+      "order": 1,
+      "locator": {
+        "selector": "detail__result",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 9,
+      "components": [
+        "pay-result"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "detail-result.json"
+    },
+    {
+      "id": "detail-hero",
+      "displayName": "订单头部摘要",
+      "order": 2,
+      "locator": {
+        "selector": "detail__hero",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 25,
+      "components": [
+        "order-status"
+      ],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "detail-hero.json"
+    },
+    {
+      "id": "detail-pay-hint",
+      "displayName": "未支付提示条",
+      "order": 3,
+      "locator": {
+        "selector": "detail__pay-hint",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 44,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "detail-pay-hint.json"
+    },
+    {
+      "id": "detail-progress-card",
+      "displayName": "订单进度卡",
+      "order": 4,
+      "locator": {
+        "selector": "detail__card",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": 1,
+        "occurrences": 1
+      },
+      "lineStart": 59,
+      "components": [
+        "status-timeline"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "detail-progress-card.json"
+    },
+    {
+      "id": "detail-items-card",
+      "displayName": "订单菜品明细卡",
+      "order": 5,
+      "locator": {
+        "selector": "detail__card",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": 2,
+        "occurrences": 1
+      },
+      "lineStart": 67,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "detail-items-card.json"
+    },
+    {
+      "id": "detail-merchant-card",
+      "displayName": "店主操作卡",
+      "order": 6,
+      "locator": {
+        "selector": "detail__merchant",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 91,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "detail-merchant-card.json"
+    },
+    {
+      "id": "detail-action-bar",
+      "displayName": "详情操作底栏",
+      "order": 7,
+      "locator": {
+        "selector": "detail__bar",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 110,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "detail-action-bar.json"
+    }
+  ]
+}

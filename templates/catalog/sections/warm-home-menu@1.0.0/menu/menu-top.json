@@ -1,0 +1,300 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-top",
+  "displayName": "菜单页紧凑头部",
+  "summary": "紧凑 store-header、履约方式切换与桌号选择组成的菜单页头部。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 2,
+  "locator": {
+    "selector": "fp-menu__top",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 3,
+    "lineEnd": 35,
+    "digest": "sha256:07e2fab32f7fcc9b3b194a980728f630ea19c1e4bf62d193a53c14357c79643a"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 3,
+        "lineEnd": 35,
+        "code": "<view class=\"fp-menu__top\">\r\n      <store-header\r\n        store-name=\"{{store.name || '菜单'}}\"\r\n        table-name=\"{{tableName}}\"\r\n        business-hours=\"{{store.businessHours}}\"\r\n        mode=\"{{mode}}\"\r\n        address=\"{{store.address}}\"\r\n        compact=\"{{true}}\"\r\n      />\r\n      <view class=\"fp-menu__switch\">\r\n        <fulfillment-switch\r\n          value=\"{{mode}}\"\r\n          dine-in-enabled=\"{{store.fulfillment.dineIn}}\"\r\n          takeaway-enabled=\"{{store.fulfillment.takeaway}}\"\r\n          table-name=\"{{tableName}}\"\r\n          table-required=\"{{true}}\"\r\n          bind:change=\"onModeChange\"\r\n        />\r\n        <view wx:if=\"{{mode === 'DINE_IN' && !tableName}}\" class=\"fp-menu__tables\">\r\n          <text class=\"fp-menu__tables-label\">演示桌号</text>\r\n          <view\r\n            wx:for=\"{{tableOptions}}\"\r\n            wx:key=\"id\"\r\n            class=\"fp-menu__table\"\r\n            data-id=\"{{item.id}}\"\r\n            data-name=\"{{item.name}}\"\r\n            bind:tap=\"onPickTable\"\r\n          >\r\n            {{item.name}}\r\n          </view>\r\n        </view>\r\n      </view>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "store-header",
+      "bindings": [
+        {
+          "attr": "store-name",
+          "expression": "{{store.name || '菜单'}}"
+        },
+        {
+          "attr": "table-name",
+          "expression": "{{tableName}}"
+        },
+        {
+          "attr": "business-hours",
+          "expression": "{{store.businessHours}}"
+        },
+        {
+          "attr": "mode",
+          "expression": "{{mode}}"
+        },
+        {
+          "attr": "address",
+          "expression": "{{store.address}}"
+        },
+        {
+          "attr": "compact",
+          "expression": "{{true}}"
+        }
+      ],
+      "events": []
+    },
+    {
+      "tag": "fulfillment-switch",
+      "bindings": [
+        {
+          "attr": "value",
+          "expression": "{{mode}}"
+        },
+        {
+          "attr": "dine-in-enabled",
+          "expression": "{{store.fulfillment.dineIn}}"
+        },
+        {
+          "attr": "takeaway-enabled",
+          "expression": "{{store.fulfillment.takeaway}}"
+        },
+        {
+          "attr": "table-name",
+          "expression": "{{tableName}}"
+        },
+        {
+          "attr": "table-required",
+          "expression": "{{true}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "change",
+          "handler": "onModeChange"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "DINE_IN",
+      "address",
+      "businessHours",
+      "dineIn",
+      "fulfillment",
+      "id",
+      "mode",
+      "name",
+      "store",
+      "tableName",
+      "tableOptions",
+      "takeaway"
+    ],
+    "handlers": [
+      {
+        "type": "change",
+        "handler": "onModeChange"
+      },
+      {
+        "type": "tap",
+        "handler": "onPickTable"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [
+      "onModeChange",
+      "onPickTable"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-menu__top",
+    "classTokens": [
+      "fp-menu__top",
+      "fp-menu__switch",
+      "fp-menu__tables",
+      "fp-menu__tables-label",
+      "fp-menu__table"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-menu__top",
+        "declarations": [
+          "padding: 18rpx 24rpx 0"
+        ]
+      },
+      {
+        "selector": ".fp-menu__switch",
+        "declarations": [
+          "margin-top: 16rpx"
+        ]
+      },
+      {
+        "selector": ".fp-menu__tables",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "margin-top: 12rpx"
+        ]
+      },
+      {
+        "selector": ".fp-menu__tables-label",
+        "declarations": [
+          "margin-right: 12rpx",
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".fp-menu__table",
+        "declarations": [
+          "margin-right: 10rpx",
+          "padding: 8rpx 20rpx",
+          "border-radius: 999rpx",
+          "background: var(--color-surface)",
+          "border: 2rpx solid var(--color-border)",
+          "font-size: 21rpx",
+          "font-weight: 600"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-border",
+      "--color-muted",
+      "--color-surface"
+    ],
+    "selectorCount": 5
+  },
+  "reuse": {
+    "level": "promote-to-ui-block",
+    "reason": "头部把 Base 组件与桌号选择器打包，直接复制会重复条件渲染与事件绑定。",
+    "whenToUse": [
+      "菜单页需要常驻门店身份与履约方式",
+      "需要在滚动列表之外固定头部信息"
+    ],
+    "avoidWhen": [
+      "只需要门店信息时，直接用 store-header compact"
+    ],
+    "uiBlockBlueprint": {
+      "suggestedId": "menu-top",
+      "displayName": "菜单页紧凑头部",
+      "props": [
+        {
+          "name": "storeName",
+          "type": "string",
+          "required": true,
+          "description": "门店名称"
+        },
+        {
+          "name": "businessHours",
+          "type": "string",
+          "required": false,
+          "description": "营业时间文案"
+        },
+        {
+          "name": "address",
+          "type": "string",
+          "required": false,
+          "description": "门店地址"
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "required": false,
+          "description": "当前履约方式"
+        },
+        {
+          "name": "tableName",
+          "type": "string",
+          "required": false,
+          "description": "当前桌号"
+        },
+        {
+          "name": "dineInEnabled",
+          "type": "boolean",
+          "required": false,
+          "description": "是否支持堂食"
+        },
+        {
+          "name": "takeawayEnabled",
+          "type": "boolean",
+          "required": false,
+          "description": "是否支持自取"
+        },
+        {
+          "name": "tableRequired",
+          "type": "boolean",
+          "required": false,
+          "description": "堂食是否必须桌号"
+        },
+        {
+          "name": "tableOptions",
+          "type": "array",
+          "required": false,
+          "description": "演示桌号数组"
+        }
+      ],
+      "events": [
+        {
+          "name": "change",
+          "payload": [
+            "mode"
+          ],
+          "description": "切换履约方式"
+        },
+        {
+          "name": "pickTable",
+          "payload": [
+            "id",
+            "name"
+          ],
+          "description": "选择演示桌号"
+        }
+      ],
+      "promotionSteps": [
+        "内部继续使用 store-header compact 与 fulfillment-switch",
+        "桌号条件与选项全部来自 props",
+        "登记 registry 并在 Base 页面声明后再进入视图包"
+      ]
+    }
+  },
+  "constraints": [
+    "store-header 必须传 compact=true",
+    "桌号选择只在堂食且无桌号时展示",
+    "不在组件内做桌号合法性校验"
+  ],
+  "knownLimits": [
+    "头部高度随 safe-area 与紧凑模式变化，没有尺寸 Token"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:07e2fab32f7fcc9b3b194a980728f630ea19c1e4bf62d193a53c14357c79643a"
+  }
+}

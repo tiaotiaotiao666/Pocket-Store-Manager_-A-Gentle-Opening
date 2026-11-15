@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "checkout-empty",
+  "displayName": "空购物车空态",
+  "summary": "购物车为空时的 state-view empty 态，带「去点餐」按钮回菜单。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "checkout",
+  "order": 2,
+  "locator": {
+    "selector": "checkout__empty",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
+    "lineStart": 11,
+    "lineEnd": 19,
+    "digest": "sha256:ac5a907796b232d3d2be2b42983dd66a73170f8c4fae3344d0f9ac738ffdcd6a"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 11,
+        "lineEnd": 19,
+        "code": "<view wx:if=\"{{emptyCart}}\" class=\"checkout__empty\">\r\n      <state-view\r\n        state=\"empty\"\r\n        title=\"购物车是空的\"\r\n        description=\"回到菜单挑选几道菜，再回来结算\"\r\n        action-text=\"去点餐\"\r\n        bind:retry=\"goMenu\"\r\n      />\r\n    </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "state-view",
+      "bindings": [
+        {
+          "attr": "state",
+          "expression": "empty"
+        },
+        {
+          "attr": "title",
+          "expression": "购物车是空的"
+        },
+        {
+          "attr": "description",
+          "expression": "回到菜单挑选几道菜，再回来结算"
+        },
+        {
+          "attr": "action-text",
+          "expression": "去点餐"
+        }
+      ],
+      "events": [
+        {
+          "name": "retry",
+          "handler": "goMenu"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "emptyCart"
+    ],
+    "handlers": [
+      {
+        "type": "retry",
+        "handler": "goMenu"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/checkout/index.js",
+    "handlers": [
+      "goMenu"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "checkout__empty"
+    ],
+    "selectors": [
+      {
+        "selector": ".checkout__empty",
+        "declarations": [
+          "margin-top: 60rpx"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 1
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "直接复用 Base 内置 state-view 的 empty 态，不需要新组件。",
+    "whenToUse": [
+      "结算页需要空态兜底",
+      "需要在空态里引导回菜单"
+    ],
+    "avoidWhen": [
+      "只是加载失败，用 checkout 的 error-banner 分支"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "action-text 固定为「去点餐」",
+    "bind:retry 必须保留为 goMenu，否则空态无法返回"
+  ],
+  "knownLimits": [
+    "文案写死在 WXML，多语言需先提升为 UI Block"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:ac5a907796b232d3d2be2b42983dd66a73170f8c4fae3344d0f9ac738ffdcd6a"
+  }
+}

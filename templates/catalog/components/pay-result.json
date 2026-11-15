@@ -1,0 +1,180 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "pay-result",
+  "version": "1.0.0",
+  "displayName": "演示支付结果",
+  "category": "order",
+  "summary": "演示支付的四种结果态（加载、成功、待确认、失败），展示取餐号、金额、履约方式与后续动作。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/pay-result",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:efc48f6015e42082c626819d78cf4c3ef00e7abbcf5a39697961a16b281e8171"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "demoNotice",
+        "type": "string",
+        "required": false,
+        "defaultValue": "本页为演示付款，未发生真实扣款，取餐号仅用于演示。",
+        "description": "成功态演示提示文案"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "覆盖说明文案"
+      },
+      {
+        "name": "fulfillmentText",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "履约方式文案"
+      },
+      {
+        "name": "primaryText",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "覆盖主按钮文案"
+      },
+      {
+        "name": "requestId",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "错误态展示的请求号"
+      },
+      {
+        "name": "secondaryText",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "覆盖次按钮文案"
+      },
+      {
+        "name": "shortId",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "演示取餐号"
+      },
+      {
+        "name": "state",
+        "type": "string",
+        "required": false,
+        "defaultValue": "loading",
+        "description": "loading / success / pending / error"
+      },
+      {
+        "name": "title",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "覆盖主标题"
+      },
+      {
+        "name": "totalText",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "金额文案"
+      }
+    ],
+    "events": [
+      {
+        "name": "primary",
+        "payload": [
+          "state"
+        ],
+        "description": "点击主按钮；detail.state"
+      },
+      {
+        "name": "retry",
+        "payload": [
+          "state"
+        ],
+        "description": "点击重试；detail.state"
+      },
+      {
+        "name": "secondary",
+        "payload": [
+          "state"
+        ],
+        "description": "点击次按钮；detail.state"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "pay-result",
+    "wxmlExample": "<pay-result state=\"{{payState}}\" short-id=\"{{shortId}}\" total-text=\"{{totalText}}\" fulfillment-text=\"{{fulfillmentText}}\" bind:primary=\"onPayPrimary\" bind:secondary=\"onPaySecondary\" />",
+    "whenToUse": [
+      "演示支付完成后确认支付结果",
+      "需要展示取餐号与「未发生真实扣款」提示"
+    ],
+    "avoidWhen": [
+      "真实微信支付流程（当前不在 MVP 范围）",
+      "需要支付前的确认页时，使用 checkout 页面"
+    ],
+    "notes": [
+      "Base Manifest 的 builtinComponents 曾漏登记该组件，本轮已补齐"
+    ]
+  },
+  "pages": [
+    "order-detail"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "pay-result",
+    "themeVars": [
+      "--color-accent",
+      "--color-bg",
+      "--color-border",
+      "--color-danger",
+      "--color-muted",
+      "--color-primary",
+      "--color-primary-soft",
+      "--color-success",
+      "--color-surface",
+      "--color-text"
+    ],
+    "sharedClasses": [],
+    "imports": [],
+    "selectorCount": 35
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "只用于演示支付，不得宣称真实扣款",
+    "loading 态不显示操作按钮",
+    "成功态必须保留 demoNotice"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:efc48f6015e42082c626819d78cf4c3ef00e7abbcf5a39697961a16b281e8171"
+  }
+}

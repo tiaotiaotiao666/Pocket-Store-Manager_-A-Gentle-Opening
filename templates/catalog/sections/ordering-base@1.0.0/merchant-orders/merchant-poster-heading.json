@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "merchant-poster-heading",
+  "displayName": "海报区标题",
+  "summary": "首页海报标题、张数与说明，右侧「新建海报」入口（仅在售商品可用）。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "merchant-orders",
+  "order": 9,
+  "locator": {
+    "selector": "merchant__poster-heading",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
+    "lineStart": 276,
+    "lineEnd": 282,
+    "digest": "sha256:d566f0f3bbc13723506330697da9872321d78d892e6e45d617fe6a55e9b65e2a"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 276,
+        "lineEnd": 282,
+        "code": "<view class=\"merchant__poster-heading\">\r\n        <view>\r\n          <text class=\"merchant__category-name\">首页海报</text>\r\n          <text class=\"merchant__poster-hint\">共 {{posters.length}} 张 · 点击后打开关联商品详情</text>\r\n        </view>\r\n        <button wx:if=\"{{isOwner}}\" class=\"merchant__owner-button\" size=\"mini\" disabled=\"{{productWriting || availableProducts.length === 0}}\" bind:tap=\"onOpenPosterForm\">新建海报</button>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "availableProducts",
+      "isOwner",
+      "posters",
+      "productWriting"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onOpenPosterForm"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/merchant-orders/index.js",
+    "handlers": [
+      "onOpenPosterForm"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "merchant__poster-heading",
+      "merchant__category-name",
+      "merchant__poster-hint",
+      "merchant__owner-button"
+    ],
+    "selectors": [
+      {
+        "selector": ".merchant__owner-button",
+        "declarations": [
+          "margin: 0 14rpx 0 0",
+          "background: var(--color-text)",
+          "color: var(--color-surface)",
+          "font-size: 23rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__category-name",
+        "declarations": [
+          "font-size: 27rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".merchant__poster-heading",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "margin: 24rpx 4rpx 16rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__poster-hint",
+        "declarations": [
+          "display: block",
+          "margin-top: 6rpx",
+          "color: var(--color-muted)",
+          "font-size: 20rpx"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-surface",
+      "--color-text"
+    ],
+    "selectorCount": 4
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "标题加一个按钮，复制即可。",
+    "whenToUse": [
+      "海报装修区需要新建入口"
+    ],
+    "avoidWhen": [
+      "没有海报能力时整块删除"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "availableProducts 为空时新建按钮禁用"
+  ],
+  "knownLimits": [
+    "文案里「首页海报」写死"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:d566f0f3bbc13723506330697da9872321d78d892e6e45d617fe6a55e9b65e2a"
+  }
+}

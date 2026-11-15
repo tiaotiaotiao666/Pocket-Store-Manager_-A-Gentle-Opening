@@ -23,7 +23,7 @@ export default function Composer({
   };
 
   return (
-    <div className="composer">
+    <div className="composer" role="group" aria-label="消息输入区">
       {hint ? <p className="composer-hint">{hint}</p> : null}
       <div className={`composer-box${disabled ? ' is-disabled' : ''}`}>
         <textarea
@@ -32,6 +32,7 @@ export default function Composer({
           value={value}
           placeholder={placeholder}
           disabled={disabled}
+          aria-label={placeholder || '输入消息'}
           onChange={(event) => onChange?.(event.target.value)}
           onKeyDown={handleKeyDown}
         />
@@ -40,6 +41,7 @@ export default function Composer({
           className="composer-send"
           disabled={submitDisabled}
           onClick={handleSubmit}
+          aria-label={submitLabel}
         >
           <span>{submitLabel}</span>
           <ArrowUp size={15} />

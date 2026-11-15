@@ -1,0 +1,132 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-product-detail",
+  "displayName": "菜品详情弹层调用位",
+  "summary": "菜单页对 Base product-detail 弹层的直接调用，展示详情并直接加购。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 11,
+  "locator": {
+    "selector": null,
+    "componentTag": "product-detail",
+    "slotId": null,
+    "occurrence": 1,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 106,
+    "lineEnd": 113,
+    "digest": "sha256:78c7747225dc407f3cb80557586b4733c2a1e430f370a5890a10f204c2e6a3c0"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "product-detail",
+    "snippets": [
+      {
+        "lineStart": 106,
+        "lineEnd": 113,
+        "code": "<product-detail\r\n      visible=\"{{detailVisible}}\"\r\n      product=\"{{detailProduct}}\"\r\n      quantity=\"{{detailQuantity}}\"\r\n      bind:close=\"onDetailClose\"\r\n      bind:add=\"onDetailAdd\"\r\n      bind:remove=\"onDetailRemove\"\r\n    />"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "product-detail",
+      "bindings": [
+        {
+          "attr": "visible",
+          "expression": "{{detailVisible}}"
+        },
+        {
+          "attr": "product",
+          "expression": "{{detailProduct}}"
+        },
+        {
+          "attr": "quantity",
+          "expression": "{{detailQuantity}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "close",
+          "handler": "onDetailClose"
+        },
+        {
+          "name": "add",
+          "handler": "onDetailAdd"
+        },
+        {
+          "name": "remove",
+          "handler": "onDetailRemove"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "detailProduct",
+      "detailQuantity",
+      "detailVisible"
+    ],
+    "handlers": [
+      {
+        "type": "close",
+        "handler": "onDetailClose"
+      },
+      {
+        "type": "add",
+        "handler": "onDetailAdd"
+      },
+      {
+        "type": "remove",
+        "handler": "onDetailRemove"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [
+      "onDetailAdd",
+      "onDetailClose",
+      "onDetailRemove"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [],
+    "selectors": [],
+    "themeVars": [],
+    "selectorCount": 0
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "Base 内置弹层，visible 与 product 全部由页面控制。",
+    "whenToUse": [
+      "需要在当前页查看菜品详情并加购"
+    ],
+    "avoidWhen": [
+      "需要独立路由的详情页时，使用 product-detail 页面"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "visible 完全由页面控制，组件不自行导航",
+    "停售时按钮文案为「暂不可售」且不派发 add"
+  ],
+  "knownLimits": [
+    "与独立 product-detail 页面是两种形态，不要混淆"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:78c7747225dc407f3cb80557586b4733c2a1e430f370a5890a10f204c2e6a3c0"
+  }
+}

@@ -21,11 +21,11 @@
     <!-- @slot:home-hero -->
     <!-- @slot-fallback:home-hero -->
     <store-header
-      store-name="{{store.name}}"
+      store-name="{{store.name || ''}}"
       table-name="{{tableName}}"
-      business-hours="{{store.businessHours}}"
+      business-hours="{{store.businessHours || ''}}"
       mode="{{mode}}"
-      address="{{store.address}}"
+      address="{{store.address || ''}}"
     />
     <!-- @slot-fallback:home-hero:end -->
     <!-- @slot:home-hero:end -->

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "error-banner",
+  "version": "1.0.0",
+  "displayName": "错误提示条",
+  "category": "shell",
+  "summary": "内容流内的错误条，展示错误文案、可选请求号、重试动作与关闭按钮。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/error-banner",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:73d7abcffa7768ea9bd7294e48c2ddcf23219974d45e8b6184eaa83bb93e813c"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "action",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "重试按钮文案；为空时不显示按钮"
+      },
+      {
+        "name": "message",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "错误文案；为空时整个组件不渲染"
+      },
+      {
+        "name": "requestId",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "请求号，可选；非空时追加展示"
+      }
+    ],
+    "events": [
+      {
+        "name": "close",
+        "payload": [],
+        "description": "用户关闭错误条"
+      },
+      {
+        "name": "retry",
+        "payload": [],
+        "description": "用户点击重试按钮"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "error-banner",
+    "wxmlExample": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onRetry\" />",
+    "whenToUse": [
+      "页面已有内容结构，需要在局部提示请求失败",
+      "需要把 requestId 暴露给用户以便排查"
+    ],
+    "avoidWhen": [
+      "整页无法渲染时，用 state-view 的错误态",
+      "成功提示、营销提示不要复用错误条"
+    ],
+    "notes": [
+      "Base 页面通常把 close 也绑定到 onRetry，用于清空错误态"
+    ]
+  },
+  "pages": [
+    "checkout",
+    "home",
+    "menu",
+    "merchant-orders",
+    "mine",
+    "order-detail",
+    "orders",
+    "product-detail"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "error-banner",
+    "themeVars": [
+      "--color-danger"
+    ],
+    "sharedClasses": [],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 8
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "不得在组件内发起重试请求；只上报意图",
+    "不得把后端内部堆栈或密钥写进 message"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:73d7abcffa7768ea9bd7294e48c2ddcf23219974d45e8b6184eaa83bb93e813c"
+  }
+}

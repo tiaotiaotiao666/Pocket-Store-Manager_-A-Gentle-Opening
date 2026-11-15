@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "poster-carousel",
+  "version": "1.0.0",
+  "displayName": "海报轮播",
+  "category": "marketing",
+  "summary": "可替换 home-hero 或 menu-hero 的海报轮播 Feature Pack，支持自动播放、指示点与三档尺寸。",
+  "sourceKind": "feature-pack",
+  "source": {
+    "root": "templates/features/poster-carousel/1.0.0/src/components/poster-carousel",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": {
+      "id": "poster-carousel",
+      "version": "1.0.0",
+      "kind": "feature-pack",
+      "path": "templates/features/poster-carousel/1.0.0"
+    },
+    "registryMirror": null,
+    "digest": "sha256:29d537d5a25090372978f7460f514384683933f5df92c1f2a590e5f1caaac909"
+  },
+  "runtime": {
+    "mode": "slot-injection",
+    "planConsumed": true,
+    "note": "通过 Plan 的 features[].slots[] 注入，Composer 把组件目录复制到导出工程的 components/<tag>。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "autoplay",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": true,
+        "description": "是否自动播放"
+      },
+      {
+        "name": "interval",
+        "type": "number",
+        "required": false,
+        "defaultValue": 4000,
+        "description": "切换间隔，3000–8000ms，越界取 4000"
+      },
+      {
+        "name": "items",
+        "type": "array",
+        "required": true,
+        "defaultValue": [],
+        "description": "海报列表：title/subtitle/tone/optional image"
+      },
+      {
+        "name": "showIndicator",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": true,
+        "description": "是否显示指示点"
+      },
+      {
+        "name": "size",
+        "type": "string",
+        "required": false,
+        "defaultValue": "md",
+        "description": "尺寸档位 sm|md|lg，与 preview-size-tokens.v1 的 carousel 档一致，缺省 md"
+      }
+    ],
+    "events": [
+      {
+        "name": "error",
+        "payload": [
+          "index"
+        ],
+        "description": "海报图片加载失败"
+      },
+      {
+        "name": "select",
+        "payload": [
+          "index",
+          "title",
+          "posterId",
+          "productId"
+        ],
+        "description": "点击海报；含索引与可选落地信息"
+      }
+    ]
+  },
+  "usage": {
+    "tag": "poster-carousel",
+    "wxmlExample": "<poster-carousel items=\"{{homeHero.items}}\" autoplay=\"{{true}}\" interval=\"{{4000}}\" show-indicator=\"{{true}}\" size=\"md\" bind:select=\"onPosterSelect\" />",
+    "whenToUse": [
+      "首页需要大幅营销海报轮播",
+      "需要用图片或渐变色块替换默认门店头部"
+    ],
+    "avoidWhen": [
+      "没有可用海报素材且不接受渐变色块占位时",
+      "需要新增轮播之外的点击落地页或营销规则时"
+    ],
+    "notes": [
+      "Plan 中通过 features[].slots[] 声明原始 home-hero；换位只能写顶层 slotOrder"
+    ]
+  },
+  "pages": [
+    "home"
+  ],
+  "slots": [
+    "home-hero"
+  ],
+  "dataModel": {
+    "fields": [
+      "items[].id",
+      "items[].title",
+      "items[].subtitle",
+      "items[].tone",
+      "items[].image"
+    ],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "poster-carousel",
+    "themeVars": [
+      "--color-bg",
+      "--color-muted"
+    ],
+    "sharedClasses": [],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 21
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "必须落在 home-hero 或 menu-hero 等接受 feature-pack 的插槽",
+    "物料缺失时使用主题渐变色块，不伪造已生成图片",
+    "关闭轮播后页面回落到 store-header fallback"
+  ],
+  "knownLimits": [
+    "演示海报使用主题渐变色块，不含摄影素材，店主可自行替换 image",
+    "关闭轮播时首页回落到 store-header fallback"
+  ],
+  "preview": {
+    "dir": "templates/features/poster-carousel/1.0.0/preview",
+    "kinds": [
+      "normal",
+      "empty",
+      "error",
+      "long"
+    ]
+  },
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:29d537d5a25090372978f7460f514384683933f5df92c1f2a590e5f1caaac909"
+  }
+}

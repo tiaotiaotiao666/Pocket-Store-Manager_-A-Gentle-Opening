@@ -338,6 +338,25 @@ test('C13 HTTP transport 发到 /api/v1/agent/template-candidates，带契约头
   assert.deepEqual(body.orderedTemplateIds, validResponse().orderedTemplateIds);
 });
 
+test('C15 未注入 fetchImpl 时默认使用全局 fetch（桌面端真实链路回归）', async () => {
+  const { createTemplateCandidatesTransport, buildTemplateCandidatesRequest } = await loadCandidatesService();
+
+  const originalFetch = globalThis.fetch;
+  let captured = null;
+  globalThis.fetch = async (url, init) => {
+    captured = { url, init };
+    return jsonResponse(validResponse());
+  };
+  try {
+    const transport = createTemplateCandidatesTransport();
+    const body = await transport.send(buildTemplateCandidatesRequest({ selectedFeatures: ['scan-order'] }));
+    assert.equal(captured.url, 'http://127.0.0.1:3000/api/v1/agent/template-candidates');
+    assert.deepEqual(body.orderedTemplateIds, validResponse().orderedTemplateIds);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('C14 后端不可达（TypeError）→ 降级并给出中文原因，不改写候选数量', async () => {
   const { buildTemplateCandidates } = await loadAgentService();
   const { createTemplateCandidatesTransport } = await loadCandidatesService();

@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "component-catalog-entry.v1",
+  "id": "order-status",
+  "version": "1.0.0",
+  "displayName": "订单状态徽标",
+  "category": "order",
+  "summary": "展示六态订单状态、付款状态与顾客提示，文案与色调全部来自领域层。",
+  "sourceKind": "base-builtin",
+  "source": {
+    "root": "templates/base/ordering-base/1.0.0/src/components/order-status",
+    "files": [
+      "index.js",
+      "index.json",
+      "index.wxml",
+      "index.wxss"
+    ],
+    "registryAsset": null,
+    "registryMirror": null,
+    "digest": "sha256:af6c895eeda214a6428ddb35421d05bcc9ce4b19c4792cbdf93013d425f2185e"
+  },
+  "runtime": {
+    "mode": "base-page-fixed",
+    "planConsumed": false,
+    "note": "组件随 Base 页面固定导出；Plan.components 当前不会复制或替换 Base 同名组件。页面结构变化应走 FrontendPack，区块替换应走插槽 Feature Pack。"
+  },
+  "interface": {
+    "props": [
+      {
+        "name": "compact",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": false,
+        "description": "紧凑模式；隐藏提示行"
+      },
+      {
+        "name": "paymentStatus",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "付款状态；非空时追加付款文案"
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": false,
+        "defaultValue": "",
+        "description": "订单状态枚举；未知值回落「状态未知」"
+      }
+    ],
+    "events": []
+  },
+  "usage": {
+    "tag": "order-status",
+    "wxmlExample": "<order-status status=\"{{order.status}}\" payment-status=\"{{order.paymentStatus}}\" />",
+    "whenToUse": [
+      "订单详情页顶部需要状态摘要",
+      "列表需要紧凑状态徽标"
+    ],
+    "avoidWhen": [
+      "需要展示完整状态推进按钮时，用 order-card",
+      "需要状态日志时间线时，用 status-timeline"
+    ],
+    "notes": [
+      "六态与文案契约见 docs/order-state.md"
+    ]
+  },
+  "pages": [
+    "order-detail"
+  ],
+  "slots": [],
+  "dataModel": {
+    "fields": [],
+    "moneyRule": "金额只使用整数分；展示格式化由 Base 领域层或组件负责，禁止引入第二份金额事实。"
+  },
+  "styles": {
+    "styleFile": "index.wxss",
+    "rootClass": "order-status",
+    "themeVars": [
+      "--color-muted",
+      "--color-primary-soft",
+      "--color-success"
+    ],
+    "sharedClasses": [],
+    "imports": [
+      "../../styles/component.wxss"
+    ],
+    "selectorCount": 23
+  },
+  "constraints": [
+    "UI 组件不得调用 wx.request / wx.uploadFile / 云函数。",
+    "不得读写 getApp().globalData 或页面栈业务状态。",
+    "不得固定 wx.navigateTo / redirectTo / switchTab / reLaunch。",
+    "不得 require 服务层；数据由页面传入，用户意图通过事件上报。",
+    "状态文案与色调唯一事实在 domain/orderStatus.js",
+    "组件不推断状态是否可推进"
+  ],
+  "knownLimits": [],
+  "preview": null,
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:af6c895eeda214a6428ddb35421d05bcc9ce4b19c4792cbdf93013d425f2185e"
+  }
+}

@@ -1,0 +1,239 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "checkout-items-card",
+  "displayName": "菜品明细卡",
+  "summary": "件数、逐行「单价 × 数量」与行金额、分隔线与合计，并注明服务端将重新计价。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "checkout",
+  "order": 4,
+  "locator": {
+    "selector": "checkout__card",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": 2,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
+    "lineStart": 50,
+    "lineEnd": 68,
+    "digest": "sha256:7ec7922fc0357d055ea86c371eb895b431fd9d81f7343a020303f9103cb1d897"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 50,
+        "lineEnd": 68,
+        "code": "<view class=\"surface-card checkout__card\">\r\n        <view class=\"checkout__card-head\">\r\n          <text class=\"checkout__card-title\">菜品明细</text>\r\n          <text class=\"checkout__card-extra\">{{totalQuantity}} 件</text>\r\n        </view>\r\n        <view class=\"checkout__divider\"></view>\r\n        <view wx:for=\"{{items}}\" wx:key=\"productId\" class=\"checkout__item\">\r\n          <view class=\"checkout__item-main\">\r\n            <text class=\"checkout__item-name\">{{item.name}}</text>\r\n            <text class=\"checkout__item-unit\">{{item.unitPriceText}} × {{item.quantity}}</text>\r\n          </view>\r\n          <text class=\"checkout__item-line\">{{item.lineTotalText}}</text>\r\n        </view>\r\n        <view class=\"checkout__divider\"></view>\r\n        <view class=\"checkout__total\">\r\n          <text class=\"checkout__total-label\">合计（服务端将重新计价）</text>\r\n          <text class=\"checkout__total-value\">{{totalText}}</text>\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "items",
+      "lineTotalText",
+      "name",
+      "quantity",
+      "totalQuantity",
+      "totalText",
+      "unitPriceText"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/checkout/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "surface-card",
+      "checkout__card",
+      "checkout__card-head",
+      "checkout__card-title",
+      "checkout__card-extra",
+      "checkout__divider",
+      "checkout__item",
+      "checkout__item-main",
+      "checkout__item-name",
+      "checkout__item-unit",
+      "checkout__item-line",
+      "checkout__total",
+      "checkout__total-label",
+      "checkout__total-value"
+    ],
+    "selectors": [
+      {
+        "selector": ".checkout__card",
+        "declarations": [
+          "margin-top: 24rpx",
+          "padding: 24rpx"
+        ]
+      },
+      {
+        "selector": ".checkout__card-head",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".checkout__card-title",
+        "declarations": [
+          "font-size: 28rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".checkout__card-extra",
+        "declarations": [
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".checkout__divider",
+        "declarations": [
+          "height: 2rpx",
+          "margin: 16rpx 0",
+          "background: rgba(230, 222, 210, 0.62)"
+        ]
+      },
+      {
+        "selector": ".checkout__item",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "padding: 12rpx 0"
+        ]
+      },
+      {
+        "selector": ".checkout__item-main",
+        "declarations": [
+          "flex: 1",
+          "min-width: 0",
+          "display: flex",
+          "flex-direction: column"
+        ]
+      },
+      {
+        "selector": ".checkout__item-name",
+        "declarations": [
+          "font-size: 27rpx",
+          "font-weight: 600",
+          "overflow: hidden",
+          "white-space: nowrap",
+          "text-overflow: ellipsis"
+        ]
+      },
+      {
+        "selector": ".checkout__item-unit",
+        "declarations": [
+          "margin-top: 4rpx",
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".checkout__item-line",
+        "declarations": [
+          "min-width: 120rpx",
+          "text-align: right",
+          "font-size: 26rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".checkout__total",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".checkout__total-label",
+        "declarations": [
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".checkout__total-value",
+        "declarations": [
+          "font-size: 38rpx",
+          "font-weight: 700",
+          "color: var(--color-primary)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-primary"
+    ],
+    "selectorCount": 13
+  },
+  "reuse": {
+    "level": "promote-to-ui-block",
+    "reason": "纯展示但被结算页独占，跨模板复用需要稳定的 props 契约；建议提升为 checkout-items UI Block。",
+    "whenToUse": [
+      "结算页或确认弹层需要只读菜品明细",
+      "需要把合计与明细放在同一卡片"
+    ],
+    "avoidWhen": [
+      "需要行内加减购，用菜单页的 product-card 与 cart-panel"
+    ],
+    "uiBlockBlueprint": {
+      "suggestedId": "checkout-items",
+      "displayName": "结算菜品明细卡",
+      "props": [
+        {
+          "name": "items",
+          "type": "array",
+          "required": true,
+          "description": "行项目：name、unitPriceText、quantity、lineTotalText"
+        },
+        {
+          "name": "totalQuantity",
+          "type": "number",
+          "required": true,
+          "description": "总件数，展示在卡片右上"
+        },
+        {
+          "name": "totalText",
+          "type": "string",
+          "required": true,
+          "description": "合计金额文案，金额以服务端为准"
+        }
+      ],
+      "events": [],
+      "promotionSteps": [
+        "按组件入库标准新增 templates/components/checkout-items/1.0.0",
+        "在 Base 页面 index.json 的 usingComponents 声明后才能进入 FrontendPack 视图",
+        "登记 registry.v1.json 并执行 node scripts/registry-check.cjs --write"
+      ]
+    }
+  },
+  "constraints": [
+    "金额只做展示，提交后以服务端计价为准"
+  ],
+  "knownLimits": [
+    "行内不支持加减购，数量调整在菜单页完成"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:7ec7922fc0357d055ea86c371eb895b431fd9d81f7343a020303f9103cb1d897"
+  }
+}

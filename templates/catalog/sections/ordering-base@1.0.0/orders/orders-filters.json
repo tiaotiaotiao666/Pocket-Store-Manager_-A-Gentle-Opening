@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "orders-filters",
+  "displayName": "订单状态筛选条",
+  "summary": "全部、进行中、历史三段筛选，当前项加 active 样式。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "orders",
+  "order": 2,
+  "locator": {
+    "selector": "orders__filters",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxss",
+    "lineStart": 8,
+    "lineEnd": 18,
+    "digest": "sha256:dd4468b450781f39df067a76de52b6b91a7a9694c11315b9909462b679d63df9"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 8,
+        "lineEnd": 18,
+        "code": "<view class=\"orders__filters\">\r\n    <view\r\n      wx:for=\"{{filters}}\"\r\n      wx:key=\"key\"\r\n      class=\"orders__filter {{filter === item.key ? 'orders__filter--active' : ''}}\"\r\n      data-key=\"{{item.key}}\"\r\n      bind:tap=\"onChangeFilter\"\r\n    >\r\n      {{item.label}}\r\n    </view>\r\n  </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "active",
+      "filter",
+      "filters",
+      "key",
+      "label",
+      "orders__filter"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onChangeFilter"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/orders/index.js",
+    "handlers": [
+      "onChangeFilter"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "orders__filters",
+      "orders__filter",
+      "{{filter",
+      "===",
+      "item.key",
+      "?",
+      "'orders__filter--active'",
+      ":",
+      "''}}"
+    ],
+    "selectors": [
+      {
+        "selector": ".orders__filters",
+        "declarations": [
+          "display: flex",
+          "margin-top: 26rpx",
+          "padding: 8rpx",
+          "border-radius: 999rpx",
+          "background: rgba(35, 35, 35, 0.05)"
+        ]
+      },
+      {
+        "selector": ".orders__filter",
+        "declarations": [
+          "flex: 1",
+          "padding: 16rpx 0",
+          "border-radius: 999rpx",
+          "text-align: center",
+          "font-size: 25rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".orders__filter--active",
+        "declarations": [
+          "background: var(--color-surface)",
+          "color: var(--color-text)",
+          "font-weight: 700",
+          "box-shadow: 0 6rpx 16rpx rgba(35, 35, 35, 0.08)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted",
+      "--color-surface",
+      "--color-text"
+    ],
+    "selectorCount": 3
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "循环渲染 filters 并上报 onChangeFilter，复制即可。",
+    "whenToUse": [
+      "订单列表需要按进行中与历史切换"
+    ],
+    "avoidWhen": [
+      "筛选维度需要后端分页参数，先确认 filters 契约"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "当前项由 filter === item.key 决定",
+    "点击只上报 onChangeFilter"
+  ],
+  "knownLimits": [
+    "筛选在前端切片，分页由订单接口负责"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:dd4468b450781f39df067a76de52b6b91a7a9694c11315b9909462b679d63df9"
+  }
+}

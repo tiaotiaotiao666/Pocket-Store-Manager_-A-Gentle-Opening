@@ -1,0 +1,170 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-merchant-entry",
+  "displayName": "店主订单台入口",
+  "summary": "当前身份拥有门店管理权限时显示的店主入口，点击进入店主订单台。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 11,
+  "locator": {
+    "selector": "fp-home__merchant",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 99,
+    "lineEnd": 105,
+    "digest": "sha256:f3906d1fb0fe5ad55d538f2c7422ded87a2df5301169bbc0083f245f5fb666af"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 99,
+        "lineEnd": 105,
+        "code": "<view wx:if=\"{{merchantStoreId}}\" class=\"fp-home__merchant\" bind:tap=\"goMerchant\">\r\n        <view class=\"fp-home__merchant-body\">\r\n          <text class=\"fp-home__merchant-title\">店主订单台</text>\r\n          <text class=\"fp-home__merchant-sub\">当前身份拥有该门店的管理权限</text>\r\n        </view>\r\n        <text class=\"fp-home__merchant-arrow\">›</text>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "merchantStoreId"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "goMerchant"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [
+      "goMerchant"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-home__merchant",
+    "classTokens": [
+      "fp-home__merchant",
+      "fp-home__merchant-body",
+      "fp-home__merchant-title",
+      "fp-home__merchant-sub",
+      "fp-home__merchant-arrow"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-home__merchant",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "margin-top: 34rpx",
+          "padding: 28rpx",
+          "border-radius: 26rpx",
+          "background: linear-gradient(135deg, var(--color-text) 0%, #3a3430 100%)",
+          "color: var(--color-surface)",
+          "box-shadow: 0 14rpx 32rpx rgba(35, 35, 35, 0.2)"
+        ]
+      },
+      {
+        "selector": ".fp-home__merchant-body",
+        "declarations": [
+          "display: flex",
+          "flex-direction: column"
+        ]
+      },
+      {
+        "selector": ".fp-home__merchant-title",
+        "declarations": [
+          "font-size: 30rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".fp-home__merchant-sub",
+        "declarations": [
+          "margin-top: 6rpx",
+          "font-size: 22rpx",
+          "color: rgba(255, 250, 243, 0.62)"
+        ]
+      },
+      {
+        "selector": ".fp-home__merchant-arrow",
+        "declarations": [
+          "font-size: 40rpx",
+          "color: rgba(255, 250, 243, 0.6)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-surface",
+      "--color-text"
+    ],
+    "selectorCount": 5
+  },
+  "reuse": {
+    "level": "promote-to-ui-block",
+    "reason": "权限判定在页面层，入口本身是纯展示与点击上报，适合沉淀为可复用组件。",
+    "whenToUse": [
+      "同一小程序内顾客与店主共用首屏",
+      "需要根据身份暴露管理入口"
+    ],
+    "avoidWhen": [
+      "需要展示店主完整工作台时，应进入 merchant-orders 页面"
+    ],
+    "uiBlockBlueprint": {
+      "suggestedId": "merchant-entry",
+      "displayName": "店主订单台入口",
+      "props": [
+        {
+          "name": "title",
+          "type": "string",
+          "required": false,
+          "description": "入口标题，缺省「店主订单台」"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "description": "权限说明文案"
+        }
+      ],
+      "events": [
+        {
+          "name": "open",
+          "payload": [],
+          "description": "点击店主入口"
+        }
+      ],
+      "promotionSteps": [
+        "权限判定留在页面层，组件只负责展示与上报",
+        "登记 registry 并在 Base 页面声明后再进入视图包"
+      ]
+    }
+  },
+  "constraints": [
+    "不在组件内读取角色或判定店主权限",
+    "显隐由页面 merchantStoreId 控制"
+  ],
+  "knownLimits": [
+    "没有加载态与禁用态"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:f3906d1fb0fe5ad55d538f2c7422ded87a2df5301169bbc0083f245f5fb666af"
+  }
+}

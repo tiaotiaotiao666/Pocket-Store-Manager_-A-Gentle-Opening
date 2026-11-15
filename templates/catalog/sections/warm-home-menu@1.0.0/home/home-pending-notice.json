@@ -1,0 +1,163 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-pending-notice",
+  "displayName": "待付款提醒",
+  "summary": "待演示付款订单数量提示条，点击跳转订单列表。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 9,
+  "locator": {
+    "selector": "fp-home__notice",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 83,
+    "lineEnd": 87,
+    "digest": "sha256:3c5a760eb7fd672ef0cc428a910f10bac92298fcaf08cb75ca87cdadb6698589"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 83,
+        "lineEnd": 87,
+        "code": "<view wx:if=\"{{pendingPaymentCount > 0}}\" class=\"fp-home__notice\" bind:tap=\"goOrders\">\r\n        <view class=\"fp-home__notice-dot\"></view>\r\n        <text class=\"fp-home__notice-text\">你有 {{pendingPaymentCount}} 笔订单待演示付款</text>\r\n        <text class=\"fp-home__notice-arrow\">去处理 ›</text>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "pendingPaymentCount"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "goOrders"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [
+      "goOrders"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-home__notice",
+    "classTokens": [
+      "fp-home__notice",
+      "fp-home__notice-dot",
+      "fp-home__notice-text",
+      "fp-home__notice-arrow"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-home__notice",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "margin-top: 22rpx",
+          "padding: 22rpx 24rpx",
+          "border-radius: 18rpx",
+          "background: #fdf0e4",
+          "border: 2rpx solid rgba(179, 74, 15, 0.18)"
+        ]
+      },
+      {
+        "selector": ".fp-home__notice-dot",
+        "declarations": [
+          "flex: none",
+          "width: 14rpx",
+          "height: 14rpx",
+          "margin-right: 14rpx",
+          "border-radius: 999rpx",
+          "background: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".fp-home__notice-text",
+        "declarations": [
+          "flex: 1",
+          "font-size: 23rpx",
+          "color: #8a5a2b"
+        ]
+      },
+      {
+        "selector": ".fp-home__notice-arrow",
+        "declarations": [
+          "font-size: 22rpx",
+          "color: #a8691f"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-primary"
+    ],
+    "selectorCount": 4
+  },
+  "reuse": {
+    "level": "promote-to-ui-block",
+    "reason": "状态提示条在多个模板中会复用，但目前依赖页面字段与 onGoOrders，缺少 props/事件契约。",
+    "whenToUse": [
+      "存在待支付订单需要提醒用户",
+      "需要在首屏给出一个轻量的订单入口"
+    ],
+    "avoidWhen": [
+      "只是展示错误或版本信息时，用 error-banner 或提示条"
+    ],
+    "uiBlockBlueprint": {
+      "suggestedId": "pending-notice",
+      "displayName": "待付款提醒",
+      "props": [
+        {
+          "name": "count",
+          "type": "number",
+          "required": true,
+          "description": "待付款订单数量；页面负责在 0 时不渲染"
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "required": false,
+          "description": "自定义提示文案"
+        }
+      ],
+      "events": [
+        {
+          "name": "open",
+          "payload": [],
+          "description": "点击提醒条"
+        }
+      ],
+      "promotionSteps": [
+        "count 由 props 传入，组件不查订单接口",
+        "登记 registry 并在 Base 页面声明后再进入视图包"
+      ]
+    }
+  },
+  "constraints": [
+    "count 为 0 时由页面 wx:if 控制，不渲染空提醒",
+    "组件只上报点击，不在组件内跳转订单页"
+  ],
+  "knownLimits": [
+    "数量文案写死，多语言需要提升为 UI Block"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:3c5a760eb7fd672ef0cc428a910f10bac92298fcaf08cb75ca87cdadb6698589"
+  }
+}

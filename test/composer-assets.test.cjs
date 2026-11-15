@@ -84,7 +84,9 @@ test('插槽锚点三段式完整且每段只出现一次', () => {
 test('fallback 保留改造前的真实标签', () => {
   const homeWxml = read(path.join(SRC_DIR, 'pages', 'home', 'index.wxml'));
   const fallback = homeWxml.split('<!-- @slot-fallback:home-hero -->')[1].split('<!-- @slot-fallback:home-hero:end -->')[0];
-  assert.ok(/<store-header[\s\S]*store-name="\{\{store\.name\}\}"/.test(fallback));
+  assert.ok(/<store-header[\s\S]*store-name="\{\{store\.name( \|\| '')?\}\}"/.test(fallback));
+  assert.ok(/address="\{\{store\.address( \|\| '')?\}\}"/.test(fallback), '地址绑定需能兜住 null');
+  assert.ok(/business-hours="\{\{store\.businessHours( \|\| '')?\}\}"/.test(fallback), '营业时间绑定需能兜住 null');
 });
 
 test('Base 必备服务、状态组件与页面 JS 契约', () => {

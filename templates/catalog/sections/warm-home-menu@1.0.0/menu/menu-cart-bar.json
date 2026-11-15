@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "menu-cart-bar",
+  "displayName": "购物车条调用位",
+  "summary": "菜单页对 Base cart-bar 的直接调用，固定底部展示合计与结算入口。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "menu",
+  "order": 9,
+  "locator": {
+    "selector": null,
+    "componentTag": "cart-bar",
+    "slotId": null,
+    "occurrence": 1,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
+    "lineStart": 86,
+    "lineEnd": 92,
+    "digest": "sha256:9cdeed50ae9a5fa4883c07317cb65e65e406d67386d573113281a56f19dea913"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "cart-bar",
+    "snippets": [
+      {
+        "lineStart": 86,
+        "lineEnd": 92,
+        "code": "<cart-bar\r\n      total-cents=\"{{cartSummary.totalCents}}\"\r\n      total-quantity=\"{{cartSummary.totalQuantity}}\"\r\n      submitting=\"{{false}}\"\r\n      bind:expand=\"onExpandCart\"\r\n      bind:checkout=\"onCheckout\"\r\n    />"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "cart-bar",
+      "bindings": [
+        {
+          "attr": "total-cents",
+          "expression": "{{cartSummary.totalCents}}"
+        },
+        {
+          "attr": "total-quantity",
+          "expression": "{{cartSummary.totalQuantity}}"
+        },
+        {
+          "attr": "submitting",
+          "expression": "{{false}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "expand",
+          "handler": "onExpandCart"
+        },
+        {
+          "name": "checkout",
+          "handler": "onCheckout"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "cartSummary",
+      "totalCents",
+      "totalQuantity"
+    ],
+    "handlers": [
+      {
+        "type": "expand",
+        "handler": "onExpandCart"
+      },
+      {
+        "type": "checkout",
+        "handler": "onCheckout"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/menu/index.js",
+    "handlers": [
+      "onCheckout",
+      "onExpandCart"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [],
+    "selectors": [],
+    "themeVars": [],
+    "selectorCount": 0
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "Base 内置组件，页面只负责传金额与数量并绑定展开/结算意图。",
+    "whenToUse": [
+      "菜单页需要常驻购物车摘要"
+    ],
+    "avoidWhen": [
+      "结算页不需要底部购物车条"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "金额只传整数分 totalCents",
+    "页面必须为固定底栏预留 safe-area padding"
+  ],
+  "knownLimits": [
+    "空车或提交中不派发 checkout，禁用态由组件自身处理"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:9cdeed50ae9a5fa4883c07317cb65e65e406d67386d573113281a56f19dea913"
+  }
+}

@@ -49,20 +49,23 @@ function checkFrontendPackImplementation(manifest, entryRoot) {
 function normalizePropertyType(prop) {
   if (!prop) return 'unknown';
   const type = prop.type;
+  const map = {
+    String: 'string',
+    Number: 'number',
+    Boolean: 'boolean',
+    Array: 'array',
+    Object: 'object',
+    0: 'string',
+    1: 'number',
+    2: 'boolean',
+    3: 'array',
+    4: 'object',
+  };
   if (Number.isInteger(type) || typeof type === 'string') {
-    const map = {
-      String: 'string',
-      Number: 'number',
-      Boolean: 'boolean',
-      Array: 'array',
-      Object: 'object',
-      0: 'string',
-      1: 'number',
-      2: 'boolean',
-      3: 'array',
-      4: 'object',
-    };
-    return map[type] || map[type.name] || 'unknown';
+    return map[type] || 'unknown';
+  }
+  if (typeof type === 'function' && type.name) {
+    return map[type.name] || 'unknown';
   }
   return 'unknown';
 }

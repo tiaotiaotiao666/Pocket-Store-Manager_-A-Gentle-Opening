@@ -1,0 +1,199 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-active-orders",
+  "displayName": "进行中订单区",
+  "summary": "进行中订单标题行与 order-card 列表，卡片以顾客视角只读展示。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 10,
+  "locator": {
+    "selector": "fp-home__orders",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 89,
+    "lineEnd": 97,
+    "digest": "sha256:085e35febbbb3318bba91793848fbc130a2c51484727d419fddc3ec3556fbea3"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 89,
+        "lineEnd": 97,
+        "code": "<view wx:if=\"{{activeOrders.length > 0}}\" class=\"fp-home__orders\">\r\n        <view class=\"fp-home__section-head\">\r\n          <text class=\"fp-home__section-title\">进行中</text>\r\n          <text class=\"fp-home__section-extra\" bind:tap=\"goOrders\">全部订单 ›</text>\r\n        </view>\r\n        <view wx:for=\"{{activeOrders}}\" wx:key=\"id\" class=\"fp-home__order\">\r\n          <order-card order=\"{{item}}\" role=\"CUSTOMER\" actionable=\"{{false}}\" bind:open=\"onOpenOrder\" />\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "order-card",
+      "bindings": [
+        {
+          "attr": "order",
+          "expression": "{{item}}"
+        },
+        {
+          "attr": "role",
+          "expression": "CUSTOMER"
+        },
+        {
+          "attr": "actionable",
+          "expression": "{{false}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "open",
+          "handler": "onOpenOrder"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "activeOrders"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "goOrders"
+      },
+      {
+        "type": "open",
+        "handler": "onOpenOrder"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [
+      "goOrders",
+      "onOpenOrder"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-home__orders",
+    "classTokens": [
+      "fp-home__orders",
+      "fp-home__section-head",
+      "fp-home__section-title",
+      "fp-home__section-extra",
+      "fp-home__order"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-home__section-head",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "margin-bottom: 18rpx"
+        ]
+      },
+      {
+        "selector": ".fp-home__section-title",
+        "declarations": [
+          "font-size: 28rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".fp-home__section-extra",
+        "declarations": [
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".fp-home__orders",
+        "declarations": [
+          "margin-top: 34rpx"
+        ]
+      },
+      {
+        "selector": ".fp-home__order",
+        "declarations": [
+          "margin-bottom: 18rpx"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted"
+    ],
+    "selectorCount": 5
+  },
+  "reuse": {
+    "level": "promote-to-ui-block",
+    "reason": "区块把标题行、列表容器与 order-card 绑定打包在一起，复用价值高，但目前只有 WXML。",
+    "whenToUse": [
+      "首屏需要展示用户正在进行中的订单",
+      "需要用统一标题行承载「全部订单」入口"
+    ],
+    "avoidWhen": [
+      "需要完整订单列表与分页时，使用 orders 页面"
+    ],
+    "uiBlockBlueprint": {
+      "suggestedId": "active-orders",
+      "displayName": "进行中订单区",
+      "props": [
+        {
+          "name": "orders",
+          "type": "array",
+          "required": true,
+          "description": "订单投影数组，元素结构见 order-card 的 order 契约"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": false,
+          "description": "区块标题，缺省「进行中」"
+        }
+      ],
+      "events": [
+        {
+          "name": "open",
+          "payload": [
+            "orderId"
+          ],
+          "description": "点击某张订单卡"
+        },
+        {
+          "name": "viewAll",
+          "payload": [],
+          "description": "点击「全部订单」"
+        }
+      ],
+      "promotionSteps": [
+        "内部继续使用 order-card，固定 role=CUSTOMER、actionable=false",
+        "空列表由页面控制显隐，组件不渲染空态",
+        "登记 registry 并在 Base 页面声明后再进入视图包"
+      ]
+    }
+  },
+  "constraints": [
+    "order-card 固定 role=CUSTOMER 且 actionable=false",
+    "空列表由页面 wx:if 控制，组件不伪造空态",
+    "金额只读 order-card 传入的 totalText"
+  ],
+  "knownLimits": [
+    "最多只适合展示少量进行中订单，长列表应使用 orders 页面"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:085e35febbbb3318bba91793848fbc130a2c51484727d419fddc3ec3556fbea3"
+  }
+}

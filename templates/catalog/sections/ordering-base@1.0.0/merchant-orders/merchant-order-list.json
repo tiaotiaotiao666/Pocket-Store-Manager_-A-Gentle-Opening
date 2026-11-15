@@ -1,0 +1,147 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "merchant-order-list",
+  "displayName": "店主订单列表",
+  "summary": "order-card 以 MERCHANT 角色渲染，带 acting 状态与推进操作。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "merchant-orders",
+  "order": 5,
+  "locator": {
+    "selector": "merchant__orders",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
+    "lineStart": 94,
+    "lineEnd": 106,
+    "digest": "sha256:372e5de181e5aa189f4bcf54a5039dd937ff8c1c28142b2399b90b7c55876716"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 94,
+        "lineEnd": 106,
+        "code": "<view wx:else class=\"merchant__orders\">\r\n        <view wx:for=\"{{orders}}\" wx:key=\"id\" class=\"merchant__order\">\r\n          <order-card\r\n            order=\"{{item}}\"\r\n            role=\"MERCHANT\"\r\n            actionable=\"{{true}}\"\r\n            acting-id=\"{{orderActingIds[item.id] ? item.id : ''}}\"\r\n            acting-status=\"{{orderActingIds[item.id] || ''}}\"\r\n            bind:open=\"onOpenOrder\"\r\n            bind:advance=\"onAdvance\"\r\n          />\r\n        </view>\r\n      </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "order-card",
+      "bindings": [
+        {
+          "attr": "order",
+          "expression": "{{item}}"
+        },
+        {
+          "attr": "role",
+          "expression": "MERCHANT"
+        },
+        {
+          "attr": "actionable",
+          "expression": "{{true}}"
+        },
+        {
+          "attr": "acting-id",
+          "expression": "{{orderActingIds[item.id] ? item.id : ''}}"
+        },
+        {
+          "attr": "acting-status",
+          "expression": "{{orderActingIds[item.id] || ''}}"
+        }
+      ],
+      "events": [
+        {
+          "name": "open",
+          "handler": "onOpenOrder"
+        },
+        {
+          "name": "advance",
+          "handler": "onAdvance"
+        }
+      ]
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "id",
+      "orderActingIds",
+      "orders"
+    ],
+    "handlers": [
+      {
+        "type": "open",
+        "handler": "onOpenOrder"
+      },
+      {
+        "type": "advance",
+        "handler": "onAdvance"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/merchant-orders/index.js",
+    "handlers": [
+      "onAdvance",
+      "onOpenOrder"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "merchant__orders",
+      "merchant__order"
+    ],
+    "selectors": [
+      {
+        "selector": ".merchant__orders",
+        "declarations": [
+          "margin-top: 22rpx"
+        ]
+      },
+      {
+        "selector": ".merchant__order",
+        "declarations": [
+          "margin-bottom: 20rpx"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 2
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "列表容器加 Base order-card，复制 WXML 即可。",
+    "whenToUse": [
+      "店主订单台需要接单与出餐操作"
+    ],
+    "avoidWhen": [
+      "顾客侧订单列表，用 orders__list"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "角色固定 MERCHANT",
+    "acting-id 与 acting-status 用于禁用处理中的卡片"
+  ],
+  "knownLimits": [
+    "没有批量操作"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:372e5de181e5aa189f4bcf54a5039dd937ff8c1c28142b2399b90b7c55876716"
+  }
+}

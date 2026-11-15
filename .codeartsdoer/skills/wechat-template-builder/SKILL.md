@@ -24,13 +24,15 @@ description: 当店主需要新建或扩展微信原生小程序模板、入库 
 
 - `docs/模板库/README.md`
 - `docs/模板库/组件入库标准.md`
+- `docs/模板库/组件库索引标准.md`
+- `templates/catalog/index.json`（组件、页面、布局、区块的唯一检索入口）
 - `templates/registry/registry.v1.json`
 - `templates/registry/schema/manifest.v1.json`
 - `templates/registry/schema/composition.v1.json`
 - `scripts/composer/version.cjs`
 - 至少一个现有资产：`templates/components/product-card/1.0.0/` 或 `templates/features/poster-carousel/1.0.0/`
 
-报告你读到的 `registryVersion`、现有资产数量和 `COMPOSER_VERSION`。
+报告你读到的 `registryVersion`、现有资产数量、`COMPOSER_VERSION`，以及 `templates/catalog/index.json#counts` 的组件/页面/区块数量。
 
 ## 第二步：结构化需求
 
@@ -77,12 +79,18 @@ description: 当店主需要新建或扩展微信原生小程序模板、入库 
 
 执行这次检查时必须同时查：
 
+- 组件库索引：`templates/catalog/index.json`（先按 `category`、`props`、`events`、`pages`、`slots` 选候选）
+- 组件卡：`templates/catalog/components/<id>.json`（核对 props、events、payload、`runtime.mode`、约束）
+- 页面卡：`templates/catalog/pages/<pageId>.json`（组件装配、插槽、控制器方法）
+- 页面区块：`templates/catalog/sections/<packId>@<version>/<pageId>/index.json`（判断能否直接复用或需先提升为 UI Block）
 - Base 内置组件：`templates/base/ordering-base/1.0.0/manifest.json#builtinComponents`
 - Registry UI Block：`templates/components/`
 - Feature Pack：`templates/features/`
 - 页面控制器：`templates/base/ordering-base/1.0.0/src/pages/*/index.js` 的 `methods`
 - 服务层：`templates/base/ordering-base/1.0.0/src/services/`
 - 后端 API 契约：`docs/api.md`
+
+注意：`base-page-fixed` 与 `registry-validation` 组件不会被 `Plan.components` 复制或替换；只有 `slot-injection` 的 Feature Pack 会进入导出工程。
 
 ## 第四步：选择最小改动路径
 
@@ -92,6 +100,7 @@ description: 当店主需要新建或扩展微信原生小程序模板、入库 
 | 调组件大小 | 只改 Plan 的 `presentationTokens`，`sm|md|lg` |
 | 移动已有区块 | 只改 Plan 顶层 `slotOrder`，且必须是已占用 Feature 的完整排列 |
 | 新增纯展示块 | 在 `templates/components/` 新增 UI Block |
+| 复用现有页面中的一块 | 先读区块卡；`direct-wxml` 复制片段，`base-component-use` 直接调用组件，`slot-only` 走 Planning 插槽，`promote-to-ui-block` 先立项提升 |
 | 新增业务能力 | 在 `templates/features/` 新增 Feature Pack；先确认后端契约 |
 | 换一套现有页面视觉/布局，保留 Base 控制器 | 在 `templates/frontend-packs/` 新增 FrontendPack，只生成 WXML/WXSS/JSON |
 | 需要全新交互逻辑 | 拆成独立的新资产/后端任务，不在本次模板生成中放开任意 JS |
@@ -240,5 +249,6 @@ npm test
 - [ ] FrontendPack 目录内没有 `.js`，页面 JSON 只用白名单键，事件全部命中 Base 控制器。
 - [ ] FrontendPack 的 `requiresSlots` 锚点在覆盖后的 WXML 中各出现一次。
 - [ ] `registry:check` 退出码 0。
+- [ ] `npm run catalog:check` 退出码 0；资产改动后先 `registry-check --write`，再 `catalog:write`。
 - [ ] 至少一份 Recipe 真实生成成功。
 - [ ] 微信开发者工具真实编译与核心闭环回归完成（或明确标注 NOT_RUN/INCOMPLETE）。

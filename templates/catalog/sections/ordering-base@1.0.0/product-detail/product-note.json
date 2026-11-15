@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "product-note",
+  "displayName": "价格说明",
+  "summary": "说明商品价格与售卖状态以门店当前菜单为准。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "product-detail",
+  "order": 3,
+  "locator": {
+    "selector": "product-page__note",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxss",
+    "lineStart": 32,
+    "lineEnd": 32,
+    "digest": "sha256:10a1ab4d51d423f5588558a8769a5767b33fe005006e26fbe7eddf4895b18ffa"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 32,
+        "lineEnd": 32,
+        "code": "<view class=\"product-page__note\">商品价格与售卖状态以门店当前菜单为准</view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/product-detail/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "product-page__note"
+    ],
+    "selectors": [
+      {
+        "selector": ".product-page__note",
+        "declarations": [
+          "margin-top: 28rpx",
+          "color: var(--color-muted)",
+          "font-size: 21rpx",
+          "text-align: center"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted"
+    ],
+    "selectorCount": 1
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "单行说明，复制即可。",
+    "whenToUse": [
+      "需要在详情底部提示价格时效性"
+    ],
+    "avoidWhen": [
+      "无价格相关说明需求时删除"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [],
+  "knownLimits": [
+    "文案写死"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:10a1ab4d51d423f5588558a8769a5767b33fe005006e26fbe7eddf4895b18ffa"
+  }
+}

@@ -1,6 +1,6 @@
 # 小程序模板库：组件入库与模板生成规范
 
-> 更新日期：2026-11-04。
+> 更新日期：2026-11-09。
 > 适用对象：维护微信原生小程序模板资产的工程师、桌面端 Agent、后端契约维护者，以及后续接手本项目的 AI。
 > 本目录是“组件入库”和“从资产组合生成新模板”的唯一规范入口。具体字段以 `templates/registry/schema/` 下的冻结 Schema 和 `scripts/composer/` 的真实实现为准；文档与实现冲突时，先核对代码和测试，再修订文档。
 
@@ -20,18 +20,20 @@
 + 真实微信编译与回归证据
 ```
 
-## 2. 当前基线（2026-11-04）
+## 2. 当前基线（2026-11-09）
 
 | 类型 | 数量 | 位置 |
 | --- | --- | --- |
 | Base | 1 | `templates/base/ordering-base/1.0.0` |
-| UI Block | 3 | `templates/components/{store-header,product-card,cart-bar}/1.0.0` |
+| Base 内置组件 | 14 | `templates/base/ordering-base/1.0.0/src/components/` |
+| UI Block | 3（与 Base 同名组件共享实现） | `templates/components/{store-header,product-card,cart-bar}/1.0.0` |
 | Feature Pack | 1 | `templates/features/poster-carousel/1.0.0` |
 | FrontendPack | 1 | `templates/frontend-packs/warm-home-menu/1.0.0` |
 | Recipe | 4（direct 2） | `templates/recipes/` |
+| 组件库目录 | 15 组件 / 8 页面 / 1 布局 / 61 区块 | `templates/catalog/` |
 | 注册表 | `2026.11.0` | `templates/registry/registry.v1.json` |
 
-当前正式 Recipe 为 `order-classic@1.0.0`、`order-poster@1.0.0`；`order-classic-candidate@0.1.0` 只作为候选/正式分离的样本；`order-warm-home@1.0.0` 是 FrontendPack 纵向样例，仍为候选。
+当前正式 Recipe 为 `order-classic@1.0.0`、`order-poster@1.0.0`；`order-classic-candidate@0.1.0` 只作为候选/正式分离的样本；`order-warm-home@1.0.0` 是 FrontendPack 纵向样例，仍为候选。组件库目录是 Base、Manifest、Feature Pack 与 FrontendPack 的确定性投影，不进入注册表，也不改变 Composer 语义。
 
 ## 3. 五层资产模型
 
@@ -75,6 +77,7 @@ Base 版本变化属于结构性变更，必须走显式的版本升级流程，
 
 | 我要做什么 | 阅读 |
 | --- | --- |
+| 让 Agent 读取现有组件、页面与区块 | [`组件库索引标准.md`](组件库索引标准.md)；[`组件库总览.md`](组件库总览.md) |
 | 新增一个纯展示组件 | [`组件入库标准.md`](组件入库标准.md) §2–§9；[`组件入库范例.md`](组件入库范例.md) §1 |
 | 新增一个业务能力包 | [`组件入库标准.md`](组件入库标准.md) §3–§9；[`组件入库范例.md`](组件入库范例.md) §2 |
 | 生成一套新的页面视图 | [`FrontendPack视图包标准与范例.md`](FrontendPack视图包标准与范例.md) |

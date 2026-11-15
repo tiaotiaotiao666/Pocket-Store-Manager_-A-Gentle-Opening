@@ -1,0 +1,273 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "product-body",
+  "displayName": "商品信息与加购区",
+  "summary": "精选眉标、售罄标记、名称、描述、价格、步进器与加入购物车按钮。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "product-detail",
+  "order": 2,
+  "locator": {
+    "selector": "product-page__body",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxss",
+    "lineStart": 12,
+    "lineEnd": 31,
+    "digest": "sha256:fda9200683d8a70174ac8226c5b49f6b5bec2a1b55b97d10a856eb846ee58166"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 12,
+        "lineEnd": 31,
+        "code": "<view class=\"product-page__body surface-card\">\n      <view class=\"product-page__topline\">\n        <text class=\"product-page__eyebrow\">本店精选</text>\n        <text wx:if=\"{{product.available === false}}\" class=\"product-page__soldout\">暂时售罄</text>\n      </view>\n      <text class=\"product-page__name\">{{product.name}}</text>\n      <text class=\"product-page__description\">{{product.description || '门店用心制作，欢迎品尝。'}}</text>\n      <view class=\"product-page__divider\"></view>\n      <view class=\"product-page__buyrow\">\n        <view class=\"product-page__price\"><text>¥</text><text>{{amount}}</text></view>\n        <view class=\"product-page__stepper\">\n          <view class=\"product-page__step {{quantity > 0 ? '' : 'product-page__step--off'}}\" bind:tap=\"onRemove\">−</view>\n          <text class=\"product-page__quantity\">{{quantity}}</text>\n          <view class=\"product-page__step product-page__step--add {{product.available === false ? 'product-page__step--disabled' : ''}}\" bind:tap=\"onAdd\">+</view>\n        </view>\n      </view>\n      <view class=\"primary-button product-page__add {{product.available === false ? 'primary-button--off' : ''}}\" bind:tap=\"onAdd\">\n        {{product.available === false ? '暂不可售' : '加入购物车'}}\n      </view>\n    </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "amount",
+      "available",
+      "button",
+      "description",
+      "disabled",
+      "name",
+      "off",
+      "page__step",
+      "primary",
+      "product",
+      "quantity"
+    ],
+    "handlers": [
+      {
+        "type": "tap",
+        "handler": "onRemove"
+      },
+      {
+        "type": "tap",
+        "handler": "onAdd"
+      },
+      {
+        "type": "tap",
+        "handler": "onAdd"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/product-detail/index.js",
+    "handlers": [
+      "onAdd",
+      "onRemove"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "product-page__body",
+      "surface-card",
+      "product-page__topline",
+      "product-page__eyebrow",
+      "product-page__soldout",
+      "product-page__name",
+      "product-page__description",
+      "product-page__divider",
+      "product-page__buyrow",
+      "product-page__price",
+      "product-page__stepper",
+      "product-page__step",
+      "{{quantity",
+      ">",
+      "0",
+      "?",
+      "''",
+      ":",
+      "'product-page__step--off'}}",
+      "product-page__quantity",
+      "product-page__step--add",
+      "{{product.available",
+      "===",
+      "false",
+      "'product-page__step--disabled'",
+      "''}}",
+      "primary-button",
+      "product-page__add",
+      "'primary-button--off'"
+    ],
+    "selectors": [
+      {
+        "selector": ".product-page__body",
+        "declarations": [
+          "position: relative",
+          "margin-top: -36rpx",
+          "padding: 34rpx 30rpx 30rpx",
+          "border-radius: 30rpx"
+        ]
+      },
+      {
+        "selector": ".product-page__topline,\n.product-page__buyrow",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".product-page__eyebrow",
+        "declarations": [
+          "color: var(--color-primary)",
+          "font-size: 21rpx",
+          "font-weight: 600"
+        ]
+      },
+      {
+        "selector": ".product-page__soldout",
+        "declarations": [
+          "color: var(--color-danger)",
+          "font-size: 21rpx"
+        ]
+      },
+      {
+        "selector": ".product-page__name",
+        "declarations": [
+          "display: block",
+          "margin-top: 14rpx",
+          "font-size: 40rpx",
+          "font-weight: 700",
+          "line-height: 1.3"
+        ]
+      },
+      {
+        "selector": ".product-page__description",
+        "declarations": [
+          "display: block",
+          "margin-top: 12rpx",
+          "color: var(--color-muted)",
+          "font-size: 25rpx",
+          "line-height: 1.7"
+        ]
+      },
+      {
+        "selector": ".product-page__divider",
+        "declarations": [
+          "height: 1rpx",
+          "margin: 28rpx 0",
+          "background: var(--color-border)"
+        ]
+      },
+      {
+        "selector": ".product-page__price",
+        "declarations": [
+          "color: var(--color-primary)",
+          "font-size: 38rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".product-page__price text:first-child",
+        "declarations": [
+          "margin-right: 4rpx",
+          "font-size: 23rpx"
+        ]
+      },
+      {
+        "selector": ".product-page__stepper",
+        "declarations": [
+          "display: flex",
+          "align-items: center"
+        ]
+      },
+      {
+        "selector": ".product-page__step",
+        "declarations": [
+          "display: flex",
+          "width: 58rpx",
+          "height: 58rpx",
+          "align-items: center",
+          "justify-content: center",
+          "border: 2rpx solid var(--color-primary)",
+          "border-radius: 50%",
+          "color: var(--color-primary)",
+          "font-size: 35rpx"
+        ]
+      },
+      {
+        "selector": ".product-page__step--add",
+        "declarations": [
+          "background: var(--color-primary)",
+          "color: #fff"
+        ]
+      },
+      {
+        "selector": ".product-page__step--off",
+        "declarations": [
+          "opacity: .35"
+        ]
+      },
+      {
+        "selector": ".product-page__step--disabled",
+        "declarations": [
+          "opacity: .4"
+        ]
+      },
+      {
+        "selector": ".product-page__quantity",
+        "declarations": [
+          "min-width: 62rpx",
+          "text-align: center",
+          "font-size: 27rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".product-page__add",
+        "declarations": [
+          "margin-top: 32rpx"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-border",
+      "--color-danger",
+      "--color-muted",
+      "--color-primary"
+    ],
+    "selectorCount": 16
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "展示加操作结构，复制 WXML 与 product-page__ 样式即可；加减购由控制器处理。",
+    "whenToUse": [
+      "商品详情需要价格与数量选择"
+    ],
+    "avoidWhen": [
+      "只需列表加购，用 product-card 的内置加购"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "售罄时步进器与加购按钮都加禁用样式并显示「暂不可售」",
+    "数量为 0 时减号加 product-page__step--off"
+  ],
+  "knownLimits": [
+    "规格与加料暂不支持"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:fda9200683d8a70174ac8226c5b49f6b5bec2a1b55b97d10a856eb846ee58166"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "mine-demo-foot",
+  "displayName": "演示免责说明",
+  "summary": "演示身份登录与模拟支付不代表真实支付成功的两条说明。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "mine",
+  "order": 6,
+  "locator": {
+    "selector": "mine__foot",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
+    "lineStart": 81,
+    "lineEnd": 84,
+    "digest": "sha256:8d7c253603c021e28f2d7ef3b7c444408588d35532139ccfcd8907052a38ccd8"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 81,
+        "lineEnd": 84,
+        "code": "<view class=\"mine__foot\">\r\n      <text wx:if=\"{{demoMode}}\">演示身份通过 demoOpenId 登录，服务端仅在开发环境允许。</text>\r\n      <text wx:if=\"{{demoMode}}\">模拟支付不代表真实微信支付成功。</text>\r\n    </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "demoMode"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/mine/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "mine__foot"
+    ],
+    "selectors": [
+      {
+        "selector": ".mine__foot",
+        "declarations": [
+          "margin-top: 36rpx",
+          "padding: 0 8rpx",
+          "font-size: 20rpx",
+          "line-height: 1.7",
+          "color: rgba(138, 129, 120, 0.8)"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 1
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "纯文本补充说明，复制即可。",
+    "whenToUse": [
+      "演示环境需要说明身份与支付边界"
+    ],
+    "avoidWhen": [
+      "生产环境应整块删除"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "仅在 demoMode 时显示"
+  ],
+  "knownLimits": [
+    "文案写死"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:8d7c253603c021e28f2d7ef3b7c444408588d35532139ccfcd8907052a38ccd8"
+  }
+}

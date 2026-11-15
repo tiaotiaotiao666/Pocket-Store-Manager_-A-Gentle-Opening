@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "section-page-index.v1",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "product-detail",
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxss"
+  },
+  "counts": {
+    "sections": 5
+  },
+  "sections": [
+    {
+      "id": "product-hero",
+      "displayName": "商品主图区",
+      "order": 1,
+      "locator": {
+        "selector": "product-page__hero",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 8,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "product-hero.json"
+    },
+    {
+      "id": "product-body",
+      "displayName": "商品信息与加购区",
+      "order": 2,
+      "locator": {
+        "selector": "product-page__body",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 12,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "product-body.json"
+    },
+    {
+      "id": "product-note",
+      "displayName": "价格说明",
+      "order": 3,
+      "locator": {
+        "selector": "product-page__note",
+        "componentTag": null,
+        "slotId": null,
+        "occurrence": null,
+        "occurrences": 1
+      },
+      "lineStart": 32,
+      "components": [],
+      "slots": [],
+      "reuseLevel": "direct-wxml",
+      "card": "product-note.json"
+    },
+    {
+      "id": "product-cart-bar",
+      "displayName": "商品页购物车条",
+      "order": 4,
+      "locator": {
+        "selector": null,
+        "componentTag": "cart-bar",
+        "slotId": null,
+        "occurrence": 1,
+        "occurrences": 1
+      },
+      "lineStart": 34,
+      "components": [
+        "cart-bar"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "product-cart-bar.json"
+    },
+    {
+      "id": "product-cart-panel",
+      "displayName": "商品页购物车弹层",
+      "order": 5,
+      "locator": {
+        "selector": null,
+        "componentTag": "cart-panel",
+        "slotId": null,
+        "occurrence": 1,
+        "occurrences": 1
+      },
+      "lineStart": 42,
+      "components": [
+        "cart-panel"
+      ],
+      "slots": [],
+      "reuseLevel": "base-component-use",
+      "card": "product-cart-panel.json"
+    }
+  ]
+}

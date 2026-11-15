@@ -15,8 +15,10 @@
 .product-card__media {
   position: relative;
   flex: none;
-  width: 168rpx;
-  height: 168rpx;
+  /* 尺寸档位来自 Composer 输出的 --store-product-card-min-height（rpx，md=140rpx）。
+     兜底值 168rpx 即原硬编码值，未重新导出的旧工程视觉不变。 */
+  width: var(--store-product-card-min-height, 168rpx);
+  height: var(--store-product-card-min-height, 168rpx);
   border-radius: 20rpx;
   overflow: hidden;
   background: linear-gradient(140deg, #f7ded0 0%, #f3c9ac 100%);

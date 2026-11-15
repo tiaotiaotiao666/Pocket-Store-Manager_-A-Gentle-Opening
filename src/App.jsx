@@ -449,7 +449,7 @@ export default function App() {
   const [agentImages, setAgentImages] = useState({ menu: [], store: [] });
   const [agentImageError, setAgentImageError] = useState(null);
   // 真实截图回传面板状态（工程目录来自 deploy.result，不复制到持久化文档）。
-  const [realPreview, setRealPreview] = useState({ screenshot: null, busy: false, error: null });
+  const [realPreview, setRealPreview] = useState({ screenshots: [], busy: false, error: null });
   const templateReviseBusy = useRef(false);
   const buildStarted = useRef(false);
   const templateRefineStarted = useRef(false);
@@ -1303,15 +1303,18 @@ export default function App() {
         return;
       }
       if (result && typeof result.dataUrl === 'string' && result.dataUrl) {
-        setRealPreview({
+        const shot = {
+          dataUrl: result.dataUrl,
+          name: typeof result.name === 'string' && result.name ? result.name : '未命名截图',
+          bytes: Number.isFinite(result.bytes) ? result.bytes : undefined,
+        };
+        setRealPreview((prev) => ({
           busy: false,
           error: null,
-          screenshot: {
-            dataUrl: result.dataUrl,
-            name: typeof result.name === 'string' && result.name ? result.name : '未命名截图',
-            bytes: Number.isFinite(result.bytes) ? result.bytes : undefined,
-          },
-        });
+          screenshots: prev.screenshots.length >= 4
+            ? [...prev.screenshots.slice(1), shot]
+            : [...prev.screenshots, shot],
+        }));
         return;
       }
       setRealPreview((prev) => ({
@@ -1329,7 +1332,7 @@ export default function App() {
   };
 
   const handleClearPreviewScreenshot = () => {
-    setRealPreview({ screenshot: null, busy: false, error: null });
+    setRealPreview({ screenshots: [], busy: false, error: null });
   };
 
   const handleAgentTurn = async (utterance, { retry = false } = {}) => {
@@ -1828,16 +1831,26 @@ export default function App() {
     switch (phase) {
       case PHASES.FEATURES:
         return (
-          <FeaturePicker
-            groups={FEATURE_GROUPS}
-            features={catalogFeatures}
-            selectedIds={state.features.selected}
-            requiredIds={REQUIRED_IDS}
-            onToggle={(id) => dispatch({ type: 'TOGGLE_FEATURE', id })}
-            custom={state.features.custom}
-            onCustomChange={(value) => dispatch({ type: 'SET_FEATURES_CUSTOM', value })}
-            onCustomize={(value) => dispatch({ type: 'SUBMIT_CUSTOMIZE', value })}
-          />
+          <>
+            {state.phaseReturn && state.phaseReturn.phase === PHASES.DEPLOY ? (
+              <div className="phase-return-banner" role="note">
+                <span>你正在从部署页查看能力勾选。确认完可直接返回部署，已确认的提示与导出记录都会保留。</span>
+                <button type="button" className="ghost" onClick={() => dispatch({ type: 'PHASE_RETURN' })}>
+                  返回部署
+                </button>
+              </div>
+            ) : null}
+            <FeaturePicker
+              groups={FEATURE_GROUPS}
+              features={catalogFeatures}
+              selectedIds={state.features.selected}
+              requiredIds={REQUIRED_IDS}
+              onToggle={(id) => dispatch({ type: 'TOGGLE_FEATURE', id })}
+              custom={state.features.custom}
+              onCustomChange={(value) => dispatch({ type: 'SET_FEATURES_CUSTOM', value })}
+              onCustomize={(value) => dispatch({ type: 'SUBMIT_CUSTOMIZE', value })}
+            />
+          </>
         );
       case PHASES.TEMPLATE_PICK:
         return (
@@ -2036,7 +2049,7 @@ case PHASES.DEPLOY: {
             {state.deploy.status === 'done' ? (
               <RealPreviewPanel
                 projectPath={exportedProjectPath}
-                screenshot={realPreview.screenshot}
+                screenshots={realPreview.screenshots}
                 busy={realPreview.busy}
                 error={realPreview.error}
                 onOpen={handleOpenPreviewProject}
@@ -2188,6 +2201,7 @@ case PHASES.DEPLOY: {
                     messages={activeSession.messages}
                     revealKey={activeSession.id}
                     flushKey={activeSession.revealFlush ?? 0}
+                    revealAll={activeSession.revealAll === true}
                   >
                     {phase !== PHASES.BUILDING ? renderStage() : null}
                   </ChatStream>

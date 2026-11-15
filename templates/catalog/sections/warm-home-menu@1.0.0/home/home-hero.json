@@ -1,0 +1,127 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "home-hero",
+  "displayName": "首页首屏主视觉区",
+  "summary": "首页顶部主视觉容器，承载 home-hero 插槽，未分配 Feature Pack 时回落 store-header。",
+  "layout": {
+    "id": "warm-home-menu",
+    "version": "1.0.0"
+  },
+  "pageSource": "frontend-pack-page",
+  "pageId": "home",
+  "order": 2,
+  "locator": {
+    "selector": "fp-home__hero",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxml",
+    "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
+    "lineStart": 3,
+    "lineEnd": 15,
+    "digest": "sha256:91bdceb67dcd8a0fa9ee634df0014c409c00cadfdb5c0c79cbb8efe43a039398"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 3,
+        "lineEnd": 15,
+        "code": "<view class=\"fp-home__hero\">\r\n      <!-- @slot:home-hero -->\r\n      <!-- @slot-fallback:home-hero -->\r\n      <store-header\r\n        store-name=\"{{store.name}}\"\r\n        table-name=\"{{tableName}}\"\r\n        business-hours=\"{{store.businessHours}}\"\r\n        mode=\"{{mode}}\"\r\n        address=\"{{store.address}}\"\r\n      />\r\n      <!-- @slot-fallback:home-hero:end -->\r\n      <!-- @slot:home-hero:end -->\r\n    </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "store-header",
+      "bindings": [
+        {
+          "attr": "store-name",
+          "expression": "{{store.name}}"
+        },
+        {
+          "attr": "table-name",
+          "expression": "{{tableName}}"
+        },
+        {
+          "attr": "business-hours",
+          "expression": "{{store.businessHours}}"
+        },
+        {
+          "attr": "mode",
+          "expression": "{{mode}}"
+        },
+        {
+          "attr": "address",
+          "expression": "{{store.address}}"
+        }
+      ],
+      "events": []
+    }
+  ],
+  "slots": [
+    "home-hero"
+  ],
+  "bindings": {
+    "dataFields": [
+      "address",
+      "businessHours",
+      "mode",
+      "name",
+      "store",
+      "tableName"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/home/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": "fp-home__hero",
+    "classTokens": [
+      "fp-home__hero"
+    ],
+    "selectors": [
+      {
+        "selector": ".fp-home__hero",
+        "declarations": [
+          "overflow: hidden",
+          "border-radius: 28rpx",
+          "box-shadow: 0 18rpx 44rpx rgba(35, 35, 35, 0.12)"
+        ]
+      }
+    ],
+    "themeVars": [],
+    "selectorCount": 1
+  },
+  "reuse": {
+    "level": "slot-only",
+    "reason": "该区块是 home-hero 插槽的 fallback 容器，实际内容由 Plan 的 features[].slots[] 决定，不能整块复制成新组件。",
+    "whenToUse": [
+      "需要按 Plan 替换首页首屏视觉",
+      "需要用海报轮播替换门店头部"
+    ],
+    "avoidWhen": [
+      "只是调整头部文案或尺寸，用 store-header 的 props"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "必须保留 home-hero 的四段插槽锚点",
+    "fallback 必须保留 store-header，否则关闭海报后首屏会空白"
+  ],
+  "knownLimits": [
+    "四段锚点缺失会被 FrontendPack 校验拒绝"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:91bdceb67dcd8a0fa9ee634df0014c409c00cadfdb5c0c79cbb8efe43a039398"
+  }
+}

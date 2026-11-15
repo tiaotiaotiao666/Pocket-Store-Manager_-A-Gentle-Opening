@@ -219,7 +219,10 @@ export default function TemplateRevisePanel({
           <ul className="template-revise-change-list">
             {changes.map((item, index) => (
               <li className="template-revise-change" key={`${item?.path || 'change'}-${index}`}>
-                <span className="template-revise-change-label">{item?.label || item?.path || '展示项'}</span>
+                <span className="template-revise-change-label">
+                  {item?.label || item?.path || '展示项'}
+                  {item?.path ? <code className="template-revise-change-path">{item.path}</code> : null}
+                </span>
                 <div className="template-revise-change-values">
                   <del>{describeValue(item?.before)}</del>
                   <ArrowRight size={12} />

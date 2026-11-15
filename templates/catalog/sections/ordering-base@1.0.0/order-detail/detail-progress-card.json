@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "detail-progress-card",
+  "displayName": "订单进度卡",
+  "summary": "订单进度标题、提示语与 status-timeline 时间线。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "order-detail",
+  "order": 4,
+  "locator": {
+    "selector": "detail__card",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": 1,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
+    "lineStart": 59,
+    "lineEnd": 65,
+    "digest": "sha256:ddd5e91a0d5b121513f31c46a815e602870229761886d087b659c7b8ec35771e"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 59,
+        "lineEnd": 65,
+        "code": "<view wx:if=\"{{order}}\" class=\"surface-card detail__card\">\r\n      <view class=\"detail__card-head\">\r\n        <text class=\"detail__card-title\">订单进度</text>\r\n        <text class=\"detail__card-extra\">{{order.hint}}</text>\r\n      </view>\r\n      <status-timeline steps=\"{{order.progressSteps}}\" timeline=\"{{order.timeline}}\" status=\"{{order.status}}\" />\r\n    </view>"
+      }
+    ]
+  },
+  "components": [
+    {
+      "tag": "status-timeline",
+      "bindings": [
+        {
+          "attr": "steps",
+          "expression": "{{order.progressSteps}}"
+        },
+        {
+          "attr": "timeline",
+          "expression": "{{order.timeline}}"
+        },
+        {
+          "attr": "status",
+          "expression": "{{order.status}}"
+        }
+      ],
+      "events": []
+    }
+  ],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "hint",
+      "order",
+      "progressSteps",
+      "status",
+      "timeline"
+    ],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/order-detail/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "surface-card",
+      "detail__card",
+      "detail__card-head",
+      "detail__card-title",
+      "detail__card-extra"
+    ],
+    "selectors": [
+      {
+        "selector": ".detail__card",
+        "declarations": [
+          "margin-top: 24rpx",
+          "padding: 26rpx"
+        ]
+      },
+      {
+        "selector": ".detail__card-head",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".detail__card-title",
+        "declarations": [
+          "font-size: 28rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".detail__card-extra",
+        "declarations": [
+          "font-size: 21rpx",
+          "color: var(--color-muted)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted"
+    ],
+    "selectorCount": 4
+  },
+  "reuse": {
+    "level": "base-component-use",
+    "reason": "卡片壳加 Base status-timeline，复制壳并保留组件调用即可。",
+    "whenToUse": [
+      "需要展示下单、支付、接单、出餐、完成进度"
+    ],
+    "avoidWhen": [
+      "只有最终状态，用 detail__hero 的状态徽标"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "steps/timeline/status 三个入参必须同时传"
+  ],
+  "knownLimits": [
+    "时间线节点由后端 progressSteps 决定，前端不推断"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:ddd5e91a0d5b121513f31c46a815e602870229761886d087b659c7b8ec35771e"
+  }
+}

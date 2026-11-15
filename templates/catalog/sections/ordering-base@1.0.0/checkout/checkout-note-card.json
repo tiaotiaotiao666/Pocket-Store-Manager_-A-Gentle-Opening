@@ -1,0 +1,146 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "checkout-note-card",
+  "displayName": "订单备注卡",
+  "summary": "50 字 textarea 与实时字数提示，提示口味偏好与忌口可留空。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "checkout",
+  "order": 5,
+  "locator": {
+    "selector": "checkout__card",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": 3,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
+    "lineStart": 70,
+    "lineEnd": 84,
+    "digest": "sha256:37737abbcf9b85ff27f7c117a72434bad4a12616469af186165ab4d277695d1f"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 70,
+        "lineEnd": 84,
+        "code": "<view class=\"surface-card checkout__card\">\r\n        <view class=\"checkout__card-head\">\r\n          <text class=\"checkout__card-title\">备注</text>\r\n          <text class=\"checkout__card-extra\">{{noteLength}}/50</text>\r\n        </view>\r\n        <textarea\r\n          class=\"checkout__textarea\"\r\n          value=\"{{note}}\"\r\n          placeholder=\"口味偏好、忌口等，可留空\"\r\n          placeholder-class=\"checkout__placeholder\"\r\n          maxlength=\"50\"\r\n          bindinput=\"onNoteInput\"\r\n          auto-height\r\n        />\r\n      </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [
+      "note",
+      "noteLength"
+    ],
+    "handlers": [
+      {
+        "type": "input",
+        "handler": "onNoteInput"
+      }
+    ]
+  },
+  "controller": {
+    "source": "Base pages/checkout/index.js",
+    "handlers": [
+      "onNoteInput"
+    ],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "surface-card",
+      "checkout__card",
+      "checkout__card-head",
+      "checkout__card-title",
+      "checkout__card-extra",
+      "checkout__textarea",
+      "checkout__placeholder"
+    ],
+    "selectors": [
+      {
+        "selector": ".checkout__card",
+        "declarations": [
+          "margin-top: 24rpx",
+          "padding: 24rpx"
+        ]
+      },
+      {
+        "selector": ".checkout__card-head",
+        "declarations": [
+          "display: flex",
+          "align-items: baseline",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".checkout__card-title",
+        "declarations": [
+          "font-size: 28rpx",
+          "font-weight: 700"
+        ]
+      },
+      {
+        "selector": ".checkout__card-extra",
+        "declarations": [
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".checkout__textarea",
+        "declarations": [
+          "width: 100%",
+          "min-height: 120rpx",
+          "margin-top: 14rpx",
+          "font-size: 26rpx",
+          "line-height: 1.6"
+        ]
+      },
+      {
+        "selector": ".checkout__placeholder",
+        "declarations": [
+          "color: rgba(138, 129, 120, 0.6)"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-muted"
+    ],
+    "selectorCount": 6
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "输入框结构固定，复制 WXML 与 checkout__ 样式即可；输入只上报 onNoteInput。",
+    "whenToUse": [
+      "结算页需要给用户留备注",
+      "需要限制备注长度并显示字数"
+    ],
+    "avoidWhen": [
+      "需要结构化选项（如辣度），用 picker 或自定义组件"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [
+    "maxlength 固定 50，字数提示必须与之一致",
+    "bindinput 只上报 onNoteInput，不在这里做提交"
+  ],
+  "knownLimits": [
+    "备注不进入前端校验，长度由 input maxlength 兜底"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:37737abbcf9b85ff27f7c117a72434bad4a12616469af186165ab4d277695d1f"
+  }
+}

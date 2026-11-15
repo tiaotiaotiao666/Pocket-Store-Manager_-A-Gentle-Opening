@@ -1,0 +1,748 @@
+{
+  "schemaVersion": "component-catalog.v1",
+  "catalogVersion": "2026.11.0",
+  "generatedFrom": {
+    "base": {
+      "id": "ordering-base",
+      "version": "1.0.0",
+      "root": "templates/base/ordering-base/1.0.0/src",
+      "digest": "sha256:74222d9498f612add5190f02aa5e2b5c2360221aece13400e0b006f46f7025ee"
+    },
+    "registryVersion": "2026.11.0",
+    "sourceOfTruth": "templates/base/** + templates/registry/registry.v1.json + templates/{components,features,frontend-packs}/**",
+    "curation": "templates/catalog/curation.v1.json"
+  },
+  "readOrder": [
+    "先读本索引：按 category、props、events、pages、slots 选择候选组件。",
+    "再读 components/<id>.json：核对完整 props/events、默认值、数据字段、约束与 WXML 示例。",
+    "需要页面装配关系时读 pages/<pageId>.json：区块、插槽、控制器方法与页面 JSON。",
+    "需要换一套页面布局时读 layouts/<packId>@<version>.json：区块顺序、插槽锚点与组件归属。",
+    "需要按区块复用视图时读 sections/<layoutId>@<version>/<pageId>/index.json：FrontendPack 页面与 Base 原始页面都投影为区块，每个区块含 WXML 片段、样式规则、组件绑定、控制器方法与复用等级。",
+    "写 Plan/Recipe 前先读 source.files 与 runtime.mode：Base 内置组件不可被 Plan.components 复制或替换。",
+    "提交前运行 node scripts/component-catalog.cjs --check，禁止手改 catalog 生成物。"
+  ],
+  "counts": {
+    "components": 15,
+    "baseBuiltins": 14,
+    "registryUiBlocks": 3,
+    "featureComponents": 1,
+    "pages": 8,
+    "layouts": 1,
+    "sections": 61,
+    "errors": 0,
+    "warnings": 1
+  },
+  "categories": [
+    {
+      "id": "shell",
+      "displayName": "页面骨架与状态",
+      "description": "首屏身份区、履约方式、加载/错误/空态等跨页面基础组件。",
+      "componentCount": 5
+    },
+    {
+      "id": "menu",
+      "displayName": "菜单浏览与选购",
+      "description": "分类导航、菜品卡片、菜品详情弹层。",
+      "componentCount": 3
+    },
+    {
+      "id": "cart",
+      "displayName": "购物车与结算入口",
+      "description": "底部购物车条与购物车弹层，负责数量与金额的展示和意图上报。",
+      "componentCount": 2
+    },
+    {
+      "id": "order",
+      "displayName": "订单与支付结果",
+      "description": "订单卡片、六态状态、状态时间线与演示支付结果。",
+      "componentCount": 4
+    },
+    {
+      "id": "marketing",
+      "displayName": "营销与可插拔区块",
+      "description": "通过插槽替换页面区块的 Feature Pack 组件。",
+      "componentCount": 1
+    }
+  ],
+  "components": [
+    {
+      "id": "error-banner",
+      "version": "1.0.0",
+      "displayName": "错误提示条",
+      "category": "shell",
+      "sourceKind": "base-builtin",
+      "summary": "内容流内的错误条，展示错误文案、可选请求号、重试动作与关闭按钮。",
+      "card": "components/error-banner.json",
+      "props": [
+        "action",
+        "message",
+        "requestId"
+      ],
+      "requiredProps": [],
+      "events": [
+        "close",
+        "retry"
+      ],
+      "pages": [
+        "checkout",
+        "home",
+        "menu",
+        "merchant-orders",
+        "mine",
+        "order-detail",
+        "orders",
+        "product-detail"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "fulfillment-switch",
+      "version": "1.0.0",
+      "displayName": "履约方式切换",
+      "category": "shell",
+      "sourceKind": "base-builtin",
+      "summary": "在堂食与到店自取之间切换，并在堂食缺桌号时给出扫描桌码提示。",
+      "card": "components/fulfillment-switch.json",
+      "props": [
+        "dineInEnabled",
+        "tableName",
+        "tableRequired",
+        "takeawayEnabled",
+        "value"
+      ],
+      "requiredProps": [],
+      "events": [
+        "change"
+      ],
+      "pages": [
+        "home",
+        "menu"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "loading-block",
+      "version": "1.0.0",
+      "displayName": "列表骨架屏",
+      "category": "shell",
+      "sourceKind": "base-builtin",
+      "summary": "按行渲染的缩略图与文本骨架，用于订单列表、菜单等列表加载态。",
+      "card": "components/loading-block.json",
+      "props": [
+        "rows",
+        "text"
+      ],
+      "requiredProps": [],
+      "events": [],
+      "pages": [
+        "menu",
+        "merchant-orders",
+        "orders"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "state-view",
+      "version": "1.0.0",
+      "displayName": "通用状态壳",
+      "category": "shell",
+      "sourceKind": "base-builtin",
+      "summary": "统一的加载、错误与空态占位组件，可带一个重试/行动按钮。",
+      "card": "components/state-view.json",
+      "props": [
+        "actionText",
+        "description",
+        "state",
+        "title"
+      ],
+      "requiredProps": [],
+      "events": [
+        "retry"
+      ],
+      "pages": [
+        "checkout",
+        "home",
+        "menu",
+        "merchant-orders",
+        "mine",
+        "order-detail",
+        "orders",
+        "product-detail"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "store-header",
+      "version": "1.0.0",
+      "displayName": "门店头部",
+      "category": "shell",
+      "sourceKind": "base-builtin",
+      "summary": "展示门店名、桌号、营业时间、地址与当前履约方式的首屏身份区，使用固定深色渐变底，不依赖实景图片。",
+      "card": "components/store-header.json",
+      "props": [
+        "address",
+        "businessHours",
+        "compact",
+        "mode",
+        "storeName",
+        "tableName"
+      ],
+      "requiredProps": [
+        "storeName"
+      ],
+      "events": [],
+      "pages": [
+        "home",
+        "menu"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": "store-header@1.0.0"
+    },
+    {
+      "id": "category-nav",
+      "version": "1.0.0",
+      "displayName": "分类导航",
+      "category": "menu",
+      "sourceKind": "base-builtin",
+      "summary": "按分类列表渲染可滚动的分类导航，高亮当前分类并上报切换意图。",
+      "card": "components/category-nav.json",
+      "props": [
+        "activeId",
+        "categories"
+      ],
+      "requiredProps": [],
+      "events": [
+        "select"
+      ],
+      "pages": [
+        "menu"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "product-card",
+      "version": "1.0.0",
+      "displayName": "菜品卡片",
+      "category": "menu",
+      "sourceKind": "base-builtin",
+      "summary": "菜单列表中的菜品卡，展示图片或首字占位、名称、描述、整数分价格与加减步进。",
+      "card": "components/product-card.json",
+      "props": [
+        "disabled",
+        "product",
+        "quantity"
+      ],
+      "requiredProps": [
+        "product"
+      ],
+      "events": [
+        "add",
+        "openDetail",
+        "remove"
+      ],
+      "pages": [
+        "menu"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": "product-card@1.0.0"
+    },
+    {
+      "id": "product-detail",
+      "version": "1.0.0",
+      "displayName": "菜品详情弹层",
+      "category": "menu",
+      "sourceKind": "base-builtin",
+      "summary": "底部弹层的菜品详情，展示大图或首字占位、描述、价格、数量与加入购物车按钮。",
+      "card": "components/product-detail.json",
+      "props": [
+        "product",
+        "quantity",
+        "visible"
+      ],
+      "requiredProps": [
+        "product"
+      ],
+      "events": [
+        "add",
+        "close",
+        "remove"
+      ],
+      "pages": [
+        "menu"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "cart-bar",
+      "version": "1.0.0",
+      "displayName": "购物车条",
+      "category": "cart",
+      "sourceKind": "base-builtin",
+      "summary": "固定在页面底部的购物车摘要，展示合计金额与数量，并提供展开与去结算两个意图。",
+      "card": "components/cart-bar.json",
+      "props": [
+        "submitting",
+        "totalCents",
+        "totalQuantity"
+      ],
+      "requiredProps": [
+        "totalCents",
+        "totalQuantity"
+      ],
+      "events": [
+        "checkout",
+        "expand"
+      ],
+      "pages": [
+        "menu"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": "cart-bar@1.0.0"
+    },
+    {
+      "id": "cart-panel",
+      "version": "1.0.0",
+      "displayName": "购物车弹层",
+      "category": "cart",
+      "sourceKind": "base-builtin",
+      "summary": "底部购物车面板，按行展示菜品、单价、数量与行小计，支持加减与去结算。",
+      "card": "components/cart-panel.json",
+      "props": [
+        "items",
+        "submitting",
+        "totalCents",
+        "totalQuantity",
+        "visible"
+      ],
+      "requiredProps": [
+        "items",
+        "totalCents",
+        "totalQuantity"
+      ],
+      "events": [
+        "add",
+        "checkout",
+        "close",
+        "remove"
+      ],
+      "pages": [
+        "menu",
+        "product-detail"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "order-card",
+      "version": "1.0.0",
+      "displayName": "订单卡片",
+      "category": "order",
+      "sourceKind": "base-builtin",
+      "summary": "顾客与店主共用的订单卡，展示订单号、时间、状态、履约方式、菜品摘要、合计金额与角色相关动作。",
+      "card": "components/order-card.json",
+      "props": [
+        "actingId",
+        "actingStatus",
+        "actionable",
+        "order",
+        "role"
+      ],
+      "requiredProps": [
+        "order"
+      ],
+      "events": [
+        "advance",
+        "cancel",
+        "open",
+        "pay"
+      ],
+      "pages": [
+        "home",
+        "merchant-orders",
+        "orders"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "order-status",
+      "version": "1.0.0",
+      "displayName": "订单状态徽标",
+      "category": "order",
+      "sourceKind": "base-builtin",
+      "summary": "展示六态订单状态、付款状态与顾客提示，文案与色调全部来自领域层。",
+      "card": "components/order-status.json",
+      "props": [
+        "compact",
+        "paymentStatus",
+        "status"
+      ],
+      "requiredProps": [],
+      "events": [],
+      "pages": [
+        "order-detail"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "pay-result",
+      "version": "1.0.0",
+      "displayName": "演示支付结果",
+      "category": "order",
+      "sourceKind": "base-builtin",
+      "summary": "演示支付的四种结果态（加载、成功、待确认、失败），展示取餐号、金额、履约方式与后续动作。",
+      "card": "components/pay-result.json",
+      "props": [
+        "demoNotice",
+        "description",
+        "fulfillmentText",
+        "primaryText",
+        "requestId",
+        "secondaryText",
+        "shortId",
+        "state",
+        "title",
+        "totalText"
+      ],
+      "requiredProps": [],
+      "events": [
+        "primary",
+        "retry",
+        "secondary"
+      ],
+      "pages": [
+        "order-detail"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "status-timeline",
+      "version": "1.0.0",
+      "displayName": "状态时间线",
+      "category": "order",
+      "sourceKind": "base-builtin",
+      "summary": "订单状态进度与操作日志时间线，展示每一步的标题、时间、操作者与原因。",
+      "card": "components/status-timeline.json",
+      "props": [
+        "status",
+        "steps",
+        "timeline"
+      ],
+      "requiredProps": [],
+      "events": [],
+      "pages": [
+        "order-detail"
+      ],
+      "slots": [],
+      "runtimeMode": "base-page-fixed",
+      "registryAsset": null
+    },
+    {
+      "id": "poster-carousel",
+      "version": "1.0.0",
+      "displayName": "海报轮播",
+      "category": "marketing",
+      "sourceKind": "feature-pack",
+      "summary": "可替换 home-hero 或 menu-hero 的海报轮播 Feature Pack，支持自动播放、指示点与三档尺寸。",
+      "card": "components/poster-carousel.json",
+      "props": [
+        "autoplay",
+        "interval",
+        "items",
+        "showIndicator",
+        "size"
+      ],
+      "requiredProps": [
+        "items"
+      ],
+      "events": [
+        "error",
+        "select"
+      ],
+      "pages": [
+        "home"
+      ],
+      "slots": [
+        "home-hero"
+      ],
+      "runtimeMode": "slot-injection",
+      "registryAsset": "poster-carousel@1.0.0"
+    }
+  ],
+  "pages": [
+    {
+      "pageId": "checkout",
+      "title": "确认订单",
+      "audience": "customer",
+      "required": true,
+      "summary": "确认订单：展示履约方式、桌号、菜品与金额，提交订单并进入演示支付。",
+      "card": "pages/checkout.json",
+      "components": [
+        "state-view",
+        "error-banner"
+      ],
+      "slots": []
+    },
+    {
+      "pageId": "home",
+      "title": "扫码点餐",
+      "audience": "customer",
+      "required": true,
+      "summary": "门店首屏：门店头部（或海报轮播）、履约方式、开始点餐、待付款提醒、进行中订单与店主入口。",
+      "card": "pages/home.json",
+      "components": [
+        "state-view",
+        "error-banner",
+        "store-header",
+        "fulfillment-switch",
+        "order-card",
+        "poster-carousel"
+      ],
+      "slots": [
+        "home-hero",
+        "home-marketing"
+      ]
+    },
+    {
+      "pageId": "menu",
+      "title": "菜单",
+      "audience": "customer",
+      "required": true,
+      "summary": "菜单页：紧凑门店头、履约方式、菜单标题、分类导航、菜品列表、购物车条/面板与菜品详情弹层。",
+      "card": "pages/menu.json",
+      "components": [
+        "store-header",
+        "fulfillment-switch",
+        "state-view",
+        "error-banner",
+        "category-nav",
+        "product-card",
+        "cart-bar",
+        "cart-panel",
+        "product-detail",
+        "loading-block"
+      ],
+      "slots": [
+        "menu-hero",
+        "menu-aside"
+      ]
+    },
+    {
+      "pageId": "merchant-orders",
+      "title": "店主订单台",
+      "audience": "merchant",
+      "required": true,
+      "summary": "店主订单台：订单卡片、状态推进、商品上下架与加载骨架。",
+      "card": "pages/merchant-orders.json",
+      "components": [
+        "state-view",
+        "error-banner",
+        "loading-block",
+        "order-card"
+      ],
+      "slots": []
+    },
+    {
+      "pageId": "mine",
+      "title": "我的",
+      "audience": "customer",
+      "required": true,
+      "summary": "我的页面：身份信息、订单入口与店主入口。",
+      "card": "pages/mine.json",
+      "components": [
+        "state-view",
+        "error-banner"
+      ],
+      "slots": []
+    },
+    {
+      "pageId": "order-detail",
+      "title": "订单详情",
+      "audience": "customer",
+      "required": true,
+      "summary": "订单详情：状态徽标、状态时间线、菜品明细与演示支付结果。",
+      "card": "pages/order-detail.json",
+      "components": [
+        "state-view",
+        "error-banner",
+        "pay-result",
+        "order-status",
+        "status-timeline"
+      ],
+      "slots": []
+    },
+    {
+      "pageId": "orders",
+      "title": "我的订单",
+      "audience": "customer",
+      "required": true,
+      "summary": "顾客订单列表：加载骨架、错误条、空态与订单卡片。",
+      "card": "pages/orders.json",
+      "components": [
+        "state-view",
+        "error-banner",
+        "order-card",
+        "loading-block"
+      ],
+      "slots": []
+    },
+    {
+      "pageId": "product-detail",
+      "title": "商品详情",
+      "audience": "customer",
+      "required": true,
+      "summary": "独立商品详情页：商品信息、加购、购物车条与购物车面板。",
+      "card": "pages/product-detail.json",
+      "components": [
+        "state-view",
+        "error-banner",
+        "cart-bar",
+        "cart-panel"
+      ],
+      "slots": []
+    }
+  ],
+  "layouts": [
+    {
+      "id": "warm-home-menu",
+      "version": "1.0.0",
+      "displayName": "暖橙首页与菜单视图包",
+      "summary": "暖橙风格的首页与菜单页视图包，只覆盖 WXML/WXSS/页面 JSON，页面控制器与服务层仍来自 Base。",
+      "card": "layouts/warm-home-menu@1.0.0.json",
+      "pages": [
+        "home",
+        "menu"
+      ],
+      "requiresSlots": [
+        "home-hero",
+        "home-marketing",
+        "menu-hero",
+        "menu-aside"
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "layout": {
+        "id": "warm-home-menu",
+        "version": "1.0.0"
+      },
+      "pageSource": "frontend-pack-page",
+      "pageId": "home",
+      "index": "sections/warm-home-menu@1.0.0/home/index.json",
+      "count": 12
+    },
+    {
+      "layout": {
+        "id": "warm-home-menu",
+        "version": "1.0.0"
+      },
+      "pageSource": "frontend-pack-page",
+      "pageId": "menu",
+      "index": "sections/warm-home-menu@1.0.0/menu/index.json",
+      "count": 11
+    },
+    {
+      "layout": {
+        "id": "ordering-base",
+        "version": "1.0.0"
+      },
+      "pageSource": "base-page",
+      "pageId": "checkout",
+      "index": "sections/ordering-base@1.0.0/checkout/index.json",
+      "count": 6
+    },
+    {
+      "layout": {
+        "id": "ordering-base",
+        "version": "1.0.0"
+      },
+      "pageSource": "base-page",
+      "pageId": "merchant-orders",
+      "index": "sections/ordering-base@1.0.0/merchant-orders/index.json",
+      "count": 10
+    },
+    {
+      "layout": {
+        "id": "ordering-base",
+        "version": "1.0.0"
+      },
+      "pageSource": "base-page",
+      "pageId": "mine",
+      "index": "sections/ordering-base@1.0.0/mine/index.json",
+      "count": 6
+    },
+    {
+      "layout": {
+        "id": "ordering-base",
+        "version": "1.0.0"
+      },
+      "pageSource": "base-page",
+      "pageId": "order-detail",
+      "index": "sections/ordering-base@1.0.0/order-detail/index.json",
+      "count": 7
+    },
+    {
+      "layout": {
+        "id": "ordering-base",
+        "version": "1.0.0"
+      },
+      "pageSource": "base-page",
+      "pageId": "orders",
+      "index": "sections/ordering-base@1.0.0/orders/index.json",
+      "count": 4
+    },
+    {
+      "layout": {
+        "id": "ordering-base",
+        "version": "1.0.0"
+      },
+      "pageSource": "base-page",
+      "pageId": "product-detail",
+      "index": "sections/ordering-base@1.0.0/product-detail/index.json",
+      "count": 5
+    }
+  ],
+  "gaps": [
+    {
+      "code": "BASE_SLOTS_DOC_GAP",
+      "severity": "warning",
+      "message": "slots.json 人类可读镜像缺少 Base Manifest 已声明的插槽",
+      "details": {
+        "missing": [
+          "menu-hero"
+        ],
+        "sourceOfTruth": "manifest.json#slots"
+      }
+    }
+  ],
+  "runtimeNotes": [
+    "Base 内置组件是页面固定结构，Plan.components 当前不会复制或替换同名组件。",
+    "templates/components/ 下 3 个 UI Block 与 Base 同名组件共享实现，但当前只用于契约、预览与边界校验。",
+    "可运行时注入的组件是 Feature Pack：通过 features[].slots[] 进入导出工程。",
+    "改写页面布局只能通过 FrontendPack 的 WXML/WXSS/页面 JSON，不得生成 JS。",
+    "sections/*.json 是页面区块投影：FrontendPack 覆盖的页面 pageSource=frontend-pack-page，Base 原始页面 pageSource=base-page，后者是改写该页视图前的参考实现。",
+    "提升为 UI Block 前必须按组件入库标准登记，并在 Base 页面 usingComponents 声明后才能进入页面。"
+  ]
+}

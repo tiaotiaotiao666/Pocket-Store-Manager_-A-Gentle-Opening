@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "section-catalog-entry.v1",
+  "id": "mine-head",
+  "displayName": "我的页标题区",
+  "summary": "我的页头部：眉标「我的」与标题「身份与门店」。",
+  "layout": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "pageSource": "base-page",
+  "pageId": "mine",
+  "order": 1,
+  "locator": {
+    "selector": "mine__head",
+    "componentTag": null,
+    "slotId": null,
+    "occurrence": null,
+    "occurrences": 1
+  },
+  "source": {
+    "wxml": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxml",
+    "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
+    "lineStart": 2,
+    "lineEnd": 5,
+    "digest": "sha256:59c91bbdbcbc14d88a843234050e6f0e245d4ba511832aa4f2561d0542b5b7f3"
+  },
+  "template": {
+    "occurrences": 1,
+    "rootTag": "view",
+    "snippets": [
+      {
+        "lineStart": 2,
+        "lineEnd": 5,
+        "code": "<view class=\"mine__head\">\r\n    <text class=\"mine__eyebrow\">我的</text>\r\n    <text class=\"mine__title\">身份与门店</text>\r\n  </view>"
+      }
+    ]
+  },
+  "components": [],
+  "slots": [],
+  "bindings": {
+    "dataFields": [],
+    "handlers": []
+  },
+  "controller": {
+    "source": "Base pages/mine/index.js",
+    "handlers": [],
+    "verified": true,
+    "missing": []
+  },
+  "styles": {
+    "rootClass": null,
+    "classTokens": [
+      "mine__head",
+      "mine__eyebrow",
+      "mine__title"
+    ],
+    "selectors": [
+      {
+        "selector": ".mine__head",
+        "declarations": [
+          "padding: 0 6rpx"
+        ]
+      },
+      {
+        "selector": ".mine__eyebrow",
+        "declarations": [
+          "font-size: 22rpx",
+          "letter-spacing: 4rpx",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".mine__title",
+        "declarations": [
+          "display: block",
+          "margin-top: 8rpx",
+          "font-size: 42rpx",
+          "font-weight: 700"
+        ]
+      }
+    ],
+    "themeVars": [
+      "--color-primary"
+    ],
+    "selectorCount": 3
+  },
+  "reuse": {
+    "level": "direct-wxml",
+    "reason": "两行文本结构，复制 WXML 即可，无数据依赖。",
+    "whenToUse": [
+      "新模板需要「我的」页头部",
+      "需要统一页面眉标风格"
+    ],
+    "avoidWhen": [
+      "头部要放头像或操作入口，用 mine__profile"
+    ],
+    "uiBlockBlueprint": null
+  },
+  "constraints": [],
+  "knownLimits": [
+    "文案写死"
+  ],
+  "verify": {
+    "command": "node scripts/component-catalog.cjs --check",
+    "digest": "sha256:59c91bbdbcbc14d88a843234050e6f0e245d4ba511832aa4f2561d0542b5b7f3"
+  }
+}

@@ -100,6 +100,32 @@ class EnvironmentVariables {
   @Min(262144)
   @Max(8388608)
   AGENT_MAX_BODY_BYTES = 2097152;
+
+  // ---------------------------------------------------------------
+  // 多轮 Agent（agent-run.v1，POST /api/v1/agent/run）
+  // 与单轮抽取的 DEEPSEEK_* 配置共用模型，但运行上限独立。
+  // ---------------------------------------------------------------
+
+  /** 单次 run 最多调用模型次数（也即最多轮次）。 */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  AGENT_RUN_MAX_STEPS = 6;
+
+  /** 单次 run 最多执行工具次数（按 tool_call 个数计）。 */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  AGENT_RUN_MAX_TOOL_CALLS = 12;
+
+  /** 单次 run 的墙钟时间上限，毫秒。 */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1000)
+  @Max(300000)
+  AGENT_RUN_TIMEOUT_MS = 60000;
 }
 
 export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
@@ -134,6 +160,28 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
   }
   if (typeof normalized.AGENT_REQUIRE_AUTH !== 'string' || !normalized.AGENT_REQUIRE_AUTH.trim()) {
     normalized.AGENT_REQUIRE_AUTH = 'false';
+  }
+  if (
+    normalized.AGENT_RUN_MAX_STEPS === undefined ||
+    normalized.AGENT_RUN_MAX_STEPS === '' ||
+    (typeof normalized.AGENT_RUN_MAX_STEPS === 'string' && !normalized.AGENT_RUN_MAX_STEPS.trim())
+  ) {
+    normalized.AGENT_RUN_MAX_STEPS = 6;
+  }
+  if (
+    normalized.AGENT_RUN_MAX_TOOL_CALLS === undefined ||
+    normalized.AGENT_RUN_MAX_TOOL_CALLS === '' ||
+    (typeof normalized.AGENT_RUN_MAX_TOOL_CALLS === 'string' &&
+      !normalized.AGENT_RUN_MAX_TOOL_CALLS.trim())
+  ) {
+    normalized.AGENT_RUN_MAX_TOOL_CALLS = 12;
+  }
+  if (
+    normalized.AGENT_RUN_TIMEOUT_MS === undefined ||
+    normalized.AGENT_RUN_TIMEOUT_MS === '' ||
+    (typeof normalized.AGENT_RUN_TIMEOUT_MS === 'string' && !normalized.AGENT_RUN_TIMEOUT_MS.trim())
+  ) {
+    normalized.AGENT_RUN_TIMEOUT_MS = 60000;
   }
 
   const instance = plainToInstance(EnvironmentVariables, normalized, { enableImplicitConversion: true });

@@ -228,6 +228,9 @@ test('APPROVE_IMAGE opens a deployment session', async () => {
   const active = deploy.sessions.find((session) => session.id === deploy.activeSessionId);
   assert.equal(active.title, '部署小程序');
   assert.equal(active.messages[0].role, 'system');
+  assert.equal(active.revealAll, false, '新会话保留开场逐条展示');
+  const previous = deploy.sessions.find((session) => session.id === next.activeSessionId);
+  assert.equal(previous.revealAll, true, '离开的会话再次进入时整段显示');
 });
 
 test('DEPLOY_PROGRESS and DEPLOY_DONE update deployment state', async () => {
@@ -244,6 +247,38 @@ test('SWITCH_SESSION changes the active session id', async () => {
   const { machine, state } = await seeded();
   const switched = machine.reducer(state, { type: 'SWITCH_SESSION', id: 'session-main' });
   assert.equal(switched.activeSessionId, 'session-main');
+});
+
+test('SWITCH_SESSION settles the session being left so its history never replays', async () => {
+  const { machine, state } = await seeded();
+  const withStep = {
+    ...state,
+    sessions: [
+      state.sessions[0],
+      {
+        id: 'session-store',
+        title: '店铺装修',
+        kind: 'step',
+        status: 'done',
+        messages: [],
+        handoff: null,
+        revealFlush: 0,
+        revealAll: false,
+      },
+    ],
+    activeSessionId: 'session-store',
+  };
+
+  const switched = machine.reducer(withStep, { type: 'SWITCH_SESSION', id: 'session-main' });
+  assert.equal(switched.activeSessionId, 'session-main');
+  assert.equal(switched.phase, withStep.phase);
+  assert.equal(switched.sessions.find((session) => session.id === 'session-store').revealAll, true);
+  assert.equal(switched.sessions.find((session) => session.id === 'session-main').revealAll, false);
+});
+
+test('SWITCH_SESSION ignores unknown session ids', async () => {
+  const { machine, state } = await seeded();
+  assert.equal(machine.reducer(state, { type: 'SWITCH_SESSION', id: 'session-missing' }), state);
 });
 
 test('buildHandoff renders the title, summary and payload block', async () => {

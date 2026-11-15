@@ -14,6 +14,11 @@
 # - CACHE_DRIVER defaults to memory when 6379 is not reachable, because
 #   server/.env ships with CACHE_DRIVER=redis and Nest aborts on connect failure.
 # - ELECTRON_RUN_AS_NODE is cleared before launching Electron.
+# - RISK: the workspace-root copy (ICT\start-all.ps1) lives outside git and is
+#   NOT auto-synced with this file. Two copies must be maintained by hand;
+#   they are deliberately kept separate for now, so they can drift.
+#   When changing readiness/port logic, update both and re-run
+#   npm test (test/start-all-contract.test.cjs).
 
 param(
   [switch]$Stop,

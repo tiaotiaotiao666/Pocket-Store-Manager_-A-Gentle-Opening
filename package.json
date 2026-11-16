@@ -35,6 +35,9 @@
     "mini:dup-check": "node scripts/mini-dup-check.cjs",
     "mini:smoke": "node scripts/miniprogram-smoke.cjs",
     "mini:pages": "node scripts/miniprogram-pages-smoke.cjs",
+    "wechat:audit": "node scripts/wechat-export-audit.cjs",
+    "wechat:run": "node scripts/wechat-devtools-run.cjs",
+    "wechat:stub": "node scripts/wechat-runtime-stub.cjs",
     "server:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-server-local.ps1",
     "check:packaging": "node scripts/check-packaging.cjs"
   },

@@ -1460,7 +1460,7 @@ function baseReducer(state, action) {
         id: 'session-visual',
         title: '视觉生成',
         intro: PROMPT_INTRO,
-        followUp: '确认提示词后，我们会在同一个会话里反复生成与审核效果图。',
+        followUp: '确认提示词后，可以上传一张海报素材，也可以直接跳过。',
         summary: [
           `店铺名称：${state.store.name || NEW_PROJECT_LABEL}`,
           action.summary || '店铺资料已确认',
@@ -1494,7 +1494,7 @@ function baseReducer(state, action) {
 
     case 'CONFIRM_PROMPT': {
       let next = appendMessages(state, state.activeSessionId, [
-        { role: ROLES.USER, text: action.text ?? '这版提示词可以了，开始生成效果图。', instant: true },
+        { role: ROLES.USER, text: action.text ?? '这版提示词可以了，继续下一步。', instant: true },
         { text: REVIEW_INTRO, staged: true },
       ]);
       return { ...next, phase: PHASES.IMAGE_REVIEW };
@@ -1520,6 +1520,17 @@ function baseReducer(state, action) {
 
     case 'APPROVE_IMAGE': {
       const deployStyle = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
+      // UX0a-3：区分「已选用上传图片」与「未添加海报素材」。
+      // local-demo 占位图不算素材；只有用户上传（provider=user-upload）且带了 dataUrl 才算。
+      const uploaded = Boolean(
+        state.visual.image
+        && state.visual.image.dataUrl
+        && state.visual.image.provider === 'user-upload',
+      );
+      const material = action.material === 'uploaded' && uploaded ? 'uploaded' : 'skipped';
+      const materialLine = material === 'uploaded'
+        ? '海报素材：已选用上传图片（用户提供，不是模型生成结果）'
+        : '海报素材：未添加（已跳过，不影响小程序生成）';
       const entered = createStepSession(state, {
         phase: PHASES.DEPLOY,
         id: 'session-deploy',
@@ -1528,9 +1539,9 @@ function baseReducer(state, action) {
           `店铺名称：${state.store.name || NEW_PROJECT_LABEL}`,
           `装修风格：${deployStyle.name}`,
           `生图提示词已确认，共 ${state.visual.promptRounds.length + 1} 轮打磨`,
-          `效果图审核已通过，共 ${state.visual.imageRounds.length} 轮修改`,
+          materialLine,
         ],
-        payload: { styleId: state.visual.styleId, prompt: state.visual.prompt },
+        payload: { styleId: state.visual.styleId, prompt: state.visual.prompt, material },
         fields: [
           { label: '店铺名', value: state.store.name || NEW_PROJECT_LABEL },
           { label: '装修风格', value: deployStyle.name, note: deployStyle.caption },

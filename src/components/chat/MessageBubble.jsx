@@ -1,28 +1,16 @@
 import { Sparkles } from 'lucide-react';
+import { stageNoticeFor } from './stageNotice.mjs';
 
 /**
- * UX0-1：系统/交接消息只向用户呈现「当前阶段 + 下一步」。
- * 完整交接正文、payload、JSON 与内部功能 ID 仍然保存在状态与项目文件里，
- * 只是不再渲染到聊天区。
+ * UX0a-2：系统/交接消息只显示受控的阶段名称与固定提示。
+ * 交接正文、payload、JSON、字段名一律不上屏（数据本身照旧持久化）。
  */
-function summarize(text) {
-  const raw = String(text ?? '');
-  if (!raw) return '';
-  const withoutBlocks = raw
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/\{[\s\S]*?\}/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return withoutBlocks.length > 60 ? `${withoutBlocks.slice(0, 60)}…` : withoutBlocks;
-}
-
 function StageNotice({ message }) {
-  const to = message?.meta?.to ?? message?.meta?.title ?? '';
-  const next = message?.meta?.next ?? summarize(message?.text);
+  const notice = stageNoticeFor(message);
   return (
     <div className="bubble-stage" role="status">
-      <span className="bubble-stage-eyebrow">{to ? `当前阶段 · ${to}` : '阶段更新'}</span>
-      {next ? <span className="bubble-stage-next">下一步：{next}</span> : null}
+      <span className="bubble-stage-eyebrow">当前阶段：{notice.label}</span>
+      <span className="bubble-stage-next">{notice.hint}</span>
     </div>
   );
 }

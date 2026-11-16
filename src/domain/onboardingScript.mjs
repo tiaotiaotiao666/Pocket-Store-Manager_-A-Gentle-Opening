@@ -42,7 +42,7 @@ export const STORE_INTRO = '接下来把这间店装修一下：先给我一些�
 
 export const PROMPT_INTRO = '我会根据你的店铺信息写一版生图提示词，你可以告诉我哪里想改，我们一起打磨到满意。';
 
-export const REVIEW_INTRO = '提示词确认后，我来生成效果图；你可以指出想调整的地方，我们会在这个会话里反复修改。';
+export const REVIEW_INTRO = '提示词确认后进入海报素材这一步：可以上传一张自己的图，也可以直接跳过，不影响小程序生成。';
 
 export const DEPLOY_INTRO = '方案都确认好了。接下来把小程序工程生成到你选择的目录，生成后可以用微信开发者工具导入；不会自动上传或发布。';
 

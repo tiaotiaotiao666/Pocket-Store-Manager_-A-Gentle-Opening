@@ -13,6 +13,7 @@ import {
 } from './state/constants.mjs';
 import { buildPlanFromSession } from './composition/planFromSession.mjs';
 import { buildSessionPreviewViewModels } from './composition/previewViewModel.mjs';
+import { buildConversationStream } from './state/conversationStream.mjs';
 import {
   isDesktopExportAvailable,
   subscribeProgress,
@@ -64,6 +65,12 @@ import {
   generateImage,
   reviseImage,
 } from './services/agentService.js';
+// UX0a-3：生图能力开关。没有真实服务时既不调用 generateImage，也不显示"重新生成"。
+import {
+  canGenerateImage,
+  shouldAutoGenerateImage,
+  IMAGE_GENERATION_BLOCKED_REASON,
+} from './services/imageCapability.js';
 
 import AppShell from './components/layout/AppShell.jsx';
 import ConfirmDialog from './components/common/ConfirmDialog.jsx';
@@ -98,6 +105,8 @@ const REQUIRED_IDS = catalogFeatures.filter((feature) => feature.required).map((
 const BUILD_STEPS = ['解析功能清单', '匹配页面骨架', '拼装门店页面', '准备预览'];
 const INTRO_AUTO_ADVANCE_MS = 5200;
 // 模板页也开放输入框：一句话走「对话修改当前模板」，与「重新描述候选」是两个入口。
+// UX0a-3：海报素材上传的 UI 侧上限；不替代导出链路的媒体校验，只是先挡住明显过大的文件。
+const MAX_POSTER_UPLOAD_BYTES = 2 * 1024 * 1024;
 const COMPOSER_PHASES = [PHASES.ONBOARDING, PHASES.STORE_INFO, PHASES.TEMPLATE_PICK, PHASES.PROMPT_STUDIO, PHASES.IMAGE_REVIEW];
 
 /** 全局 composer 文案表没有模板页条目，这里单独补上，避免改 constants 造成跨任务冲突。 */
@@ -124,7 +133,7 @@ function fulfillmentLabel(fulfillment) {
 
 const COMPOSER_HINTS = {
   [PHASES.ONBOARDING]: '名字不超过 48 个字符，之后随时可以修改。',
-  [PHASES.PROMPT_STUDIO]: '满意后点下方「这版可以了，开始生成」进入效果图。',
+  [PHASES.PROMPT_STUDIO]: '满意后点下方「确认这版提示词」进入海报素材。',
   [PHASES.IMAGE_REVIEW]: '满意后点下方「效果满意，去部署」。',
 };
 
@@ -340,12 +349,10 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
         type: 'status',
         icon: 'image',
         tone: 'accent',
-        title: '效果图状态',
-        body: imageBusy
-          ? '正在生成新的效果图…'
-          : (state.visual.image?.dataUrl && state.visual.image.provider !== 'local-demo'
-            ? '已有一版效果图，满意即可进入部署。'
-            : '还没有真实效果图：可以在中间上传图片，或暂时跳过这一步。'),
+        title: '海报素材（可选）',
+        body: state.visual.image?.dataUrl && state.visual.image.provider === 'user-upload'
+          ? '已选用你上传的图片，可以直接继续。'
+          : '未添加素材：可以上传一张图，或直接跳过；不影响小程序生成。',
       });
       break;
     case PHASES.DEPLOY:
@@ -464,22 +471,13 @@ export default function App() {
   const phase = state.phase;
   const meta = PHASE_META[phase];
   const activeSession = selectActiveSession(state);
-  // UX0-2：把所有阶段会话的消息按顺序合成一条连续对话流。切换阶段不再"换一个会话"
-  // 把之前的操作上下文藏起来；历史消息一条都不删，只是统一展示。
-  const conversationMessages = useMemo(() => {
-    const sessions = Array.isArray(state.sessions) ? state.sessions : [];
-    const messages = [];
-    sessions.forEach((session) => {
-      if (Array.isArray(session.messages)) messages.push(...session.messages);
-    });
-    const nonEmpty = sessions.filter((session) => Array.isArray(session.messages) && session.messages.length > 0);
-    return {
-      messages,
-      revealKey: nonEmpty.map((session) => session.id).join('|') || activeSession.id,
-      // 已经是历史的部分整段显示；只有单会话阶段保留逐条入场动画。
-      revealAll: nonEmpty.length > 1 ? true : activeSession.revealAll === true,
-    };
-  }, [state.sessions, activeSession]);
+  // UX0a-1：统一对话流使用稳定的展示语义 —— revealKey 恒为常量、revealAll 恒为真。
+  // 这样 useSequentialReveal 不会因为"新增了一个会话"把 visibleCount 重置成 0：
+  // 历史消息始终可见，新回复立即出现，也不重播历史入场动画。
+  const conversationMessages = useMemo(
+    () => buildConversationStream(state.sessions),
+    [state.sessions],
+  );
   const selectedTemplate = state.build.candidates.find((item) => item.id === state.build.selectedId)
     ?? state.build.candidates[0];
   const currentTheme = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
@@ -781,7 +779,13 @@ export default function App() {
       imageStarted.current = false;
       return undefined;
     }
-    if (imageStarted.current || state.visual.image) return undefined;
+    // UX0a-3：没有真实生图服务时，既不调用 generateImage，也不制造"生成中"状态与占位图。
+    if (!shouldAutoGenerateImage({
+      phase,
+      hasImage: Boolean(state.visual.image && state.visual.image.dataUrl),
+      imageReviewPhase: PHASES.IMAGE_REVIEW,
+    })) return undefined;
+    if (imageStarted.current) return undefined;
     imageStarted.current = true;
     let alive = true;
     setImageBusy(true);
@@ -1124,6 +1128,11 @@ export default function App() {
   };
 
   const handleImageFeedback = async (text) => {
+    // UX0a-3：没有真实生图服务时不存在"重新生成"，只如实说明。
+    if (!canGenerateImage()) {
+      setNotice(IMAGE_GENERATION_BLOCKED_REASON);
+      return;
+    }
     if (imageBusy) return;
     setImageBusy(true);
     const image = await reviseImage({
@@ -1425,13 +1434,8 @@ export default function App() {
       return;
     }
     if (phase === PHASES.IMAGE_REVIEW) {
-      // UX0-4：这一屏只有一个输入区和一个主按钮 —— 有输入就重新生成，没有输入就确认继续。
-      if (!text) {
-        dispatch({ type: 'APPROVE_IMAGE' });
-        setDraft('');
-        return;
-      }
-      handleImageFeedback(text);
+      // UX0a-3：该阶段不提供生成/重新生成入口，这里只兜底说明，不再触发任何生成。
+      setNotice(IMAGE_GENERATION_BLOCKED_REASON);
       setDraft('');
     }
   };
@@ -1440,6 +1444,16 @@ export default function App() {
   // 绝不伪装成模型生成结果。
   const handleImageUpload = (file) => {
     if (!file) return;
+    // accept 只是第一层限制；这里按类型/体积再挡一次，避免把超大或非图片文件塞进项目文档。
+    // 注意：这里只做"读进来"，并没有做安全图片解码，解码与媒体校验仍以导出链路为准。
+    if (!/^image\/(png|jpeg|webp)$/.test(String(file.type || ''))) {
+      setNotice('请选择 PNG、JPEG 或 WebP 图片');
+      return;
+    }
+    if (file.size > MAX_POSTER_UPLOAD_BYTES) {
+      setNotice('图片超过 2 MB，请压缩后再上传');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = String(reader.result || '');
@@ -2030,12 +2044,12 @@ export default function App() {
         return (
           <ImageReview
             image={state.visual.image}
-            rounds={state.visual.imageRounds}
             busy={imageBusy}
             onUpload={handleImageUpload}
-            onSkip={() => dispatch({ type: 'APPROVE_IMAGE' })}
-            canGenerate={false}
-            generateBlockedReason="尚未接入生图服务，当前版本无法生成海报；可先上传图片，或暂时跳过这一步。"
+            onUse={() => dispatch({ type: 'APPROVE_IMAGE', material: 'uploaded' })}
+            onSkip={() => dispatch({ type: 'APPROVE_IMAGE', material: 'skipped' })}
+            canGenerate={canGenerateImage()}
+            generateBlockedReason={IMAGE_GENERATION_BLOCKED_REASON}
           />
         );
 case PHASES.DEPLOY: {
@@ -2115,9 +2129,10 @@ case PHASES.DEPLOY: {
 
   const agentComposer = selectAgentComposerState(state);
   const undoState = selectUndoState(state);
+  // UX0a-3：海报素材（可选）阶段没有真实生图服务，不再提供"重新生成"输入区。
   const composerVisible = phase === PHASES.STORE_INFO
     ? agentComposer.visible
-    : COMPOSER_PHASES.includes(phase);
+    : (phase === PHASES.IMAGE_REVIEW ? false : COMPOSER_PHASES.includes(phase));
   const skipVisible = phase === PHASES.ONBOARDING && Boolean(state.store.name);
   // 模板页复用主输入框；文案独立，避免和「重新描述候选」混为一谈。
   const composerPlaceholder = phase === PHASES.STORE_INFO
@@ -2125,10 +2140,7 @@ case PHASES.DEPLOY: {
     : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.placeholder : (COMPOSER_PLACEHOLDER[phase] ?? ''));
   const composerSubmitLabel = phase === PHASES.STORE_INFO
     ? agentComposer.submitLabel
-    : phase === PHASES.IMAGE_REVIEW
-      // UX0-4：效果图屏只有一个主按钮，按输入内容切换语义，不再另设确认按钮。
-      ? (String(draft || '').trim() ? '重新生成' : '效果满意，去部署')
-      : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.submitLabel : (COMPOSER_SUBMIT_LABEL[phase] ?? '发送'));
+    : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.submitLabel : (COMPOSER_SUBMIT_LABEL[phase] ?? '发送'));
   const composerHint = phase === PHASES.STORE_INFO
     ? agentComposer.hint
     : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.hint : COMPOSER_HINTS[phase]);

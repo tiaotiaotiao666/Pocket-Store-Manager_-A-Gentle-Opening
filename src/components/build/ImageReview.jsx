@@ -1,28 +1,33 @@
 import { Image as ImageIcon } from 'lucide-react';
 import MaterialEmptyState from './MaterialEmptyState.jsx';
 
-/** 本地演示图（provider=local-demo）不是真实生成结果，不能当效果图展示。 */
-function isRealResult(image) {
-  if (!image || !image.dataUrl) return false;
-  return image.provider !== 'local-demo';
+/** local-demo 占位图不是真实素材，只有用户上传（或未来真实生成的）图片才算。 */
+function resolveMaterial(image) {
+  if (!image || !image.dataUrl) return null;
+  if (image.provider === 'local-demo') return null;
+  return image;
 }
 
 /**
- * UX0-4 / UX0-5：卡片内不再放"修改框 + 重新生成 + 确认"三套入口，
- * 唯一输入区与主操作按钮统一由底部 Composer 承担；
- * 没有真实生成结果时展示可跳过的素材空状态，而不是笑脸占位图。
+ * UX0a-3：海报素材（可选）。
+ * - 没有任何生成入口：未接入生图服务时既不调用生成，也不显示"重新生成"；
+ * - 空状态只留「上传图片」与「暂时跳过」，生成海报按钮禁用并说明原因；
+ * - 上传后显示图片、来源与唯一主按钮「使用此图并继续」；
+ * - 这一步不阻断小程序生成。
  */
 export default function ImageReview({
   image = null,
-  rounds = [],
   busy = false,
   onUpload,
+  onUse,
   onSkip,
   canGenerate = false,
   generateBlockedReason,
 }) {
-  const roundList = Array.isArray(rounds) ? rounds : [];
-  const real = isRealResult(image);
+  const material = resolveMaterial(image);
+  const sourceLabel = material
+    ? (material.provider === 'user-upload' ? '你上传的图片' : (material.note || material.provider || '已选素材'))
+    : '';
 
   return (
     <section className="review-panel">
@@ -31,25 +36,30 @@ export default function ImageReview({
           <ImageIcon size={16} />
         </span>
         <div className="review-heading">
-          <h3>效果图</h3>
-          <p>在下方输入框描述要改的地方，我就会重做一版。</p>
+          <h3>海报素材（可选）</h3>
+          <p>这一步不会阻断小程序生成。没有合适的图也可以直接跳过。</p>
         </div>
-        {roundList.length ? (
-          <span className="review-rounds">已修改 {roundList.length} 轮</span>
-        ) : null}
       </header>
 
       <div className={`review-stage${busy ? ' is-busy' : ''}`}>
-        {real ? (
-          <figure className="review-figure">
-            <img className="review-image" src={image.dataUrl} alt="效果图" />
-            {image.provider || image.note ? (
+        {material ? (
+          <>
+            <figure className="review-figure">
+              <img className="review-image" src={material.dataUrl} alt="已选海报素材" />
               <figcaption className="review-caption">
-                {image.provider ? <span className="review-provider">{image.provider}</span> : null}
-                {image.note ? <span className="review-note">{image.note}</span> : null}
+                <span className="review-provider">{sourceLabel}</span>
               </figcaption>
-            ) : null}
-          </figure>
+            </figure>
+            <div className="material-empty-actions">
+              <button
+                type="button"
+                className="agent-btn agent-btn-primary"
+                onClick={() => onUse?.()}
+              >
+                使用此图并继续
+              </button>
+            </div>
+          </>
         ) : (
           <MaterialEmptyState
             onUpload={onUpload}
@@ -62,7 +72,7 @@ export default function ImageReview({
 
         {busy ? (
           <div className="review-busy">
-            <span className="review-busy-label">生成中</span>
+            <span className="review-busy-label">处理中</span>
             <span className="review-dots">
               <i className="review-dot" />
               <i className="review-dot" />

@@ -126,6 +126,26 @@ function createSettingsStore(options) {
   const diagnosticsDir = path.join(userDataDir, 'diagnostics');
   const now = typeof opts.now === 'function' ? opts.now : () => new Date();
 
+  /**
+   * UX0a-4：内容损坏时先留带时间戳的备份，原文件不动。
+   * 备份只复制、不移动，也不记录文件内容，避免把配置/密钥写进日志或界面。
+   */
+  async function backupUnreadableConfig() {
+    const stamp = now().toISOString().replace(/[:.]/g, '-');
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const name = attempt === 0 ? `config.json.bak-${stamp}` : `config.json.bak-${stamp}-${attempt}`;
+      const target = path.join(userDataDir, name);
+      try {
+        await fsp.copyFile(configPath, target, fsp.constants.COPYFILE_EXCL);
+        return { backup: name };
+      } catch (error) {
+        if (error.code === 'EEXIST') continue;
+        return { backup: null, backupError: error.code || 'UNKNOWN' };
+      }
+    }
+    return { backup: null, backupError: 'EEXIST' };
+  }
+
   async function loadConfig() {
     let raw;
     try {
@@ -135,15 +155,38 @@ function createSettingsStore(options) {
       throw new ProjectStoreError('SETTINGS_INVALID', '设置文件无法读取', { cause: error.code });
     }
 
+    let parsed;
     try {
-      const parsed = JSON.parse(raw);
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      // 情况一：内容损坏（不是合法 JSON）。先备份原文件，再用默认设置继续。
+      const { backup } = await backupUnreadableConfig();
+      return {
+        config: defaultConfig(),
+        source: 'default',
+        warning: backup
+          ? '设置文件无法读取，已保留备份并恢复默认设置'
+          : '设置文件无法读取，已恢复默认设置（备份未能写入，请检查磁盘权限）',
+        details: { reason: 'unreadable', backup },
+      };
+    }
+
+    try {
       const config = normalizeConfig(parsed);
       return { config, source: 'file', warning: null };
     } catch (error) {
-      if (error instanceof ProjectStoreError) {
-        return { config: defaultConfig(), source: 'default', warning: error.message, details: error.details };
-      }
-      return { config: defaultConfig(), source: 'default', warning: 'config.json 已损坏，已使用默认设置' };
+      // 情况二：JSON 合法但配置项不合法。原文件保留不动，只报出字段名，不带取值。
+      const fields = error instanceof ProjectStoreError
+        && error.details
+        && Array.isArray(error.details.errors)
+        ? error.details.errors.map((item) => (item && item.field) || null).filter(Boolean)
+        : [];
+      return {
+        config: defaultConfig(),
+        source: 'default',
+        warning: '设置文件里有不合法的配置项，已暂时使用默认设置（原文件已保留）',
+        details: { reason: 'invalid', fields },
+      };
     }
   }
 

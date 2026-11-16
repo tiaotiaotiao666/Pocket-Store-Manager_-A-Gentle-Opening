@@ -200,4 +200,52 @@ export function getTemplateReviseConfig() {
   return resolveTemplateReviseConfig(runtimeOverrides || {});
 }
 
+/**
+ * 开店资料多轮 Runtime 端点（`agent-run.v1`）。
+ *
+ * 只用于「无图片 + HTTP + 资料阶段」：有图片仍走 `agent-turn.v2`，
+ * Mock 模式仍走旧 transport。端点、契约版本与超时独立配置，
+ * 避免把多轮 run 的超时混进单轮 turn 的默认值（服务端 run 墙钟上限默认 60s）。
+ *
+ * - VITE_AGENT_RUN_ENDPOINT（默认 /api/v1/agent/run）
+ * - VITE_AGENT_RUN_TIMEOUT_MS（默认 75000）
+ */
+export const AGENT_RUN_CONTRACT_VERSION = 'agent-run.v1';
+const DEFAULT_AGENT_RUN_ENDPOINT = '/api/v1/agent/run';
+const DEFAULT_AGENT_RUN_TIMEOUT_MS = 75000;
+
+export function resolveAgentRunConfig(overrides = {}) {
+  const base = resolveAgentTransportConfig(overrides);
+  const viteEnv = readViteEnv();
+  const rawEndpoint = String(firstDefined(
+    overrides.agentRunEndpoint,
+    viteEnv.VITE_AGENT_RUN_ENDPOINT,
+    readProcessEnv('VITE_AGENT_RUN_ENDPOINT'),
+    '',
+  )).trim();
+  const rawTimeout = Number(firstDefined(
+    overrides.agentRunTimeoutMs,
+    viteEnv.VITE_AGENT_RUN_TIMEOUT_MS,
+    readProcessEnv('VITE_AGENT_RUN_TIMEOUT_MS'),
+    '',
+  ));
+  const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout >= 1000
+    ? Math.floor(rawTimeout)
+    : DEFAULT_AGENT_RUN_TIMEOUT_MS;
+
+  return {
+    mode: base.mode,
+    endpoint: rawEndpoint || DEFAULT_AGENT_RUN_ENDPOINT,
+    baseUrl: base.baseUrl,
+    timeoutMs,
+    contractVersion: AGENT_RUN_CONTRACT_VERSION,
+  };
+}
+
+export function getAgentRunConfig() {
+  return resolveAgentRunConfig(runtimeOverrides || {});
+}
+
+export const AGENT_RUN_ENDPOINT = resolveAgentRunConfig().endpoint;
+
 export const TEMPLATE_REVISE_ENDPOINT = resolveTemplateReviseConfig().endpoint;

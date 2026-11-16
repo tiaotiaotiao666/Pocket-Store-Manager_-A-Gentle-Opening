@@ -19,6 +19,7 @@
     "agent:type": "node scripts/agent-debug.cjs type",
     "agent:verify": "node scripts/agent-debug.cjs verify",
     "agent:smoke": "node scripts/agent-smoke.cjs",
+    "agent:run:smoke": "node scripts/agent-run-smoke.cjs",
     "build": "vite build",
     "build:win": "npm run build && electron-builder --win nsis --x64",
     "test": "node --test test/*.test.cjs",

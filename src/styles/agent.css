@@ -289,6 +289,57 @@
   color: var(--muted);
 }
 
+/* W2：部分完成（降级）提示 —— 草稿可用，但必须让用户看到不是全部工具都成功。 */
+.agent-partial {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid #eccfa1;
+  border-radius: var(--radius);
+  background: linear-gradient(150deg, #fffdf6, #fdf6e7);
+}
+
+.agent-partial-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #8a6524;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.agent-partial-head svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.agent-partial-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.65;
+  color: #96773a;
+}
+
+/* W2：一次性提示（草稿被手改保护、请求期间新增图片）。 */
+.agent-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-xs);
+  background: rgba(238, 244, 255, 0.9);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+.agent-notice svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--accent, #4b6cb7);
+}
+
 .agent-btn {
   display: inline-flex;
   align-items: center;

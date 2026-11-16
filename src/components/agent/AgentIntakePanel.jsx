@@ -32,6 +32,9 @@ export default function AgentIntakePanel({
   lastError = null,
   attempts = 0,
   simulateFailure = false,
+  degradation = null,
+  staleDraftNotice = null,
+  hint = null,
   onRetry,
   onToggleSimulateFailure,
 }) {
@@ -39,6 +42,7 @@ export default function AgentIntakePanel({
   const shownErrors = fieldErrors.slice(0, 3);
   const hiddenErrorCount = Math.max(0, fieldErrors.length - shownErrors.length);
   const message = reply || nextQuestion?.text || '';
+  const isPartial = Boolean(degradation && degradation.degraded);
 
   return (
     <section className="agent-panel" aria-label="开店资料助手">
@@ -97,6 +101,36 @@ export default function AgentIntakePanel({
         <div className="agent-progress" role="status" aria-live="polite">
           <span className="agent-progress-dots" aria-hidden="true"><i /><i /><i /></span>
           <span>正在整理资料，不会保存或发布任何内容。</span>
+        </div>
+      ) : null}
+
+      {isPartial ? (
+        <div className="agent-partial" role="status" aria-live="polite">
+          <div className="agent-partial-head">
+            <AlertCircle size={15} />
+            <strong>本轮部分完成</strong>
+          </div>
+          <p className="agent-partial-note">
+            {degradation.message
+              || '有些步骤没有顺利完成，草稿按已收到的资料更新，可能还不完整。'}
+          </p>
+          <p className="agent-partial-note">
+            可以先检查右侧草稿，继续补充或再次发送；这不代表资料已经完全整理好。
+          </p>
+        </div>
+      ) : null}
+
+      {staleDraftNotice ? (
+        <div className="agent-notice" role="status">
+          <Sparkles size={14} aria-hidden="true" />
+          <span>{staleDraftNotice.message}</span>
+        </div>
+      ) : null}
+
+      {hint ? (
+        <div className="agent-notice" role="status">
+          <Sparkles size={14} aria-hidden="true" />
+          <span>{hint.message}</span>
         </div>
       ) : null}
 

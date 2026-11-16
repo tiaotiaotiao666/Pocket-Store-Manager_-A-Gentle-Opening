@@ -53,6 +53,7 @@ import { createDiagnosticsService } from './services/diagnosticsService.js';
 import { createAppidService } from './services/appidService.js';
 import { createDevtoolsService } from './services/devtoolsService.js';
 import { requestAgentTurn, describeAgentTransport, configureAgentRuntime, getAgentTransportConfig } from './services/agentTurn/agentTurnService.js';
+import { requestAgentRun, isAgentRunRoute, resolveAgentRequestRoute } from './services/agentTurn/agentRunService.js';
 import {
   requestTemplateRevise,
   createReviseRequestId,
@@ -467,6 +468,9 @@ export default function App() {
   const preflightStarted = useRef(false);
   const deployBusy = useRef(false);
   const agentBusy = useRef(false);
+  // 在途请求期间用户可能新增图片：用 ref 记录最新数量，避免闭包读到旧 state。
+  const agentImagesRef = useRef(0);
+  agentImagesRef.current = agentImages.menu.length + agentImages.store.length;
   const previousPhase = useRef(state.phase);
   const previousAgentStatus = useRef(state.agent.status);
 
@@ -1374,17 +1378,35 @@ export default function App() {
     const requestId = createAgentRequestId();
     // 空数组不传，保持 v1 请求形状；有图片时服务层自动升级到 agent-turn.v2。
     const images = [...agentImages.menu, ...agentImages.store];
+    // 冻结发送时刻的草稿与版本号：回复到达时两项都匹配才允许整份应用。
+    const frozenDraft = state.agentDraft;
+    const frozenRevision = state.agent.draftRevision;
+    const frozenImageCount = images.length;
+    const route = resolveAgentRequestRoute({
+      phase: 'store-info',
+      imageCount: frozenImageCount,
+      transportMode: describeAgentTransport().mode,
+    });
     dispatch(retry
-      ? { type: 'AGENT_TURN_RETRY', requestId }
-      : { type: 'AGENT_TURN_REQUEST', utterance: text, requestId });
+      ? { type: 'AGENT_TURN_RETRY', requestId, draftRevision: frozenRevision }
+      : { type: 'AGENT_TURN_REQUEST', utterance: text, requestId, draftRevision: frozenRevision });
     try {
-      const result = await requestAgentTurn({
-        utterance: text,
-        draft: state.agentDraft,
-        ...(images.length ? { images } : {}),
-        simulateFailureOnce: state.agent.simulateFailure,
+      const result = isAgentRunRoute(route)
+        ? await requestAgentRun({ utterance: text, draft: frozenDraft, requestId })
+        : await requestAgentTurn({
+          utterance: text,
+          draft: frozenDraft,
+          ...(images.length ? { images } : {}),
+          simulateFailureOnce: state.agent.simulateFailure,
+        });
+      const imagesAddedDuringRequest = agentImagesRef.current > frozenImageCount;
+      dispatch({
+        type: 'AGENT_TURN_SUCCESS',
+        ...result,
+        requestId,
+        draftRevision: frozenRevision,
+        imagesAddedDuringRequest,
       });
-      dispatch({ type: 'AGENT_TURN_SUCCESS', ...result, requestId });
       setDraft('');
       setAgentImageError(null);
     } catch (error) {
@@ -2060,6 +2082,9 @@ export default function App() {
               lastError={agent.lastError}
               attempts={agent.attempts}
               simulateFailure={agent.simulateFailure}
+              degradation={agent.degradation}
+              staleDraftNotice={agent.staleDraftNotice}
+              hint={agent.hint}
               onRetry={handleAgentRetry}
               onToggleSimulateFailure={handleSimulateFailure}
             />

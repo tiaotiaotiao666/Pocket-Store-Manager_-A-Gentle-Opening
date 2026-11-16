@@ -197,6 +197,19 @@ function createInitialAgentSlice() {
     simulateFailure: false,
     turnId: null,
     confirmedAtSeq: null,
+    // W2：草稿版本号 + 冻结的请求基线，用于「只有 revision 未变才整份应用」。
+    draftRevision: 0,
+    requestDraftRevision: null,
+    // W2：agent-run.v1 的运行可观测信息，留给后续过程面板展示。
+    runId: null,
+    trace: null,
+    degraded: false,
+    degradation: null,
+    stopReason: null,
+    // 手改草稿后收到的迟到回复：只提示，不改草稿。
+    staleDraftNotice: null,
+    // 请求期间新增图片等一次性提示。
+    hint: null,
   };
 }
 
@@ -239,6 +252,10 @@ function withValidatedDraft(state, draft) {
       missingFields: validation.missingFields,
       errors: validation.errors,
       nextQuestion: buildNextQuestion(validation),
+      // 任何手改/增删菜品都会推进版本号，让在途请求无法整份覆盖用户现稿。
+      draftRevision: state.agent.draftRevision + 1,
+      staleDraftNotice: null,
+      hint: null,
     },
   };
 }
@@ -1255,8 +1272,14 @@ function baseReducer(state, action) {
           status: AGENT_STATUS.REQUESTING,
           attempts: withMessage.agent.attempts + 1,
           activeRequestId: action.requestId ?? null,
+          // 冻结发送时刻的草稿版本：回复到达时只有版本未变才允许整份应用。
+          requestDraftRevision: Number.isInteger(action.draftRevision)
+            ? action.draftRevision
+            : withMessage.agent.draftRevision,
           lastUtterance: utterance,
           lastError: null,
+          staleDraftNotice: null,
+          hint: null,
         },
       };
     }
@@ -1271,13 +1294,51 @@ function baseReducer(state, action) {
           status: AGENT_STATUS.REQUESTING,
           attempts: state.agent.attempts + 1,
           activeRequestId: action.requestId ?? null,
+          // 重试用最新草稿 + 新 requestId：版本号同样重新冻结。
+          requestDraftRevision: Number.isInteger(action.draftRevision)
+            ? action.draftRevision
+            : state.agent.draftRevision,
           lastError: null,
+          staleDraftNotice: null,
+          hint: null,
         },
       };
     }
 
     case 'AGENT_TURN_SUCCESS': {
       if (!isCurrentAgentTurnCompletion(state, action)) return state;
+      const runFields = {
+        runId: action.runId ?? null,
+        trace: action.trace ?? null,
+        degraded: action.degraded === true,
+        degradation: action.degradation && typeof action.degradation === 'object' ? action.degradation : null,
+        stopReason: action.stopReason ?? null,
+      };
+      const frozenRevision = Number.isInteger(action.draftRevision) ? action.draftRevision : null;
+      const revisionChanged = frozenRevision !== null && frozenRevision !== state.agent.draftRevision;
+
+      // 手改/增删菜品已经推进版本号：保留用户现稿，只提示，不应用服务端草稿。
+      if (revisionChanged) {
+        const currentValidation = validateAgentDraft(state.agentDraft);
+        return {
+          ...state,
+          agent: {
+            ...state.agent,
+            ...runFields,
+            status: currentValidation.readyForReview ? AGENT_STATUS.REVIEWING : AGENT_STATUS.COLLECTING,
+            activeRequestId: null,
+            requestDraftRevision: null,
+            lastError: null,
+            simulateFailure: false,
+            staleDraftNotice: {
+              code: 'AGENT_DRAFT_CHANGED',
+              message: '你在等待回复期间改动了资料，已保留你现在的草稿。需要合并服务端的整理结果，可以再发一次这条消息。',
+            },
+            hint: null,
+          },
+        };
+      }
+
       const draft = normalizeAgentDraft(action.draft);
       const validation = validateAgentDraft(draft);
       const reply = String(action.reply ?? '').trim();
@@ -1293,6 +1354,7 @@ function baseReducer(state, action) {
         agentDraft: draft,
         agent: {
           ...withMessage.agent,
+          ...runFields,
           status: validation.readyForReview ? AGENT_STATUS.REVIEWING : AGENT_STATUS.COLLECTING,
           missingFields: validation.missingFields,
           errors: validation.errors,
@@ -1301,8 +1363,16 @@ function baseReducer(state, action) {
           meta: action.meta ?? null,
           turnId: action.turnId ?? null,
           activeRequestId: null,
+          requestDraftRevision: null,
           lastError: null,
           simulateFailure: false,
+          staleDraftNotice: null,
+          hint: action.imagesAddedDuringRequest
+            ? {
+              code: 'AGENT_IMAGES_PENDING',
+              message: '请求期间新增了图片，这次回复没有使用它们；发送下一条消息时会带上图片走多模态链路。',
+            }
+            : null,
         },
       };
     }
@@ -1324,8 +1394,11 @@ function baseReducer(state, action) {
           ...state.agent,
           status: AGENT_STATUS.FAILED,
           activeRequestId: null,
+          requestDraftRevision: null,
           lastError,
           simulateFailure: false,
+          staleDraftNotice: null,
+          hint: null,
         },
       };
     }

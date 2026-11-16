@@ -906,7 +906,12 @@ function baseReducer(state, action) {
       const name = String(action.name || '').trim().slice(0, 48);
       if (!name) return state;
       let next = appendMessages(state, state.activeSessionId, [{ role: ROLES.USER, text: name, instant: true }]);
-      next = appendMessages(next, state.activeSessionId, INTRO_SCRIPT.map((text) => ({ text, staged: true })));
+      // UX0-3：自我介绍不再逐句气泡弹出，合并成一张欢迎卡（内容仍来自 INTRO_SCRIPT）。
+      next = appendMessages(next, state.activeSessionId, [{
+        text: INTRO_SCRIPT.join('\n\n'),
+        staged: true,
+        meta: { kind: 'welcome', title: '欢迎使用轻启', items: INTRO_SCRIPT },
+      }]);
       return {
         ...next,
         store: { ...next.store, name },

@@ -34,7 +34,7 @@ export const COMPOSER_PLACEHOLDER = Object.freeze({
   [PHASES.STORE_INFO]: '用一句话说店名、品类、营业时间、取餐方式和 3–5 道菜…',
   [PHASES.FEATURES]: '没有想要的功能？在这里告诉我们…',
   [PHASES.PROMPT_STUDIO]: '描述你想要的画面风格…',
-  [PHASES.IMAGE_REVIEW]: '告诉我要修改的地方…',
+  [PHASES.IMAGE_REVIEW]: '告诉我要修改的地方；不改就直接点右侧按钮继续…',
 });
 
 export const COMPOSER_SUBMIT_LABEL = Object.freeze({

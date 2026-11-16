@@ -21,6 +21,8 @@ const ICON_MAP = {
 };
 
 export default function RightPanel({ meta = {}, cards = [] }) {
+  // UX0-6：右栏只放「当前门店配置 + 完成进度」摘要；没有内容时整块收起。
+  if (!Array.isArray(cards) || cards.length === 0) return null;
   return (
     <div className="panel">
       <header className="panel-head">

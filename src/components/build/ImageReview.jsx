@@ -1,24 +1,28 @@
-import { useState } from 'react';
-import { Image as ImageIcon, RefreshCw } from 'lucide-react';
+import { Image as ImageIcon } from 'lucide-react';
+import MaterialEmptyState from './MaterialEmptyState.jsx';
 
+/** 本地演示图（provider=local-demo）不是真实生成结果，不能当效果图展示。 */
+function isRealResult(image) {
+  if (!image || !image.dataUrl) return false;
+  return image.provider !== 'local-demo';
+}
+
+/**
+ * UX0-4 / UX0-5：卡片内不再放"修改框 + 重新生成 + 确认"三套入口，
+ * 唯一输入区与主操作按钮统一由底部 Composer 承担；
+ * 没有真实生成结果时展示可跳过的素材空状态，而不是笑脸占位图。
+ */
 export default function ImageReview({
   image = null,
   rounds = [],
   busy = false,
-  onFeedback,
-  onRegenerate,
-  onApprove,
+  onUpload,
+  onSkip,
+  canGenerate = false,
+  generateBlockedReason,
 }) {
-  const [feedback, setFeedback] = useState('');
   const roundList = Array.isArray(rounds) ? rounds : [];
-  const current = image && image.dataUrl ? image : null;
-
-  const handleSubmit = () => {
-    const text = feedback.trim();
-    if (!text || busy) return;
-    onRegenerate?.(text);
-    setFeedback('');
-  };
+  const real = isRealResult(image);
 
   return (
     <section className="review-panel">
@@ -27,8 +31,8 @@ export default function ImageReview({
           <ImageIcon size={16} />
         </span>
         <div className="review-heading">
-          <h3>效果图预览</h3>
-          <p>看看哪里还不满意，告诉我，我们在这个会话里继续调整。</p>
+          <h3>效果图</h3>
+          <p>在下方输入框描述要改的地方，我就会重做一版。</p>
         </div>
         {roundList.length ? (
           <span className="review-rounds">已修改 {roundList.length} 轮</span>
@@ -36,22 +40,24 @@ export default function ImageReview({
       </header>
 
       <div className={`review-stage${busy ? ' is-busy' : ''}`}>
-        {current ? (
+        {real ? (
           <figure className="review-figure">
-            <img className="review-image" src={current.dataUrl} alt="效果图" />
-            {current.provider || current.note ? (
+            <img className="review-image" src={image.dataUrl} alt="效果图" />
+            {image.provider || image.note ? (
               <figcaption className="review-caption">
-                {current.provider ? (
-                  <span className="review-provider">{current.provider}</span>
-                ) : null}
-                {current.note ? <span className="review-note">{current.note}</span> : null}
+                {image.provider ? <span className="review-provider">{image.provider}</span> : null}
+                {image.note ? <span className="review-note">{image.note}</span> : null}
               </figcaption>
             ) : null}
           </figure>
         ) : (
-          <div className="review-placeholder">
-            <span className="review-placeholder-text">还没有效果图</span>
-          </div>
+          <MaterialEmptyState
+            onUpload={onUpload}
+            onSkip={onSkip}
+            canGenerate={canGenerate}
+            generateBlockedReason={generateBlockedReason}
+            uploadDisabled={busy}
+          />
         )}
 
         {busy ? (
@@ -64,39 +70,6 @@ export default function ImageReview({
             </span>
           </div>
         ) : null}
-      </div>
-
-      <div className="review-feedback">
-        <input
-          className="review-feedback-input"
-          type="text"
-          value={feedback}
-          placeholder="告诉我要修改的地方"
-          onChange={(event) => setFeedback(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') handleSubmit();
-          }}
-        />
-        <button
-          type="button"
-          className="review-feedback-button"
-          onClick={handleSubmit}
-          disabled={busy || !feedback.trim()}
-        >
-          <RefreshCw size={14} />
-          重新生成
-        </button>
-      </div>
-
-      <div className="review-foot">
-        <button
-          type="button"
-          className="review-confirm"
-          onClick={() => onApprove?.()}
-          disabled={busy}
-        >
-          效果满意，去部署
-        </button>
       </div>
     </section>
   );

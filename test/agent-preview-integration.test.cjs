@@ -321,7 +321,9 @@ test('T3-I7 App/Gallery 只传唯一 VM，旧预览 props 完全替换', () => {
   assert.match(appSource, /viewModelsByTemplateId=\{previewViewModels\.byTemplateId\}/);
   assert.equal(appSource.includes('buildPreviewViewModel('), false);
 
-  for (const [source, expectedCount] of [[appSource, 2], [gallerySource, 2]]) {
+  // UX0-6：右栏不再内嵌 MiniProgramPreview（中间 RealPreviewPanel 已经展示，
+  // 右侧重复同一张图属于 UX0 要消除的重复），因此 App 内该标签数量为 0；Gallery 仍是 2。
+  for (const [source, expectedCount] of [[appSource, 0], [gallerySource, 2]]) {
     const previewTags = source.match(/<MiniProgramPreview\b[\s\S]*?\/>/g) || [];
     assert.equal(previewTags.length, expectedCount);
     for (const tag of previewTags) {

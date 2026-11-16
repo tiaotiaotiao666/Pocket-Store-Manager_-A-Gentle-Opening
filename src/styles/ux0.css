@@ -1,0 +1,129 @@
+/* UX0：阶段提示、欢迎卡、素材空状态。只做呈现层样式，不改既有布局。 */
+
+/* UX0-1 系统/交接消息收敛成一行阶段提示 */
+.bubble-stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 12px;
+  color: #475569;
+}
+
+.bubble-stage-eyebrow {
+  font-weight: 600;
+  color: #334155;
+}
+
+.bubble-stage-next {
+  color: #64748b;
+}
+
+/* UX0-3 欢迎卡：把逐句自我介绍合并成一张卡 */
+.welcome-card {
+  margin: 12px 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.welcome-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.welcome-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+}
+
+.welcome-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.welcome-card-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
+/* UX0-5 素材空状态：不用占位图冒充效果图 */
+.material-empty {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.material-empty-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.material-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #475569;
+  flex: none;
+}
+
+.material-empty-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.material-empty-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.material-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.material-empty-file {
+  display: none;
+}
+
+.material-empty-reason {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}

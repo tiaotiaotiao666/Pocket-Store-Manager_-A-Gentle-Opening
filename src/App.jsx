@@ -77,7 +77,6 @@ import HomeStage from './components/flow/HomeStage.jsx';
 import FeaturePicker from './components/flow/FeaturePicker.jsx';
 import BuildLoading from './components/flow/BuildLoading.jsx';
 import TemplateGallery from './components/flow/TemplateGallery.jsx';
-import MiniProgramPreview from './components/preview/MiniProgramPreview.jsx';
 import RealPreviewPanel from './components/preview/RealPreviewPanel.jsx';
 import StoreInfoStep from './components/build/StoreInfoStep.jsx';
 import PromptStudio from './components/build/PromptStudio.jsx';
@@ -255,19 +254,7 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
         body: state.build.status === 'building' ? '这会覆盖当前候选列表，完成后自动刷新。' : undefined,
         items: state.build.candidates.map((item) => `${item.name} · ${item.score}%`),
       });
-      cards.push({
-        id: 'template-preview',
-        type: 'preview',
-        icon: 'image',
-        title: '实时预览',
-        body: '点选骨架后，这里会按模板结构重新渲染。',
-        node: (
-          <MiniProgramPreview
-            viewModel={previewViewModel}
-            size="compact"
-          />
-        ),
-      });
+      // UX0-6：中间已经是实时预览，右栏不再重复渲染同一张图。
       break;
     case PHASES.STORE_INFO:
       cards.push({
@@ -283,19 +270,6 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
         icon: 'palette',
         title: `当前风格：${style.name}`,
         body: `背景 ${style.colors[0]} · 主色 ${style.colors[1]}`,
-      });
-      cards.push({
-        id: 'style-preview',
-        type: 'preview',
-        icon: 'image',
-        title: '装修实时预览',
-        body: '切换风格后，预览会立即重新渲染。',
-        node: (
-          <MiniProgramPreview
-            viewModel={previewViewModel}
-            size="compact"
-          />
-        ),
       });
       {
         const transport = describeAgentTransport();
@@ -316,6 +290,28 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
           body: agent.status === 'confirmed'
             ? '资料已在本地确认，等待补充风格与地址；尚未保存或发布。'
             : `已完成 ${filled}/5 类资料，还差 ${agent.missingFields.length} 项。${agent.nextQuestion?.text ?? '可以直接描述，也可以手动编辑草稿。'}`,
+        });
+        // UX0-6：右栏改为「当前门店配置 + 完成进度」摘要，不再重复中间的效果图/预览。
+        cards.push({
+          id: 'store-config',
+          type: 'status',
+          icon: 'store',
+          title: '当前门店配置',
+          items: [
+            `店名：${state.agentDraft.storeName || state.store.name || '待填写'}`,
+            `品类：${state.agentDraft.category || '待填写'}`,
+            `营业时间：${state.agentDraft.businessHours || '待填写'}`,
+            `取餐方式：${fulfillmentLabel(state.agentDraft.fulfillment)}`,
+            `菜品：${state.agentDraft.dishes.length} 道`,
+          ],
+        });
+        cards.push({
+          id: 'store-progress',
+          type: 'progress',
+          icon: 'list',
+          tone: filled >= 5 ? 'success' : 'accent',
+          title: `资料完成度 ${filled}/5`,
+          body: filled >= 5 ? '资料已齐全，可以继续选风格与部署。' : '还差的部分补完即可继续；随时可以回头修改。',
         });
       }
       break;
@@ -340,13 +336,16 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
       break;
     case PHASES.IMAGE_REVIEW:
       cards.push({
-        id: 'image',
-        type: 'preview',
+        id: 'image-status',
+        type: 'status',
         icon: 'image',
         tone: 'accent',
-        title: '待审核效果图',
-        body: imageBusy ? '正在生成新的效果图…' : '满意后即可进入部署。',
-        image: state.visual.image?.dataUrl,
+        title: '效果图状态',
+        body: imageBusy
+          ? '正在生成新的效果图…'
+          : (state.visual.image?.dataUrl && state.visual.image.provider !== 'local-demo'
+            ? '已有一版效果图，满意即可进入部署。'
+            : '还没有真实效果图：可以在中间上传图片，或暂时跳过这一步。'),
       });
       break;
     case PHASES.DEPLOY:
@@ -465,6 +464,22 @@ export default function App() {
   const phase = state.phase;
   const meta = PHASE_META[phase];
   const activeSession = selectActiveSession(state);
+  // UX0-2：把所有阶段会话的消息按顺序合成一条连续对话流。切换阶段不再"换一个会话"
+  // 把之前的操作上下文藏起来；历史消息一条都不删，只是统一展示。
+  const conversationMessages = useMemo(() => {
+    const sessions = Array.isArray(state.sessions) ? state.sessions : [];
+    const messages = [];
+    sessions.forEach((session) => {
+      if (Array.isArray(session.messages)) messages.push(...session.messages);
+    });
+    const nonEmpty = sessions.filter((session) => Array.isArray(session.messages) && session.messages.length > 0);
+    return {
+      messages,
+      revealKey: nonEmpty.map((session) => session.id).join('|') || activeSession.id,
+      // 已经是历史的部分整段显示；只有单会话阶段保留逐条入场动画。
+      revealAll: nonEmpty.length > 1 ? true : activeSession.revealAll === true,
+    };
+  }, [state.sessions, activeSession]);
   const selectedTemplate = state.build.candidates.find((item) => item.id === state.build.selectedId)
     ?? state.build.candidates[0];
   const currentTheme = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
@@ -1410,9 +1425,35 @@ export default function App() {
       return;
     }
     if (phase === PHASES.IMAGE_REVIEW) {
+      // UX0-4：这一屏只有一个输入区和一个主按钮 —— 有输入就重新生成，没有输入就确认继续。
+      if (!text) {
+        dispatch({ type: 'APPROVE_IMAGE' });
+        setDraft('');
+        return;
+      }
       handleImageFeedback(text);
       setDraft('');
     }
+  };
+
+  // UX0-5：素材空状态里的「上传图片」——写进 visual.image，来源标记为用户上传，
+  // 绝不伪装成模型生成结果。
+  const handleImageUpload = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      if (!dataUrl) {
+        setNotice('图片读取失败，请重试');
+        return;
+      }
+      dispatch({
+        type: 'SET_IMAGE',
+        image: { dataUrl, provider: 'user-upload', note: '你上传的图片，不是模型生成结果' },
+      });
+    };
+    reader.onerror = () => setNotice('图片读取失败，请重试');
+    reader.readAsDataURL(file);
   };
 
   const handleStoreSubmit = () => {
@@ -1991,8 +2032,10 @@ export default function App() {
             image={state.visual.image}
             rounds={state.visual.imageRounds}
             busy={imageBusy}
-            onRegenerate={handleImageFeedback}
-            onApprove={() => dispatch({ type: 'APPROVE_IMAGE' })}
+            onUpload={handleImageUpload}
+            onSkip={() => dispatch({ type: 'APPROVE_IMAGE' })}
+            canGenerate={false}
+            generateBlockedReason="尚未接入生图服务，当前版本无法生成海报；可先上传图片，或暂时跳过这一步。"
           />
         );
 case PHASES.DEPLOY: {
@@ -2082,7 +2125,10 @@ case PHASES.DEPLOY: {
     : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.placeholder : (COMPOSER_PLACEHOLDER[phase] ?? ''));
   const composerSubmitLabel = phase === PHASES.STORE_INFO
     ? agentComposer.submitLabel
-    : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.submitLabel : (COMPOSER_SUBMIT_LABEL[phase] ?? '发送'));
+    : phase === PHASES.IMAGE_REVIEW
+      // UX0-4：效果图屏只有一个主按钮，按输入内容切换语义，不再另设确认按钮。
+      ? (String(draft || '').trim() ? '重新生成' : '效果满意，去部署')
+      : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.submitLabel : (COMPOSER_SUBMIT_LABEL[phase] ?? '发送'));
   const composerHint = phase === PHASES.STORE_INFO
     ? agentComposer.hint
     : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.hint : COMPOSER_HINTS[phase]);
@@ -2203,10 +2249,10 @@ case PHASES.DEPLOY: {
               <>
                 <div className={`workspace-conversation${phase === PHASES.BUILDING ? ' is-building' : ''}`}>
                   <ChatStream
-                    messages={activeSession.messages}
-                    revealKey={activeSession.id}
+                    messages={conversationMessages.messages}
+                    revealKey={conversationMessages.revealKey}
                     flushKey={activeSession.revealFlush ?? 0}
-                    revealAll={activeSession.revealAll === true}
+                    revealAll={conversationMessages.revealAll}
                   >
                     {phase !== PHASES.BUILDING ? renderStage() : null}
                   </ChatStream>

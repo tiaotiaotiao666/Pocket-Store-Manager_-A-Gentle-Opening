@@ -54,6 +54,21 @@ test('W5 导出审核：结构完整的工程判定为 PASS', () => {
   assert.equal(result.appid.kind, 'real');
 });
 
+test('W5b 导出审核：AppID 后置写入的侧车记录不计入产物清单', () => {
+  // 真实导出 + desktop/appid-postprocess.cjs 会在产物根写入 appid-postprocess.json，
+  // 它属于元数据，不能让 A10「报告文件数 vs 磁盘产物数」误判。
+  const files = { ...MINIMAL };
+  files['generation-report.json'] = {
+    output: { treeSha256: 'sha256:' + 'a'.repeat(64), files: Object.keys(MINIMAL).filter((item) => !item.endsWith('.png')).map((item) => ({ path: item })) },
+  };
+  files['appid-postprocess.json'] = { appidMasked: 'wx0123********cdef', appliedAt: '2026-11-16T09:29:15Z' };
+  const root = makeProject(files);
+  const result = auditProject(root);
+  assert.equal(result.status, 'PASS');
+  const a10 = result.checks.find((check) => check.id === 'A10');
+  assert.equal(a10.status, 'PASS');
+});
+
 test('W5 导出审核：缺页面文件与坏组件引用必须报 FAIL', () => {
   const files = { ...MINIMAL };
   delete files['pages/home/index.wxml'];

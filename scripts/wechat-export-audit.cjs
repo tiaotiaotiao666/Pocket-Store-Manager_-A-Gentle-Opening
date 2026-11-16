@@ -356,8 +356,9 @@ function auditProject(root) {
         problems.push('report.output.files 缺失');
       } else {
         fileCount = listed;
-        // 磁盘上还包含锁文件、生成报告与说明文档，这三类由 Composer 元数据阶段写入。
-        const META_FILES = ['composition.lock.json', 'generation-report.json', '生成报告.md'];
+        // 磁盘上还包含锁文件、生成报告、说明文档，以及 AppID 后置写入产生的侧车记录，
+        // 这些都由 Composer / AppID 后置流程写入元数据，不计入产物清单。
+        const META_FILES = ['composition.lock.json', 'generation-report.json', '生成报告.md', 'appid-postprocess.json'];
         const payloadOnDisk = files.filter((item) => !META_FILES.includes(item)).length;
         if (listed !== payloadOnDisk) {
           problems.push('报告文件数与实际不一致：报告 ' + listed + ' / 实际产物 ' + payloadOnDisk);

@@ -197,12 +197,17 @@ async function main() {
     // getPageMetaByWebviewId(...) is null（devtools 2.02 + automator 0.13）。
     await sleep(3000);
     if (shotsDir) fs.mkdirSync(shotsDir, { recursive: true });
+    let lastProductId = '';
     for (const item of ROUTES) {
       const entry = { ...item, status: 'NOT_RUN', screenshot: '', data: null, error: '', observation: '' };
-      const page = await openRoute(miniProgram, item.route);
+      // 菜品详情页必须带真实 productId，否则页面会渲染「已下架」降级态。
+      const target = item.route === '/pages/product-detail/index' && lastProductId
+        ? item.route + '?productId=' + encodeURIComponent(lastProductId)
+        : item.route;
+      const page = await openRoute(miniProgram, target);
       if (!page) {
         entry.status = 'FAIL';
-        entry.error = '页面打开失败（重试 2 次仍失败）';
+        entry.error = '页面打开失败（重试 3 次仍失败）：' + target;
         report.pages.push(entry);
         continue;
       }
@@ -216,10 +221,16 @@ async function main() {
         products: Array.isArray(data && data.products) ? data.products.length : 0,
         emptyCart: data && typeof data.emptyCart === 'boolean' ? data.emptyCart : null,
         payHint: data && typeof data.payHint === 'string' ? data.payHint : '',
+        productName: data && data.product && data.product.name ? data.product.name : '',
+        productPrice: data && data.product && typeof data.product.priceCents === 'number'
+          ? '¥' + (data.product.priceCents / 100).toFixed(2)
+          : '',
       };
       if (entry.data.error) entry.observation = '页面渲染了降级错误态：' + entry.data.error;
       if (item.route === '/pages/menu/index') {
-        for (const result of await probeMenuInteractions(page)) {
+        const menuProduct = (data && Array.isArray(data.products) ? data.products[0] : null) || null;
+        if (menuProduct && menuProduct.id) lastProductId = menuProduct.id;
+        for (const result of await probeMenuInteractions(miniProgram, page)) {
           report.interactions.push(result);
         }
         entry.observation = [
@@ -237,6 +248,9 @@ async function main() {
         }
       }
       report.pages.push(entry);
+    }
+    for (const result of await probeClickChain(miniProgram, shotsDir)) {
+      report.interactions.push(result);
     }
     const failed = report.pages.filter((page) => page.status !== 'PASS');
     report.status = failed.length === 0 ? 'PASS' : 'FAIL';
@@ -258,103 +272,365 @@ async function main() {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function openRoute(miniProgram, route) {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const page = await miniProgram.reLaunch(route);
-      await sleep(1500);
+      await sleep(2000);
       return page;
     } catch (error) {
-      await sleep(1500);
+      await sleep(2000);
     }
   }
   return null;
 }
 
 /**
- * 尝试三条真实交互路径：分类切换、菜品加购、购物车展开。
- * 当前 automator 0.13 + 开发者工具 2.02 无法定位自定义组件内部节点，
- * 因此这里如实记录 PASS / BLOCKED，不做「假通过」。
+ * 菜单页交互验证：三条自定义组件交互（分类切换 / 加购 / 购物车展开）+ 真实点击链路。
+ *
+ * W5b 结论依据（本机 开发者工具 2.02 + miniprogram-automator 0.13）：
+ * - page.$('category-nav') / page.$$('product-card') 恒为 null/0，自定义组件宿主不可选择；
+ * - page.getElementsByXpath('//category-nav') 直接抛错（Cannot read properties of undefined (reading 'map')）；
+ * - page.selectComponent('category-nav') 在 appservice 里同样返回 null（无 id/class 锚点）；
+ * - element.dispatchEvent({ $: 'product-card' }) 不触发页面事件处理器；
+ * - page.callMethod(...) 抛 No context found for objectId。
+ * 因此「组件内部节点」交互如实记为 BLOCKED，并附可复现步骤；
+ * 同时用 appservice 内直调页面事件处理器（等价事件负载）验证业务状态确实变化，
+ * 以及用页面级可点击节点完成真实点击链路（首页→菜单→选桌→结算提交→演示模拟支付）。
  */
-async function probeMenuInteractions(page) {
+async function probeMenuInteractions(miniProgram, page) {
   const results = [];
-
   const before = await page.data();
-  const firstCategory = (before.categories || [])[0];
-  const secondCategory = (before.categories || [])[1];
+  const categories = before.categories || [];
+  const secondCategory = categories[1];
 
+  // 路径一：组件内部节点点击（如实阻塞）
   results.push(
-    await attempt('分类切换', async () => {
+    await attempt('分类切换（组件内部节点点击）', async () => {
       if (!secondCategory) return { status: 'NOT_RUN', detail: '菜单没有第二个分类，无法切换' };
+      const host = await page.$('category-nav');
       const chips = await page.$$('.category-nav__item');
-      if (!chips || chips.length < 2) {
+      const probe = {
+        hostSelector: host ? host.tagName || 'element' : null,
+        chips: chips ? chips.length : 0,
+      };
+      if (chips && chips.length >= 2) {
+        await chips[1].tap();
+        await sleep(1200);
+        const after = await page.data();
+        const ok = after.activeCategoryId === secondCategory.id;
         return {
-          status: 'BLOCKED',
-          detail: '当前 automator 无法定位 category-nav 内部节点（page.$$ 返回 0），分类切换只能静态检查',
+          status: ok ? 'PASS' : 'FAIL',
+          detail: '点击 chip 后 activeCategoryId=' + after.activeCategoryId,
+          evidence: probe,
         };
       }
-      await chips[1].tap();
-      await sleep(1200);
-      const after = await page.data();
-      if (after.activeCategoryId === secondCategory.id) {
-        return { status: 'PASS', detail: '点击分类后 activeCategoryId=' + after.activeCategoryId };
-      }
-      return { status: 'FAIL', detail: '点击分类后 activeCategoryId 未变化（' + after.activeCategoryId + '）' };
+      return {
+        status: 'BLOCKED',
+        detail:
+          'automator 无法定位 category-nav 自定义组件内部节点：page.$("category-nav")='
+          + String(probe.hostSelector)
+          + '，page.$$(".category-nav__item")='
+          + probe.chips
+          + '；page.getElementsByXpath 抛错，page.selectComponent 返回 null。最小复现：见 .arts/w5b/probe-*.cjs',
+        evidence: probe,
+      };
     }),
   );
 
+  // 路径二：加购
   results.push(
-    await attempt('菜品加购', async () => {
+    await attempt('菜品加购（组件内部节点点击）', async () => {
       const target = (before.products || [])[0];
       if (!target) return { status: 'NOT_RUN', detail: '当前分类没有菜品' };
-      const cards = await page.$$('.menu__product');
-      if (!cards || cards.length === 0) {
-        return { status: 'FAIL', detail: '未渲染 .menu__product 节点' };
+      const hosts = await page.$$('product-card');
+      const addButtons = await page.$$('.product-card__add');
+      if (addButtons && addButtons.length > 0) {
+        await addButtons[0].tap();
+        await sleep(1200);
+        const after = await page.data();
+        const qty = after.quantityMap ? after.quantityMap[target.id] || 0 : 0;
+        return {
+          status: qty > 0 ? 'PASS' : 'FAIL',
+          detail: '加购后 quantityMap[' + target.id + ']=' + qty,
+        };
       }
-      await cards[0].tap();
-      await sleep(1000);
-      const after = await page.data();
-      const qty = after.cartSummary ? after.cartSummary.totalQuantity : 0;
-      if (qty > 0) return { status: 'PASS', detail: '加购后购物车数量=' + qty };
       return {
         status: 'BLOCKED',
-        detail: '加购按钮位于 product-card 自定义组件内部，automator 无法点击；点击宿主节点不触发事件',
+        detail:
+          '加购按钮在 product-card 自定义组件内部：page.$$("product-card")='
+          + (hosts ? hosts.length : 0)
+          + '，page.$$(".product-card__add")='
+          + (addButtons ? addButtons.length : 0)
+          + '；点击宿主 .menu__product 不触发 bind:add',
+        evidence: { hosts: hosts ? hosts.length : 0, addButtons: addButtons ? addButtons.length : 0 },
+      };
+    }),
+  );
+
+  // 路径三：购物车展开
+  results.push(
+    await attempt('购物车展开（组件内部节点点击）', async () => {
+      const hosts = await page.$$('cart-bar');
+      const summaries = await page.$$('.cart-bar__summary');
+      if (summaries && summaries.length > 0) {
+        await summaries[0].tap();
+        await sleep(1000);
+        const after = await page.data();
+        return after.cartVisible
+          ? { status: 'PASS', detail: '购物车面板已展开（cartVisible=true）' }
+          : { status: 'FAIL', detail: '点击后 cartVisible 仍为 false' };
+      }
+      return {
+        status: 'BLOCKED',
+        detail:
+          'cart-bar 为自定义组件：page.$$("cart-bar")='
+          + (hosts ? hosts.length : 0)
+          + '，page.$$(".cart-bar__summary")='
+          + (summaries ? summaries.length : 0)
+          + '；宿主节点无 id/class 锚点，无法定位内部点击区',
+        evidence: { hosts: hosts ? hosts.length : 0, summaries: summaries ? summaries.length : 0 },
+      };
+    }),
+  );
+
+  // 路径四：appservice 内直调页面事件处理器（组件 emit 的等价负载），断言业务状态真的变化
+  results.push(
+    await attempt('分类切换（页面处理器直调 + 状态断言）', async () => {
+      if (!secondCategory) return { status: 'NOT_RUN', detail: '菜单没有第二个分类，无法切换' };
+      await callPageHandler(miniProgram, 'onSelectCategory', { currentTarget: { dataset: { id: secondCategory.id } }, detail: { id: secondCategory.id } });
+      await sleep(1200);
+      const after = await page.data();
+      const changed = after.activeCategoryId === secondCategory.id;
+      const productsNow = (after.products || []).map((item) => item.id).join(',');
+      return {
+        status: changed ? 'PASS' : 'FAIL',
+        detail: 'activeCategoryId: ' + before.activeCategoryId + ' → ' + after.activeCategoryId
+          + ' · 当前菜品=' + productsNow
+          + (changed ? '' : '（与目标分类不符）'),
+        path: 'HANDLER_CALL（非点击）',
       };
     }),
   );
 
   results.push(
-    await attempt('购物车展开', async () => {
-      const bars = await page.$$('.cart-bar__summary');
-      if (!bars || bars.length === 0) {
-        return { status: 'BLOCKED', detail: 'cart-bar 为自定义组件，内部节点不可定位' };
-      }
-      await bars[0].tap();
-      await sleep(800);
+    await attempt('菜品加购（页面处理器直调 + 状态断言）', async () => {
+      const target = (before.products || [])[0];
+      if (!target) return { status: 'NOT_RUN', detail: '当前分类没有菜品' };
+      const baseline = await page.data();
+      const id = ((await page.data()).products || [])[0];
+      const productId = id && id.id ? id.id : target.id;
+      const qtyBefore = (baseline.quantityMap || {})[productId] || 0;
+      await callPageHandler(miniProgram, 'onProductAdd', { currentTarget: { dataset: { productId } }, detail: { productId } });
+      await sleep(1200);
       const after = await page.data();
-      return after.cartVisible
-        ? { status: 'PASS', detail: '购物车面板已展开' }
-        : { status: 'FAIL', detail: '点击后 cartVisible 仍为 false' };
+      const qtyAfter = (after.quantityMap || {})[productId] || 0;
+      const totalBefore = baseline.cartSummary ? baseline.cartSummary.totalQuantity : 0;
+      const totalAfter = after.cartSummary ? after.cartSummary.totalQuantity : 0;
+      return {
+        status: qtyAfter === qtyBefore + 1 ? 'PASS' : 'FAIL',
+        detail: 'quantityMap[' + productId + ']: ' + qtyBefore + ' → ' + qtyAfter
+          + ' · 购物车总件数: ' + totalBefore + ' → ' + totalAfter
+          + ' · 金额=' + (after.cartSummary && typeof after.cartSummary.totalCents === 'number'
+            ? '¥' + (after.cartSummary.totalCents / 100).toFixed(2)
+            : '(无)'),
+        path: 'HANDLER_CALL（非点击）',
+      };
     }),
   );
 
   results.push(
-    await attempt('page.callMethod 兜底', async () => {
-      if (typeof page.callMethod !== 'function') return { status: 'NOT_RUN', detail: '当前 automator 不支持 callMethod' };
-      if (!firstCategory) return { status: 'NOT_RUN', detail: '无分类可切换' };
-      try {
-        await page.callMethod('onSelectCategory', { detail: { id: secondCategory.id } });
-        await sleep(800);
-        return { status: 'PASS', detail: 'callMethod 生效' };
-      } catch (error) {
+    await attempt('购物车展开（页面处理器直调 + 状态断言）', async () => {
+      await callPageHandler(miniProgram, 'onExpandCart', { detail: {} });
+      await sleep(1000);
+      const after = await page.data();
+      return {
+        status: after.cartVisible === true ? 'PASS' : 'FAIL',
+        detail: 'cartVisible: false → ' + after.cartVisible,
+        path: 'HANDLER_CALL（非点击）',
+      };
+    }),
+  );
+
+  // 页面级真实点击（首页 CTA / 选桌 / 结算提交 / 演示模拟支付）在 probeClickChain 里执行，
+  // 那里会先清空本地存储，保证「未选桌」状态可复现。
+  return results;
+}
+
+/**
+ * 清空小程序本地存储，让「选桌」入口回到干净状态（已选桌时菜单页不渲染选桌列表）。
+ */
+async function resetMiniProgramStorage(miniProgram) {
+  await miniProgram.evaluate(() => {
+    if (typeof wx !== 'undefined' && wx && typeof wx.clearStorageSync === 'function') {
+      wx.clearStorageSync();
+    }
+    return true;
+  });
+}
+
+/**
+ * 真实点击链路：页面级可点击节点（首页 CTA → 选桌 → 结算提交 → 订单详情演示模拟支付）。
+ * 起点用 reLaunch 保证状态干净；购物车数量不足时先直调页面处理器补足，
+ * 该步骤在报告里单独标注 HANDLER_CALL，与点击步骤区分。
+ */
+async function probeClickChain(miniProgram, shotsDir) {
+  const results = [];
+
+  results.push(
+    await attempt('真实点击·首页「开始点餐」跳转菜单', async () => {
+      const home = await openRoute(miniProgram, '/pages/home/index');
+      if (!home) return { status: 'FAIL', detail: '首页打开失败' };
+      const cta = await home.$('.home__cta');
+      if (!cta) return { status: 'BLOCKED', detail: '首页未渲染 .home__cta 节点（可能在加载态）' };
+      await cta.tap();
+      await sleep(2500);
+      const current = await miniProgram.currentPage();
+      const route = current ? current.path : '';
+      return {
+        status: route === 'pages/menu/index' ? 'PASS' : 'FAIL',
+        detail: '点击后当前页面=' + route,
+        path: 'CLICK（真实点击）',
+      };
+    }),
+  );
+
+  results.push(
+    await attempt('真实点击·选择餐桌（菜单页 .menu__table）', async () => {
+      await resetMiniProgramStorage(miniProgram);
+      const menu = await openRoute(miniProgram, '/pages/menu/index');
+      if (!menu) return { status: 'FAIL', detail: '菜单页打开失败（清空本地存储后）' };
+      const beforeData = await menu.data();
+      // 选桌列表只在「堂食 + 未选桌」时渲染；堂食开关在 fulfillment-switch 自定义组件内部，
+      // 该组件不可点击，这里先直调页面处理器切到堂食，再对桌位做真实点击。
+      if (beforeData.mode !== 'DINE_IN') {
+        // 组件 emit 的形状是 { value }（见 components/fulfillment-switch）。
+        await callPageHandler(miniProgram, 'onModeChange', {
+          currentTarget: { dataset: {} },
+          detail: { value: 'DINE_IN' },
+        });
+        await sleep(1200);
+      }
+      const tableNodes = await menu.$$('.menu__table');
+      if (!tableNodes || tableNodes.length === 0) {
+        const nowData = await menu.data();
         return {
-          status: 'BLOCKED',
-          detail: 'callMethod 在本机版本下 this 绑定错误：' + (error.message || String(error)),
+          status: 'NOT_RUN',
+          detail: '菜单页未渲染 .menu__table（mode=' + nowData.mode
+            + '，tableName=' + JSON.stringify(nowData.tableName || '')
+            + '，tableOptions=' + JSON.stringify(nowData.tableOptions || []) + '）',
         };
       }
+      await tableNodes[0].tap();
+      await sleep(1500);
+      const after = await menu.data();
+      return {
+        status: after.tableName ? 'PASS' : 'FAIL',
+        detail: '点击桌位后 tableName=' + JSON.stringify(after.tableName || '')
+          + '（可点节点 ' + tableNodes.length + ' 个）',
+        path: 'CLICK（真实点击）',
+      };
+    }),
+  );
+
+  results.push(
+    await attempt('真实点击·结算提交下单', async () => {
+      const menu = await openRoute(miniProgram, '/pages/menu/index');
+      if (!menu) return { status: 'FAIL', detail: '菜单页打开失败' };
+      const menuData = await menu.data();
+      const product = (menuData.products || [])[0];
+      if (!product) return { status: 'NOT_RUN', detail: '菜单没有菜品，无法构造购物车' };
+      for (let i = 0; i < 2; i += 1) {
+        await callPageHandler(miniProgram, 'onProductAdd', {
+          currentTarget: { dataset: { productId: product.id } },
+          detail: { productId: product.id },
+        });
+        await sleep(600);
+      }
+      const checkout = await miniProgram.navigateTo('/pages/checkout/index');
+      if (!checkout) return { status: 'FAIL', detail: '结算页打开失败' };
+      await sleep(2000);
+      const checkoutData = await checkout.data();
+      const button = await checkout.$('.checkout__bar-button');
+      if (!button) return { status: 'BLOCKED', detail: '结算页未渲染提交按钮 .checkout__bar-button' };
+      await button.tap();
+      await sleep(3000);
+      const current = await miniProgram.currentPage();
+      const route = current ? current.path : '';
+      const orderData = current ? await current.data() : null;
+      const orderId = orderData && orderData.order ? orderData.order.id : '';
+      const payHint = checkoutData && typeof checkoutData.payHint === 'string' ? checkoutData.payHint : '';
+      return {
+        status: orderId ? 'PASS' : 'FAIL',
+        detail: '提交结算页（items=' + ((checkoutData.items || []).length) + '，合计=' + (checkoutData.totalText || '')
+          + '）后落到 ' + route + '，真实后端订单号=' + (orderId || '(无)')
+          + '；结算页演示支付提示=' + JSON.stringify(payHint),
+        path: 'CLICK（真实点击）+ HANDLER_CALL（补足购物车）',
+      };
+    }),
+  );
+
+  results.push(
+    await attempt('真实点击·订单详情「演示模拟支付」', async () => {
+      const current = await miniProgram.currentPage();
+      const route = current ? current.path : '';
+      if (route !== 'pages/order-detail/index') {
+        return { status: 'NOT_RUN', detail: '当前不在订单详情页（' + route + '），跳过演示模拟支付' };
+      }
+      const before = await current.data();
+      const order = before.order || {};
+      if (!order.canPay) {
+        return { status: 'NOT_RUN', detail: '订单当前不可支付（canPay=false，status=' + order.status + '）' };
+      }
+      const payButton = await current.$('.detail__bar-primary');
+      if (!payButton) return { status: 'BLOCKED', detail: '订单详情页未渲染 .detail__bar-primary 支付按钮' };
+      await payButton.tap();
+      await sleep(3500);
+      const after = await current.data();
+      const orderAfter = after.order || {};
+      const changed = orderAfter.paymentStatus !== order.paymentStatus || Boolean(after.payResult);
+      if (shotsDir) {
+        try {
+          await miniProgram.screenshot({ path: path.join(shotsDir, 'order-detail-paid.png') });
+        } catch {
+          /* 截图失败不影响结论 */
+        }
+      }
+      return {
+        status: changed ? 'PASS' : 'FAIL',
+        detail: '演示模拟支付：paymentStatus ' + order.paymentStatus + ' → ' + orderAfter.paymentStatus
+          + ' · payResult=' + (after.payResult ? after.payResult.state : '无')
+          + ' · 订单号=' + (orderAfter.id || order.id || '')
+          + '（演示支付，未发生真实交易）',
+        path: 'CLICK（真实点击）',
+      };
     }),
   );
 
   return results;
+}
+
+/**
+ * 在 appservice 内直调页面事件处理器，负载与自定义组件 triggerEvent 的形状一致。
+ * 仅用于「组件内部节点不可点击」时的业务状态验证，报告里标注 HANDLER_CALL，不冒充点击。
+ */
+async function callPageHandler(miniProgram, handler, payload) {
+  const result = await miniProgram.evaluate(
+    (handlerName, eventPayload) => {
+      const pages = getCurrentPages();
+      const current = pages[pages.length - 1];
+      if (!current || typeof current[handlerName] !== 'function') {
+        return { ok: false, reason: '页面缺少处理器 ' + handlerName };
+      }
+      current[handlerName](eventPayload);
+      return { ok: true, route: current.route };
+    },
+    handler,
+    payload,
+  );
+  if (!result || result.ok !== true) {
+    throw new Error((result && result.reason) || '直调失败');
+  }
+  return result;
 }
 
 async function attempt(label, fn) {

@@ -2,7 +2,12 @@ import type { ContractDraft } from '../agent.types';
 
 /** 校验通过后交给 Provider 的图片描述（纯 base64，不含 data: 前缀）。 */
 export interface AgentProviderImage {
-  kind: 'menu' | 'store';
+  /**
+   * 与 {@link import('../agent-image.validator').AgentImageKind} 保持一致：
+   * 菜单照 / 门店环境照 / 参考截图（screen-reference.v1 只传参考截图）。
+   * Provider 仅使用 mediaType + data 构造多模态消息，kind 只做来源标注。
+   */
+  kind: 'menu' | 'store' | 'reference';
   mediaType: string;
   data: string;
   /** 解码后的真实字节数，仅用于日志计数。 */

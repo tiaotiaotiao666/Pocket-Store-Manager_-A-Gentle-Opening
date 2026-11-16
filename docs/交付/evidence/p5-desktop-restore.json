@@ -1,0 +1,39 @@
+{
+  "phase": "restore",
+  "startedAt": "2026-11-16T11:59:46.471Z",
+  "target": "",
+  "steps": [
+    {
+      "id": "R0",
+      "title": "重开后连接窗口",
+      "status": "PASS",
+      "observation": "窗口可见 1466×943",
+      "at": "2026-11-16T11:59:46.733Z"
+    },
+    {
+      "id": "R1",
+      "title": "重开后项目仍在列表",
+      "status": "PASS",
+      "observation": "项目列表仍有「柑橘小馆演示店」，共 12 个项目",
+      "at": "2026-11-16T11:59:46.899Z"
+    },
+    {
+      "id": "R2",
+      "title": "打开项目恢复阶段与资料",
+      "status": "PASS",
+      "observation": "恢复阶段=store-info；店名与菜品仍在=true/false",
+      "at": "2026-11-16T11:59:49.349Z"
+    }
+  ],
+  "artifacts": {
+    "20-restored-list": ".arts\\p5\\shots\\20-restored-list.png",
+    "21-restored-list": ".arts\\p5\\shots\\21-restored-list.png",
+    "22-restored-project": ".arts\\p5\\shots\\22-restored-project.png"
+  },
+  "summary": {
+    "pass": 3,
+    "fail": 0,
+    "blocked": 0
+  },
+  "finishedAt": "2026-11-16T11:59:49.350Z"
+}

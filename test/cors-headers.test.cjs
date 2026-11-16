@@ -28,6 +28,15 @@ function collectFrontendCustomHeaders() {
     for (const match of source.matchAll(/headers\['([^']+)'\]/g)) {
       if (/^[Xx]-/.test(match[1])) headers.add(match[1]);
     }
+    // P5 回归：请求头名可能来自常量再算成 `[headerName]: value`（agentRunTransport 就是这种写法）。
+    // 只认字面量键的正则会漏掉它，于是后端白名单缺了 X-Request-Id 也照样全绿，
+    // 真机上「整理资料」必失败。这里把 `xxx_HEADER_NAME = 'X-...'` 这类默认值也纳入检查。
+    for (const match of source.matchAll(/_HEADER_NAME\s*=\s*'((?:X|x)-[A-Za-z0-9-]+)'/g)) {
+      headers.add(match[1]);
+    }
+    for (const match of source.matchAll(/requestIdHeader[^\n]*?\?\s*[^\n]*?:?\s*'((?:X|x)-[A-Za-z0-9-]+)'/g)) {
+      headers.add(match[1]);
+    }
   }
   assert.ok(headers.size > 0, '前端 Agent transport 应至少使用一个 X- 自定义请求头');
   return headers;

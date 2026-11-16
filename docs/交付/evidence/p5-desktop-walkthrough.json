@@ -1,0 +1,166 @@
+{
+  "phase": "flow",
+  "startedAt": "2026-11-16T11:50:40.226Z",
+  "target": "http://127.0.0.1:5173/",
+  "steps": [
+    {
+      "id": "S0",
+      "title": "连接桌面窗口",
+      "status": "PASS",
+      "observation": "窗口可见 1466×923，项目列表已加载",
+      "at": "2026-11-16T11:50:40.560Z"
+    },
+    {
+      "id": "S1",
+      "title": "新建项目并命名",
+      "status": "PASS",
+      "observation": "项目创建并命名为「柑橘小馆演示店」，已推进到功能选择",
+      "at": "2026-11-16T11:50:44.058Z"
+    },
+    {
+      "id": "S2",
+      "title": "功能选择并生成候选模板",
+      "status": "PASS",
+      "observation": "候选模板：街巷食集 / 一杯日常 / 主厨推荐；推荐来源=服务端排序",
+      "at": "2026-11-16T11:50:47.554Z"
+    },
+    {
+      "id": "S3",
+      "title": "选择候选模板",
+      "status": "PASS",
+      "observation": "点击「一杯日常」后：当前使用 柑 柑橘小馆演示店 社区餐馆 · 取餐",
+      "at": "2026-11-16T11:50:49.399Z"
+    },
+    {
+      "id": "S3b",
+      "title": "预览面板交互",
+      "status": "PASS",
+      "observation": "预览面板存在，点击底部「菜单」标签后菜品可见=true",
+      "at": "2026-11-16T11:50:50.808Z"
+    },
+    {
+      "id": "S4",
+      "title": "确认模板并进入下一步",
+      "status": "PASS",
+      "observation": "已从模板阶段进入：store-info",
+      "at": "2026-11-16T11:50:53.422Z"
+    },
+    {
+      "id": "S5",
+      "title": "AI 填写门店与菜品",
+      "status": "PASS",
+      "observation": "AI 回填完成：当前门店配置 | 店名：柑橘小馆 | 品类：社区家常菜 | 营业时间：10:00-21:00 | 取餐方式：堂食 + 自取 | 菜品：3 道 | 资料完成度 5/5 | 资料已齐全，可以继续选风格与部署。",
+      "at": "2026-11-16T11:51:00.302Z"
+    },
+    {
+      "id": "S6",
+      "title": "继续修改门店资料（第二轮 AI）",
+      "status": "PASS",
+      "observation": "第二轮修改生效：新增桂花酸梅汤=true，18 元=true",
+      "at": "2026-11-16T11:51:00.948Z"
+    },
+    {
+      "id": "S7",
+      "title": "确认资料与店铺信息",
+      "status": "PASS",
+      "observation": "已确认资料；当前阶段=prompt",
+      "at": "2026-11-16T11:51:03.683Z"
+    },
+    {
+      "id": "S8",
+      "title": "生图提示词阶段",
+      "status": "PASS",
+      "observation": "提示词已确认并继续：生图提示词 | 打磨视觉提示 | 已保存 19:51 | 视觉生成 | 项目 | 重置项目 | 请给你的店铺小程序命名 | 柑橘小馆演示店 | 欢迎使用轻启 | 你好，我是轻启，会陪你从零搭出一家属于你自己的餐饮小程序。 | 在这里你不需要",
+      "at": "2026-11-16T11:51:06.427Z"
+    },
+    {
+      "id": "S9a",
+      "title": "AI 生图（真实图像生成）",
+      "status": "BLOCKED",
+      "observation": "界面明示「尚未接入生图服务，当前版本不会生成海报」；本机未接入真实生图服务，不伪造素材。",
+      "at": "2026-11-16T11:51:06.540Z"
+    },
+    {
+      "id": "S9",
+      "title": "海报素材阶段（生图能力现状）",
+      "status": "PASS",
+      "observation": "海报步骤未阻断生成，已按界面提示跳过（生图能力另记 BLOCKED）",
+      "at": "2026-11-16T11:51:09.222Z"
+    },
+    {
+      "id": "S10",
+      "title": "预览证据复核",
+      "status": "PASS",
+      "observation": "预览证据链：03-templates / 04-template-chosen / 04b-preview-menu（模板阶段真实点按预览标签）",
+      "at": "2026-11-16T11:51:09.318Z"
+    },
+    {
+      "id": "S11",
+      "title": "导出闸门与体检提示",
+      "status": "PASS",
+      "observation": "体检提示确认 2 次；Plan 摘要 sha256:aedae749ebbd1…",
+      "at": "2026-11-16T11:51:10.968Z"
+    },
+    {
+      "id": "S12a",
+      "title": "UI 导出到指定目录",
+      "status": "BLOCKED",
+      "observation": "「选择导出位置」调用主进程 dialog.showOpenDialog 打开原生目录对话框：CDP 只能点到按钮，无法在原生对话框里选目录；按 P5 要求不追 UIA/ACL。导出改由同一 IPC + Composer 通道在命令行复核并比对产物。生成进度区出现=true",
+      "at": "2026-11-16T11:51:13.663Z"
+    }
+  ],
+  "artifacts": {
+    "00-projects": ".arts\\p5\\shots\\00-projects.png",
+    "01-named": ".arts\\p5\\shots\\01-named.png",
+    "02-features": ".arts\\p5\\shots\\02-features.png",
+    "candidates": [
+      "街巷食集",
+      "一杯日常",
+      "主厨推荐"
+    ],
+    "03-templates": ".arts\\p5\\shots\\03-templates.png",
+    "04-template-chosen": ".arts\\p5\\shots\\04-template-chosen.png",
+    "04b-preview-menu": ".arts\\p5\\shots\\04b-preview-menu.png",
+    "05-agent-filled": ".arts\\p5\\shots\\05-agent-filled.png",
+    "storeInfoButtons": [
+      "我的项目",
+      "设置与自检",
+      "轻启",
+      "柑橘小馆演示店",
+      "店铺装修",
+      "重置项目",
+      "(禁用)",
+      "项目",
+      "重置项目",
+      "附加材料：参考截图 / 图片识别",
+      "上传截图",
+      "开始识别(禁用)",
+      "选择图片",
+      "选择图片",
+      "结构化资料草稿3 道菜",
+      "添加菜品（3/5）",
+      "资料无误，继续",
+      "整理资料(禁用)"
+    ],
+    "06-agent-revised": ".arts\\p5\\shots\\06-agent-revised.png",
+    "07-store-info": ".arts\\p5\\shots\\07-store-info.png",
+    "08-prompt-studio": ".arts\\p5\\shots\\08-prompt-studio.png",
+    "09-poster": ".arts\\p5\\shots\\09-poster.png",
+    "stagesVisited": [
+      "template",
+      "store-info",
+      "prompt",
+      "poster",
+      "deploy"
+    ],
+    "10-preview": ".arts\\p5\\shots\\10-preview.png",
+    "11-deploy": ".arts\\p5\\shots\\11-deploy.png",
+    "12-export-dialog": ".arts\\p5\\shots\\12-export-dialog.png"
+  },
+  "summary": {
+    "pass": 13,
+    "fail": 0,
+    "blocked": 2
+  },
+  "finishedAt": "2026-11-16T11:51:13.665Z"
+}

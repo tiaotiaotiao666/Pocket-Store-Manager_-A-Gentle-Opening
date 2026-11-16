@@ -128,7 +128,11 @@ export async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: process.env.DESKTOP_ORIGIN ? [process.env.DESKTOP_ORIGIN] : true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Agent-Contract', 'X-Agent-Request-Id'],
+    // P5：桌面端 agent-run transport 用 `X-Request-Id` 传 requestId
+    // （见 src/services/agentTurn/agentRunTransport.js）。旧白名单只有 `X-Agent-Request-Id`，
+    // 预检虽通过，实际请求仍被浏览器判 CORS 失败（net::ERR_FAILED），
+    // 表现为「整理资料」永久失败。两个名字都放行，兼容既有调用方。
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Agent-Contract', 'X-Agent-Request-Id', 'X-Request-Id'],
     exposedHeaders: ['X-Request-Id'],
   });
   configureBodyParsers(app);

@@ -7,10 +7,13 @@
 #   npm run start:all -- -ServerOnly
 #   npm run start:all -- -SkipMysql
 #   npm run start:all -- -RestartBackend
+#   npm run start:all -- -Seed       # prisma migrate deploy + demo seed, then start
 #   npm stop                  # stop backend + MySQL
 #
 # Notes:
 # - MySQL is the portable ZIP build at E:\smartstore-tools (ASCII path only).
+# - If 3306 is already served by another MySQL (phpStudy etc.), it is reused as-is;
+#   npm stop then stops whatever listens on 3306, so do not run it on a shared box.
 # - CACHE_DRIVER defaults to memory when 6379 is not reachable, because
 #   server/.env ships with CACHE_DRIVER=redis and Nest aborts on connect failure.
 # - ELECTRON_RUN_AS_NODE is cleared before launching Electron.
@@ -25,6 +28,7 @@ param(
   [switch]$ServerOnly,
   [switch]$SkipMysql,
   [switch]$RestartBackend,
+  [switch]$Seed,
   [int]$MysqlTimeoutSeconds = 90,
   [int]$BackendTimeoutSeconds = 120
 )
@@ -37,8 +41,11 @@ $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 
 $mysqlHome = 'E:\smartstore-tools\mysql'
 $mysqlData = 'E:\smartstore-tools\mysql-data'
-$mysqldPath = Join-Path $mysqlHome 'bin\mysqld.exe'
-$mysqlAdminPath = Join-Path $mysqlHome 'bin\mysqladmin.exe'
+# Join-Path throws on a drive that does not exist, which used to abort the whole
+# launcher before -SkipMysql/-Seed could run. Build the paths as plain strings and
+# only check existence later, where the failure message is actionable.
+$mysqldPath = "$mysqlHome\bin\mysqld.exe"
+$mysqlAdminPath = "$mysqlHome\bin\mysqladmin.exe"
 
 $serverScript = Join-Path $workspaceRoot 'scripts\start-server-local.ps1'
 $readinessScript = Join-Path $workspaceRoot 'scripts\backend-readiness.cjs'
@@ -289,6 +296,30 @@ if ($SkipMysql) {
 }
 
 Write-Step '[2/3] backend (127.0.0.1:3000)'
+if ($Seed) {
+  # -Seed: apply migrations and the idempotent demo seed before starting the API,
+  # so a fresh machine gets a stable demo store instead of hand-edited rows.
+  Write-Step '[2/3] database migrate + demo seed'
+  $serverDir = Join-Path $workspaceRoot 'server'
+  Push-Location $serverDir
+  try {
+    & npm run db:deploy
+    if ($LASTEXITCODE -ne 0) {
+      Write-Fail 'prisma migrate deploy failed; check DATABASE_URL in server/.env'
+      Pop-Location
+      exit 1
+    }
+    & npm run db:seed
+    if ($LASTEXITCODE -ne 0) {
+      Write-Fail 'demo seed failed (server/prisma/seed.ts)'
+      Pop-Location
+      exit 1
+    }
+    Write-Ok 'migrations applied and demo store seeded'
+  } finally {
+    Pop-Location
+  }
+}
 $backendReady = $false
 $backendProbe = $null
 if ($RestartBackend) {

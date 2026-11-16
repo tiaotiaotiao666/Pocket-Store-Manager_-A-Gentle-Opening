@@ -45,8 +45,16 @@ import {
 } from '../domain/presentationPatch.mjs';
 import { resolveRecipe } from '../domain/recipeCatalog.mjs';
 import {
+  SCREEN_REF_STATUS,
+  buildCandidateRecipe,
+  buildScreenRefView,
+  candidateToSessionPatch,
+  recognitionUsable,
+} from '../domain/screenReference.mjs';
+import {
   createEmptyDeployState,
   createEmptyPreflight,
+  createEmptyScreenRefState,
   fromDocument,
 } from '../domain/projectSnapshot.mjs';
 
@@ -185,6 +193,30 @@ function applyPresentationCopy(state, copy) {
   }
   if (!storeTouched && !draftTouched) return null;
   return { store: storeTouched ? store : state.store, draft: draftTouched ? draft : state.agentDraft };
+}
+
+/** P3：参考截图 → 候选模板 的会话切片（空实现在 projectSnapshot，便于重开恢复）。 */
+export function createInitialScreenRefSlice() {
+  return createEmptyScreenRefState();
+}
+
+function withScreenRefView(slice) {
+  return { ...slice, view: buildScreenRefView(slice) };
+}
+
+/** 采用候选时保存现场：放弃候选必须能回到原样。 */
+function snapshotSelection(state) {
+  return {
+    selectedId: state.build?.selectedId ?? null,
+    candidateIds: Array.isArray(state.build?.candidates)
+      ? state.build.candidates.map((item) => item && item.id).filter(Boolean)
+      : [],
+    features: Array.isArray(state.features?.selected) ? [...state.features.selected] : [],
+    presentation: {
+      templateId: state.presentation?.templateId ?? null,
+      patch: JSON.parse(JSON.stringify(state.presentation?.patch ?? {})),
+    },
+  };
 }
 
 function createInitialAgentSlice() {
@@ -361,6 +393,7 @@ export function createInitialState() {
     deploy: createInitialDeploySlice(),
     agentDraft: createEmptyAgentDraft(),
     agent: createInitialAgentSlice(),
+    screenRef: createInitialScreenRefSlice(),
     presentation: createInitialPresentationSlice(),
     assets: { images: [] },
     unmappedFields: {},
@@ -1271,6 +1304,185 @@ function baseReducer(state, action) {
         },
       };
     }
+
+    // ---- P3：参考截图 → 识别 → 确认 → 候选 → 采用 ----
+    case 'SCREEN_REF_IMAGE_SET': {
+      const image = action.image && typeof action.image === 'object' ? action.image : null;
+      if (!image) return state;
+      const next = {
+        ...state.screenRef,
+        image,
+        imageRevision: (state.screenRef.imageRevision || 0) + 1,
+        status: SCREEN_REF_STATUS.IDLE,
+        requestId: null,
+        requestImageRevision: null,
+        recognition: null,
+        confirmedAt: null,
+        candidate: null,
+        adopted: false,
+        error: null,
+        meta: null,
+      };
+      return { ...state, screenRef: withScreenRefView(next) };
+    }
+
+    case 'SCREEN_REF_REQUEST': {
+      // 识别中不重复发请求：与 Agent 的防重口径一致。
+      if (state.screenRef.status === SCREEN_REF_STATUS.RECOGNIZING) return state;
+      if (!state.screenRef.image) return state;
+      const next = {
+        ...state.screenRef,
+        status: SCREEN_REF_STATUS.RECOGNIZING,
+        requestId: action.requestId ?? null,
+        // 冻结本次识别对应的截图版本：换图后到达的旧结果一律丢弃。
+        requestImageRevision: state.screenRef.imageRevision,
+        attempt: (state.screenRef.attempt || 0) + 1,
+        // 重新识别等于推翻上次确认，确认必须重来。
+        confirmedAt: null,
+        candidate: null,
+        adopted: false,
+        error: null,
+        meta: null,
+      };
+      return { ...state, screenRef: withScreenRefView(next) };
+    }
+
+    case 'SCREEN_REF_SUCCESS': {
+      const slice = state.screenRef;
+      if (slice.status !== SCREEN_REF_STATUS.RECOGNIZING) return state;
+      if (!action.requestId || action.requestId !== slice.requestId) return state;
+      if (Number.isInteger(action.imageRevision) && action.imageRevision !== slice.imageRevision) return state;
+      const recognition = action.recognition ?? null;
+      const usable = recognitionUsable(recognition);
+      const next = {
+        ...slice,
+        status: usable ? SCREEN_REF_STATUS.READY : SCREEN_REF_STATUS.DEGRADED,
+        recognition,
+        confirmedAt: null,
+        error: usable ? null : (action.message || '这张截图没有得到可用识别结果，可以换一张再试。'),
+        meta: action.meta ?? null,
+      };
+      return { ...state, screenRef: withScreenRefView(next) };
+    }
+
+    case 'SCREEN_REF_FAILURE': {
+      const slice = state.screenRef;
+      if (slice.status !== SCREEN_REF_STATUS.RECOGNIZING) return state;
+      if (!action.requestId || action.requestId !== slice.requestId) return state;
+      const next = {
+        ...slice,
+        status: SCREEN_REF_STATUS.FAILED,
+        recognition: null,
+        confirmedAt: null,
+        candidate: null,
+        error: action.message || '识别没有成功，可以直接重试。',
+        degraded: Boolean(action.degraded),
+      };
+      return { ...state, screenRef: withScreenRefView(next) };
+    }
+
+    case 'SCREEN_REF_CONFIRM': {
+      const slice = state.screenRef;
+      if (slice.status !== SCREEN_REF_STATUS.READY) return state;
+      if (!recognitionUsable(slice.recognition)) return state;
+      if (slice.confirmedAt) return state;
+      const next = { ...slice, confirmedAt: action.at ?? null, error: null };
+      return { ...state, screenRef: withScreenRefView(next) };
+    }
+
+    case 'SCREEN_REF_CREATE_CANDIDATE': {
+      const slice = state.screenRef;
+      if (slice.candidate) return state;
+      const result = buildCandidateRecipe({
+        recognition: slice.recognition,
+        confirmedAt: slice.confirmedAt,
+        baseRecipeId: action.baseRecipeId,
+        draft: state.agentDraft,
+        createdAt: action.at ?? null,
+      });
+      if (!result.ok) {
+        return { ...state, screenRef: withScreenRefView({ ...slice, error: result.message }) };
+      }
+      const next = { ...slice, candidate: result.candidate, adopted: false, error: null };
+      return { ...state, screenRef: withScreenRefView(next) };
+    }
+
+    case 'SCREEN_REF_ADOPT': {
+      const slice = state.screenRef;
+      if (!slice.candidate || slice.adopted) return state;
+      const patch = candidateToSessionPatch(slice.candidate);
+      if (!patch || !patch.selectedId) return state;
+      const currentFeatures = Array.isArray(state.features?.selected) ? state.features.selected : [];
+      // 候选组件只做并集：基础必需能力与用户已选能力不会被候选顺手删掉。
+      const mergedFeatures = [...currentFeatures];
+      patch.featureIds.forEach((id) => {
+        if (!mergedFeatures.includes(id)) mergedFeatures.push(id);
+      });
+      const presentationPatch = {};
+      if (Object.keys(patch.presentation.theme).length) presentationPatch.theme = patch.presentation.theme;
+      if (Object.keys(patch.presentation.sizes).length) presentationPatch.sizes = patch.presentation.sizes;
+      // 候选必须进入模板候选列表：模板页与 project.json 都以 candidates 为准，
+      // 否则重开项目会把「已采用的候选」丢掉，退回门店资料页。
+      const candidates = Array.isArray(state.build.candidates) ? [...state.build.candidates] : [];
+      if (!candidates.some((item) => item && item.id === patch.selectedId)) {
+        candidates.unshift({
+          id: patch.selectedId,
+          name: String(slice.candidate.recipeLabel || '参考截图候选').slice(0, 40),
+          layout: 'reference',
+          score: 80,
+          summary: `参考截图生成：${patch.featureIds.length} 个组件，可继续在下一步微调。`.slice(0, 160),
+        });
+      }
+      return {
+        ...state,
+        build: { ...state.build, selectedId: patch.selectedId, candidates, status: 'ready' },
+        features: { ...state.features, selected: mergedFeatures },
+        presentation: {
+          ...state.presentation,
+          templateId: patch.selectedId,
+          patch: presentationPatch,
+        },
+        screenRef: withScreenRefView({
+          ...slice,
+          adopted: true,
+          previousSelection: slice.previousSelection ?? snapshotSelection(state),
+          error: null,
+        }),
+      };
+    }
+
+    case 'SCREEN_REF_DISCARD': {
+      const slice = state.screenRef;
+      if (!slice.candidate) return state;
+      const restore = slice.adopted ? slice.previousSelection : null;
+      const base = {
+        ...state,
+        screenRef: withScreenRefView({
+          ...slice,
+          candidate: null,
+          adopted: false,
+          previousSelection: null,
+          error: null,
+        }),
+      };
+      if (!restore) return base;
+      const keptIds = new Set(Array.isArray(restore.candidateIds) ? restore.candidateIds : []);
+      const candidates = (Array.isArray(base.build.candidates) ? base.build.candidates : [])
+        .filter((item) => item && keptIds.has(item.id));
+      return {
+        ...base,
+        build: { ...base.build, selectedId: restore.selectedId, candidates },
+        features: { ...base.features, selected: [...restore.features] },
+        presentation: {
+          ...base.presentation,
+          templateId: restore.presentation.templateId,
+          patch: JSON.parse(JSON.stringify(restore.presentation.patch ?? {})),
+        },
+      };
+    }
+
+    case 'SCREEN_REF_RESET':
+      return { ...state, screenRef: createInitialScreenRefSlice() };
 
     case 'AGENT_TURN_REQUEST': {
       const utterance = String(action.utterance ?? '').trim();

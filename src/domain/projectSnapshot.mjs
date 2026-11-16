@@ -15,6 +15,7 @@ import { STYLE_PRESETS } from './storeBrief.mjs';
 import { normalizeAgentDraft, validateAgentDraft, buildNextQuestion } from './agentDraft.mjs';
 import { validatePresentationPatch } from './presentationPatch.mjs';
 import { resolveRecipe } from './recipeCatalog.mjs';
+import { buildScreenRefView } from './screenReference.mjs';
 
 export const SNAPSHOT_SCHEMA_VERSION = 1;
 export const MAX_SESSIONS = 20;
@@ -36,6 +37,7 @@ export const KNOWN_TOP_KEYS = Object.freeze([
   'visual',
   'presentation',
   'agentDraft',
+  'screenRef',
   'agentConfirmedSeq',
   'assets',
   'sessions',
@@ -415,6 +417,164 @@ function pickImages(images) {
 }
 
 /**
+ * P3：参考截图切片（`state.screenRef`）的空实现与持久化。
+ *
+ * 口径与 assets 一致：**base64 与预览 dataURL 一律不落盘**，只存 assetId 等白名单字段；
+ * `recognizing` 是非稳定状态，重开后按「未完成」处理，绝不假装识别结果还在。
+ */
+export const SCREEN_REF_DOC_STATUSES = Object.freeze(['idle', 'ready', 'degraded', 'failed']);
+
+export function createEmptyScreenRefState() {
+  const slice = {
+    status: 'idle',
+    image: null,
+    imageRevision: 0,
+    requestId: null,
+    requestImageRevision: null,
+    recognition: null,
+    confirmedAt: null,
+    candidate: null,
+    adopted: false,
+    previousSelection: null,
+    error: null,
+    attempt: 0,
+    meta: null,
+  };
+  return { ...slice, view: buildScreenRefView(slice) };
+}
+
+function pickScreenRefImage(image) {
+  if (!isPlainObject(image)) return null;
+  return {
+    assetId: typeof image.assetId === 'string' ? image.assetId.slice(0, 120) : null,
+    name: text(image.name, 120),
+    mediaType: text(image.mediaType, 40),
+    bytes: integerOrNull(image.bytes),
+  };
+}
+
+function pickScreenRefItems(items, limit) {
+  if (!Array.isArray(items)) return [];
+  return items.slice(0, limit).map((item) => ({
+    label: text(item?.label ?? item?.id, 120),
+    reason: text(item?.reason, 120),
+  }));
+}
+
+function pickScreenRefRecognition(recognition) {
+  if (!isPlainObject(recognition)) return null;
+  const theme = {};
+  const rawTheme = isPlainObject(recognition.style?.theme) ? recognition.style.theme : {};
+  Object.keys(rawTheme).forEach((key) => {
+    const value = rawTheme[key];
+    if (typeof value === 'string' && /^#[0-9A-Fa-f]{6}$/.test(value)) theme[key] = value.toUpperCase();
+  });
+  const sizes = {};
+  const rawSizes = isPlainObject(recognition.style?.sizes) ? recognition.style.sizes : {};
+  Object.keys(rawSizes).forEach((key) => {
+    if (['sm', 'md', 'lg'].includes(rawSizes[key])) sizes[key] = rawSizes[key];
+  });
+  return {
+    layouts: arrayOf(recognition.layouts).filter((item) => isPlainObject(item) && typeof item.id === 'string')
+      .slice(0, 4)
+      .map((item) => ({ id: text(item.id, 60), label: text(item.label, 60) })),
+    components: arrayOf(recognition.components).filter((item) => isPlainObject(item) && typeof item.id === 'string')
+      .slice(0, 16)
+      .map((item) => ({ id: text(item.id, 60), label: text(item.label, 60) })),
+    style: { theme, sizes },
+    approximate: pickScreenRefItems(recognition.approximate, 6),
+    unsupported: pickScreenRefItems(recognition.unsupported, 8),
+    rejected: [],
+    notes: text(recognition.notes, 240),
+  };
+}
+
+function pickScreenRefCandidate(candidate) {
+  if (!isPlainObject(candidate)) return null;
+  const store = isPlainObject(candidate.storeSnapshot) ? candidate.storeSnapshot : {};
+  return {
+    id: text(candidate.id, 80),
+    recipeId: text(candidate.recipeId, 60),
+    recipeLabel: text(candidate.recipeLabel, 60),
+    featureIds: arrayOf(candidate.featureIds).filter((id) => typeof id === 'string').slice(0, 16),
+    presentation: pickScreenRefRecognition({ style: candidate.presentation })?.style
+      ?? { theme: {}, sizes: {} },
+    storeSnapshot: {
+      storeName: text(store.storeName, 120),
+      category: text(store.category, 60),
+      businessHours: text(store.businessHours, 120),
+      dishes: arrayOf(store.dishes).slice(0, 40).map((dish) => ({
+        id: text(dish?.id, 60),
+        name: text(dish?.name, 80),
+        priceCents: Number.isInteger(dish?.priceCents) ? dish.priceCents : null,
+        description: text(dish?.description, 200),
+      })),
+    },
+    approximate: pickScreenRefItems(candidate.approximate, 6),
+    unsupported: pickScreenRefItems(candidate.unsupported, 8),
+    source: 'screen-reference',
+    createdAt: text(candidate.createdAt, 40),
+  };
+}
+
+function pickScreenRefPreviousSelection(selection) {
+  if (!isPlainObject(selection)) return null;
+  return {
+    selectedId: typeof selection.selectedId === 'string' ? selection.selectedId.slice(0, 60) : null,
+    candidateIds: arrayOf(selection.candidateIds).filter((id) => typeof id === 'string').slice(0, 8),
+    features: arrayOf(selection.features).filter((id) => typeof id === 'string').slice(0, 32),
+    presentation: {
+      templateId: typeof selection.presentation?.templateId === 'string'
+        ? selection.presentation.templateId.slice(0, 60)
+        : null,
+      patch: isPlainObject(selection.presentation?.patch)
+        ? JSON.parse(JSON.stringify(selection.presentation.patch))
+        : {},
+    },
+  };
+}
+
+/** 内存切片 → project.json 的 `screenRef`（白名单字段）。 */
+export function pickScreenRef(screenRef) {
+  const source = isPlainObject(screenRef) ? screenRef : {};
+  const status = SCREEN_REF_DOC_STATUSES.includes(source.status) ? source.status : 'idle';
+  return {
+    status,
+    image: pickScreenRefImage(source.image),
+    imageRevision: integerOrNull(source.imageRevision) ?? 0,
+    recognition: pickScreenRefRecognition(source.recognition),
+    confirmedAt: typeof source.confirmedAt === 'string' ? source.confirmedAt.slice(0, 40) : null,
+    candidate: pickScreenRefCandidate(source.candidate),
+    adopted: source.adopted === true,
+    previousSelection: pickScreenRefPreviousSelection(source.previousSelection),
+    attempt: integerOrNull(source.attempt) ?? 0,
+  };
+}
+
+/** project.json 的 `screenRef` → 内存切片（含视图模型）。 */
+export function restoreScreenRef(saved) {
+  const empty = createEmptyScreenRefState();
+  if (!isPlainObject(saved)) return empty;
+  const image = pickScreenRefImage(saved.image);
+  const recognition = pickScreenRefRecognition(saved.recognition);
+  // 识别中的状态不落盘：没有结果就当没做过，避免重开后出现「假结果」。
+  const status = SCREEN_REF_DOC_STATUSES.includes(saved.status) && recognition ? saved.status : 'idle';
+  const slice = {
+    ...empty,
+    status,
+    image,
+    imageRevision: integerOrNull(saved.imageRevision) ?? 0,
+    recognition,
+    confirmedAt: typeof saved.confirmedAt === 'string' ? saved.confirmedAt.slice(0, 40) : null,
+    candidate: pickScreenRefCandidate(saved.candidate),
+    adopted: saved.adopted === true,
+    previousSelection: pickScreenRefPreviousSelection(saved.previousSelection),
+    attempt: integerOrNull(saved.attempt) ?? 0,
+  };
+  return { ...slice, view: buildScreenRefView(slice) };
+}
+
+/**
  * 内存 state → project.json 文档。
  * meta: { projectId, createdAt, updatedAt, appid }
  */
@@ -448,6 +608,7 @@ export function toDocument(state, meta) {
     visual,
     presentation,
     agentDraft,
+    screenRef: pickScreenRef(input.screenRef),
     agentConfirmedSeq: agent.status === 'confirmed' ? integerOrNull(agent.confirmedAtSeq) : null,
     assets: { images: pickImages(input.assets?.images ?? input.assetImages) },
     sessions: sessions.length > 0
@@ -582,6 +743,7 @@ export function fromDocument(doc) {
     presentationRestore: restoredPresentation.notice,
     agentDraft: draft,
     agent,
+    screenRef: restoreScreenRef(source.screenRef),
     deploy,
     assets: { images: pickImages(source.assets?.images) },
     project: {

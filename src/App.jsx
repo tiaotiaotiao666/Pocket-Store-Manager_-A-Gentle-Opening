@@ -55,6 +55,8 @@ import { createAppidService } from './services/appidService.js';
 import { createDevtoolsService } from './services/devtoolsService.js';
 import { requestAgentTurn, describeAgentTransport, configureAgentRuntime, getAgentTransportConfig } from './services/agentTurn/agentTurnService.js';
 import { requestAgentRun, isAgentRunRoute, resolveAgentRequestRoute } from './services/agentTurn/agentRunService.js';
+import { requestScreenReference, createScreenReferenceRequestId } from './services/agentTurn/screenReferenceService.js';
+import { validateReferenceImage } from './domain/screenReference.mjs';
 import {
   requestTemplateRevise,
   createReviseRequestId,
@@ -94,6 +96,7 @@ import DeployStep from './components/build/DeployStep.jsx';
 import ImportDiffCard from './components/build/ImportDiffCard.jsx';
 import AgentIntakePanel from './components/agent/AgentIntakePanel.jsx';
 import VisionImageUploader from './components/agent/VisionImageUploader.jsx';
+import ScreenReferencePanel from './components/screenRef/ScreenReferencePanel.jsx';
 import DraftEditor from './components/agent/DraftEditor.jsx';
 import StoreInfoActionBar from './components/agent/StoreInfoActionBar.jsx';
 import AgentDraftSummary from './components/agent/AgentDraftSummary.jsx';
@@ -458,6 +461,9 @@ export default function App() {
   // 多模态上传的本地状态：只存在于内存，随请求透传给 agent turn。
   const [agentImages, setAgentImages] = useState({ menu: [], store: [] });
   const [agentImageError, setAgentImageError] = useState(null);
+  // P3：参考截图流程的即时错误与「是否已落盘」提示（都不进持久化文档）。
+  const [screenRefError, setScreenRefError] = useState(null);
+  const [screenRefPersisted, setScreenRefPersisted] = useState(true);
   // 真实截图回传面板状态（工程目录来自 deploy.result，不复制到持久化文档）。
   const [realPreview, setRealPreview] = useState({ screenshots: [], busy: false, error: null });
   const templateReviseBusy = useRef(false);
@@ -469,6 +475,8 @@ export default function App() {
   const preflightStarted = useRef(false);
   const deployBusy = useRef(false);
   const agentBusy = useRef(false);
+  // P3：识别请求的并发门禁，避免同一时刻发两次识别。
+  const screenRefBusy = useRef(false);
   // W4：连续点击/连按回车只放行一次同一段文字，避免重复请求与重复消息。
   const submitGuardRef = useRef(createSubmitGuard());
   // 在途请求期间用户可能新增图片：用 ref 记录最新数量，避免闭包读到旧 state。
@@ -1436,6 +1444,158 @@ export default function App() {
   const handleAgentRemoveDish = (id) => dispatch({ type: 'REMOVE_AGENT_DISH', id });
   const handleSimulateFailure = (value) => dispatch({ type: 'AGENT_SIMULATE_FAILURE', value });
 
+  // ---- P3：参考截图 → 识别 → 确认 → 候选模板 ----
+
+  const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(new Error('SCREEN_REF_READ_FAILED'));
+    reader.readAsDataURL(file);
+  });
+
+  /** 上传入口：桌面模式走主进程选图并落盘；浏览器模式回落到 file input。 */
+  const handleScreenRefPick = async (openFileInput) => {
+    setScreenRefError(null);
+    const service = projectServiceRef.current;
+    if (service.mode !== 'desktop') {
+      setScreenRefPersisted(false);
+      if (typeof openFileInput === 'function') openFileInput();
+      return;
+    }
+    if (!projectId) {
+      setScreenRefError('请先在工作台新建或打开一个项目，再上传参考截图。');
+      return;
+    }
+    try {
+      const picked = await service.pickImages(1);
+      if (picked.status !== 'ok') {
+        setScreenRefError(picked.message || '选择图片失败，请重试。');
+        return;
+      }
+      const item = Array.isArray(picked.items) ? picked.items[0] : null;
+      // 用户取消选图：保持现状。
+      if (!item) return;
+      const attached = await service.attachImages(projectId, [item.token]);
+      if (attached.status !== 'ok') {
+        setScreenRefError(attached.message || '保存截图失败，请重试。');
+        return;
+      }
+      const asset = Array.isArray(attached.assets) ? attached.assets[0] : null;
+      if (!asset || !asset.assetId) {
+        setScreenRefError('保存截图失败，请重试。');
+        return;
+      }
+      const read = await service.readAsset(projectId, asset.assetId, 1280);
+      const dataUrl = read && read.status === 'ok' && read.asset ? read.asset.dataUrl : '';
+      const dataBase64 = typeof dataUrl === 'string' && dataUrl.includes(',') ? dataUrl.split(',')[1] : '';
+      const image = {
+        assetId: asset.assetId,
+        name: asset.originalName || item.name || '参考截图',
+        mediaType: asset.mime || item.mime,
+        bytes: Number.isFinite(asset.bytes) ? asset.bytes : item.bytes,
+        dataBase64,
+        previewUrl: dataUrl,
+      };
+      const check = validateReferenceImage(image);
+      if (!check.ok) {
+        setScreenRefError(check.message);
+        return;
+      }
+      setScreenRefPersisted(true);
+      dispatch({ type: 'SCREEN_REF_IMAGE_SET', image });
+    } catch (error) {
+      setScreenRefError('上传截图失败，请重试。');
+    }
+  };
+
+  /** 浏览器模式：直接从 file input 读成 dataURL（只在内存里，不落盘）。 */
+  const handleScreenRefFile = async (file) => {
+    setScreenRefError(null);
+    if (!file) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const dataBase64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : '';
+      const image = {
+        assetId: null,
+        name: file.name || '参考截图',
+        mediaType: file.type,
+        bytes: file.size,
+        dataBase64,
+        previewUrl: dataUrl,
+      };
+      const check = validateReferenceImage(image);
+      if (!check.ok) {
+        setScreenRefError(check.message);
+        return;
+      }
+      dispatch({ type: 'SCREEN_REF_IMAGE_SET', image });
+    } catch (error) {
+      setScreenRefError('读取截图失败，请重新选择。');
+    }
+  };
+
+  const handleScreenRefRecognize = async () => {
+    if (screenRefBusy.current) return;
+    const current = state.screenRef.image;
+    if (!current) return;
+    screenRefBusy.current = true;
+    setScreenRefError(null);
+    const requestId = createScreenReferenceRequestId();
+    const imageRevision = state.screenRef.imageRevision;
+    dispatch({ type: 'SCREEN_REF_REQUEST', requestId });
+    try {
+      const result = await requestScreenReference({
+        image: current,
+        draft: state.agentDraft,
+        requestId,
+      });
+      if (result.ok) {
+        dispatch({
+          type: 'SCREEN_REF_SUCCESS',
+          requestId,
+          imageRevision,
+          recognition: result.recognition,
+          meta: result.meta,
+        });
+      } else {
+        dispatch({
+          type: 'SCREEN_REF_FAILURE',
+          requestId,
+          message: result.message,
+          degraded: result.degraded,
+        });
+      }
+    } catch (error) {
+      dispatch({
+        type: 'SCREEN_REF_FAILURE',
+        requestId,
+        message: '识别没有成功，可以直接重试。',
+        degraded: false,
+      });
+    } finally {
+      screenRefBusy.current = false;
+    }
+  };
+
+  const handleScreenRefConfirm = () => dispatch({
+    type: 'SCREEN_REF_CONFIRM',
+    at: new Date().toISOString(),
+  });
+
+  const handleScreenRefCreateCandidate = () => dispatch({
+    type: 'SCREEN_REF_CREATE_CANDIDATE',
+    baseRecipeId: state.build.selectedId ?? null,
+    at: new Date().toISOString(),
+  });
+
+  const handleScreenRefAdopt = () => dispatch({ type: 'SCREEN_REF_ADOPT' });
+  const handleScreenRefDiscard = () => dispatch({ type: 'SCREEN_REF_DISCARD' });
+  const handleScreenRefRetry = () => handleScreenRefRecognize();
+  const handleScreenRefReset = () => {
+    setScreenRefError(null);
+    dispatch({ type: 'SCREEN_REF_RESET' });
+  };
+
   const handleComposerSubmit = (value) => {
     // W4：空白/超长在 Composer 已拦住，这里再兜一层；连续点击/连按回车只放行一次。
     const analysis = analyzeComposerInput(value);
@@ -2054,6 +2214,24 @@ export default function App() {
             onRemove={handleVisionImageRemove}
           />
         );
+        // P3：参考截图 → 候选模板。识别/确认/候选都在这一步完成，不覆盖当前版本。
+        const screenRefPanel = (
+          <ScreenReferencePanel
+            view={state.screenRef.view}
+            busy={state.screenRef.status === 'recognizing'}
+            localError={screenRefError}
+            persisted={screenRefPersisted}
+            onPick={handleScreenRefPick}
+            onPickFile={handleScreenRefFile}
+            onRecognize={handleScreenRefRecognize}
+            onConfirm={handleScreenRefConfirm}
+            onCreateCandidate={handleScreenRefCreateCandidate}
+            onAdopt={handleScreenRefAdopt}
+            onDiscard={handleScreenRefDiscard}
+            onRetry={handleScreenRefRetry}
+            onReset={handleScreenRefReset}
+          />
+        );
         if (agent.status === 'confirmed') {
           return (
             <>
@@ -2070,6 +2248,7 @@ export default function App() {
                 }))}
                 onReopen={handleAgentReopen}
               />
+              {screenRefPanel}
               {visionUploader}
               {storeForm}
             </>
@@ -2095,6 +2274,7 @@ export default function App() {
               onRetry={handleAgentRetry}
               onToggleSimulateFailure={handleSimulateFailure}
             />
+            {screenRefPanel}
             {visionUploader}
             <DraftEditor
               draft={state.agentDraft}

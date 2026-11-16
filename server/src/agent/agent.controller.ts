@@ -15,6 +15,7 @@ import { AgentAuthGuard } from './agent-auth.guard';
 import { AgentExceptionFilter } from './agent-exception.filter';
 import { AgentService } from './agent.service';
 import type { AgentTurnV1Response, AgentTurnV2Response } from './agent.types';
+import type { ScreenReferenceResponse } from './screen-reference';
 
 /**
  * POST /api/v1/agent/turn
@@ -37,7 +38,7 @@ export class AgentController {
     @Body() body: unknown,
     @Req() request: Request & { requestId?: string },
     @Res({ passthrough: true }) response: Response,
-  ): Promise<AgentTurnV1Response | AgentTurnV2Response> {
+  ): Promise<AgentTurnV1Response | AgentTurnV2Response | ScreenReferenceResponse> {
     const requestId = resolveRequestId(
       request.headers as unknown as Record<string, unknown>,
       request.requestId,

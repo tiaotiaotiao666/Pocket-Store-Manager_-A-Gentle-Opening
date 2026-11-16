@@ -11,8 +11,8 @@ import { HttpException, HttpStatus } from '@nestjs/common';
  *   以免把 base64 或超长字段名反射到日志/响应里。
  */
 
-/** v2 允许的图片来源类型。 */
-export const AGENT_IMAGE_KINDS = ['menu', 'store'] as const;
+/** v2 允许的图片来源类型；P3 增加 `reference`（别人的小程序截图，只用于参考识别）。 */
+export const AGENT_IMAGE_KINDS = ['menu', 'store', 'reference'] as const;
 export type AgentImageKind = (typeof AGENT_IMAGE_KINDS)[number];
 
 /** 图片张数 / 体积上限（字节均为解码后的真实大小）。 */
@@ -20,6 +20,8 @@ export const AGENT_IMAGE_LIMITS = Object.freeze({
   maxMenuImages: 2,
   maxStoreImages: 1,
   maxTotalImages: 3,
+  /** P3：参考截图只允许 1 张，且不能与 menu/store 混发。 */
+  maxReferenceImages: 1,
   maxImageBytes: 409600,
   maxTotalBytes: 1048576,
   maxBodyBytes: 2097152,
@@ -57,6 +59,8 @@ export interface ValidatedAgentImages {
   images: ValidatedAgentImage[];
   menuImages: number;
   storeImages: number;
+  /** P3：参考截图张数（仅 screen-reference.v1 使用）。 */
+  referenceImages: number;
   totalBytes: number;
 }
 
@@ -69,7 +73,7 @@ function reject(code: string, message: string, status: HttpStatus = HttpStatus.U
 }
 
 function emptyResult(): ValidatedAgentImages {
-  return { images: [], menuImages: 0, storeImages: 0, totalBytes: 0 };
+  return { images: [], menuImages: 0, storeImages: 0, referenceImages: 0, totalBytes: 0 };
 }
 
 const COUNT_MESSAGE = '图片数量超出限制：菜单照最多 2 张、环境照最多 1 张、合计最多 3 张。';
@@ -122,18 +126,25 @@ export function validateAgentImages(raw: unknown): ValidatedAgentImages {
   let menuImages = 0;
   let storeImages = 0;
   const kinds: AgentImageKind[] = [];
+  // P3：参考截图单独计数，且不允许与门店照/菜单照混发。
+  let referenceImages = 0;
   for (const item of items) {
     const kind = item.kind;
-    if (kind !== 'menu' && kind !== 'store') {
-      reject('AGENT_REQUEST_INVALID', 'images.kind 只能是 "menu" 或 "store"。', HttpStatus.BAD_REQUEST);
+    if (kind !== 'menu' && kind !== 'store' && kind !== 'reference') {
+      reject('AGENT_REQUEST_INVALID', 'images.kind 只能是 "menu"、"store" 或 "reference"。', HttpStatus.BAD_REQUEST);
     }
     kinds.push(kind);
     if (kind === 'menu') menuImages += 1;
-    else storeImages += 1;
+    else if (kind === 'store') storeImages += 1;
+    else referenceImages += 1;
+  }
+  if (referenceImages > 0 && (menuImages > 0 || storeImages > 0)) {
+    reject('AGENT_IMAGE_KIND_MIXED', '参考截图不能和门店照、菜单照混在一起发送。', HttpStatus.BAD_REQUEST);
   }
   if (
     menuImages > AGENT_IMAGE_LIMITS.maxMenuImages
     || storeImages > AGENT_IMAGE_LIMITS.maxStoreImages
+    || referenceImages > AGENT_IMAGE_LIMITS.maxReferenceImages
     || items.length > AGENT_IMAGE_LIMITS.maxTotalImages
   ) {
     reject('AGENT_IMAGE_COUNT_EXCEEDED', COUNT_MESSAGE);
@@ -172,5 +183,5 @@ export function validateAgentImages(raw: unknown): ValidatedAgentImages {
     reject('AGENT_IMAGE_TOO_LARGE', TOO_LARGE_MESSAGE);
   }
 
-  return { images, menuImages, storeImages, totalBytes };
+  return { images, menuImages, storeImages, referenceImages, totalBytes };
 }

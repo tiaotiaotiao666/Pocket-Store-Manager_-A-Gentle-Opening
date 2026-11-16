@@ -9,6 +9,14 @@ import {
 } from './agent-draft.validator';
 import { validateAgentImages } from './agent-image.validator';
 import type { ValidatedAgentImages } from './agent-image.validator';
+import {
+  SCREEN_REFERENCE_CONTRACT_VERSION,
+  SCREEN_REFERENCE_EMPTY_DRAFT,
+  buildScreenReferenceUtterance,
+  parseScreenReferenceRequest,
+  validateScreenReferenceRecognition,
+} from './screen-reference';
+import type { ScreenReferenceResponse } from './screen-reference';
 import { AGENT_PROVIDER, AGENT_TURN_CONTRACT_VERSION, AGENT_TURN_V2_CONTRACT_VERSION } from './agent.types';
 import type {
   AgentTurnContext,
@@ -149,11 +157,74 @@ export class AgentService {
   async handleTurn(
     raw: unknown,
     context: AgentTurnContext,
-  ): Promise<AgentTurnV1Response | AgentTurnV2Response> {
+  ): Promise<AgentTurnV1Response | AgentTurnV2Response | ScreenReferenceResponse> {
     if (isPlainObject(raw) && raw.contractVersion === AGENT_TURN_V2_CONTRACT_VERSION) {
       return this.handleTurnV2(raw, context);
     }
+    if (isPlainObject(raw) && raw.contractVersion === SCREEN_REFERENCE_CONTRACT_VERSION) {
+      return this.handleScreenReference(raw, context);
+    }
     return this.handleTurnV1(raw, context);
+  }
+
+  /**
+   * P3：参考截图识别。
+   *
+   * 复用 v2 的多模态通路（同一 Provider、同一图片校验器），但**不落草稿**：
+   * 只返回白名单裁剪后的识别结果；视觉能力不可用时返回 `unavailable`，
+   * 不编造识别结果。
+   */
+  private async handleScreenReference(
+    raw: Record<string, unknown>,
+    context: AgentTurnContext,
+  ): Promise<ScreenReferenceResponse> {
+    const startedAt = Date.now();
+    const request = parseScreenReferenceRequest(raw);
+    const image = request.images.images[0];
+    const providerResult = await this.provider.extractTurn({
+      utterance: buildScreenReferenceUtterance(request.catalog),
+      draft: SCREEN_REFERENCE_EMPTY_DRAFT,
+      requestId: context.requestId,
+      images: [image],
+    });
+
+    const analyzed = providerResult.visionAnalyzed === true;
+    const baseMeta = {
+      analyzed,
+      model: providerResult.model ?? null,
+      latencyMs: Number.isFinite(providerResult.latencyMs)
+        ? (providerResult.latencyMs as number)
+        : Date.now() - startedAt,
+      runId: context.requestId,
+      totalBytes: request.images.totalBytes,
+    };
+
+    if (!analyzed) {
+      this.logger.warn(
+        `screen-reference unavailable requestId=${context.requestId} totalBytes=${request.images.totalBytes}`,
+      );
+      return {
+        contractVersion: SCREEN_REFERENCE_CONTRACT_VERSION,
+        status: 'unavailable',
+        recognition: null,
+        rejected: [],
+        meta: baseMeta,
+      };
+    }
+
+    const validation = validateScreenReferenceRecognition(providerResult.draftPatch, request.catalog);
+    const { recognition, rejected } = validation;
+    const usable = recognition.layouts.length > 0 || recognition.components.length > 0;
+    this.logger.log(
+      `screen-reference ok requestId=${context.requestId} layouts=${recognition.layouts.length} components=${recognition.components.length} rejected=${rejected.length} totalBytes=${request.images.totalBytes} latencyMs=${baseMeta.latencyMs}`,
+    );
+    return {
+      contractVersion: SCREEN_REFERENCE_CONTRACT_VERSION,
+      status: 'ok',
+      recognition: usable ? recognition : null,
+      rejected,
+      meta: baseMeta,
+    };
   }
 
   private async handleTurnV1(

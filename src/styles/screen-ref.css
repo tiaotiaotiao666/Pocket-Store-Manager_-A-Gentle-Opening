@@ -1,0 +1,124 @@
+/* P3：参考截图 → 候选模板 面板。只做容器与状态色，沿用既有 token。 */
+
+.screen-ref {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line, #e3e3e8);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+}
+
+.screen-ref.is-running {
+  border-color: var(--accent, #5b5bd6);
+}
+
+.screen-ref.is-ready {
+  border-color: var(--ok, #2f9e44);
+}
+
+.screen-ref.is-degraded,
+.screen-ref.is-failed {
+  border-color: var(--warn, #e8590c);
+}
+
+.screen-ref-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.screen-ref-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.screen-ref-body,
+.screen-ref-note,
+.screen-ref-disclaimer,
+.screen-ref-headline {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted, #5c5c66);
+}
+
+.screen-ref-disclaimer {
+  font-size: 12px;
+  color: var(--text-faint, #8a8a94);
+}
+
+.screen-ref-error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(232, 89, 12, 0.1);
+  color: #b23c00;
+  font-size: 13px;
+}
+
+.screen-ref-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.screen-ref-file {
+  display: none;
+}
+
+.screen-ref-image {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.screen-ref-image img {
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid var(--line, #e3e3e8);
+}
+
+.screen-ref-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.screen-ref-group h4,
+.screen-ref-candidate h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.screen-ref-group ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.screen-ref-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: rgba(91, 91, 214, 0.12);
+  color: var(--accent, #5b5bd6);
+  font-size: 11px;
+}
+
+.screen-ref-confirm,
+.screen-ref-candidate {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-2, #f6f6f9);
+}

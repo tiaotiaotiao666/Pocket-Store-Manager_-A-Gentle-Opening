@@ -66,6 +66,9 @@ test('完整公共形状由 Plan 投影，整数分格式化且紧凑/完整可�
     'store',
     'hero',
     'products',
+    // P2：分类条与下单入口（演示标注）随之进入公共形状。
+    'categories',
+    'cta',
     'menuCountText',
     'tabs',
     'order',

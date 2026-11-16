@@ -62,6 +62,30 @@ const SAMPLE_PRODUCTS = Object.freeze([
   Object.freeze({ key: 'sample-dish-4', name: '今日限定', note: '售完即止', priceCents: 2200 }),
 ]);
 
+/**
+ * 演示用分类。只在这套演示数据下出现：真实菜品若带 `category` 就以真实分类为准，
+ * 绝不给真实门店凭空发明分类。
+ */
+const SAMPLE_CATEGORIES = Object.freeze([
+  Object.freeze({ key: 'signature', label: '招牌', count: 1 }),
+  Object.freeze({ key: 'snack', label: '小食', count: 1 }),
+  Object.freeze({ key: 'drink', label: '饮品', count: 1 }),
+  Object.freeze({ key: 'seasonal', label: '当季限定', count: 1 }),
+]);
+
+/**
+ * 下单入口与演示标识。
+ *
+ * 预览里必须能看见「从哪里下单」，同时必须说清这不是真实交易：
+ * 支付链路仍未接入，任何视觉都不能把它包装成可用。
+ */
+const ORDER_CTA = Object.freeze({
+  order: '去下单',
+  checkout: '去结算',
+  count: '已选 0 件',
+  demoNotice: '演示数据 · 不产生真实订单与真实支付',
+});
+
 const HERO_BY_LAYOUT = Object.freeze({
   menu: Object.freeze({
     kicker: '今日菜单已准备好',
@@ -230,6 +254,37 @@ function buildSampleProducts() {
     priceDisplay: formatCents(product.priceCents),
     thumbnail: 'theme-gradient',
   }));
+}
+
+/**
+ * 分类条。
+ *
+ * 真实数据优先：`storeProfile.dishes[].category` 有值就按菜品顺序聚合；
+ * 一条都没有时（演示数据）才用 `SAMPLE_CATEGORIES`，并明确标记 `demo:true`。
+ */
+function buildCategories(storeProfile, products) {
+  const dishes = Array.isArray(storeProfile.dishes) ? storeProfile.dishes : [];
+  const groups = new Map();
+  for (const dish of dishes) {
+    if (!isRecord(dish)) continue;
+    const label = readText(dish.category).slice(0, 12);
+    if (!label) continue;
+    groups.set(label, (groups.get(label) || 0) + 1);
+  }
+  if (groups.size > 0) {
+    const items = [...groups.entries()].map(([label, count], index) => ({
+      key: `cat-${index + 1}`,
+      label,
+      count,
+      demo: false,
+    }));
+    return [{ key: 'all', label: '全部', count: products.length, demo: false }, ...items];
+  }
+  if (products.length === 0) return [];
+  return [
+    { key: 'all', label: '全部', count: products.length, demo: true },
+    ...SAMPLE_CATEGORIES.map((item) => ({ ...item, demo: true })),
+  ];
 }
 
 function buildProducts(storeProfile, draft) {
@@ -439,6 +494,8 @@ export function buildPreviewViewModel(options = {}) {
     },
     hero: { ...HERO_BY_LAYOUT[layout] },
     products,
+    categories: buildCategories(storeProfile, products),
+    cta: { ...ORDER_CTA },
     menuCountText: `共 ${products.length} 道`,
     tabs: TABS.map((tab) => ({ ...tab })),
     order: {

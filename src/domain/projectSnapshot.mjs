@@ -436,6 +436,7 @@ export function createEmptyScreenRefState() {
     candidate: null,
     adopted: false,
     previousSelection: null,
+    lastDiscarded: null,
     error: null,
     attempt: 0,
     meta: null,
@@ -547,7 +548,21 @@ export function pickScreenRef(screenRef) {
     candidate: pickScreenRefCandidate(source.candidate),
     adopted: source.adopted === true,
     previousSelection: pickScreenRefPreviousSelection(source.previousSelection),
+    lastDiscarded: pickScreenRefDiscarded(source.lastDiscarded),
     attempt: integerOrNull(source.attempt) ?? 0,
+  };
+}
+
+/** 放弃参考候选的痕迹（只留模板 id 与时间，不含任何内容）。 */
+function pickScreenRefDiscarded(value) {
+  if (!isPlainObject(value)) return null;
+  const templateId = typeof value.templateId === 'string' ? value.templateId.slice(0, 60) : null;
+  if (!templateId) return null;
+  return {
+    templateId,
+    recipeId: typeof value.recipeId === 'string' ? value.recipeId.slice(0, 60) : null,
+    label: text(value.label, 60),
+    at: typeof value.at === 'string' ? value.at.slice(0, 40) : null,
   };
 }
 
@@ -569,6 +584,7 @@ export function restoreScreenRef(saved) {
     candidate: pickScreenRefCandidate(saved.candidate),
     adopted: saved.adopted === true,
     previousSelection: pickScreenRefPreviousSelection(saved.previousSelection),
+    lastDiscarded: pickScreenRefDiscarded(saved.lastDiscarded),
     attempt: integerOrNull(saved.attempt) ?? 0,
   };
   return { ...slice, view: buildScreenRefView(slice) };

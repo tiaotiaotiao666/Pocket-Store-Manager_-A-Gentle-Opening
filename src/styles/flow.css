@@ -1306,3 +1306,294 @@
   line-height: 1.6;
   color: var(--ink-soft);
 }
+
+/* —— P2：主线步骤条 ——
+   一行说完「第几步 / 能退回哪 / 下一步是什么」，不与页面主按钮抢动作。 */
+
+.flow-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 999px;
+  background: var(--bg-raised, #fff);
+}
+
+.flow-steps-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.flow-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted, #8a8a94);
+  white-space: nowrap;
+}
+
+.flow-step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.07);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.flow-step.is-done {
+  color: var(--ink-soft, #55555f);
+}
+
+.flow-step.is-done .flow-step-index {
+  background: rgba(47, 158, 68, 0.16);
+  color: #2f9e44;
+}
+
+.flow-step.is-current {
+  background: var(--accent-soft, rgba(91, 91, 214, 0.12));
+  color: var(--accent, #5b5bd6);
+  font-weight: 600;
+}
+
+.flow-step.is-current .flow-step-index {
+  background: var(--accent, #5b5bd6);
+  color: #fff;
+}
+
+.flow-steps-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.flow-step-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  border-radius: 999px;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-soft, #55555f);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.flow-step-back:hover {
+  background: var(--bg-sunken, #f3f3f6);
+}
+
+.flow-step-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted, #8a8a94);
+  white-space: nowrap;
+}
+
+/* —— P2：模板卡状态 ——
+   当前使用 / 候选模板 / 已采用 / 已放弃，四种状态同一套形状，只换颜色语义。 */
+
+.template-status {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-soft, #55555f);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+}
+
+.template-status.is-current {
+  background: var(--accent, #5b5bd6);
+  color: #fff;
+}
+
+.template-status.is-adopted {
+  background: #2f9e44;
+  color: #fff;
+}
+
+.template-status.is-candidate {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-soft, #55555f);
+}
+
+.template-status.is-discarded {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--muted, #8a8a94);
+  text-decoration: line-through;
+}
+
+.template-source.is-reference {
+  background: rgba(232, 89, 12, 0.14);
+  color: #b23c00;
+}
+
+.template-detail-status {
+  padding: 7px 10px;
+  border-radius: var(--radius-sm, 10px);
+  background: var(--bg-sunken, #f3f3f6);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted, #8a8a94);
+}
+
+.template-intro-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted, #8a8a94);
+}
+
+.template-discarded-note {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--line, rgba(0, 0, 0, 0.12));
+  border-radius: 0 var(--radius-sm, 10px) var(--radius-sm, 10px) 0;
+  background: var(--bg-sunken, #f3f3f6);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-soft, #55555f);
+  overflow-wrap: anywhere;
+}
+
+/* —— P2：附加材料折叠区 ——
+   参考截图与图片识别合到一个入口，资料已确认时默认收起，减少卡片堆叠。 */
+
+.attach-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-raised, #fff);
+}
+
+.attach-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink-soft, #55555f);
+  text-align: left;
+  cursor: pointer;
+}
+
+.attach-group-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.attach-group-chevron {
+  margin-left: auto;
+  flex: 0 0 auto;
+  transition: transform 0.16s ease;
+}
+
+.attach-group.is-open .attach-group-chevron {
+  transform: rotate(180deg);
+}
+
+.attach-group-hint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted, #8a8a94);
+  overflow-wrap: anywhere;
+}
+
+.attach-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* —— P2：减少卡片堆叠与空白 ——
+   模板卡与详情之间用一条分隔线代替双层卡片边距；长文本一律不撑破栅格。 */
+
+.template-grid {
+  min-width: 0;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.template-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.template-head h3,
+.template-summary,
+.template-note,
+.template-detail-info h3 {
+  overflow-wrap: anywhere;
+}
+
+.template-meta {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.template-intro p {
+  margin: 0;
+}
+
+.template-intro p + p {
+  margin-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .flow-steps {
+    border-radius: var(--radius-sm, 10px);
+  }
+
+  .flow-steps-side {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

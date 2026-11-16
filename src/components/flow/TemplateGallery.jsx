@@ -39,6 +39,9 @@ export default function TemplateGallery({
   mockRevise = null,
   previewProjectPath = null,
   onPrepareProject = null,
+  // P2：每张卡的状态（当前使用 / 候选模板 / 已采用 / 已放弃），由 App 用领域函数算好传进来。
+  statusById = {},
+  statusHint = null,
 }) {
   const list = Array.isArray(candidates) ? candidates : [];
   const selected = list.find((item) => item.id === selectedId) ?? list[0];
@@ -101,6 +104,7 @@ export default function TemplateGallery({
         <div>
           <h3>实时小程序预览</h3>
           <p>点选骨架会立刻按模板结构与配色重新渲染，下方可以切换首页、菜单和订单。</p>
+          {statusHint ? <p className="template-intro-hint">{statusHint}</p> : null}
         </div>
         {compareEnabled && ids.length > 1 ? (
           <button
@@ -117,7 +121,8 @@ export default function TemplateGallery({
       <div className="template-grid">
         {list.map((item) => {
           const isSelected = item.id === selectedId;
-          const cardClass = `template-card${isSelected ? ' is-selected' : ''}`;
+          const status = statusById[item.id] ?? null;
+          const cardClass = `template-card${isSelected ? ' is-selected' : ''}${status ? ` is-${status.tone}` : ''}`;
           const recipeName = viewModelsByTemplateId[item.id] && viewModelsByTemplateId[item.id].recipe
             ? viewModelsByTemplateId[item.id].recipe.displayName
             : null;
@@ -127,9 +132,13 @@ export default function TemplateGallery({
               key={item.id}
               className={cardClass}
               onClick={() => onSelect?.(item.id)}
+              aria-current={status && status.isCurrent ? 'true' : undefined}
             >
               <div className="template-visual">
                 {item.badge ? <span className="template-badge">{item.badge}</span> : null}
+                {status ? (
+                  <span className={`template-status is-${status.tone}`}>{status.label}</span>
+                ) : null}
                 <MiniProgramPreview
                   viewModel={viewModelsByTemplateId[item.id]}
                   size="compact"
@@ -146,6 +155,9 @@ export default function TemplateGallery({
                 </div>
                 {item.summary ? <p className="template-summary">{item.summary}</p> : null}
                 <div className="template-meta">
+                  {status && status.referenceTag ? (
+                    <span className="template-source is-reference">{status.referenceTag}</span>
+                  ) : null}
                   {item.source ? <span className="template-source">{item.source}</span> : null}
                   {recipeName ? <span className="template-recipe">{recipeName}</span> : null}
                   {typeof item.score === 'number' ? (
@@ -193,9 +205,13 @@ export default function TemplateGallery({
             </div>
           )}
           <div className="template-detail-info">
-            <span className="template-detail-kicker">当前选中</span>
+            <span className="template-detail-kicker">
+              {statusById[selected.id] ? statusById[selected.id].label : '当前选中'}
+            </span>
             <h3>{selected.name}</h3>
-            <p>{selected.summary}</p>
+            {statusById[selected.id] ? (
+              <p className="template-detail-status">{statusById[selected.id].note}</p>
+            ) : (selected.summary ? <p>{selected.summary}</p> : null)}
             <div className="template-detail-meta">
               {selected.source ? <span>{selected.source}</span> : null}
               {selectedRecipe ? <span>{selectedRecipe}</span> : null}

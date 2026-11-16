@@ -503,6 +503,7 @@
 }
 
 .template-gallery .template-visual {
+  position: relative;
   height: 220px;
   padding: 8px;
   background: var(--bg-sunken);
@@ -594,6 +595,116 @@
   background: var(--bg-sunken);
   color: var(--muted);
   font-size: 11.5px;
+}
+
+/* —— P2：分类条与下单入口 ——
+   分类条只在有分类时出现；下单入口固定在正文末尾，始终带演示标注。 */
+
+.mini-categories {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0 0 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.mini-categories::-webkit-scrollbar {
+  display: none;
+}
+
+.mini-category {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  flex: 0 0 auto;
+  max-width: 46%;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.05);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-soft, #55555f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-category small {
+  font-size: 9.5px;
+  opacity: 0.7;
+}
+
+.mini-order-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.mini-order-cta-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mini-order-cta-copy b {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.mini-order-cta-copy small {
+  font-size: 10px;
+  line-height: 1.4;
+  opacity: 0.72;
+  overflow-wrap: anywhere;
+}
+
+.mini-order-cta-button {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* —— P2：窄窗口与长文本保护 ——
+   长店名、长菜名、多菜品都不允许把手机预览撑破或盖住按钮。 */
+
+.mini-preview,
+.mini-phone,
+.mini-phone-screen,
+.mini-phone-body,
+.mini-products,
+.mini-compact-products,
+.mini-product-copy,
+.mini-compact-copy {
+  min-width: 0;
+}
+
+.mini-phone-head b,
+.mini-compact-head b,
+.mini-product-copy b,
+.mini-compact-copy b,
+.mini-hero b,
+.mini-compact-hero b {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.mini-product-price {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .template-detail .satisfy-prompt {

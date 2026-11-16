@@ -1455,6 +1455,7 @@ function baseReducer(state, action) {
       const slice = state.screenRef;
       if (!slice.candidate) return state;
       const restore = slice.adopted ? slice.previousSelection : null;
+      const discardedPatch = candidateToSessionPatch(slice.candidate);
       const base = {
         ...state,
         screenRef: withScreenRefView({
@@ -1462,6 +1463,15 @@ function baseReducer(state, action) {
           candidate: null,
           adopted: false,
           previousSelection: null,
+          // P2：放弃后留一条痕迹，模板页要说清「已放弃，当前版本没变」。
+          lastDiscarded: discardedPatch
+            ? {
+              templateId: discardedPatch.selectedId,
+              recipeId: discardedPatch.recipeId,
+              label: slice.candidate.recipeLabel || null,
+              at: typeof action.at === 'string' ? action.at : new Date().toISOString(),
+            }
+            : null,
           error: null,
         }),
       };

@@ -32,8 +32,49 @@ function MenuPlanBlock({ block }) {
   return null;
 }
 
+/**
+ * P2：分类条。
+ *
+ * 数据来自 ViewModel 的 `categories`：真实菜品带分类就用真实的，
+ * 演示状态用演示分类（`demo:true`）。这里只做呈现，不发明分类。
+ */
+function CategoryStrip({ categories, theme }) {
+  const list = Array.isArray(categories) ? categories : [];
+  if (list.length === 0) return null;
+  return (
+    <div className="mini-categories" aria-label="菜品分类">
+      {list.map((item, index) => (
+        <span
+          key={item.key}
+          className={`mini-category${index === 0 ? ' is-active' : ''}`}
+          style={index === 0 ? { background: `${theme.primaryColor}1a`, color: theme.primaryColor } : undefined}
+        >
+          {item.label}
+          <small>{item.count}</small>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** P2：下单入口。始终标注演示状态，不暗示真实支付可用。 */
+function OrderCta({ cta, theme }) {
+  if (!cta) return null;
+  return (
+    <div className="mini-order-cta">
+      <div className="mini-order-cta-copy">
+        <b>{cta.order}</b>
+        <small>{cta.demoNotice}</small>
+      </div>
+      <span className="mini-order-cta-button" style={{ background: theme.primaryColor }}>
+        {cta.checkout}
+      </span>
+    </div>
+  );
+}
+
 function HomeTab({ viewModel }) {
-  const { layout, theme, hero, products, blocks, sizes } = viewModel;
+  const { layout, theme, hero, products, blocks, sizes, categories, cta } = viewModel;
   const count = layout === 'catalog' ? 3 : 4;
   const heroBlock = findHeroBlock(blocks, 'home');
 
@@ -42,6 +83,7 @@ function HomeTab({ viewModel }) {
       {heroBlock
         ? <PosterCarouselBlock block={heroBlock} interactive />
         : <HeroBanner hero={hero} theme={theme} heightPx={sizes?.homeHeroPx} />}
+      <CategoryStrip categories={categories} theme={theme} />
       <div className="mini-sec">
         <b>{hero.sectionTitle}</b>
         <span>查看全部</span>
@@ -52,12 +94,13 @@ function HomeTab({ viewModel }) {
         ))}
       </div>
       {hero.story ? <p className="mini-story">{hero.story}</p> : null}
+      <OrderCta cta={cta} theme={theme} />
     </>
   );
 }
 
 function MenuTab({ viewModel }) {
-  const { layout, theme, products, menuCountText, blocks, sizes } = viewModel;
+  const { layout, theme, products, menuCountText, blocks, sizes, categories, cta } = viewModel;
   const menuBlocks = findPageBlocks(blocks, 'menu');
 
   return (
@@ -65,6 +108,7 @@ function MenuTab({ viewModel }) {
       {menuBlocks.map((block) => (
         <MenuPlanBlock key={`${block.id}:${block.slotId}:${block.dataKey}`} block={block} />
       ))}
+      <CategoryStrip categories={categories} theme={theme} />
       <div className="mini-sec">
         <b>全部菜单</b>
         <span>{menuCountText}</span>
@@ -74,6 +118,7 @@ function MenuTab({ viewModel }) {
           <ProductCard key={product.key} product={product} theme={theme} thumbPx={sizes?.productCardPx} />
         ))}
       </div>
+      <OrderCta cta={cta} theme={theme} />
     </>
   );
 }

@@ -56,7 +56,9 @@ import { createDevtoolsService } from './services/devtoolsService.js';
 import { requestAgentTurn, describeAgentTransport, configureAgentRuntime, getAgentTransportConfig } from './services/agentTurn/agentTurnService.js';
 import { requestAgentRun, isAgentRunRoute, resolveAgentRequestRoute } from './services/agentTurn/agentRunService.js';
 import { requestScreenReference, createScreenReferenceRequestId } from './services/agentTurn/screenReferenceService.js';
-import { validateReferenceImage } from './domain/screenReference.mjs';
+import { validateReferenceImage, candidateToSessionPatch } from './domain/screenReference.mjs';
+import { describeFlow } from './domain/flowStages.mjs';
+import { describeGalleryLegend, describeTemplateStatus } from './domain/templateStatus.mjs';
 import {
   requestTemplateRevise,
   createReviseRequestId,
@@ -88,6 +90,8 @@ import HomeStage from './components/flow/HomeStage.jsx';
 import FeaturePicker from './components/flow/FeaturePicker.jsx';
 import BuildLoading from './components/flow/BuildLoading.jsx';
 import TemplateGallery from './components/flow/TemplateGallery.jsx';
+import FlowStepper from './components/flow/FlowStepper.jsx';
+import AttachGroup from './components/flow/AttachGroup.jsx';
 import RealPreviewPanel from './components/preview/RealPreviewPanel.jsx';
 import StoreInfoStep from './components/build/StoreInfoStep.jsx';
 import PromptStudio from './components/build/PromptStudio.jsx';
@@ -508,6 +512,51 @@ export default function App() {
   const templateReviseTransport = describeTemplateReviseTransport();
   const exportedProjectPath = readExportedProjectPath(state.deploy?.result);
   const previewViewModels = useMemo(() => buildSessionPreviewViewModels(state), [state]);
+
+  // P2：主线步骤条只是只读投影，不改任何业务动作；构建中不提供返回入口。
+  const flowDescriptor = useMemo(
+    () => describeFlow(state.phase, {
+      busy: state.phase === PHASES.BUILDING || state.agent.status === 'requesting',
+    }),
+    [state.phase, state.agent.status],
+  );
+
+  // P2：模板卡状态（当前使用 / 候选模板 / 已采用），参考候选的来源始终标注。
+  const templateStatus = useMemo(() => {
+    const screenRef = state.screenRef;
+    const selectedId = state.build.selectedId ?? null;
+    const referenceTemplateId = screenRef && screenRef.candidate
+      ? (candidateToSessionPatch(screenRef.candidate)?.selectedId ?? null)
+      : null;
+    const context = {
+      selectedId,
+      screenRef: referenceTemplateId
+        ? {
+          adopted: screenRef.adopted === true,
+          // 候选还在但没采用时既不是「已采用」也不是「已放弃」。
+          discarded: false,
+          templateId: referenceTemplateId,
+        }
+        : null,
+    };
+    const byId = {};
+    for (const item of state.build.candidates ?? []) {
+      byId[item.id] = describeTemplateStatus(item, context);
+    }
+    const selectedName = (state.build.candidates ?? []).find((item) => item.id === selectedId)?.name ?? null;
+    const lastDiscarded = screenRef ? screenRef.lastDiscarded : null;
+    const legend = describeGalleryLegend({
+      selectedName,
+      referencePending: Boolean(screenRef && screenRef.candidate && !screenRef.adopted),
+    });
+    return {
+      byId,
+      hint: legend.hint,
+      discardedNote: lastDiscarded && lastDiscarded.templateId !== selectedId
+        ? `参考候选「${lastDiscarded.label || '截图生成'}」已放弃，当前使用 ${selectedName || '原模板'}，版本未改动。`
+        : null,
+    };
+  }, [state.build.candidates, state.build.selectedId, state.screenRef]);
   const storeTypesForForm = useMemo(() => {
     const category = state.agentDraft.category;
     if (!category) return STORE_TYPES;
@@ -2158,29 +2207,36 @@ export default function App() {
         );
       case PHASES.TEMPLATE_PICK:
         return (
-          <TemplateGallery
-            candidates={state.build.candidates}
-            selectedId={state.build.selectedId}
-            onSelect={(id) => dispatch({ type: 'SELECT_TEMPLATE', id })}
-            onConfirm={() => dispatch({ type: 'CONFIRM_TEMPLATE' })}
-            viewModelsByTemplateId={previewViewModels.byTemplateId}
-            refineText={templateRefineText}
-            onRefineChange={setTemplateRefineText}
-            onRefine={(value) => {
-              dispatch({ type: 'SUBMIT_TEMPLATE_FEEDBACK', value });
-              setTemplateRefineText('');
-            }}
-            refining={state.build.status === 'building'}
-            refineError={state.build.refineError}
-            presentation={presentationState}
-            onRevise={handleTemplateReviseSubmit}
-            onClearReviseError={() => dispatch({ type: 'TEMPLATE_REVISE_CLEAR' })}
-            compareIds={compareIds}
-            onCompareChange={setCompareIds}
-            mockRevise={templateReviseTransport.mock}
-            previewProjectPath={null}
-            onPrepareProject={handlePreparePreviewProject}
-          />
+          <>
+            {templateStatus.discardedNote ? (
+              <p className="template-discarded-note" role="status">{templateStatus.discardedNote}</p>
+            ) : null}
+            <TemplateGallery
+              candidates={state.build.candidates}
+              selectedId={state.build.selectedId}
+              onSelect={(id) => dispatch({ type: 'SELECT_TEMPLATE', id })}
+              onConfirm={() => dispatch({ type: 'CONFIRM_TEMPLATE' })}
+              viewModelsByTemplateId={previewViewModels.byTemplateId}
+              refineText={templateRefineText}
+              onRefineChange={setTemplateRefineText}
+              onRefine={(value) => {
+                dispatch({ type: 'SUBMIT_TEMPLATE_FEEDBACK', value });
+                setTemplateRefineText('');
+              }}
+              refining={state.build.status === 'building'}
+              refineError={state.build.refineError}
+              presentation={presentationState}
+              onRevise={handleTemplateReviseSubmit}
+              onClearReviseError={() => dispatch({ type: 'TEMPLATE_REVISE_CLEAR' })}
+              compareIds={compareIds}
+              onCompareChange={setCompareIds}
+              mockRevise={templateReviseTransport.mock}
+              previewProjectPath={null}
+              onPrepareProject={handlePreparePreviewProject}
+              statusById={templateStatus.byId}
+              statusHint={templateStatus.hint}
+            />
+          </>
         );
       case PHASES.STORE_INFO: {
         const agent = state.agent;
@@ -2233,6 +2289,12 @@ export default function App() {
           />
         );
         if (agent.status === 'confirmed') {
+          // 资料已确认：附加材料默认折叠，避免「摘要卡 + 上传卡 + 表单卡」三层堆叠。
+          const attachOpen = Boolean(
+            state.screenRef.candidate
+            || state.screenRef.image
+            || agentImages.length > 0,
+          );
           return (
             <>
               <AgentDraftSummary
@@ -2248,8 +2310,13 @@ export default function App() {
                 }))}
                 onReopen={handleAgentReopen}
               />
-              {screenRefPanel}
-              {visionUploader}
+              <AttachGroup
+                defaultOpen={attachOpen}
+                hint="资料已确认。需要换骨架或补充图片时再展开，不会自动改动当前版本。"
+              >
+                {screenRefPanel}
+                {visionUploader}
+              </AttachGroup>
               {storeForm}
             </>
           );
@@ -2274,8 +2341,10 @@ export default function App() {
               onRetry={handleAgentRetry}
               onToggleSimulateFailure={handleSimulateFailure}
             />
-            {screenRefPanel}
-            {visionUploader}
+            <AttachGroup defaultOpen>
+              {screenRefPanel}
+              {visionUploader}
+            </AttachGroup>
             <DraftEditor
               draft={state.agentDraft}
               validation={{
@@ -2541,7 +2610,15 @@ case PHASES.DEPLOY: {
                     flushKey={activeSession.revealFlush ?? 0}
                     revealAll={conversationMessages.revealAll}
                   >
-                    {phase !== PHASES.BUILDING ? renderStage() : null}
+                    {phase !== PHASES.BUILDING ? (
+                      <>
+                        <FlowStepper
+                          flow={flowDescriptor}
+                          onBack={(target) => dispatch({ type: 'PHASE_GOTO', phase: target.phase })}
+                        />
+                        {renderStage()}
+                      </>
+                    ) : null}
                   </ChatStream>
                   {phase === PHASES.BUILDING ? (
                     <BuildLoading

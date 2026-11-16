@@ -302,6 +302,178 @@ describe('DeepseekAgentProvider 响应解析', () => {
   });
 });
 
+describe('视觉链路（P5b 回归）', () => {
+  function referenceImage() {
+    return [{ kind: 'reference' as const, mediaType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUg==' }];
+  }
+
+  function captureFetch(responses: Array<() => Response>): {
+    fetchImpl: (url: string, init?: RequestInit) => Promise<Response>;
+    bodies: Array<Record<string, unknown>>;
+  } {
+    const bodies: Array<Record<string, unknown>> = [];
+    let index = 0;
+    return {
+      bodies,
+      fetchImpl: async (_url: string, init?: RequestInit) => {
+        bodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+        const make = responses[Math.min(index, responses.length - 1)];
+        index += 1;
+        return make();
+      },
+    };
+  }
+
+  it('V1 视觉请求把预算抬到 2000 以上，并同时带图片与文本', async () => {
+    const { fetchImpl, bodies } = captureFetch([() => responseStub(modelBody('{"reply":"好","draftPatch":{}}'))]);
+    const provider = new DeepseekAgentProvider(makeConfig(), fetchImpl);
+    await provider.extractTurn({ utterance: '看看这张截图', draft: emptyDraft(), images: referenceImage() });
+
+    const body = bodies[0];
+    expect(Number(body.max_tokens)).toBeGreaterThanOrEqual(2000);
+    const content = (body.messages as Array<{ content: unknown }>)[0].content as Array<Record<string, unknown>>;
+    expect(content.some((part) => part.type === 'text')).toBe(true);
+    const imagePart = content.find((part) => part.type === 'image_url') as { image_url: { url: string } };
+    expect(imagePart.image_url.url.startsWith('data:image/png;base64,')).toBe(true);
+  });
+
+  it('V2 空回复（finish=length）重试一次后成功，不把空内容当成识别结果', async () => {
+    const { fetchImpl, bodies } = captureFetch([
+      () => responseStub({ choices: [{ finish_reason: 'length', message: { role: 'assistant', content: '' } }] }),
+      () => responseStub({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: '{"reply":"识别完成","draftPatch":{}}' } }] }),
+    ]);
+    const provider = new DeepseekAgentProvider(makeConfig(), fetchImpl);
+    const result = await provider.extractTurn({
+      utterance: '看看这张截图',
+      draft: emptyDraft(),
+      images: referenceImage(),
+    });
+
+    expect(bodies).toHaveLength(2);
+    expect(result.visionAnalyzed).toBe(true);
+    expect(result.reply).toBe('识别完成');
+  });
+
+  it('V3 上游 503 重试一次后成功', async () => {
+    const { fetchImpl, bodies } = captureFetch([
+      () => responseStub({ error: 'bad gateway' }, 503),
+      () => responseStub(modelBody('{"reply":"好了","draftPatch":{}}')),
+    ]);
+    const provider = new DeepseekAgentProvider(makeConfig(), fetchImpl);
+    const result = await provider.extractTurn({
+      utterance: '看看这张截图',
+      draft: emptyDraft(),
+      images: referenceImage(),
+    });
+
+    expect(bodies).toHaveLength(2);
+    expect(result.visionAnalyzed).toBe(true);
+  });
+
+  it('V4 上游拒图（400）不重试，502 且错误体写明原因', async () => {
+    let called = 0;
+    const provider = new DeepseekAgentProvider(makeConfig(), async () => {
+      called += 1;
+      return responseStub({ error: { code: 'image_invalid', message: 'Please start a new conversation' } }, 400);
+    });
+
+    let caught: unknown = null;
+    try {
+      await provider.extractTurn({ utterance: '看看这张截图', draft: emptyDraft(), images: referenceImage() });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(called).toBe(1);
+    expectHttpError(caught, 502, 'DEEPSEEK_VISION_UNAVAILABLE');
+    const payload = (caught as HttpException).getResponse() as Record<string, unknown>;
+    expect(payload.cause).toBe('rejected_400');
+    expect(String(payload.message)).toContain('上游拒绝了这次图片请求');
+  });
+
+  it('V5 两次非法 JSON 都失败：502 视觉不可用，cause=invalid_json', async () => {
+    const { fetchImpl, bodies } = captureFetch([() => responseStub(modelBody('这不是 JSON'))]);
+    const provider = new DeepseekAgentProvider(makeConfig(), fetchImpl);
+
+    let caught: unknown = null;
+    try {
+      await provider.extractTurn({ utterance: '看看这张截图', draft: emptyDraft(), images: referenceImage() });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(bodies).toHaveLength(2);
+    expectHttpError(caught, 502, 'DEEPSEEK_VISION_UNAVAILABLE');
+    expect(((caught as HttpException).getResponse() as Record<string, unknown>).cause).toBe('invalid_json');
+  });
+
+  it('V6 两次空回复都失败：cause=empty_content_truncated，不返回编造结果', async () => {
+    const { fetchImpl } = captureFetch([
+      () => responseStub({ choices: [{ finish_reason: 'length', message: { role: 'assistant', content: '' } }] }),
+    ]);
+    const provider = new DeepseekAgentProvider(makeConfig(), fetchImpl);
+
+    let caught: unknown = null;
+    try {
+      await provider.extractTurn({ utterance: '看看这张截图', draft: emptyDraft(), images: referenceImage() });
+    } catch (error) {
+      caught = error;
+    }
+
+    expectHttpError(caught, 502, 'DEEPSEEK_VISION_UNAVAILABLE');
+    const payload = (caught as HttpException).getResponse() as Record<string, unknown>;
+    expect(payload.cause).toBe('empty_content_truncated');
+    expect(String(payload.message)).toContain('推理');
+  });
+
+  it('V7 文本请求仍然只发一次，不因 5xx 重试（v1 语义不变）', async () => {
+    let called = 0;
+    const provider = new DeepseekAgentProvider(makeConfig(), async () => {
+      called += 1;
+      return responseStub('internal error', 500);
+    });
+    await expectHttpFailure(
+      provider.extractTurn({ utterance: '店名松月食堂', draft: emptyDraft() }),
+      502,
+      'DEEPSEEK_UPSTREAM_ERROR',
+    );
+    expect(called).toBe(1);
+  });
+
+  it('V8 kind=reference 时提示词要求把识别结果写进 draftPatch', async () => {
+    const { fetchImpl, bodies } = captureFetch([() => responseStub(modelBody('{"reply":"好","draftPatch":{}}'))]);
+    const provider = new DeepseekAgentProvider(makeConfig(), fetchImpl);
+    await provider.extractTurn({
+      utterance: '参考截图分析：可选布局 id（layouts）：street-food',
+      draft: emptyDraft(),
+      images: referenceImage(),
+    });
+
+    const content = (bodies[0].messages as Array<{ content: unknown }>)[0].content as Array<Record<string, unknown>>;
+    const prompt = String((content.find((part) => part.type === 'text') as { text: string }).text);
+    expect(prompt).toContain('kind=reference');
+    expect(prompt).toContain('"draftPatch":{"layouts"');
+    // 参考截图不该套用「菜单照/环境照」那套抽取约束。
+    expect(prompt).not.toContain('kind=menu 的图片是菜单照片');
+  });
+
+  it('V9 模型把识别结果写在顶层时被折叠进 draftPatch，交给下游白名单裁剪', async () => {
+    const { fetchImpl } = captureFetch([
+      () => responseStub(modelBody('{"reply":"看到首页","layouts":["street-food"],"components":["cart"],"notes":"首页"}')),
+    ]);
+    const provider = new DeepseekAgentProvider(makeConfig(), fetchImpl);
+    const result = await provider.extractTurn({
+      utterance: '参考截图分析',
+      draft: emptyDraft(),
+      images: referenceImage(),
+    });
+
+    expect(result.draftPatch.layouts).toEqual(['street-food']);
+    expect(result.draftPatch.components).toEqual(['cart']);
+    expect(result.draftPatch.notes).toBe('首页');
+  });
+});
+
 describe('响应清洗工具', () => {
   it('stripMarkdownFence 处理围栏与裸 JSON', () => {
     expect(stripMarkdownFence('```json\n{"a":1}\n```')).toBe('{"a":1}');

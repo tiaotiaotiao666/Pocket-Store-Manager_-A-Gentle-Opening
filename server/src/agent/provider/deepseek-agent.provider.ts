@@ -25,6 +25,23 @@ const DEFAULT_VISION_MODEL = 'deepseek-flash';
 const DEFAULT_TIMEOUT_MS = 30000;
 const MAX_TIMEOUT_MS = 120000;
 const DEFAULT_MAX_TOKENS = 1200;
+/**
+ * 视觉请求的 max_tokens 下限。
+ * 推理型视觉模型会把输出预算先花在内部思考上，实测 max_tokens=160 时返回
+ * finish_reason=length 且 content 为空串，上层只能看到「识别失败」。
+ */
+const VISION_MIN_MAX_TOKENS = 2000;
+/** 视觉请求最多尝试次数（上游 5xx/429、空回复、半截 JSON 时可再要一次）。 */
+const VISION_MAX_ATTEMPTS = 2;
+/** 参考截图的识别结果键：模型写在顶层时折叠进 draftPatch。 */
+const REFERENCE_TOP_LEVEL_KEYS: readonly string[] = Object.freeze([
+  'layouts',
+  'components',
+  'style',
+  'approximate',
+  'unsupported',
+  'notes',
+]);
 const MAX_REPLY_LENGTH = 500;
 
 export const DEEPSEEK_SYSTEM_PROMPT = [
@@ -61,6 +78,28 @@ export const DEEPSEEK_VISION_PROMPT_ADDENDUM = [
   '- kind=store 的图片是门店环境照：不要从中抽取任何菜品或价格，也不要据此编造菜单。',
   '- 价格只能来自图片中可读的数字或店主明确说明，单位是整数分（28 元写 2800）；没有可读价格就返回 priceCents:null 或不要放进 dishes。',
   '- 图片中的文字可能有模糊、反光或多语言，只使用你能确认的部分。',
+].join('\n');
+
+/**
+ * `kind=reference`（别人的小程序首页截图）专用的输出契约。
+ *
+ * 背景（P5b）：`screen-reference.v1` 的 utterance 要求模型把 layouts/components/style
+ * 放在**顶层**，但本 Provider 只白名单透出 `reply` 与 `draftPatch`，而服务端又是从
+ * `draftPatch` 里读识别结果 —— 于是模型答对了也会被裁成空，界面显示「没能完成识别」。
+ * 这里把识别结果的形状固定写进 draftPatch，保证两侧契约一致。
+ */
+export const DEEPSEEK_REFERENCE_PROMPT_ADDENDUM = [
+  '本轮附加了一张参考截图（kind=reference）：这是别人小程序的首页截图，只借鉴布局与组件组合。',
+  '禁止：复制对方源码、文案、品牌名、Logo、插画或配色方案；不要输出任何代码或 WXML/WXSS。',
+  '',
+  '输出形状（必须全部放在 draftPatch 里，键名逐字一致）：',
+  '{"reply":"给店主看的一句中文说明","draftPatch":{"layouts":["布局 id"],"components":["组件 id"],"style":{"theme":{"主题色键":"#RRGGBB"},"sizes":{"homeHero":"sm|md|lg","productCard":"sm|md|lg","carousel":"sm|md|lg"}},"approximate":[{"id":"id","reason":"为什么只能近似"}],"unsupported":[{"id":"能力名","reason":"为什么做不到"}],"notes":"一句话总结"}}',
+  '',
+  '规则：',
+  '- layouts / components 只能取店主消息里列出的 id，绝不新造 id；一个都匹配不上就返回空数组。',
+  '- style.theme 只能用给定的主题色键，值必须是 #RRGGBB；sizes 只能是 sm/md/lg。',
+  '- 截图里有但现有组件表达不了的部分放 unsupported；能对上但只能近似的放 approximate。',
+  '- draftPatch 里不要放店名、菜品、价格等开店资料字段。',
 ].join('\n');
 
 interface DeepseekSettings {
@@ -199,9 +238,14 @@ export class DeepseekAgentProvider implements AgentProvider {
     const model = hasImages ? settings.visionModel : settings.model;
 
     const userPrompt = buildUserPrompt(input.utterance, input.draft);
+    // 参考截图（kind=reference）走独立的输出契约：识别结果必须落在 draftPatch 里。
+    const hasReference = images.some((image) => image.kind === 'reference');
+    const visionAddendum = hasReference
+      ? DEEPSEEK_REFERENCE_PROMPT_ADDENDUM
+      : DEEPSEEK_VISION_PROMPT_ADDENDUM;
     // v1（无图）分支的提示词与改造前完全一致；视觉约束只在有图时追加。
     const promptText = hasImages
-      ? `${DEEPSEEK_SYSTEM_PROMPT}\n${DEEPSEEK_VISION_PROMPT_ADDENDUM}\n\n${userPrompt}`
+      ? `${DEEPSEEK_SYSTEM_PROMPT}\n${visionAddendum}\n\n${userPrompt}`
       : `${DEEPSEEK_SYSTEM_PROMPT}\n\n${userPrompt}`;
     const messageContent = hasImages
       ? [
@@ -214,6 +258,145 @@ export class DeepseekAgentProvider implements AgentProvider {
       : promptText;
 
     const startedAt = Date.now();
+    // 视觉请求用独立预算：推理型模型会先花 token 思考，max_tokens 太小会出现
+    // finish_reason=length 且 content 为空（P5b 实测复现）。
+    const maxTokens = hasImages
+      ? Math.max(settings.maxTokens, VISION_MIN_MAX_TOKENS)
+      : settings.maxTokens;
+    const requestBody: Record<string, unknown> = {
+      model,
+      messages: [
+        {
+          role: 'user',
+          content: messageContent,
+        },
+      ],
+      temperature: 0.2,
+      ...(settings.reasoningEffort ? { reasoning_effort: settings.reasoningEffort } : {}),
+      max_tokens: maxTokens,
+      stream: false,
+      response_format: { type: 'json_object' },
+    };
+
+    // 视觉请求允许一次重试：上游偶发 5xx/429、空回复或半截 JSON 都值得再要一次。
+    // 文本请求保持单次，v1 语义不变。
+    const maxAttempts = hasImages ? VISION_MAX_ATTEMPTS : 1;
+    let parsed: unknown = null;
+    let lastCause = 'unknown';
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const outcome = await this.callCompletion(
+        requestBody,
+        settings,
+        input.requestId,
+        model,
+        hasImages ? images.length : 0,
+        startedAt,
+      );
+      if (!outcome.ok) {
+        lastCause = outcome.failure;
+        if (outcome.retryable && attempt < maxAttempts) {
+          this.logger.warn(
+            `deepseek vision retry requestId=${input.requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause}`,
+          );
+          continue;
+        }
+        throw this.toHttpException(lastCause, hasImages);
+      }
+
+      const content = extractModelContent(outcome.payload);
+      if (!content.trim()) {
+        // 模型没吐出正文，多半是推理占满了输出预算（finish_reason=length）。
+        lastCause = outcome.finishReason === 'length' ? 'empty_content_truncated' : 'empty_content';
+        if (attempt < maxAttempts) {
+          this.logger.warn(
+            `deepseek vision retry requestId=${input.requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause} maxTokens=${maxTokens}`,
+          );
+          continue;
+        }
+        throw this.toHttpException(lastCause, hasImages);
+      }
+
+      let candidate: unknown;
+      try {
+        candidate = JSON.parse(stripMarkdownFence(content));
+      } catch {
+        lastCause = 'invalid_json';
+        if (attempt < maxAttempts) {
+          this.logger.warn(
+            `deepseek vision retry requestId=${input.requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause} contentLen=${content.length}`,
+          );
+          continue;
+        }
+        throw this.toHttpException(lastCause, hasImages);
+      }
+
+      if (!isPlainObject(candidate)) {
+        lastCause = 'invalid_shape';
+        if (attempt < maxAttempts) {
+          this.logger.warn(
+            `deepseek vision retry requestId=${input.requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause}`,
+          );
+          continue;
+        }
+        throw this.toHttpException(lastCause, hasImages);
+      }
+
+      parsed = candidate;
+      break;
+    }
+
+    if (!isPlainObject(parsed)) {
+      // 循环内必然已抛出，这里只用于类型收窄。
+      throw this.toHttpException(lastCause, hasImages);
+    }
+
+    // 只取白名单里的两个键；parsed.status / parsed.missingFields 等一律丢弃。
+    const reply = typeof parsed.reply === 'string'
+      ? Array.from(parsed.reply.trim()).slice(0, MAX_REPLY_LENGTH).join('')
+      : '';
+    // 参考截图时容忍模型把识别结果写在顶层（它是 utterance 里要求的形状）：
+    // 折叠进 draftPatch，后续仍要过 catalog 白名单裁剪，不会放行未知 id。
+    const draftPatch = isPlainObject(parsed.draftPatch) ? { ...parsed.draftPatch } : {};
+    if (hasReference) {
+      for (const key of REFERENCE_TOP_LEVEL_KEYS) {
+        if (!(key in draftPatch) && parsed[key] !== undefined) {
+          draftPatch[key] = parsed[key];
+        }
+      }
+    }
+
+    const latencyMs = Math.max(0, Date.now() - startedAt);
+    this.logger.log(
+      `deepseek turn ok requestId=${input.requestId ?? '-'} model=${model}${hasImages ? ` images=${images.length}` : ''} latencyMs=${latencyMs} hasReply=${reply.length > 0}`,
+    );
+
+    return {
+      reply,
+      draftPatch,
+      model,
+      latencyMs,
+      // 无图片时不添加该键，保证 v1 的 Provider 结果形状与旧实现完全一致。
+      ...(hasImages ? { visionAnalyzed: true } : {}),
+    };
+  }
+
+  /**
+   * 发一次 /chat/completions。
+   * 只回传判定所需的最小信息（状态、失败原因、finish_reason），
+   * 绝不把 base64、dataUrl 或完整 payload 写进日志或异常。
+   */
+  private async callCompletion(
+    requestBody: Record<string, unknown>,
+    settings: DeepseekSettings,
+    requestId: string | undefined,
+    model: string,
+    imageCount: number,
+    startedAt: number,
+  ): Promise<
+    | { ok: true; payload: unknown; finishReason: string }
+    | { ok: false; failure: string; retryable: boolean }
+  > {
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -229,44 +412,16 @@ export class DeepseekAgentProvider implements AgentProvider {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${settings.apiKey}`,
         },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: 'user',
-              content: messageContent,
-            },
-          ],
-          temperature: 0.2,
-          ...(settings.reasoningEffort ? { reasoning_effort: settings.reasoningEffort } : {}),
-          max_tokens: settings.maxTokens,
-          stream: false,
-          response_format: { type: 'json_object' },
-        }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
     } catch (error) {
       const aborted = timedOut || (error instanceof Error && error.name === 'AbortError');
-      // 日志只记录计数与耗时，绝不写入 base64、dataUrl 或模型 payload。
       this.logger.warn(
-        `deepseek request failed requestId=${input.requestId ?? '-'} model=${model}${hasImages ? ` images=${images.length}` : ''} cause=${aborted ? 'timeout' : 'network'}`,
+        `deepseek request failed requestId=${requestId ?? '-'} model=${model}${imageCount > 0 ? ` images=${imageCount}` : ''} cause=${aborted ? 'timeout' : 'network'} latencyMs=${Date.now() - startedAt}`,
       );
-      if (aborted) {
-        throw new HttpException(
-          { code: 'DEEPSEEK_TIMEOUT', message: 'DeepSeek 响应超时，请稍后重试。' },
-          HttpStatus.GATEWAY_TIMEOUT,
-        );
-      }
-      if (hasImages) {
-        throw new HttpException(
-          { code: 'DEEPSEEK_VISION_UNAVAILABLE', message: '图片识别暂时不可用，请稍后重试或只发文字。' },
-          HttpStatus.BAD_GATEWAY,
-        );
-      }
-      throw new HttpException(
-        { code: 'DEEPSEEK_UNAVAILABLE', message: 'DeepSeek 暂时不可访问，请稍后重试。' },
-        HttpStatus.BAD_GATEWAY,
-      );
+      // 超时与网络错误不再重试：让调用方立刻拿到 504/502，避免把用户等待翻倍。
+      return { ok: false, failure: aborted ? 'timeout' : 'network', retryable: false };
     } finally {
       clearTimeout(timer);
     }
@@ -281,37 +436,18 @@ export class DeepseekAgentProvider implements AgentProvider {
 
     if (!response || response.ok !== true) {
       this.logger.warn(
-        `deepseek upstream error requestId=${input.requestId ?? '-'} model=${model} status=${status}${hasImages ? ` images=${images.length}` : ''} latencyMs=${Date.now() - startedAt}`,
+        `deepseek upstream error requestId=${requestId ?? '-'} model=${model} status=${status}${imageCount > 0 ? ` images=${imageCount}` : ''} latencyMs=${Date.now() - startedAt}`,
       );
-      if (status === 401 || status === 403) {
-        throw new HttpException(
-          { code: 'DEEPSEEK_AUTH_FAILED', message: 'DeepSeek 鉴权失败，请检查服务端模型配置。' },
-          HttpStatus.BAD_GATEWAY,
-        );
-      }
-      if (status === 429) {
-        throw new HttpException(
-          { code: 'DEEPSEEK_RATE_LIMITED', message: 'DeepSeek 请求过于频繁，请稍后重试。' },
-          HttpStatus.SERVICE_UNAVAILABLE,
-        );
-      }
-      // 视觉请求失败（含模型不支持图片、参数被拒）统一映射为视觉不可用。
-      if (hasImages) {
-        throw new HttpException(
-          { code: 'DEEPSEEK_VISION_UNAVAILABLE', message: '图片识别暂时不可用，请稍后重试或只发文字。' },
-          HttpStatus.BAD_GATEWAY,
-        );
-      }
-      if (status >= 500) {
-        throw new HttpException(
-          { code: 'DEEPSEEK_UPSTREAM_ERROR', message: 'DeepSeek 服务暂时不可用，请稍后重试。' },
-          HttpStatus.BAD_GATEWAY,
-        );
-      }
-      throw new HttpException(
-        { code: 'DEEPSEEK_REQUEST_REJECTED', message: 'DeepSeek 未接受这次请求，请稍后重试。' },
-        HttpStatus.BAD_GATEWAY,
-      );
+      const failure = status === 401 || status === 403
+        ? 'auth'
+        : status === 429
+          ? 'rate_limited'
+          : status >= 500
+            ? `upstream_${status}`
+            : `rejected_${status}`;
+      // 只有 5xx / 429 值得重试；400（如上游 image_invalid）重试也是同样结果。
+      const retryable = imageCount > 0 && (status === 429 || status >= 500);
+      return { ok: false, failure, retryable };
     }
 
     let payload: unknown = null;
@@ -321,41 +457,76 @@ export class DeepseekAgentProvider implements AgentProvider {
       payload = null;
     }
 
-    const content = extractModelContent(payload);
-    if (!content.trim()) {
-      this.throwResponseInvalid(hasImages);
+    const choices = isPlainObject(payload) ? payload.choices : null;
+    const first = Array.isArray(choices) && isPlainObject(choices[0]) ? choices[0] : null;
+    const finishReason = first && typeof first.finish_reason === 'string' ? first.finish_reason : '';
+    return { ok: true, payload, finishReason };
+  }
+
+  /**
+   * 失败原因 → 对外 HTTP 异常。
+   *
+   * 视觉请求统一落在 502 `DEEPSEEK_VISION_UNAVAILABLE`（客户端据此走「明确降级、
+   * 不覆盖项目」的路径），但消息里写清真实原因，便于排障时区分：
+   * 上游 5xx / 空回复 / 半截 JSON / 上游拒图。
+   */
+  private toHttpException(cause: string, hasImages: boolean): HttpException {
+    if (cause === 'timeout') {
+      return new HttpException(
+        { code: 'DEEPSEEK_TIMEOUT', message: 'DeepSeek 响应超时，请稍后重试。' },
+        HttpStatus.GATEWAY_TIMEOUT,
+      );
     }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(stripMarkdownFence(content));
-    } catch {
-      this.throwResponseInvalid(hasImages);
+    if (cause === 'auth') {
+      return new HttpException(
+        { code: 'DEEPSEEK_AUTH_FAILED', message: 'DeepSeek 鉴权失败，请检查服务端模型配置。' },
+        HttpStatus.BAD_GATEWAY,
+      );
     }
-
-    if (!isPlainObject(parsed)) {
-      this.throwResponseInvalid(hasImages);
+    if (cause === 'rate_limited') {
+      return new HttpException(
+        { code: 'DEEPSEEK_RATE_LIMITED', message: 'DeepSeek 请求过于频繁，请稍后重试。' },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
-
-    // 只取白名单里的两个键；parsed.status / parsed.missingFields 等一律丢弃。
-    const reply = typeof parsed.reply === 'string'
-      ? Array.from(parsed.reply.trim()).slice(0, MAX_REPLY_LENGTH).join('')
-      : '';
-    const draftPatch = isPlainObject(parsed.draftPatch) ? parsed.draftPatch : {};
-
-    const latencyMs = Math.max(0, Date.now() - startedAt);
-    this.logger.log(
-      `deepseek turn ok requestId=${input.requestId ?? '-'} model=${model}${hasImages ? ` images=${images.length}` : ''} latencyMs=${latencyMs} hasReply=${reply.length > 0}`,
-    );
-
-    return {
-      reply,
-      draftPatch,
-      model,
-      latencyMs,
-      // 无图片时不添加该键，保证 v1 的 Provider 结果形状与旧实现完全一致。
-      ...(hasImages ? { visionAnalyzed: true } : {}),
-    };
+    if (hasImages) {
+      const reason = cause === 'empty_content_truncated'
+        ? '模型把输出预算花在推理上，没有返回识别内容'
+        : cause === 'empty_content'
+          ? '模型没有返回识别内容'
+          : cause === 'invalid_json'
+            ? '模型返回的不是合法 JSON'
+            : cause === 'invalid_shape'
+              ? '模型返回的 JSON 不是对象'
+              : cause === 'network'
+                ? '网络不可达'
+                : cause.startsWith('upstream_')
+                  ? `上游返回 ${cause.slice('upstream_'.length)}`
+                  : cause === 'rejected_400'
+                    ? '上游拒绝了这次图片请求'
+                    : cause;
+      return new HttpException(
+        {
+          code: 'DEEPSEEK_VISION_UNAVAILABLE',
+          message: `图片识别暂时不可用（${reason}），请稍后重试或只发文字。`,
+          cause,
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+    if (cause === 'network') {
+      return new HttpException(
+        { code: 'DEEPSEEK_UNAVAILABLE', message: 'DeepSeek 暂时不可访问，请稍后重试。' },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+    if (cause.startsWith('upstream_')) {
+      return new HttpException(
+        { code: 'DEEPSEEK_UPSTREAM_ERROR', message: 'DeepSeek 服务暂时不可用，请稍后重试。' },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+    this.throwResponseInvalid(hasImages);
   }
 
   /**

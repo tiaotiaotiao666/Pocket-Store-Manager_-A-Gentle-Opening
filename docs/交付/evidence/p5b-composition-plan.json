@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "composition.v1",
+  "planId": "order-classic",
+  "planVersion": "1.0.0",
+  "baseTemplate": {
+    "id": "ordering-base",
+    "version": "1.0.0"
+  },
+  "registryVersion": "2026.11.0",
+  "pages": [
+    {
+      "pageId": "home"
+    },
+    {
+      "pageId": "menu"
+    },
+    {
+      "pageId": "orders"
+    },
+    {
+      "pageId": "mine"
+    },
+    {
+      "pageId": "checkout"
+    },
+    {
+      "pageId": "order-detail"
+    },
+    {
+      "pageId": "product-detail"
+    },
+    {
+      "pageId": "merchant-orders"
+    }
+  ],
+  "features": [],
+  "components": [],
+  "themeTokens": {
+    "pageBackground": "#F7F3EC",
+    "primaryColor": "#B34A0F",
+    "accentColor": "#9C2E12",
+    "textColor": "#232323",
+    "tabBarBackground": "#FFFDF9",
+    "tabBarColor": "#8A8178",
+    "tabBarSelectedColor": "#B34A0F"
+  },
+  "presentationTokens": {
+    "homeHeroSize": "md",
+    "productCardSize": "md"
+  },
+  "apiBinding": {
+    "contract": "storefront.v1"
+  },
+  "storeProfile": {
+    "name": "柑橘小馆演示店",
+    "category": "社区餐馆",
+    "address": "",
+    "phone": "",
+    "notes": "",
+    "businessHours": [],
+    "dishes": [],
+    "fulfillment": {
+      "dineIn": false,
+      "takeaway": false
+    }
+  },
+  "previewOnlyAck": false,
+  "degradations": []
+}

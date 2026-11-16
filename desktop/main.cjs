@@ -15,6 +15,7 @@ const { registerFlushGuard, recoverPendingWrites } = require('./flush-guard.cjs'
 const { createDiagnostics } = require('./diagnostics.cjs');
 const { probeDevtools } = require('./devtools-probe.cjs');
 const { registerPreviewIpc } = require('./preview-channel.cjs');
+const { openExternalLink, isAllowedAppUrl } = require('./external-link.cjs');
 
 /**
  * 选择一个真正可写的用户数据目录。
@@ -148,6 +149,17 @@ function createWindow() {
 
   if (app.isPackaged) window.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   else window.loadURL('http://127.0.0.1:5173');
+
+  // W4：页面既不能自己开新窗口，也不能把主窗口导航到站外。
+  // 外链统一走 shell:open-external（见 external-link.cjs），由用户点击触发。
+  const appUrlPrefixes = app.isPackaged
+    ? [pathToFileURL(path.join(__dirname, '..', 'dist', 'index.html')).href.replace(/[^/]*$/, '')]
+    : ['http://127.0.0.1:5173'];
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  window.webContents.on('will-navigate', (event, targetUrl) => {
+    if (isAllowedAppUrl(targetUrl, appUrlPrefixes)) return;
+    event.preventDefault();
+  });
 }
 
 registerComposerIpc(ipcMain, {
@@ -195,6 +207,13 @@ registerFlushGuard({
   ipcMain,
   getWindows: () => BrowserWindow.getAllWindows(),
   timeoutMs: 3000,
+});
+
+// W4：对话里的外链只通过这条受控通道打开 —— 主进程再校验一次协议，
+// 只调 shell.openExternal，不把 URL 载入任何 Electron 窗口。
+ipcMain.handle('shell:open-external', async (_event, payload) => {
+  const url = payload && typeof payload === 'object' ? payload.url : payload;
+  return openExternalLink(url, { shell });
 });
 
 ipcMain.handle('generator:pick-materials', async () => {

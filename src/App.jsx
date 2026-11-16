@@ -44,6 +44,7 @@ import {
   selectPresentationState,
 } from './state/sessionMachine.mjs';
 import { formatCents } from './domain/agentDraft.mjs';
+import { analyzeComposerInput, createSubmitGuard } from './domain/composerInput.mjs';
 import { toDocument, fromDocument } from './domain/projectSnapshot.mjs';
 import { evaluateLocal, mergeComposerResult, mergeTargetPreflight } from './domain/preflightRules.mjs';
 import { createProjectService } from './services/projectService.js';
@@ -468,6 +469,8 @@ export default function App() {
   const preflightStarted = useRef(false);
   const deployBusy = useRef(false);
   const agentBusy = useRef(false);
+  // W4：连续点击/连按回车只放行一次同一段文字，避免重复请求与重复消息。
+  const submitGuardRef = useRef(createSubmitGuard());
   // 在途请求期间用户可能新增图片：用 ref 记录最新数量，避免闭包读到旧 state。
   const agentImagesRef = useRef(0);
   agentImagesRef.current = agentImages.menu.length + agentImages.store.length;
@@ -1434,8 +1437,11 @@ export default function App() {
   const handleSimulateFailure = (value) => dispatch({ type: 'AGENT_SIMULATE_FAILURE', value });
 
   const handleComposerSubmit = (value) => {
-    const text = String(value ?? '').trim();
-    if (!text) return;
+    // W4：空白/超长在 Composer 已拦住，这里再兜一层；连续点击/连按回车只放行一次。
+    const analysis = analyzeComposerInput(value);
+    if (!analysis.canSubmit) return;
+    if (!submitGuardRef.current.accept(analysis.text)) return;
+    const text = analysis.text;
     if (phase === PHASES.STORE_INFO) {
       handleAgentTurn(text);
       return;

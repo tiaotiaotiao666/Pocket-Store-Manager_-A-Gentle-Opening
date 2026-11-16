@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('smartStore', Object.freeze({
   exportProject: (payload) => ipcRenderer.invoke('composer:export', payload),
   pickMaterials: () => ipcRenderer.invoke('generator:pick-materials'),
   openPath: (target) => ipcRenderer.invoke('generator:open-path', target),
+  // W4：对话外链的唯一出口（仅 http/https，主进程再校验一次后用系统浏览器打开）。
+  openExternalLink: (url) => ipcRenderer.invoke('shell:open-external', { url }),
   saveImage: (payload) => ipcRenderer.invoke('generator:save-image', payload),
 
   // 项目与设置（P0）

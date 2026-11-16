@@ -1,5 +1,6 @@
 import { Sparkles } from 'lucide-react';
 import { stageNoticeFor } from './stageNotice.mjs';
+import MarkdownView from './MarkdownView.jsx';
 
 /**
  * UX0a-2：系统/交接消息只显示受控的阶段名称与固定提示。
@@ -46,6 +47,7 @@ export default function MessageBubble({ message }) {
   }
 
   if (role === 'user') {
+    // 用户自己的输入按纯文本显示：不改写、不解释 Markdown，保留原始换行。
     return (
       <div className="bubble-row bubble-row-user">
         <div className="bubble bubble-user">{text}</div>
@@ -62,7 +64,9 @@ export default function MessageBubble({ message }) {
       <span className="bubble-avatar">
         <Sparkles size={15} />
       </span>
-      <div className="bubble bubble-agent">{text}</div>
+      <div className="bubble bubble-agent">
+        <MarkdownView text={text} className="bubble-markdown" />
+      </div>
     </div>
   );
 }

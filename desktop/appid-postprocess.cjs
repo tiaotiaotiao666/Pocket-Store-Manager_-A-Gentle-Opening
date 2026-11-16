@@ -18,15 +18,27 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 
-const { sha256, lockDigest, normalizedText, fileSha256 } = require('../scripts/composer/digest.cjs');
+const { sha256, lockDigest } = require('../scripts/composer/digest.cjs');
 const { validateLock } = require('../scripts/composer/schema.cjs');
+const { renderMarkdown } = require('../scripts/composer/report.cjs');
+const { ARTIFACTS, digestManifest, inspectOutput } = require('./output-consistency.cjs');
 
 
 const APPID_RE = /^wx[0-9a-f]{16}$/;
-const PROJECT_CONFIG = 'project.config.json';
-const LOCK_FILE = 'composition.lock.json';
-const REPORT_FILE = 'generation-report.json';
-const SIDECAR_FILE = 'appid-postprocess.json';
+const PROJECT_CONFIG = ARTIFACTS.config;
+const LOCK_FILE = ARTIFACTS.lock;
+const REPORT_FILE = ARTIFACTS.report;
+const MARKDOWN_FILE = ARTIFACTS.markdown;
+const SIDECAR_FILE = ARTIFACTS.sidecar;
+
+/** W1：本事务涉及的全部文件（config/lock/JSON 报告/Markdown 报告/侧车）。 */
+const TRANSACTION_FILES = Object.freeze([
+  PROJECT_CONFIG,
+  LOCK_FILE,
+  REPORT_FILE,
+  MARKDOWN_FILE,
+  SIDECAR_FILE,
+]);
 
 class AppidError extends Error {
   constructor(code, message, details) {
@@ -65,9 +77,14 @@ function jsonText(value) {
  * 因此不能复用 project-store 里 async 的 writeFileAtomic。
  */
 function writeJsonSync(file, value) {
+  writeTextSync(file, jsonText(value));
+}
+
+/** 任意文本的同步原子写（Markdown 报告与侧车共用）。 */
+function writeTextSync(file, text) {
   const tmp = `${file}.tmp`;
   const old = `${file}.old`;
-  fs.writeFileSync(tmp, jsonText(value), 'utf8');
+  fs.writeFileSync(tmp, text, 'utf8');
   try {
     fs.unlinkSync(old);
   } catch (error) {
@@ -97,48 +114,48 @@ function writeJsonSync(file, value) {
   }
 }
 
-/** 与 verify.cjs 完全一致的 tree 口径（只对清单内文件）。 */
-function digestManifest(outputPath, paths) {
-  const sorted = [...paths].sort();
-  const files = sorted.map((relative) => ({
-    path: relative,
-    digest: fileSha256(path.join(outputPath, relative)),
-  }));
-  const lines = sorted.map((relative) => {
-    const file = path.join(outputPath, relative);
-    const raw = fs.readFileSync(file);
-    const isText = !/\.(png|jpe?g|webp|gif|ico|zip)$/i.test(file);
-    const content = isText ? Buffer.from(normalizedText(raw.toString('utf8')), 'utf8') : raw;
-    return `${relative}:${sha256(content)}`;
-  });
-  return { tree: sha256(lines.join('\n')), files };
-}
-
 function assertInside(outputPath, target) {
   const root = path.resolve(outputPath);
   const resolved = path.resolve(target);
   return resolved.startsWith(root + path.sep);
 }
 
-function backupFiles(outputPath, files, stamp) {
-  const backupDir = path.join(outputPath, '.appid-backup', stamp);
+/**
+ * 备份事务涉及的文件。不存在的文件也记一条（existed:false），
+ * 回滚时删除新建文件，保证失败后目录状态与事务前一致。
+ *
+ * 备份目录放在产物目录之外（同卷的兄弟目录 `.appid-backup`）：
+ * 产物目录里多出来的任何文件都会进入安全扫描与整目录摘要，备份副本
+ * 会把「已声明的输出路径」再次暴露成 PATH_ESCAPE 噪声，也不该随工程分发。
+ */
+function backupFiles(outputPath, files, backupDir) {
   fs.mkdirSync(backupDir, { recursive: true });
   const backups = [];
   for (const file of files) {
     const source = path.join(outputPath, file);
+    const existed = fs.existsSync(source);
+    if (!existed) {
+      backups.push({ file, target: null, existed: false });
+      continue;
+    }
     const target = path.join(backupDir, file);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.copyFileSync(source, target);
-    backups.push({ file, target });
+    backups.push({ file, target, existed: true });
   }
   return { backupDir, backups };
 }
 
-function rollback(backups) {
+function rollback(outputPath, backups) {
   const failures = [];
   for (const item of backups) {
+    const destination = path.join(outputPath, item.file);
     try {
-      fs.copyFileSync(item.target, path.join(path.dirname(item.target), '..', '..', item.file));
+      if (item.existed) {
+        fs.copyFileSync(item.target, destination);
+      } else if (fs.existsSync(destination)) {
+        fs.unlinkSync(destination);
+      }
     } catch (error) {
       failures.push({ file: item.file, message: error.message });
     }
@@ -177,9 +194,10 @@ function verifyApplied(options) {
   if (!lockCheck.ok) problems.push(`A7: ${lockCheck.code} ${lockCheck.message}`);
 
   for (const relative of ['app.json', 'config/store.generated.js']) {
-    const before = fileSha256(path.join(outputPath, relative));
-    const record = (previous.report.output.files || []).find((item) => item.path === relative);
-    if (record && record.digest !== before) problems.push(`A8: ${relative} 摘要变化`);
+    const current = (recomputed.files || []).find((item) => item.path === relative);
+    const record = (((previous.report || {}).output || {}).files || []).find((item) => item.path === relative);
+    if (record && !current) problems.push(`A8: ${relative} 摘要缺失`);
+    else if (record && record.digest !== current.digest) problems.push(`A8: ${relative} 摘要变化`);
   }
 
   if (report.output.treeSha256 !== recomputed.tree) problems.push('report: treeSha256 未回填');
@@ -190,7 +208,7 @@ function verifyApplied(options) {
   return problems;
 }
 
-function writeSidecar(outputPath, payload) {
+function buildSidecarRecord(outputPath, payload) {
   const file = path.join(outputPath, SIDECAR_FILE);
   let previous = null;
   try {
@@ -222,8 +240,12 @@ function writeSidecar(outputPath, payload) {
       lockDigestAfter: previous.lockDigestAfter,
     });
   }
-  fs.writeFileSync(file, jsonText(record), 'utf8');
-  return file;
+  return record;
+}
+
+function writeSidecar(outputPath, payload) {
+  writeJsonSync(path.join(outputPath, SIDECAR_FILE), buildSidecarRecord(outputPath, payload));
+  return path.join(outputPath, SIDECAR_FILE);
 }
 
 /**
@@ -241,30 +263,47 @@ function applyAppid(options) {
   if (!APPID_RE.test(appid)) {
     throw new AppidError('APPID_INVALID', 'AppID 格式不正确（wx + 16 位十六进制）');
   }
-  for (const file of [PROJECT_CONFIG, LOCK_FILE, REPORT_FILE]) {
+  for (const file of [PROJECT_CONFIG, LOCK_FILE, REPORT_FILE, MARKDOWN_FILE]) {
     if (!fs.existsSync(path.join(outputPath, file))) {
       throw new AppidError('APPID_TARGET_MISSING', `产物缺少 ${file}，无法安全回填摘要`);
     }
   }
 
+  // W1 四：写盘前先做统一只读校验（清单路径边界 + lock/report/markdown 自洽）。
+  // 任何一项不通过就什么都不改动，避免"改到一半才发现清单越界/摘要已坏"。
+  const before = inspectOutput(outputPath, { checkSidecar: false });
+  if (!before.ok) {
+    const code = before.problems.some((problem) => problem.code === 'APPID_PATH_INVALID')
+      ? 'APPID_PATH_INVALID'
+      : 'APPID_VERIFY_FAILED';
+    throw new AppidError(code, '原始产物摘要不自洽，已拒绝写入 AppID', {
+      problems: before.problems.slice(0, 10),
+    });
+  }
+
   const configPath = path.join(outputPath, PROJECT_CONFIG);
-  if (!assertInside(outputPath, configPath)) throw new AppidError('APPID_WRITE_FAILED', '目标路径越界');
+  if (!assertInside(outputPath, configPath)) throw new AppidError('APPID_PATH_INVALID', '目标路径越界');
 
   const configBefore = readJson(configPath);
   const lockBefore = readJson(path.join(outputPath, LOCK_FILE));
   const reportBefore = readJson(path.join(outputPath, REPORT_FILE));
-  const manifest = Array.isArray(lockBefore.outputDigest && lockBefore.outputDigest.files)
-    ? lockBefore.outputDigest.files.map((item) => item.path)
-    : [];
-  if (manifest.length === 0 || !manifest.includes(PROJECT_CONFIG)) {
-    throw new AppidError('APPID_TARGET_MISSING', 'composition.lock.json 缺少产物清单，无法回填摘要');
+  const manifest = before.files.map((item) => item.path);
+  if (!manifest.includes(PROJECT_CONFIG)) {
+    throw new AppidError('APPID_PATH_INVALID', 'composition.lock.json 清单缺少 project.config.json，无法回填摘要');
   }
 
-  const digestBefore = fileSha256(configPath);
+  const digestBefore = (before.files.find((item) => item.path === PROJECT_CONFIG) || {}).digest || null;
   const treeBefore = lockBefore.outputDigest.tree;
   const lockBeforeDigest = lockBefore.lockDigest;
 
+  // W1 三：同值不能直接短路 —— 只有 config/lock/report/Markdown/侧车与磁盘完全一致才算 unchanged。
   if (configBefore.appid === appid) {
+    const verified = inspectOutput(outputPath, { expectAppid: appid });
+    if (!verified.ok) {
+      throw new AppidError('APPID_VERIFY_FAILED', 'AppID 相同但产物摘要或报告不一致，已拒绝短路', {
+        problems: verified.problems.slice(0, 10),
+      });
+    }
     return {
       applied: true,
       unchanged: true,
@@ -278,13 +317,15 @@ function applyAppid(options) {
       fileCount: manifest.length,
       backupDir: null,
       sidecar: path.join(outputPath, SIDECAR_FILE),
+      verified: true,
     };
   }
 
   const stamp = isoSeconds(now()).replace(/[:]/g, '');
+  const backupDir = path.join(path.dirname(outputPath), '.appid-backup', `${path.basename(outputPath)}-${stamp}`);
   let backup;
   try {
-    backup = backupFiles(outputPath, [PROJECT_CONFIG, LOCK_FILE, REPORT_FILE], stamp);
+    backup = backupFiles(outputPath, TRANSACTION_FILES, backupDir);
   } catch (error) {
     throw new AppidError('APPID_WRITE_FAILED', '无法创建回滚备份，工程保持原始状态', { cause: error.message });
   }
@@ -305,17 +346,39 @@ function applyAppid(options) {
     }
     writeJsonSync(path.join(outputPath, LOCK_FILE), nextLock);
 
+    // W1 五：JSON 报告里的每一项"当前产物摘要"都要同步；
+    // 初次生成的摘要降级为显式历史记录，不能继续冒充当前值。
+    const previousOutput = reportBefore.output || {};
+    const history = Array.isArray(previousOutput.history) ? previousOutput.history.slice() : [];
+    const initialLabel = history.length === 0 ? '初次生成' : 'AppID 写入前';
+    if (previousOutput.treeSha256
+      && !history.some((item) => item && item.treeSha256 === previousOutput.treeSha256 && item.stage === initialLabel)) {
+      history.push({
+        stage: initialLabel,
+        projectPath: previousOutput.projectPath,
+        treeSha256: previousOutput.treeSha256,
+        fileCount: previousOutput.fileCount,
+        recordedAt: reportBefore.generatedAt,
+      });
+    }
+    const nextChecks = (Array.isArray(reportBefore.checks) ? reportBefore.checks : []).map((item) => (
+      item && item.id === 'reproducibility' ? { ...item, message: recomputed.tree } : item
+    ));
     const nextReport = {
       ...reportBefore,
+      checks: nextChecks,
       lock: { ...(reportBefore.lock || {}), lockDigest: nextLock.lockDigest },
       output: {
-        ...(reportBefore.output || {}),
+        ...previousOutput,
         treeSha256: recomputed.tree,
         files: recomputed.files,
         fileCount: recomputed.files.length,
+        history,
       },
     };
     writeJsonSync(path.join(outputPath, REPORT_FILE), nextReport);
+    // Markdown 与 JSON 必须同源：用同一个 nextReport 重渲染。
+    writeTextSync(path.join(outputPath, MARKDOWN_FILE), renderMarkdown(nextReport));
 
     const problems = verifyApplied({
       outputPath,
@@ -327,11 +390,17 @@ function applyAppid(options) {
       previousLock: lockBefore,
       previousReport: reportBefore,
     });
-    if (problems.length > 0) {
-      throw new AppidError('APPID_VERIFY_FAILED', '产物摘要自检未通过，已回滚', { problems });
+    const inspected = inspectOutput(outputPath, { expectAppid: appid, checkSidecar: false });
+    const allProblems = [
+      ...problems,
+      ...inspected.problems.map((problem) => `${problem.code}: ${problem.message}`),
+    ];
+    if (allProblems.length > 0) {
+      throw new AppidError('APPID_VERIFY_FAILED', '产物摘要自检未通过，已回滚', { problems: allProblems.slice(0, 10) });
     }
 
-    const sidecar = writeSidecar(outputPath, {
+    // 侧车最后写入（原子写），写完再整体复核一次；失败同样回滚。
+    const sidecarPayload = {
       appliedAt: isoSeconds(now()),
       appid,
       fileDigestBefore: digestBefore,
@@ -340,7 +409,15 @@ function applyAppid(options) {
       treeDigestAfter: recomputed.tree,
       lockDigestBefore: lockBeforeDigest,
       lockDigestAfter: nextLock.lockDigest,
-    });
+    };
+    writeJsonSync(path.join(outputPath, SIDECAR_FILE), buildSidecarRecord(outputPath, sidecarPayload));
+
+    const finalCheck = inspectOutput(outputPath, { expectAppid: appid });
+    if (!finalCheck.ok) {
+      throw new AppidError('APPID_VERIFY_FAILED', '写入侧车后复核未通过，已回滚', {
+        problems: finalCheck.problems.slice(0, 10),
+      });
+    }
 
     return {
       applied: true,
@@ -354,10 +431,11 @@ function applyAppid(options) {
       treeDigestAfter: recomputed.tree,
       fileCount: recomputed.files.length,
       backupDir: backup.backupDir,
-      sidecar,
+      sidecar: path.join(outputPath, SIDECAR_FILE),
+      verified: true,
     };
   } catch (error) {
-    const failures = rollback(backup.backups);
+    const failures = rollback(outputPath, backup.backups);
     if (failures.length > 0) {
       throw new AppidError('APPID_WRITE_FAILED', '写入失败且自动回滚未完全成功，请手动从备份恢复', {
         backupDir: backup.backupDir,
@@ -373,21 +451,20 @@ function applyAppid(options) {
   }
 }
 
-/** 只读核查：按清单口径验证一份产物的摘要是否自洽。 */
-function verifyOutputDigests(outputPath) {
-  const lock = readJson(path.join(outputPath, LOCK_FILE));
-  const report = readJson(path.join(outputPath, REPORT_FILE));
-  const manifest = (lock.outputDigest && lock.outputDigest.files || []).map((item) => item.path);
-  const recomputed = digestManifest(outputPath, manifest);
+/**
+ * 只读核查：按清单口径验证一份产物的摘要是否自洽。
+ * W1：直接复用统一校验（含报告/Markdown/侧车一致性），不再只查一部分。
+ */
+function verifyOutputDigests(outputPath, options) {
+  const inspected = inspectOutput(outputPath, { checkSidecar: (options || {}).checkSidecar });
   return {
-    ok: recomputed.tree === lock.outputDigest.tree
-      && JSON.stringify(recomputed.files) === JSON.stringify(lock.outputDigest.files)
-      && lockDigest(lock) === lock.lockDigest
-      && report.output.treeSha256 === recomputed.tree,
-    tree: recomputed.tree,
-    lockTree: lock.outputDigest.tree,
-    lockDigest: lock.lockDigest,
-    reportTree: report.output.treeSha256,
+    ok: inspected.ok,
+    code: inspected.code,
+    problems: inspected.problems,
+    tree: inspected.tree,
+    lockTree: inspected.tree,
+    lockDigest: inspected.lockDigest,
+    reportTree: inspected.tree,
   };
 }
 
@@ -401,5 +478,7 @@ module.exports = {
   PROJECT_CONFIG,
   LOCK_FILE,
   REPORT_FILE,
+  MARKDOWN_FILE,
   SIDECAR_FILE,
+  TRANSACTION_FILES,
 };

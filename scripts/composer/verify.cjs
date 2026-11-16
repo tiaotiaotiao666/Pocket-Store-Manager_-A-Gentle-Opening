@@ -87,6 +87,36 @@ function verifyMediaOutput(stagingDir) {
   return { ...ok(), present: true, count: document.items.length };
 }
 
+/**
+ * W1：从生成报告里取出「已声明的产物路径」。
+ * 报告在 staging 校验之后才写进最终目录，因此最终目录复检时会把
+ * `output.projectPath`（Windows 绝对路径）当成 PATH_ESCAPE 误报。
+ * 这里只收集报告自己声明的值，交给 safety 精确豁免；报告其他内容照常扫描。
+ */
+function declaredOutputPaths(dir) {
+  const values = [];
+  const push = (value) => {
+    if (typeof value === 'string' && value.trim() && !values.includes(value)) values.push(value);
+  };
+  const reportFile = path.join(dir, 'generation-report.json');
+  if (!fs.existsSync(reportFile)) return values;
+  let report;
+  try {
+    report = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+  } catch (error) {
+    // 报告本身不可解析时不豁免：宁可误报也不能放宽路径检查。
+    return values;
+  }
+  const output = report && typeof report === 'object' ? report.output : null;
+  if (!output || typeof output !== 'object') return values;
+  push(output.projectPath);
+  const history = Array.isArray(output.history) ? output.history : [];
+  history.forEach((item) => {
+    if (item && typeof item === 'object') push(item.projectPath);
+  });
+  return values;
+}
+
 function verifyOutput(stagingDir, options) {
   const opts = options || {};
   const checks = [];
@@ -196,7 +226,7 @@ function verifyOutput(stagingDir, options) {
   }
   checks.push(check('static-check', 'pass', staticResult.stats.pages + ' 页 / ' + staticResult.stats.components + ' 组件'));
 
-  const safety = scanOutput(stagingDir, { mode: opts.mode || 'development' });
+  const safety = scanOutput(stagingDir, { mode: opts.mode || 'development', declaredPaths: declaredOutputPaths(stagingDir) });
   if (!safety.ok) {
     checks.push(check('security-scan', 'fail', safety.findings.slice(0, 5).map((finding) => finding.code + '@' + finding.file + ':' + finding.line).join(' | ')));
     return {
@@ -227,4 +257,4 @@ function verifyOutput(stagingDir, options) {
   return { ...ok(), checks, tree, files, stats: staticResult.stats };
 }
 
-module.exports = { verifyOutput, verifyMediaOutput };
+module.exports = { verifyOutput, verifyMediaOutput, declaredOutputPaths };

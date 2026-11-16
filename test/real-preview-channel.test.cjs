@@ -17,6 +17,27 @@ const vm = require('node:vm');
 const REPO = path.resolve(__dirname, '..');
 const channel = require(path.join(REPO, 'desktop', 'preview-channel.cjs'));
 const launcher = require(path.join(REPO, 'desktop', 'devtools-launch.cjs'));
+const { compose } = require(path.join(REPO, 'scripts', 'composer', 'index.cjs'));
+const { applyAppid } = require(path.join(REPO, 'desktop', 'appid-postprocess.cjs'));
+
+const PLAN = JSON.parse(fs.readFileSync(path.join(REPO, 'templates', 'recipes', 'order-classic', '1.0.0', 'plan.json'), 'utf8'));
+
+/**
+ * W1：开发者工具启动前必须能证明「这是 Composer 产物且摘要自洽」，
+ * 因此这些用例都基于真实 compose 产物，不再伪造 project.config.json。
+ */
+async function buildComposerOutput(t) {
+  const parent = makeTempDir('real-preview-devtools-composer-');
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const result = await compose({
+    plan: { ...PLAN, previewOnlyAck: true },
+    parentDir: parent,
+    projectName: 'appid-check',
+    mode: 'development',
+  });
+  assert.equal(result.ok, true, JSON.stringify(result.warnings || []));
+  return result.outputPath;
+}
 
 const {
   PREVIEW_CHANNELS,
@@ -392,13 +413,74 @@ test('openPreviewInDevtools：目录不存在回传 PATH_MISSING', async () => {
   assert.equal(result.code, 'PATH_MISSING');
 });
 
-test('openPreviewInDevtools：找到 CLI 时以 open --project 调起并 unref', async () => {
-  const dir = makeTempDir('real-preview-devtools-ok-');
-  writeFile(dir, 'project.config.json', Buffer.from('{}', 'utf8'));
+test('openPreviewInDevtools：非 Composer 目录拒绝启动，且不隐式改写 AppID', async () => {
+  const dir = makeTempDir('real-preview-devtools-plain-');
+  const configBefore = Buffer.from(JSON.stringify({ appid: 'touristappid' }, null, 2), 'utf8');
+  writeFile(dir, 'project.config.json', configBefore);
+  const calls = [];
+
+  // W1：没有 composition.lock.json / generation-report.json 就无法校验摘要，
+  // 无法可靠区分是否已完成 AppID 写入 —— 宁可拒绝启动，也不猜、不改写。
+  const result = await channel.openPreviewInDevtools({ projectPath: dir }, {
+    env: { WX_CLI_PATH: 'D:\\wx\\cli.bat' },
+    existsSync: (target) => target === 'D:\\wx\\cli.bat',
+    launcher: (command, args, options) => {
+      calls.push({ command, args, options });
+      return { unref() {} };
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'OUTPUT_NOT_COMPOSER');
+  assert.equal(calls.length, 0, '预检失败时不得调起开发者工具');
+  assert.deepEqual(fs.readFileSync(path.join(dir, 'project.config.json')), configBefore, 'AppID 不得被隐式改写');
+});
+
+test('openPreviewInDevtools：真实 Composer 产物未写 AppID 时拒绝启动', async (t) => {
+  const outputPath = await buildComposerOutput(t);
+  const configPath = path.join(outputPath, 'project.config.json');
+  const configBefore = fs.readFileSync(configPath);
+  assert.equal(JSON.parse(configBefore.toString('utf8')).appid, 'touristappid');
+  const calls = [];
+
+  const result = await channel.openPreviewInDevtools({ projectPath: outputPath }, {
+    env: { WX_CLI_PATH: 'D:\\wx\\cli.bat' },
+    existsSync: (target) => target === 'D:\\wx\\cli.bat',
+    launcher: (command, args, options) => {
+      calls.push({ command, args, options });
+      return { unref() {} };
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'APPID_NOT_APPLIED');
+  assert.equal(calls.length, 0);
+  assert.deepEqual(fs.readFileSync(configPath), configBefore, '拒绝启动不得改动 project.config.json');
+});
+
+test('openPreviewInDevtools：缺少 CLI 回传 DEVTOOLS_NOT_FOUND', async (t) => {
+  const outputPath = await buildComposerOutput(t);
+  applyAppid({ outputPath, appid: 'wx0123456789abcdef' });
+  const result = await channel.openPreviewInDevtools({ projectPath: outputPath }, {
+    env: {},
+    existsSync: () => false,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'DEVTOOLS_NOT_FOUND');
+  assert.match(result.message, /WX_CLI_PATH/);
+});
+
+test('openPreviewInDevtools：AppID 合法且摘要一致时以 open --project 调起并 unref', async (t) => {
+  const outputPath = await buildComposerOutput(t);
+  applyAppid({ outputPath, appid: 'wx0123456789abcdef' });
+  const configPath = path.join(outputPath, 'project.config.json');
+  const lockPath = path.join(outputPath, 'composition.lock.json');
+  const configAfterAppid = fs.readFileSync(configPath);
+  const lockAfterAppid = fs.readFileSync(lockPath);
   const calls = [];
   let unreffed = false;
 
-  const result = await channel.openPreviewInDevtools({ projectPath: dir }, {
+  const result = await channel.openPreviewInDevtools({ projectPath: outputPath }, {
     env: { WX_CLI_PATH: 'D:\\wx\\cli.bat' },
     existsSync: (target) => target === 'D:\\wx\\cli.bat',
     launcher: (command, args, options) => {
@@ -407,23 +489,23 @@ test('openPreviewInDevtools：找到 CLI 时以 open --project 调起并 unref',
     },
   });
 
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, true, JSON.stringify(result));
   assert.equal(result.code, null);
   assert.equal(unreffed, true);
   assert.equal(calls.length, 1);
   assert.match(calls[0].command, /cli\.bat/);
   assert.equal(calls[0].args[0], 'open');
   assert.equal(calls[0].args[1], '--project');
-  assert.match(calls[0].args[2], /real-preview-devtools-ok-/);
-});
+  assert.match(calls[0].args[2], /real-preview-devtools-composer-/);
 
-test('openPreviewInDevtools：缺少 CLI 回传 DEVTOOLS_NOT_FOUND', async () => {
-  const dir = makeTempDir('real-preview-devtools-missing-');
-  const result = await channel.openPreviewInDevtools({ projectPath: dir }, {
-    env: {},
-    existsSync: () => false,
-  });
-  assert.equal(result.ok, false);
-  assert.equal(result.code, 'DEVTOOLS_NOT_FOUND');
-  assert.match(result.message, /WX_CLI_PATH/);
+  // 成功只代表"已请求打开"，绝不宣称编译通过
+  assert.equal(result.details.status, 'devtools-open-requested');
+  assert.equal(result.details.compiled, false);
+  assert.equal(result.details.appidFixed, false);
+  assert.match(result.message, /不代表编译通过/);
+  assert.doesNotMatch(result.message, /编译通过[^）]*$/);
+
+  // 启动链路只读：工程字节不变
+  assert.deepEqual(fs.readFileSync(configPath), configAfterAppid);
+  assert.deepEqual(fs.readFileSync(lockPath), lockAfterAppid);
 });

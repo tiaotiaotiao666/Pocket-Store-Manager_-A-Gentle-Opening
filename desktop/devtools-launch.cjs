@@ -16,6 +16,8 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { spawn } = require('node:child_process');
 
+const { inspectOutput } = require('./output-consistency.cjs');
+
 const DEVTOOLS_CLI_CANDIDATES = Object.freeze([
   'E:\\微信web开发者工具\\cli.bat',
   'D:\\微信web开发者工具\\cli.bat',
@@ -158,8 +160,8 @@ function validateProjectDir(targetPath) {
   return { ok: true, path: resolved };
 }
 
-const DEFAULT_APPID_SOURCE = path.join(__dirname, '..', 'miniprogram', 'project.config.json');
 const INVALID_APPIDS = new Set(['', 'touristappid']);
+const APPID_RE = /^wx[0-9a-f]{16}$/;
 
 function readAppidFrom(file) {
   try {
@@ -170,44 +172,41 @@ function readAppidFrom(file) {
   }
 }
 
+/** 与 appid-postprocess 一致的脱敏（不打印明文 AppID）。 */
+function maskAppid(appid) {
+  if (typeof appid !== 'string' || appid.length < 10) return '';
+  return `${appid.slice(0, 4)}****${appid.slice(-6)}`;
+}
+
 /**
- * 预览工程导出时默认写 touristappid，微信开发者工具 CLI 不接受该 AppID。
- * 打开前若目标仍是游客/空 appid，替换成项目 `miniprogram` 里的有效 appid。
+ * 工程目录是否为 Composer 产物。
+ * W1：只有 Composer 产物才有 composition.lock.json + generation-report.json 这套摘要，
+ * 也只有它能被「只读一致性检查」验证。非 Composer 的普通预览目录无法可靠区分
+ * AppID 状态，宁可拒绝启动，也不猜、不改写。
  */
-function ensurePreviewAppid(projectPath, sourceFile) {
-  const configPath = path.join(projectPath, 'project.config.json');
-  let config;
-  try {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  } catch (error) {
-    return { changed: false, appid: '' };
-  }
-
-  const current = typeof config.appid === 'string' ? config.appid.trim() : '';
-  if (current && !INVALID_APPIDS.has(current)) {
-    return { changed: false, appid: current };
-  }
-
-  const fallback = readAppidFrom(sourceFile || DEFAULT_APPID_SOURCE);
-  if (!fallback || INVALID_APPIDS.has(fallback)) {
-    return { changed: false, appid: current };
-  }
-
-  config.appid = fallback;
-  try {
-    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
-    return { changed: true, appid: fallback };
-  } catch (error) {
-    return { changed: false, appid: current };
-  }
+function detectComposerOutput(projectPath) {
+  const lockFile = path.join(projectPath, 'composition.lock.json');
+  const reportFile = path.join(projectPath, 'generation-report.json');
+  const missing = [];
+  if (!fs.existsSync(lockFile)) missing.push('composition.lock.json');
+  if (!fs.existsSync(reportFile)) missing.push('generation-report.json');
+  return { composer: missing.length === 0, missing };
 }
 
 /**
  * 在微信开发者工具里打开工程目录。
  *
+ * W1 约束（不可退让）：
+ * 1. 不再隐式改写 project.config.json：预览产物里的 touristappid / 空 AppID
+ *    一律视为未完成 AppID 写入，直接拒绝启动；
+ * 2. 启动前必须通过统一只读一致性检查（config/lock/report/当前磁盘摘要一致 +
+ *    verifyOutput 通过），任何一项失败都不调起 launcher；
+ * 3. 所有预检（路径、身份、AppID、CLI 可用性）都在调起之前完成，本链路不写任何文件；
+ * 4. 成功只代表"已请求打开"，不代表编译通过。
+ *
  * @param {{ projectPath?: string }} payload
  * @param {{ defaultProjectPath?: string, launcher?: Function, env?: object,
- *   existsSync?: Function }} [options]
+ *   existsSync?: Function, inspectOutput?: Function, mode?: string }} [options]
  */
 async function openProjectInDevtools(payload, options) {
   const opts = options || {};
@@ -226,8 +225,6 @@ async function openProjectInDevtools(payload, options) {
     };
   }
 
-  const appidFix = ensurePreviewAppid(validation.path, opts.fallbackAppidFile);
-
   if (!isShellSafePath(validation.path)) {
     return {
       ok: false,
@@ -237,19 +234,88 @@ async function openProjectInDevtools(payload, options) {
     };
   }
 
+  // ① 必须先能证明这是 Composer 产物（否则没有摘要可校验）
+  const identity = detectComposerOutput(validation.path);
+  if (!identity.composer) {
+    return {
+      ok: false,
+      cancelled: false,
+      code: 'OUTPUT_NOT_COMPOSER',
+      message: `该目录不是 Composer 产物（缺少 ${identity.missing.join(' / ')}），无法校验 AppID 与摘要。`
+        + '请先在应用内完成导出与 AppID 写入校验，再打开开发者工具。',
+      details: { projectPath: validation.path, missing: identity.missing },
+    };
+  }
+
+  // ② AppID 必须是正式 AppID：本链路不会替用户改写任何文件
+  const configPath = path.join(validation.path, 'project.config.json');
+  const appid = readAppidFrom(configPath);
+  if (INVALID_APPIDS.has(appid)) {
+    return {
+      ok: false,
+      cancelled: false,
+      code: 'APPID_NOT_APPLIED',
+      message: appid === ''
+        ? '工程还没有 AppID（project.config.json 为空）。请先完成 AppID 写入与校验；本应用不会自动改写。'
+        : '工程仍是测试号 touristappid，微信开发者工具不接受。请先完成 AppID 写入与校验。',
+      details: { projectPath: validation.path },
+    };
+  }
+  if (!APPID_RE.test(appid)) {
+    return {
+      ok: false,
+      cancelled: false,
+      code: 'APPID_INVALID',
+      message: 'AppID 格式不合法（应为 wx + 16 位十六进制）。请重新写入并校验 AppID。',
+      details: { projectPath: validation.path },
+    };
+  }
+
+  // ③ 统一只读一致性检查（含 verifyOutput）：任一项失败都不调起
+  const inspect = typeof opts.inspectOutput === 'function' ? opts.inspectOutput : inspectOutput;
+  let inspected;
+  try {
+    inspected = inspect(validation.path, {
+      expectAppid: appid,
+      requireValidAppid: true,
+      deep: true,
+      mode: opts.mode,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      cancelled: false,
+      code: 'OUTPUT_VERIFY_FAILED',
+      message: `产物一致性检查失败：${(error && error.message) || '未知错误'}`,
+      details: { projectPath: validation.path },
+    };
+  }
+  if (!inspected || inspected.ok !== true) {
+    const problems = (inspected && inspected.problems) || [];
+    return {
+      ok: false,
+      cancelled: false,
+      code: (inspected && inspected.code) || 'OUTPUT_VERIFY_FAILED',
+      message: `产物未通过一致性校验，已拒绝打开开发者工具：${(inspected && inspected.message) || '摘要不一致'}`,
+      details: { projectPath: validation.path, problems: problems.slice(0, 10) },
+    };
+  }
+
+  // ④ CLI 可用性预检（仍在任何写操作之前；本链路本来就不写文件）
   const cli = resolveDevtoolsCli({ env: opts.env, existsSync: opts.existsSync });
   if (!cli) {
     return {
       ok: false,
       cancelled: false,
       code: 'DEVTOOLS_NOT_FOUND',
-      message: `未找到微信开发者工具 CLI：请安装开发者工具，或把环境变量 WX_CLI_PATH 指向 cli.bat。工程目录：${validation.path}`,
+      message: `未找到微信开发者工具 CLI（cli.bat）。请安装后重试，或设置 WX_CLI_PATH 指向 cli.bat。工程：${validation.path}`,
       details: { via: 'devtools-cli', projectPath: validation.path },
     };
   }
 
   const launcher = typeof opts.launcher === 'function' ? opts.launcher : spawn;
   try {
+    // cli.bat 必须经 shell 执行；路径已通过 isShellSafePath 校验，这里只做引号包裹。
     const child = launcher(`"${cli}"`, ['open', '--project', `"${validation.path}"`], {
       shell: true,
       detached: true,
@@ -271,21 +337,36 @@ async function openProjectInDevtools(payload, options) {
     ok: true,
     cancelled: false,
     code: null,
-    message: `已请求微信开发者工具打开工程：${validation.path}`,
+    message: `已请求打开微信开发者工具（仅表示已发起调起，不代表编译通过）：${validation.path}`,
     details: {
       via: 'devtools-cli',
       projectPath: validation.path,
       cli,
-      appid: appidFix.appid,
-      appidFixed: appidFix.changed,
+      appidMasked: maskAppid(appid),
+      appidFixed: false,
+      status: 'devtools-open-requested',
+      compiled: false,
+      consistency: {
+        tree: inspected.tree,
+        lockDigest: inspected.lockDigest,
+        fileCount: inspected.fileCount,
+      },
     },
   };
 }
 
+/**
+ * 旧实现（隐式改写 AppID）已删除：W1 起任何 AppID 写入都必须走
+ * `appid-postprocess.cjs` 的事务（备份 + 全量校验 + 可回滚），
+ * 本模块只读不写。
+ */
+
 module.exports = {
   DEVTOOLS_CLI_CANDIDATES,
+  APPID_RE,
   isShellSafePath,
   resolveDevtoolsCli,
   validateProjectDir,
+  detectComposerOutput,
   openProjectInDevtools,
 };

@@ -54,6 +54,32 @@ function lineNumber(content, index) {
   return content.slice(0, index).split('\n').length;
 }
 
+/**
+ * W1：只有「生成报告」里显式声明的 output.projectPath 允许出现 Windows 绝对路径
+ * （那是产物位置的真实记录，不是泄漏）。豁免范围严格限定：
+ * - 仅 generation-report.json 与 生成报告.md 两个文件；
+ * - 仅限调用方传入的那几个字面值，其他任何绝对路径照旧报 PATH_ESCAPE；
+ * - 屏蔽时用等长无关占位符，不改变换行结构，行号仍然准确。
+ */
+const REPORT_DECLARED_PATH_FILES = new Set(['generation-report.json', '生成报告.md']);
+const DECLARED_PATH_PLACEHOLDER = '<declared-output-path>';
+
+function maskDeclaredPaths(text, values) {
+  let masked = String(text);
+  for (const value of values) {
+    if (typeof value !== 'string' || !value.trim()) continue;
+    // JSON 里反斜杠是转义的（"C:\\Users\\..."），两种形态都要屏蔽，
+    // 否则报告 JSON 仍会命中 PATH_ESCAPE。
+    const variants = new Set([value, value.replace(/\\/g, '\\\\')]);
+    for (const variant of variants) {
+      if (!variant) continue;
+      const pieces = masked.split(variant);
+      if (pieces.length > 1) masked = pieces.join(DECLARED_PATH_PLACEHOLDER);
+    }
+  }
+  return masked;
+}
+
 function fileLine(content, index) {
   const start = content.lastIndexOf('\n', index) + 1;
   const end = content.indexOf('\n', index);
@@ -68,7 +94,7 @@ function scanText(text, options) {
   const content = String(text);
   const lines = content.split('\n');
 
-  const rules = [...SECRET_PATTERNS, ...DB_PATTERNS, ...ABSOLUTE_PATH_PATTERNS, ...INTERNAL_HOST_PATTERNS];
+  const rules = [...SECRET_PATTERNS, ...DB_PATTERNS, ...INTERNAL_HOST_PATTERNS];
   for (const rule of rules) {
     const flags = rule.pattern.flags.includes('g') ? rule.pattern.flags : rule.pattern.flags + 'g';
     const pattern = new RegExp(rule.pattern.source, flags);
@@ -81,6 +107,24 @@ function scanText(text, options) {
         code: rule.code,
       });
       match = pattern.exec(content);
+    }
+  }
+
+  // 绝对路径规则只对「屏蔽掉已声明产物路径」的文本生效，其余规则仍看原文。
+  const declared = Array.isArray(opts.declaredPaths) ? opts.declaredPaths : [];
+  const pathSource = declared.length > 0 ? maskDeclaredPaths(content, declared) : content;
+  for (const rule of ABSOLUTE_PATH_PATTERNS) {
+    const flags = rule.pattern.flags.includes('g') ? rule.pattern.flags : rule.pattern.flags + 'g';
+    const pattern = new RegExp(rule.pattern.source, flags);
+    let match = pattern.exec(pathSource);
+    while (match) {
+      findings.push({
+        file,
+        line: lineNumber(pathSource, match.index),
+        pattern: fileLine(content, match.index).slice(0, 120),
+        code: rule.code,
+      });
+      match = pattern.exec(pathSource);
     }
   }
 
@@ -159,13 +203,18 @@ function scanSources(targets, options) {
 function scanOutput(dir, options) {
   const opts = options || {};
   const findings = [];
+  const declaredPaths = Array.isArray(opts.declaredPaths) ? opts.declaredPaths : [];
   listFiles(dir).forEach((file) => {
     const text = fs.readFileSync(file, 'utf8');
+    const relative = path.relative(dir, file).replace(/\\/g, '/');
+    // 声明路径豁免只作用于生成报告本身，业务文件一律不豁免。
+    const allowPaths = REPORT_DECLARED_PATH_FILES.has(relative) ? declaredPaths : [];
     findings.push(...scanText(text, {
       mode: opts.mode,
-      file: path.relative(dir, file).replace(/\\/g, '/'),
+      file: relative,
       output: true,
       allowExternalUrls: Boolean(opts.allowExternalUrls),
+      declaredPaths: allowPaths,
     }));
   });
   return { ok: findings.length === 0, findings };
@@ -176,6 +225,8 @@ module.exports = {
   scanSources,
   scanOutput,
   listFiles,
+  maskDeclaredPaths,
+  REPORT_DECLARED_PATH_FILES,
   SECRET_PATTERNS,
   ABSOLUTE_PATH_PATTERNS,
   INTERNAL_HOST_PATTERNS,

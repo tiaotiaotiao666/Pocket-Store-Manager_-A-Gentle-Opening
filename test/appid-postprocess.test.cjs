@@ -120,12 +120,16 @@ test('非法 AppID 与缺失产物在改动文件前失败', async (t) => {
 
 test('清单缺少 project.config.json 时拒绝回填', async (t) => {
   const outputPath = await buildProject(t);
+  const configPath = path.join(outputPath, 'project.config.json');
+  const configBefore = fs.readFileSync(configPath);
   const lockFile = path.join(outputPath, 'composition.lock.json');
   const lock = readJson(lockFile);
   lock.outputDigest.files = lock.outputDigest.files.filter((item) => item.path !== 'project.config.json');
   fs.writeFileSync(lockFile, JSON.stringify(lock, null, 2) + '\n');
+  // W1：锁与清单已不自洽，必须在写任何文件前就拒绝。
   assert.throws(
     () => applyAppid({ outputPath, appid: 'wx1234567890abcdef' }),
-    (error) => error.code === 'APPID_TARGET_MISSING',
+    (error) => ['APPID_VERIFY_FAILED', 'APPID_PATH_INVALID'].includes(error.code),
   );
+  assert.strictEqual(Buffer.compare(fs.readFileSync(configPath), configBefore), 0, '拒绝后 config 必须逐字节不变');
 });

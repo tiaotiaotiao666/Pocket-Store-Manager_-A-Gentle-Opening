@@ -65,6 +65,7 @@ function buildReport(context) {
 }
 
 function renderMarkdown(report) {
+  const history = Array.isArray(report.output && report.output.history) ? report.output.history : [];
   const lines = [
     '# 生成报告',
     '',
@@ -74,12 +75,22 @@ function renderMarkdown(report) {
     '- 注册表：`' + report.registry.version + '`',
     '- 输出目录：`' + report.output.projectPath + '`',
     '- 产物树摘要：`' + report.output.treeSha256 + '`',
+    '- Lock 摘要：`' + ((report.lock && report.lock.lockDigest) || '—') + '`',
     '',
     '## 检查项',
     '',
     '| 检查 | 结果 | 说明 |',
     '| --- | --- | --- |',
     ...report.checks.map((item) => '| `' + item.id + '` | ' + item.result + ' | ' + String(item.message).replace(/\|/g, '\\|') + ' |'),
+    '',
+    '## 产物摘要历史',
+    '',
+    ...(history.length
+      ? history.map((item) => '- ' + (item.stage || '历史记录')
+        + '（历史记录，不是当前值）：产物树 `' + item.treeSha256 + '`，'
+        + (item.fileCount === undefined ? '—' : item.fileCount) + ' 个文件'
+        + (item.recordedAt ? '，记录于 ' + item.recordedAt : ''))
+      : ['- 无。']),
     '',
     '## 微信编译',
     '',
@@ -114,12 +125,34 @@ function renderMarkdown(report) {
   return lines.join('\n');
 }
 
+/**
+ * 报告自己声明的产物路径（当前值 + 历史值）。
+ * W1：只有这些字面值允许出现在报告里，其他绝对路径一律拦截。
+ */
+function collectReportDeclaredPaths(report) {
+  const values = [];
+  const push = (value) => {
+    if (typeof value === 'string' && value.trim() && !values.includes(value)) values.push(value);
+  };
+  const output = report && typeof report === 'object' ? report.output : null;
+  if (!output || typeof output !== 'object') return values;
+  push(output.projectPath);
+  const history = Array.isArray(output.history) ? output.history : [];
+  history.forEach((item) => {
+    if (item && typeof item === 'object') push(item.projectPath);
+  });
+  return values;
+}
+
 function writeReport(outputDir, report) {
   const warnings = [];
   const jsonText = JSON.stringify(report, null, 2) + '\n';
   const markdown = renderMarkdown(report);
-  const findings = [...scanText(jsonText, { file: 'generation-report.json', mode: 'development' }), ...scanText(markdown, { file: '生成报告.md', mode: 'development' })]
-    .filter((finding) => finding.code !== 'PATH_ESCAPE');
+  const declaredPaths = collectReportDeclaredPaths(report);
+  const findings = [
+    ...scanText(jsonText, { file: 'generation-report.json', mode: 'development', declaredPaths }),
+    ...scanText(markdown, { file: '生成报告.md', mode: 'development', declaredPaths }),
+  ];
   if (findings.length > 0) {
     return { ok: false, warnings: ['报告包含敏感内容，已拒绝写入：' + findings.map((item) => item.code).join(',')] };
   }
@@ -133,4 +166,4 @@ function writeReport(outputDir, report) {
   }
 }
 
-module.exports = { buildReport, renderMarkdown, writeReport };
+module.exports = { buildReport, renderMarkdown, writeReport, collectReportDeclaredPaths };

@@ -371,7 +371,6 @@ function registerPreviewIpc(ipcMain, options) {
   const fsOverride = opts.fs;
   const pathOverride = opts.path;
   const defaultProjectPath = opts.defaultProjectPath;
-  const fallbackAppidFile = opts.fallbackAppidFile;
   const launcherOverride = opts.launcher;
   const envOverride = opts.env;
   const existsSyncOverride = opts.existsSync;
@@ -472,7 +471,6 @@ function registerPreviewIpc(ipcMain, options) {
     try {
       return await openPreviewInDevtools(payload, {
         defaultProjectPath,
-        fallbackAppidFile,
         launcher: launcherOverride,
         env: envOverride,
         existsSync: existsSyncOverride,

@@ -188,7 +188,6 @@ registerPreviewIpc(ipcMain, {
   dialog,
   shell,
   defaultProjectPath: defaultPreviewProject,
-  fallbackAppidFile: path.join(app.getAppPath(), 'miniprogram', 'project.config.json'),
 });
 
 registerFlushGuard({

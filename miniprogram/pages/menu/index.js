@@ -2,8 +2,11 @@ const config = require('../../config/env.js');
 const errorText = require('../../domain/errorText.js');
 const platform = require('../../services/platform.js');
 const storeService = require('../../services/store.js');
+const tableOptionsDomain = require('../../domain/tableOptions.js');
 const visitStore = require('../../state/visit-store.js');
 const cartStore = require('../../state/cart-store.js');
+const slotProps = require('../../config/slots.generated.js');
+const extensions = require('./extensions.generated.js');
 
 Page({
   data: {
@@ -30,12 +33,20 @@ Page({
     detailVisible: false,
     detailProduct: {},
     detailQuantity: 0,
-    tableOptions: config.DEMO_TABLES,
+    // 桌号是门店实时业务数据：只来自后端 /stores/:id/tables，
+    // 加载中 / 空列表 / 请求失败都要有显式状态，不回退固定 A01/A02。
+    tableOptions: [],
+    tablesLoading: false,
+    tablesError: '',
+    slotProps,
   },
 
   onLoad() {
     this.catalog = null;
     this.productsById = {};
+    if (extensions && typeof extensions.onLoad === 'function') {
+      extensions.onLoad(this);
+    }
     this.loadCatalog();
   },
 
@@ -106,6 +117,7 @@ Page({
         wx.setNavigationBarTitle({ title: store.name });
       }
       this.refreshCart();
+      this.loadTables(store.id || visit.storeId);
     } catch (error) {
       const described = errorText.describeError(error);
       this.setData({
@@ -119,6 +131,32 @@ Page({
         done();
       }
     }
+  },
+
+  /**
+   * 读取门店实时桌号（实现见 domain/tableOptions.js，首页/结算页共用同一套逻辑）。
+   * 三种状态都要落到 data 上，供页面显式渲染：
+   * tablesLoading=true 加载中；tablesError 非空 = 请求失败（带重试）；
+   * tablesLoading=false 且 tablesError 为空且列表为空 = 门店确实没有可用桌号。
+   * 任何情况下都不回退到本地固定桌号。
+   */
+  async loadTables(storeId) {
+    const targetStoreId = storeId || this.data.storeId || visitStore.load().storeId;
+    this.setData({ tablesLoading: true, tablesError: '' });
+    const patch = await tableOptionsDomain.loadTableOptions(targetStoreId);
+    // 扫码进入只带 tableId：用刚拿到的真实桌号列表补全展示名称。
+    if (!this.data.tableName) {
+      const tableId = (this.data.visit && this.data.visit.tableId)
+        || (visitStore.load() && visitStore.load().tableId)
+        || '';
+      const name = tableOptionsDomain.nameOfTable(patch.tableOptions, tableId);
+      if (name) patch.tableName = name;
+    }
+    this.setData(patch);
+  },
+
+  onRetryTables() {
+    this.loadTables();
   },
 
   findCategoryName(categories, categoryId) {
@@ -151,14 +189,14 @@ Page({
     const next = visitStore.setFulfillment(event.detail.value);
     this.setData({ visit: next, mode: next.fulfillmentType });
     if (next.fulfillmentType === config.FULFILLMENT_TYPES.DINE_IN && !next.tableId) {
-      platform.toast('堂食需要桌号，请选择下方演示桌号');
+      platform.toast('堂食需要桌号，请选择下方门店桌号');
     }
   },
 
   onPickTable(event) {
     const next = visitStore.setTable(event.currentTarget.dataset.id, event.currentTarget.dataset.name);
     this.setData({ visit: next, mode: next.fulfillmentType, tableName: next.tableName });
-    platform.toast('已选择 ' + next.tableName + ' 桌（演示）');
+    platform.toast('已选择 ' + next.tableName + ' 桌');
   },
 
   onSelectCategory(event) {
@@ -250,7 +288,7 @@ Page({
       return;
     }
     if (visit.fulfillmentType === config.FULFILLMENT_TYPES.DINE_IN && !visit.tableId) {
-      platform.toast('堂食需要桌号，请先选择演示桌号');
+      platform.toast('堂食需要桌号，请先选择门店桌号');
       return;
     }
     const url =

@@ -59,11 +59,6 @@ const DEMO_IDENTITIES = {
 
 const DEFAULT_IDENTITY = 'customer';
 
-const DEMO_TABLES = [
-  { id: 'tbl_A01', name: 'A01' },
-  { id: 'tbl_A02', name: 'A02' },
-];
-
 const FULFILLMENT_TYPES = {
   DINE_IN: 'DINE_IN',
   TAKEAWAY: 'TAKEAWAY',
@@ -82,7 +77,6 @@ module.exports = {
   USE_WECHAT_CODE_LOGIN,
   DEMO_IDENTITIES,
   DEFAULT_IDENTITY,
-  DEMO_TABLES,
   FULFILLMENT_TYPES,
   FULFILLMENT_TEXT,
   STORE_CONFIG: storeConfig,

@@ -18,24 +18,26 @@
   </view>
 
   <block wx:else>
+    <!-- @slot:home-hero -->
+    <!-- @slot-fallback:home-hero -->
     <store-header
-      store-name="{{store.name}}"
+      store-name="{{store.name || ''}}"
       table-name="{{tableName}}"
-      business-hours="{{store.businessHours}}"
+      business-hours="{{store.businessHours || ''}}"
       mode="{{mode}}"
-      address="{{store.address}}"
-      compact="{{true}}"
+      address="{{store.address || ''}}"
     />
-
-    <poster-carousel
-      wx:if="{{posters.length > 0}}"
-      items="{{posters}}"
-      size="lg"
-      interval="4200"
-      bind:select="onSelectPoster"
-    />
+    <!-- @slot-fallback:home-hero:end -->
+    <!-- @slot:home-hero:end -->
 
     <view wx:if="{{demoHint}}" class="home__scene-hint">{{demoHint}}</view>
+
+    <view wx:if="{{versionNotice}}" class="home__scene-hint">{{versionNotice}}</view>
+
+    <!-- @slot:home-marketing -->
+    <!-- @slot-fallback:home-marketing -->
+    <!-- @slot-fallback:home-marketing:end -->
+    <!-- @slot:home-marketing:end -->
 
     <view class="home__section">
       <view class="section-head">
@@ -50,18 +52,30 @@
         table-required="{{true}}"
         bind:change="onModeChange"
       />
-      <view wx:if="{{mode === 'DINE_IN' && !tableName}}" class="home__tables">
-        <text class="home__tables-label">演示桌号</text>
-        <view
-          wx:for="{{tableOptions}}"
-          wx:key="id"
-          class="home__table"
-          data-id="{{item.id}}"
-          data-name="{{item.name}}"
-          bind:tap="onPickTable"
-        >
-          {{item.name}}
-        </view>
+      <view wx:if="{{mode === 'DINE_IN'}}" class="home__tables">
+        <text class="home__tables-label">门店桌号</text>
+        <block wx:if="{{tablesLoading}}">
+          <text class="home__tables-hint">正在读取门店桌号…</text>
+        </block>
+        <block wx:elif="{{tablesError}}">
+          <text class="home__tables-hint">{{tablesError}}</text>
+          <view class="home__tables-retry" bind:tap="onRetryTables">重试</view>
+        </block>
+        <block wx:elif="{{tableOptions.length === 0}}">
+          <text class="home__tables-hint">当前门店还没有可用桌号，请联系店员确认</text>
+        </block>
+        <block wx:else>
+          <view
+            wx:for="{{tableOptions}}"
+            wx:key="id"
+            class="home__table {{tableName === item.name ? 'home__table--active' : ''}}"
+            data-id="{{item.id}}"
+            data-name="{{item.name}}"
+            bind:tap="onPickTable"
+          >
+            {{item.name}}
+          </view>
+        </block>
       </view>
     </view>
 

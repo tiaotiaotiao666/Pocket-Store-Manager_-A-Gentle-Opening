@@ -42,15 +42,15 @@ function save(visit) {
   return next;
 }
 
+/**
+ * 桌号名称只来自门店实时桌号数据（`domain/tableOptions.js`），
+ * 这里不再有任何本地固定桌号兜底：未知 id 返回空名称，由页面提示用户重新选桌。
+ */
 function resolveTableName(tableId) {
   if (!tableId) {
     return '';
   }
-  const matched = config.DEMO_TABLES.filter((table) => table.id === tableId)[0];
-  if (matched) {
-    return matched.name;
-  }
-  return tableId;
+  return '';
 }
 
 function applyEntry(entry) {

@@ -544,6 +544,20 @@ function main() {
     process.exitCode = 1;
     return;
   }
+  // 镜像身份门禁：miniprogram/ 只是 Base 模板的镜像，不是导出成果。
+  // 缺少清单或摘要不一致（镜像陈旧）都直接失败，避免被误当成交付物。
+  if (path.resolve(target) === path.resolve(repoRoot, 'miniprogram')) {
+    const mirror = require('./sync-miniprogram-mirror.cjs');
+    const verdict = mirror.verifyMirrorManifest(target);
+    if (!verdict.ok) {
+      result.errors.push('镜像身份校验失败：' + verdict.error);
+    } else {
+      result.warnings.push(
+        '镜像身份已声明（MIRROR.json）：' + verdict.manifest.fileCount + ' 个文件，真源 '
+        + verdict.manifest.sourceOfTruth + '；本目录不是导出成果',
+      );
+    }
+  }
   printResult(result);
 }
 

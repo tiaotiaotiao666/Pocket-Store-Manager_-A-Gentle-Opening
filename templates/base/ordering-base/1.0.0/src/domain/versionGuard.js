@@ -28,18 +28,6 @@ function compareVersions(localVersion, onlineVersion) {
   return { stale: false, shouldRefresh: false, unknown: false, message: '' };
 }
 
-function resolveTables(remoteTables, demoFallback) {
-  if (Array.isArray(remoteTables) && remoteTables.length > 0) {
-    return { tables: remoteTables, source: 'remote', message: '' };
-  }
-  return {
-    tables: Array.isArray(demoFallback) ? demoFallback : [],
-    source: 'demo',
-    message: '桌号接口暂不可用，当前显示演示桌号。',
-  };
-}
-
 module.exports = {
   compareVersions,
-  resolveTables,
 };

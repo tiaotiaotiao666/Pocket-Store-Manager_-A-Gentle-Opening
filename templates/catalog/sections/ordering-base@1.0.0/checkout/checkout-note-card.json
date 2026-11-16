@@ -20,8 +20,8 @@
   "source": {
     "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
-    "lineStart": 70,
-    "lineEnd": 84,
+    "lineStart": 82,
+    "lineEnd": 96,
     "digest": "sha256:37737abbcf9b85ff27f7c117a72434bad4a12616469af186165ab4d277695d1f"
   },
   "template": {
@@ -29,8 +29,8 @@
     "rootTag": "view",
     "snippets": [
       {
-        "lineStart": 70,
-        "lineEnd": 84,
+        "lineStart": 82,
+        "lineEnd": 96,
         "code": "<view class=\"surface-card checkout__card\">\r\n        <view class=\"checkout__card-head\">\r\n          <text class=\"checkout__card-title\">备注</text>\r\n          <text class=\"checkout__card-extra\">{{noteLength}}/50</text>\r\n        </view>\r\n        <textarea\r\n          class=\"checkout__textarea\"\r\n          value=\"{{note}}\"\r\n          placeholder=\"口味偏好、忌口等，可留空\"\r\n          placeholder-class=\"checkout__placeholder\"\r\n          maxlength=\"50\"\r\n          bindinput=\"onNoteInput\"\r\n          auto-height\r\n        />\r\n      </view>"
       }
     ]

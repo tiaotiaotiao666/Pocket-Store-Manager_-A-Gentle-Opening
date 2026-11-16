@@ -14,7 +14,7 @@
       "index.wxml",
       "index.wxss"
     ],
-    "digest": "sha256:a17a50a6a3d78912b5a3d5bec10c4dc9620d1f2d373646bc9cee0e49f9b4b91b"
+    "digest": "sha256:fa9381682d67a66f4f67bb99717247a53a927fb737b73ae9b65add31b8db9e13"
   },
   "components": [
     {
@@ -28,7 +28,7 @@
       "tag": "error-banner",
       "componentId": "error-banner",
       "mode": "always",
-      "sourceLine": 87,
+      "sourceLine": 99,
       "usage": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onCloseError\" />"
     }
   ],
@@ -39,10 +39,12 @@
       "goMenu",
       "handleSubmitError",
       "loadStore",
+      "loadTables",
       "onCloseError",
       "onNoteInput",
       "onPickTable",
       "onRetry",
+      "onRetryTables",
       "onSubmit",
       "refreshCart",
       "submitOrder"
@@ -69,6 +71,8 @@
       "submitting",
       "tableName",
       "tableOptions",
+      "tablesError",
+      "tablesLoading",
       "totalCents",
       "totalQuantity",
       "totalText",

@@ -2,6 +2,7 @@ const config = require('../../config/env.js');
 const idempotency = require('../../domain/idempotency.js');
 const money = require('../../domain/money.js');
 const errorText = require('../../domain/errorText.js');
+const tableOptionsDomain = require('../../domain/tableOptions.js');
 const platform = require('../../services/platform.js');
 const storeService = require('../../services/store.js');
 const orderService = require('../../services/order.js');
@@ -18,7 +19,9 @@ Page({
     mode: config.FULFILLMENT_TYPES.TAKEAWAY,
     modeText: '到店自取',
     tableName: '',
-    tableOptions: config.DEMO_TABLES,
+    tableOptions: [],
+    tablesLoading: false,
+    tablesError: '',
     items: [],
     totalCents: 0,
     totalQuantity: 0,
@@ -49,6 +52,7 @@ Page({
       tableName: visit.tableId === tableId ? visit.tableName : visitStore.resolveTableName(tableId),
     });
     this.loadStore();
+    this.loadTables();
     this.refreshCart();
     this.ensureLogin();
   },
@@ -66,6 +70,24 @@ Page({
     } catch (error) {
       this.setData({ store: { name: '门店' } });
     }
+  },
+
+  async loadTables() {
+    const visit = visitStore.load();
+    const storeId = (this.data.store && this.data.store.id) || visit.storeId;
+    this.setData({ tablesLoading: true, tablesError: '' });
+    const patch = await tableOptionsDomain.loadTableOptions(storeId);
+    // 扫码进入只带 tableId：用刚拿到的真实桌号列表补全展示名称。
+    if (!this.data.tableName) {
+      const tableId = (this.data.visit && this.data.visit.tableId) || visit.tableId || '';
+      const name = tableOptionsDomain.nameOfTable(patch.tableOptions, tableId);
+      if (name) patch.tableName = name;
+    }
+    this.setData(patch);
+  },
+
+  onRetryTables() {
+    this.loadTables();
   },
 
   async ensureLogin() {
@@ -137,7 +159,7 @@ Page({
       return;
     }
     if (this.data.mode === config.FULFILLMENT_TYPES.DINE_IN && !visit.tableId) {
-      this.setData({ error: '堂食订单需要桌号，请扫描桌码或选择演示桌号', errorAction: '选择桌号', requestId: '' });
+      this.setData({ error: '堂食订单需要桌号，请扫描桌码或选择门店桌号', errorAction: '选择桌号', requestId: '' });
       return;
     }
 

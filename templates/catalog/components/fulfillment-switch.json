@@ -16,7 +16,7 @@
     ],
     "registryAsset": null,
     "registryMirror": null,
-    "digest": "sha256:65df121c8a263f2fa685f5a3c156934f4d1bd730391c9581258eb2ec1e803369"
+    "digest": "sha256:70711e11f64a4ff668a96d1d9c1da65981fab4a9aba5cb8ab73301e958b95302"
   },
   "runtime": {
     "mode": "base-page-fixed",
@@ -122,6 +122,6 @@
   "preview": null,
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:65df121c8a263f2fa685f5a3c156934f4d1bd730391c9581258eb2ec1e803369"
+    "digest": "sha256:70711e11f64a4ff668a96d1d9c1da65981fab4a9aba5cb8ab73301e958b95302"
   }
 }

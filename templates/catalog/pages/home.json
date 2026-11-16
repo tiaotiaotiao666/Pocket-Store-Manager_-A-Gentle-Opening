@@ -14,7 +14,7 @@
       "index.wxml",
       "index.wxss"
     ],
-    "digest": "sha256:2fde07fedd2742be2b5946e50ec0fff2e42750a11e904e35d1950b798ccf6b62"
+    "digest": "sha256:e5476d55c798b5133784c73206618e6fb3c0f435129d62fb76a0e5a980160f3c"
   },
   "components": [
     {
@@ -49,7 +49,7 @@
       "tag": "order-card",
       "componentId": "order-card",
       "mode": "always",
-      "sourceLine": 87,
+      "sourceLine": 99,
       "usage": "<order-card order=\"{{item}}\" role=\"CUSTOMER\" actionable=\"{{false}}\" bind:open=\"onOpenOrder\" />"
     },
     {
@@ -110,7 +110,8 @@
       "onModeChange",
       "onOpenOrder",
       "onPickTable",
-      "onRetry"
+      "onRetry",
+      "onRetryTables"
     ],
     "lifecycle": [
       "onLoad",
@@ -133,6 +134,8 @@
       "store",
       "tableName",
       "tableOptions",
+      "tablesError",
+      "tablesLoading",
       "versionNotice",
       "visit"
     ]

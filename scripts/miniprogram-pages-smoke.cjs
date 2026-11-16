@@ -269,15 +269,18 @@ async function main() {
   await waitFor(() => isOrderGone(merchant, orderId), '接单后移出待处理');
   step('店主接单：PENDING_ACCEPT → PREPARING，订单移出待处理');
 
-  merchant.onChangeSegment({ currentTarget: { dataset: { key: 'working' } } });
+  // 店主订单台的分段键是 pending / preparing / ready / history（见页面 SEGMENTS）。
+  merchant.onChangeSegment({ currentTarget: { dataset: { key: 'preparing' } } });
   await waitFor(() => merchant.data.orders.some((item) => item.id === orderId), '进行中分段');
   assert.equal(merchant.data.orders.filter((item) => item.id === orderId)[0].status, 'PREPARING');
-  merchant.onAdvance({ detail: { orderId, toStatus: 'READY' } });
+  // 推进到 READY 后订单会离开「制作中」分段，必须切到「待取餐」分段再断言。
+  await merchant.onAdvance({ detail: { orderId, toStatus: 'READY' } });
+  merchant.onChangeSegment({ currentTarget: { dataset: { key: 'ready' } } });
   await waitFor(
     () => (merchant.data.orders.filter((item) => item.id === orderId)[0] || {}).status === 'READY',
-    '制作完成',
+    '待取餐分段',
   );
-  merchant.onAdvance({ detail: { orderId, toStatus: 'COMPLETED' } });
+  await merchant.onAdvance({ detail: { orderId, toStatus: 'COMPLETED' } });
   await waitFor(
     () => isOrderGone(merchant, orderId),
     '完成订单移出进行中',

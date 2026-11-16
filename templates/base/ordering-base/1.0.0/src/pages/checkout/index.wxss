@@ -76,6 +76,25 @@
   font-weight: 600;
 }
 
+.checkout__table--active {
+  border: 2rpx solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.checkout__tables-hint {
+  font-size: 22rpx;
+  color: var(--color-muted);
+}
+
+.checkout__tables-retry {
+  margin-left: 14rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid var(--color-border);
+  font-size: 22rpx;
+  color: var(--color-primary);
+}
+
 .checkout__card-head {
   display: flex;
   align-items: baseline;

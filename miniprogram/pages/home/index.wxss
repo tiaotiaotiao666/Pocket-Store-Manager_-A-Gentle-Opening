@@ -95,6 +95,25 @@
   font-weight: 600;
 }
 
+.home__table--active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.home__tables-hint {
+  font-size: 22rpx;
+  color: var(--color-muted);
+}
+
+.home__tables-retry {
+  margin-left: 14rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid var(--color-border);
+  font-size: 22rpx;
+  color: var(--color-primary);
+}
+
 .home__cta {
   margin-top: 36rpx;
   letter-spacing: 2rpx;

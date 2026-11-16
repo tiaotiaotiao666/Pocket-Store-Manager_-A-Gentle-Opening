@@ -11,7 +11,20 @@ npm run build           # vite build
 npm run desktop:dev     # vite + Electron（在普通终端里用）
 npm run agent:app       # 同上，但适合 agent shell（见下方环境坑）
 npm run agent:smoke     # 无障碍闭环走查：工作台 → 设置页 → 返回
+npm run mini:check      # 小程序镜像结构校验
+npm run mirror:check    # 校验 miniprogram/ 镜像是否与真源一致（MIRROR.json 摘要）
+npm run mirror:sync     # 用 templates/base/ordering-base/1.0.0/src 覆盖同步 miniprogram/
 ```
+
+## 小程序目录的身份：`miniprogram/` 是只读镜像，不是交付物
+
+- 真源唯一：`templates/base/ordering-base/1.0.0/src`。`miniprogram/` 由
+  `npm run mirror:sync` 从真源复制而来，根目录 `MIRROR.json` 记录真源路径、文件数与摘要。
+- 不要手改 `miniprogram/`：手改会在下次同步被覆盖，也会让 `mini:check` 的摘要校验失败。
+- 交付物只能由 Composer 导出（`node scripts/composer/cli.cjs --plan ... --out ...`），
+  导出目录才是可以交给微信开发者工具的成果；`miniprogram/` 目录不得当作导出成果提交或汇报。
+- `assets/tabbar/*.svg`、`components/poster-carousel/*` 是仅存在于镜像里的用户资产，
+  同步脚本保留不删。
 
 ## 界面调试：优先用无障碍树，不要靠截图
 

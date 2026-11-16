@@ -2,7 +2,6 @@ const config = require('../../config/env.js');
 const scene = require('../../domain/scene.js');
 const orderStatus = require('../../domain/orderStatus.js');
 const orderView = require('../../domain/orderView.js');
-const money = require('../../domain/money.js');
 const errorText = require('../../domain/errorText.js');
 const platform = require('../../services/platform.js');
 const storeService = require('../../services/store.js');
@@ -10,6 +9,10 @@ const orderService = require('../../services/order.js');
 const auth = require('../../services/auth.js');
 const session = require('../../services/session.js');
 const visitStore = require('../../state/visit-store.js');
+const versionGuard = require('../../domain/versionGuard.js');
+const tableOptionsDomain = require('../../domain/tableOptions.js');
+const slotProps = require('../../config/slots.generated.js');
+const extensions = require('./extensions.generated.js');
 
 Page({
   data: {
@@ -18,17 +21,20 @@ Page({
     errorAction: '',
     requestId: '',
     store: null,
-    posters: [],
     visit: null,
     mode: config.FULFILLMENT_TYPES.TAKEAWAY,
     tableName: '',
-    tableOptions: config.DEMO_TABLES,
+    tableOptions: [],
+    tablesLoading: false,
+    tablesError: '',
     activeOrders: [],
     pendingPaymentCount: 0,
     identityLabel: '未登录',
     merchantStoreId: '',
     demoMode: !config.USE_WECHAT_CODE_LOGIN,
     demoHint: '',
+    versionNotice: '',
+    slotProps,
   },
 
   onLoad(options) {
@@ -40,6 +46,9 @@ Page({
       tableName: visit.tableName,
       demoHint: entry.fromScene ? '已识别扫码进入的门店' : '',
     });
+    if (extensions && typeof extensions.onLoad === 'function') {
+      extensions.onLoad(this);
+    }
     this.loadOverview();
   },
 
@@ -71,28 +80,22 @@ Page({
     this.setData({ loading: true, error: '' });
     try {
       const store = await storeService.getStore(visit.storeId);
-      let posters = [];
-      try {
-        const posterResponse = await storeService.getPosters(visit.storeId);
-        posters = (Array.isArray(posterResponse) ? posterResponse : []).map((poster) => ({
-          ...poster,
-          priceText: money.formatAmount(poster.product && poster.product.priceCents),
-        }));
-      } catch (posterError) {
-        posters = [];
-      }
       const nextVisit = visitStore.applyStore(store);
+      const localVersion = config.STORE_CONFIG && config.STORE_CONFIG.meta
+        ? config.STORE_CONFIG.meta.catalogVersion
+        : null;
+      const guard = versionGuard.compareVersions(localVersion, store.catalogVersion);
       this.setData({
         store,
-        posters,
         visit: nextVisit,
         mode: nextVisit.fulfillmentType,
         tableName: nextVisit.tableName,
-        loading: false,
+        versionNotice: guard.stale ? guard.message : '',
       });
       if (typeof wx !== 'undefined' && wx.setNavigationBarTitle) {
         wx.setNavigationBarTitle({ title: store.name });
       }
+      await this.loadTables(visit.storeId);
       await this.loadProfile();
       await this.loadActiveOrders();
     } catch (error) {
@@ -104,10 +107,32 @@ Page({
         requestId: described.requestId,
       });
     } finally {
+      // loading 覆盖桌号与身份加载：桌号来自后端 /tables，等它落 data 后再收尾，
+      // 否则页面会先闪一次「无桌号」再补上（扫码进入时尤其明显）。
+      this.setData({ loading: false });
       if (typeof done === 'function') {
         done();
       }
     }
+  },
+
+  async loadTables(storeId) {
+    const targetStoreId = storeId || this.data.storeId || visitStore.load().storeId;
+    this.setData({ tablesLoading: true, tablesError: '' });
+    const patch = await tableOptionsDomain.loadTableOptions(targetStoreId);
+    // 扫码进入只带 tableId：用刚拿到的真实桌号列表补全展示名称。
+    if (!this.data.tableName) {
+      const tableId = (this.data.visit && this.data.visit.tableId)
+        || (visitStore.load() && visitStore.load().tableId)
+        || '';
+      const name = tableOptionsDomain.nameOfTable(patch.tableOptions, tableId);
+      if (name) patch.tableName = name;
+    }
+    this.setData(patch);
+  },
+
+  onRetryTables() {
+    this.loadTables();
   },
 
   async loadProfile() {
@@ -153,7 +178,7 @@ Page({
     const next = visitStore.setFulfillment(event.detail.value);
     this.setData({ visit: next, mode: next.fulfillmentType });
     if (next.fulfillmentType === config.FULFILLMENT_TYPES.DINE_IN && !next.tableId) {
-      platform.toast('请选择演示桌号，或扫描桌上的二维码');
+      platform.toast('请选择桌号，或扫描桌上的二维码');
     }
   },
 
@@ -162,13 +187,13 @@ Page({
     const tableName = event.currentTarget.dataset.name;
     const next = visitStore.setTable(tableId, tableName);
     this.setData({ visit: next, mode: next.fulfillmentType, tableName: next.tableName });
-    platform.toast('已选择 ' + next.tableName + ' 桌（演示）');
+    platform.toast('已选择 ' + next.tableName + ' 桌');
   },
 
   goMenu() {
     const visit = this.data.visit || visitStore.load();
     if (visit.fulfillmentType === config.FULFILLMENT_TYPES.DINE_IN && !visit.tableId) {
-      platform.toast('堂食需要桌号，请先选择演示桌号');
+      platform.toast('堂食需要桌号，请先选择门店桌号');
       return;
     }
     if (typeof wx !== 'undefined' && wx.switchTab) {
@@ -195,18 +220,6 @@ Page({
     if (typeof wx !== 'undefined' && wx.navigateTo) {
       wx.navigateTo({ url: '/pages/merchant-orders/index?storeId=' + encodeURIComponent(this.data.merchantStoreId) });
     }
-  },
-
-  onSelectPoster(event) {
-    const productId = event.detail && event.detail.productId;
-    const storeId = (this.data.visit && this.data.visit.storeId) || config.DEFAULT_STORE_ID;
-    if (!productId || typeof wx === 'undefined' || !wx.navigateTo) {
-      return;
-    }
-    wx.navigateTo({
-      url: '/pages/product-detail/index?storeId=' + encodeURIComponent(storeId) +
-        '&productId=' + encodeURIComponent(productId),
-    });
   },
 
   onOpenOrder(event) {

@@ -20,8 +20,8 @@
   "source": {
     "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
-    "lineStart": 102,
-    "lineEnd": 110,
+    "lineStart": 114,
+    "lineEnd": 122,
     "digest": "sha256:9df20ad7c937a4b88dee8ecbfb4e71700a5837ec76bee2da6e8be5b423c89483"
   },
   "template": {
@@ -29,8 +29,8 @@
     "rootTag": "view",
     "snippets": [
       {
-        "lineStart": 102,
-        "lineEnd": 110,
+        "lineStart": 114,
+        "lineEnd": 122,
         "code": "<view wx:if=\"{{!loading && !emptyCart}}\" class=\"checkout__bar\">\r\n    <view class=\"checkout__bar-total\">\r\n      <text class=\"checkout__bar-label\">合计</text>\r\n      <text class=\"checkout__bar-value\">{{totalText}}</text>\r\n    </view>\r\n    <view class=\"checkout__bar-button {{submitting ? 'checkout__bar-button--off' : ''}}\" bind:tap=\"onSubmit\">\r\n      {{submitting ? '提交中…' : '提交订单'}}\r\n    </view>\r\n  </view>"
       }
     ]

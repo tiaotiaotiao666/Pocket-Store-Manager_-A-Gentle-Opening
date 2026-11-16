@@ -211,6 +211,34 @@ async function main() {
     // 连接就绪后模拟器还需要一点时间注册 webview，否则 reLaunch 会报
     // getPageMetaByWebviewId(...) is null（devtools 2.02 + automator 0.13）。
     await sleep(3000);
+    // 编译完成 ≠ 模拟器已在跑新包：DevTools 可能先返回旧 bundle 的页面数据。
+    // 这里用「首页 data 是否含本轮新增的 tablesLoading 字段」作为新包就绪信号，
+    // 等不到就重试 reLaunch，最多 10 次（每次 2s），仍失败则记 BLOCKED 让报告说清楚。
+    let bundleReady = false;
+    let bundleObservation = '';
+    for (let probe = 0; probe < 10; probe += 1) {
+      try {
+        const page = await miniProgram.reLaunch('/pages/home/index');
+        await sleep(2000);
+        const data = await page.data();
+        if (Object.prototype.hasOwnProperty.call(data, 'tablesLoading')) {
+          bundleReady = true;
+          bundleObservation = '第 ' + (probe + 1) + ' 次 reLaunch 后识别到新包（存在 tablesLoading 字段）';
+          break;
+        }
+        bundleObservation = '第 ' + (probe + 1) + ' 次 reLaunch 仍是旧包（data 键数=' + Object.keys(data || {}).length + '）';
+      } catch (error) {
+        bundleObservation = '第 ' + (probe + 1) + ' 次 reLaunch 失败：' + error.message;
+        await sleep(2000);
+      }
+    }
+    report.bundle = { ready: bundleReady, observation: bundleObservation };
+    if (!bundleReady) {
+      report.status = 'BLOCKED';
+      report.blocked = '模拟器未加载到本轮新包：' + bundleObservation;
+      finish(report, jsonOut);
+      return;
+    }
     if (shotsDir) fs.mkdirSync(shotsDir, { recursive: true });
     let lastProductId = '';
     for (const item of ROUTES) {
@@ -427,38 +455,57 @@ async function probeComponentAnchors(miniProgram) {
  */
 async function probeTableSource(miniProgram, apiBase) {
   const results = [];
+
+  // 统一抓取：首页 / 菜单 / 结算三处桌号列表 + 后端 /tables 列表，逐页比对。
+  async function readPageTables(route) {
+    const page = await openRoute(miniProgram, route);
+    if (!page) return { ok: false, error: route + ' 打开失败' };
+    const pre = await page.data();
+    if (pre.mode !== 'DINE_IN') {
+      await callPageHandler(miniProgram, 'onModeChange', {
+        currentTarget: { dataset: {} },
+        detail: { value: 'DINE_IN' },
+      });
+      await sleep(1500);
+    }
+    const data = await page.data();
+    return {
+      ok: true,
+      tables: (data.tableOptions || []).map((item) => item.id + '/' + item.name).sort(),
+      loading: data.tablesLoading,
+      error: data.tablesError || '',
+      storeId: (data.store && data.store.id) || data.storeId || '',
+    };
+  }
+
   results.push(
-    await attempt('桌号数据源·后端 /stores/:id/tables', async () => {
-      const menu = await openRoute(miniProgram, '/pages/menu/index');
-      if (!menu) return { status: 'FAIL', detail: '菜单页打开失败' };
-      // 堂食开关在组件内部不可点，这里用页面处理器切到堂食，让桌号区渲染出来。
-      const pre = await menu.data();
-      if (pre.mode !== 'DINE_IN') {
-        await callPageHandler(miniProgram, 'onModeChange', {
-          currentTarget: { dataset: {} },
-          detail: { value: 'DINE_IN' },
-        });
-        await sleep(1200);
-      }
-      const data = await menu.data();
-      const pageTables = (data.tableOptions || []).map((item) => item.id + '/' + item.name).sort();
+    await attempt('桌号数据源·首页/菜单/结算均来自后端 /stores/:id/tables', async () => {
+      const menu = await readPageTables('/pages/menu/index');
+      if (!menu.ok) return { status: 'FAIL', detail: menu.error };
+      const home = await readPageTables('/pages/home/index');
+      const checkout = await readPageTables('/pages/checkout/index');
       let backendTables = null;
       let backendError = '';
       try {
-        const storeId = (data.store && data.store.id) || data.storeId;
+        const storeId = menu.storeId || 'store-demo-001';
         const response = await fetch(apiBase + '/stores/' + encodeURIComponent(storeId) + '/tables');
         const payload = await response.json();
         backendTables = (payload.tables || []).map((item) => item.id + '/' + item.name).sort();
       } catch (error) {
         backendError = error.message;
       }
-      const same = backendTables && JSON.stringify(pageTables) === JSON.stringify(backendTables);
+      const menuSame = backendTables && JSON.stringify(menu.tables) === JSON.stringify(backendTables);
+      const homeSame = home.ok && backendTables && JSON.stringify(home.tables) === JSON.stringify(backendTables);
+      const checkoutSame = checkout.ok && backendTables && JSON.stringify(checkout.tables) === JSON.stringify(backendTables);
       return {
-        status: same ? 'PASS' : 'FAIL',
-        detail: '页面桌号=' + JSON.stringify(pageTables)
-          + ' · 后端桌号=' + JSON.stringify(backendTables)
-          + (backendError ? ' · 后端读取失败：' + backendError : '')
-          + ' · tablesLoading=' + data.tablesLoading + ' · tablesError=' + JSON.stringify(data.tablesError || ''),
+        status: menuSame && homeSame && checkoutSame ? 'PASS' : 'FAIL',
+        detail: '后端=' + JSON.stringify(backendTables)
+          + ' · 菜单=' + JSON.stringify(menu.tables)
+          + ' · 首页=' + JSON.stringify(home.ok ? home.tables : home.error)
+          + ' · 结算=' + JSON.stringify(checkout.ok ? checkout.tables : checkout.error)
+          + ' · 三页 tablesLoading=false / tablesError 为空：'
+          + [menu, home, checkout].map((item) => item.ok && !item.loading && !item.error).join(',')
+          + (backendError ? ' · 后端读取失败：' + backendError : ''),
         path: 'DATA_SOURCE',
       };
     }),
@@ -585,18 +632,52 @@ async function probeClickChain(miniProgram, shotsDir) {
   let selectedTable = { id: '', name: '' };
 
   results.push(
-    await attempt('真实点击·首页「开始点餐」跳转菜单', async () => {
+    await attempt('真实点击·首页选桌 →「开始点餐」进入菜单', async () => {
       const home = await openRoute(miniProgram, '/pages/home/index');
       if (!home) return { status: 'FAIL', detail: '首页打开失败' };
+      // 堂食开关是自定义组件内部节点，先用页面处理器切到堂食，让首页桌号区渲染。
+      const pre = await home.data();
+      if (pre.mode !== 'DINE_IN') {
+        await callPageHandler(miniProgram, 'onModeChange', {
+          currentTarget: { dataset: {} },
+          detail: { value: 'DINE_IN' },
+        });
+        await sleep(1500);
+      }
+      const homeTables = await home.$$('.home__table');
+      if (!homeTables || homeTables.length === 0) {
+        const now = await home.data();
+        return {
+          status: 'BLOCKED',
+          detail: '首页未渲染 .home__table（tablesLoading=' + now.tablesLoading
+            + '，tablesError=' + JSON.stringify(now.tablesError || '')
+            + '，tableOptions=' + JSON.stringify(now.tableOptions || []) + '）',
+        };
+      }
+      await homeTables[0].tap();
+      await sleep(1500);
+      const homeAfter = await home.data();
+      const homeTable = {
+        id: (homeAfter.visit && homeAfter.visit.tableId) || '',
+        name: homeAfter.tableName || '',
+      };
       const cta = await home.$('.home__cta');
       if (!cta) return { status: 'BLOCKED', detail: '首页未渲染 .home__cta 节点（可能在加载态）' };
       await cta.tap();
       await sleep(2500);
       const current = await miniProgram.currentPage();
       const route = current ? current.path : '';
+      const menuData = current ? await current.data() : {};
+      const menuTable = { id: (menuData.visit && menuData.visit.tableId) || '', name: menuData.tableName || '' };
+      const consistent = homeTable.name && homeTable.name === menuTable.name && homeTable.id === menuTable.id;
       return {
-        status: route === 'pages/menu/index' ? 'PASS' : 'FAIL',
-        detail: '点击后当前页面=' + route,
+        status: route === 'pages/menu/index' && consistent ? 'PASS' : 'FAIL',
+        detail: '首页点击桌位 → tableName=' + JSON.stringify(homeTable.name)
+          + '，tableId=' + JSON.stringify(homeTable.id)
+          + '（可点节点 ' + homeTables.length + ' 个，桌号来自后端 /tables）'
+          + ' → 点击「开始点餐」进入 ' + route
+          + '，菜单页桌号=' + JSON.stringify(menuTable.name) + '/' + JSON.stringify(menuTable.id)
+          + (consistent ? '（两页一致）' : '（两页不一致）'),
         path: 'CLICK（真实点击）',
       };
     }),

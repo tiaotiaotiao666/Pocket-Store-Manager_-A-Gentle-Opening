@@ -77,8 +77,15 @@ async function main() {
   const visit = visitStore.applyEntry({ storeId: STORE_ID, tableId: TABLE_ID, fromScene: true });
   visitStore.applyStore(store);
   assert.equal(visit.fulfillmentType, 'DINE_IN');
-  assert.equal(visit.tableName, 'A01');
-  step('扫码 scene 解析为堂食 A01 桌');
+  // W5d 起桌号名称不再来自本地固定表：扫码入口只带 tableId，
+  // 名称必须由后端 /stores/:id/tables 解析（页面在 loadTables 里做这件事）。
+  assert.equal(visit.tableName, '');
+  const tableOptions = require(path.join(root, 'miniprogram/domain/tableOptions'));
+  const tablesPayload = await storeService.getTables(STORE_ID);
+  const resolvedName = tableOptions.nameOfTable(tableOptions.mapTables(tablesPayload), TABLE_ID);
+  assert.equal(resolvedName, 'A01');
+  visitStore.setTable(TABLE_ID, resolvedName);
+  step('扫码 scene 解析为堂食桌号：' + TABLE_ID + ' → ' + resolvedName + '（名称来自后端 /tables）');
 
   const rice = products.filter((product) => product.id === 'prd_beef_rice')[0];
   const tea = products.filter((product) => product.id === 'prd_tea')[0];

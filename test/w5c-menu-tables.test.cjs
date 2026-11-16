@@ -24,6 +24,9 @@ function loadMenuPage(getTables) {
     },
   };
   delete require.cache[require.resolve(MENU_JS)];
+  // W5d 起菜单页把桌号读取收敛到 domain/tableOptions，这里同样清缓存，
+  // 否则第二个用例还会复用上一个用例注入的 store 桩。
+  delete require.cache[require.resolve(path.join(SRC, 'domain', 'tableOptions.js'))];
   let captured = null;
   const previousPage = global.Page;
   global.Page = (definition) => {

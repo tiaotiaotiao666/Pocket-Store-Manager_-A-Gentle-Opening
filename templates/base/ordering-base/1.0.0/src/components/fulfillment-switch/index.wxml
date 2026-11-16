@@ -17,5 +17,5 @@
   </view>
 </view>
 <view wx:if="{{tableRequired && value === 'DINE_IN' && !tableName}}" class="fulfillment__hint">
-  堂食需要桌号，请扫描桌上的二维码；也可以先用下方演示桌号体验。
+  堂食需要桌号，请扫描桌上的二维码，或在下方选择门店桌号。
 </view>

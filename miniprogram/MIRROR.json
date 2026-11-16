@@ -1,0 +1,12 @@
+{
+  "role": "mirror",
+  "deliverable": false,
+  "note": "本目录是 Base 模板的只读镜像，不是导出成果；交付物请用 node scripts/composer/cli.cjs 导出。",
+  "sourceOfTruth": "templates/base/ordering-base/1.0.0/src",
+  "generatedBy": "scripts/sync-miniprogram-mirror.cjs",
+  "validateWith": "npm run mini:check",
+  "digestAlgorithm": "sha256(第2列=path:sha256 排序后拼接)",
+  "digest": "30a411f3d34424e46fcf81848294a46fdd4a9373b1c40b0d9690c4da0f55ae13",
+  "fileCount": 149,
+  "syncedAt": "2026-11-16T11:12:25.729Z"
+}

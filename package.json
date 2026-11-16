@@ -32,6 +32,8 @@
     "composer:verify": "node scripts/composer/verify-cli.cjs",
     "mini:example": "node scripts/generate-mini-program.cjs",
     "mini:check": "node scripts/validate-miniprogram.cjs",
+    "mirror:sync": "node scripts/sync-miniprogram-mirror.cjs",
+    "mirror:check": "node scripts/sync-miniprogram-mirror.cjs --check",
     "mini:dup-check": "node scripts/mini-dup-check.cjs",
     "mini:smoke": "node scripts/miniprogram-smoke.cjs",
     "mini:pages": "node scripts/miniprogram-pages-smoke.cjs",

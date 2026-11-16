@@ -30,14 +30,10 @@ test('在线或本地版本缺失时不做错误判断', () => {
   assert.strictEqual(guard.compareVersions(3, undefined).stale, false);
 });
 
-test('桌号接口可用时使用在线数据，不可用时保留演示兜底并标注', () => {
-  const remote = guard.resolveTables([{ id: 'tbl_1', name: 'A01' }], [{ id: 'demo', name: '演示' }]);
-  assert.strictEqual(remote.source, 'remote');
-  assert.deepStrictEqual(remote.tables, [{ id: 'tbl_1', name: 'A01' }]);
-
-  const fallback = guard.resolveTables(null, [{ id: 'demo', name: '演示' }]);
-  assert.strictEqual(fallback.source, 'demo');
-  assert.ok(fallback.message.includes('演示桌号'));
+test('桌号不再由版本守卫兜底：resolveTables 已移除，桌号只走 domain/tableOptions', () => {
+  assert.strictEqual(guard.resolveTables, undefined);
+  const tableOptions = require(path.join(REPO, 'templates', 'base', 'ordering-base', '1.0.0', 'src', 'domain', 'tableOptions.js'));
+  assert.strictEqual(typeof tableOptions.loadTableOptions, 'function');
 });
 
 test('Base 服务层提供 getTables 且只调用公开接口', () => {

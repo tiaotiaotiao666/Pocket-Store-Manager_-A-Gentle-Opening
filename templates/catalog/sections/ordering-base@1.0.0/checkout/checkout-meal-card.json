@@ -21,8 +21,8 @@
     "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
     "lineStart": 22,
-    "lineEnd": 48,
-    "digest": "sha256:0fe8557960bb66ba94b24cabf88c43a16554c15921e97e1ec5b3d7bfb34a582c"
+    "lineEnd": 60,
+    "digest": "sha256:74bbc83cf37743caf3cee284a318bb72bde377a440bdeeba28987fdb640564c9"
   },
   "template": {
     "occurrences": 1,
@@ -30,8 +30,8 @@
     "snippets": [
       {
         "lineStart": 22,
-        "lineEnd": 48,
-        "code": "<view class=\"surface-card checkout__card\">\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">用餐方式</text>\r\n          <text class=\"checkout__row-value\">{{modeText}}</text>\r\n        </view>\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">桌号</text>\r\n          <text class=\"checkout__row-value\">{{tableName || '无需桌号'}}</text>\r\n        </view>\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">下单身份</text>\r\n          <text class=\"checkout__row-value\">{{identityLabel}}</text>\r\n        </view>\r\n        <view wx:if=\"{{mode === 'DINE_IN' && !tableName}}\" class=\"checkout__tables\">\r\n          <text class=\"checkout__tables-label\">演示桌号</text>\r\n          <view\r\n            wx:for=\"{{tableOptions}}\"\r\n            wx:key=\"id\"\r\n            class=\"checkout__table\"\r\n            data-id=\"{{item.id}}\"\r\n            data-name=\"{{item.name}}\"\r\n            bind:tap=\"onPickTable\"\r\n          >\r\n            {{item.name}}\r\n          </view>\r\n        </view>\r\n      </view>"
+        "lineEnd": 60,
+        "code": "<view class=\"surface-card checkout__card\">\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">用餐方式</text>\r\n          <text class=\"checkout__row-value\">{{modeText}}</text>\r\n        </view>\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">桌号</text>\r\n          <text class=\"checkout__row-value\">{{tableName || '无需桌号'}}</text>\r\n        </view>\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">下单身份</text>\r\n          <text class=\"checkout__row-value\">{{identityLabel}}</text>\r\n        </view>\r\n        <view wx:if=\"{{mode === 'DINE_IN'}}\" class=\"checkout__tables\">\r\n          <text class=\"checkout__tables-label\">门店桌号</text>\r\n          <block wx:if=\"{{tablesLoading}}\">\r\n            <text class=\"checkout__tables-hint\">正在读取门店桌号…</text>\r\n          </block>\r\n          <block wx:elif=\"{{tablesError}}\">\r\n            <text class=\"checkout__tables-hint\">{{tablesError}}</text>\r\n            <view class=\"checkout__tables-retry\" bind:tap=\"onRetryTables\">重试</view>\r\n          </block>\r\n          <block wx:elif=\"{{tableOptions.length === 0}}\">\r\n            <text class=\"checkout__tables-hint\">当前门店还没有可用桌号，请联系店员确认</text>\r\n          </block>\r\n          <block wx:else>\r\n            <view\r\n              wx:for=\"{{tableOptions}}\"\r\n              wx:key=\"id\"\r\n              class=\"checkout__table {{tableName === item.name ? 'checkout__table--active' : ''}}\"\r\n              data-id=\"{{item.id}}\"\r\n              data-name=\"{{item.name}}\"\r\n              bind:tap=\"onPickTable\"\r\n            >\r\n              {{item.name}}\r\n            </view>\r\n          </block>\r\n        </view>\r\n      </view>"
       }
     ]
   },
@@ -40,15 +40,23 @@
   "bindings": {
     "dataFields": [
       "DINE_IN",
+      "active",
+      "checkout__table",
       "id",
       "identityLabel",
       "mode",
       "modeText",
       "name",
       "tableName",
-      "tableOptions"
+      "tableOptions",
+      "tablesError",
+      "tablesLoading"
     ],
     "handlers": [
+      {
+        "type": "tap",
+        "handler": "onRetryTables"
+      },
       {
         "type": "tap",
         "handler": "onPickTable"
@@ -58,7 +66,8 @@
   "controller": {
     "source": "Base pages/checkout/index.js",
     "handlers": [
-      "onPickTable"
+      "onPickTable",
+      "onRetryTables"
     ],
     "verified": true,
     "missing": []
@@ -73,7 +82,16 @@
       "checkout__row-value",
       "checkout__tables",
       "checkout__tables-label",
-      "checkout__table"
+      "checkout__tables-hint",
+      "checkout__tables-retry",
+      "checkout__table",
+      "{{tableName",
+      "===",
+      "item.name",
+      "?",
+      "'checkout__table--active'",
+      ":",
+      "''}}"
     ],
     "selectors": [
       {
@@ -137,6 +155,31 @@
         ]
       },
       {
+        "selector": ".checkout__table--active",
+        "declarations": [
+          "border: 2rpx solid var(--color-primary)",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".checkout__tables-hint",
+        "declarations": [
+          "font-size: 22rpx",
+          "color: var(--color-muted)"
+        ]
+      },
+      {
+        "selector": ".checkout__tables-retry",
+        "declarations": [
+          "margin-left: 14rpx",
+          "padding: 6rpx 20rpx",
+          "border-radius: 999rpx",
+          "border: 2rpx solid var(--color-border)",
+          "font-size: 22rpx",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
         "selector": ".checkout__card-head",
         "declarations": [
           "display: flex",
@@ -160,9 +203,11 @@
       }
     ],
     "themeVars": [
-      "--color-muted"
+      "--color-border",
+      "--color-muted",
+      "--color-primary"
     ],
-    "selectorCount": 10
+    "selectorCount": 13
   },
   "reuse": {
     "level": "direct-wxml",
@@ -185,6 +230,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:0fe8557960bb66ba94b24cabf88c43a16554c15921e97e1ec5b3d7bfb34a582c"
+    "digest": "sha256:74bbc83cf37743caf3cee284a318bb72bde377a440bdeeba28987fdb640564c9"
   }
 }

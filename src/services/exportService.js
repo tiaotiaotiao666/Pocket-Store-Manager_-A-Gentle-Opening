@@ -19,6 +19,8 @@ const EXPORT_ERROR_TEXT = Object.freeze({
   API_BASE_URL_NOT_HTTPS: '生产环境的接口地址必须使用 HTTPS。',
   STORE_CONFIG_SCHEMA_UNSUPPORTED: '门店配置版本过旧，请重新导出。',
   OUTPUT_STATIC_CHECK_FAILED: '生成工程未通过静态校验，已回滚。',
+  // 目录改名被系统拒绝时只给可恢复提示；路径等技术细节留在主进程日志里。
+  COMMIT_FAILED: '写入目标位置失败（文件可能被占用），请重试或换一个位置；技术细节已写进日志。',
   SECRET_DETECTED: '生成内容包含敏感信息，已阻止导出。',
   INTERNAL_ADDRESS: '生成内容包含内部地址，已阻止导出。',
   COMPOSE_FAILED: '生成过程出错，请重试。',
@@ -46,6 +48,14 @@ export function describeExportError(code) {
 
 const DEFAULT_VALIDATE_TIMEOUT_MS = 10000;
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 5000;
+
+/**
+ * P5c：默认导出位置的主进程 token。
+ *
+ * 渲染进程只传这个 token，真实路径由主进程决定并预先批准；
+ * 于是「界面内的默认位置」和「原生对话框选的目录」共用同一条受控写盘通路。
+ */
+export const DEFAULT_TARGET_TOKEN = '__default__';
 
 function bridge() {
   if (typeof window === 'undefined') return null;
@@ -101,8 +111,55 @@ export async function chooseDirectory() {
   return { status: 'ok', path: result.path };
 }
 
-export async function validatePlan(plan, options = {}) {
+/**
+ * 读取主进程给的默认导出位置（只读，不写盘）。
+ *
+ * 用途：导出前把目标位置显示给用户，用户点「导出到默认位置」即可完成真实导出，
+ * 不必依赖原生目录对话框。
+ */
+export async function fetchDefaultTarget(options = {}) {
   const api = bridge();
+  if (!api || typeof api.defaultExportDirectory !== 'function') {
+    return { status: 'desktop-required', message: DESKTOP_REQUIRED_MESSAGE };
+  }
+  const timeoutMs = options.timeoutMs ?? DEFAULT_PREFLIGHT_TIMEOUT_MS;
+  let outcome;
+  try {
+    outcome = await withTimeout(api.defaultExportDirectory(), timeoutMs);
+  } catch (error) {
+    outcome = { rejected: true };
+  }
+  if (outcome.timedOut) {
+    return {
+      status: 'failed',
+      code: 'TARGET_CHECK_TIMEOUT',
+      message: '读取默认导出位置超时，可以点「选择其他目录」自己指定一个位置。',
+    };
+  }
+  if (outcome.rejected) {
+    return {
+      status: 'failed',
+      code: 'TARGET_CHECK_FAILED',
+      message: describeExportError('TARGET_CHECK_FAILED'),
+    };
+  }
+  const result = outcome.value;
+  if (!result || result.ok === false) {
+    const code = (result && result.code) || 'TARGET_PARENT_MISSING';
+    return {
+      status: 'failed',
+      code,
+      message: (result && result.message) || describeExportError(code),
+    };
+  }
+  return {
+    status: 'ok',
+    path: result.path || '',
+    token: result.token || DEFAULT_TARGET_TOKEN,
+  };
+}
+
+export async function validatePlan(plan, options = {}) {  const api = bridge();
   if (!api || typeof api.composerValidate !== 'function') {
     return { status: 'desktop-required', message: DESKTOP_REQUIRED_MESSAGE };
   }
@@ -133,10 +190,13 @@ export async function validatePlan(plan, options = {}) {
   }
   const result = outcome.value;
   if (!result || result.ok === false) {
+    const code = (result && result.code) || 'COMPOSE_FAILED';
+    const mapped = EXPORT_ERROR_TEXT[code];
     return {
       status: 'failed',
-      code: result && result.code,
-      message: result && result.message ? result.message : describeExportError(result && result.code),
+      code,
+      // 已知错误码用给用户看的说法；未知错误码才回落主进程消息。
+      message: mapped || (result && result.message) || describeExportError(code),
       warnings: (result && result.warnings) || [],
     };
   }

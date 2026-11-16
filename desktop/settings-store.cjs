@@ -181,12 +181,14 @@ function createSettingsStore(options) {
     } catch (error) {
       // 情况一：内容损坏（不是合法 JSON）。先备份原文件，再用默认设置继续。
       const { backup } = await backupUnreadableConfig(raw);
+      // 技术细节只进日志；界面只给可恢复的说法。
+      console.warn('[settings] 设置文件解析失败 reason=unreadable backup=' + (backup ? 'ok' : 'failed'));
       return {
         config: defaultConfig(),
         source: 'default',
         warning: backup
-          ? '设置文件无法读取，已保留备份并恢复默认设置'
-          : '设置文件无法读取，已恢复默认设置（备份未能写入，请检查磁盘权限）',
+          ? '设置文件读不出来，已经备份原文件并用默认设置继续。想恢复原样可以在「设置与自检」里找到备份。'
+          : '设置文件读不出来，已用默认设置继续（原文件备份没写成）。可以在「设置与自检」里导出日志给我们看。',
         details: { reason: 'unreadable', backup },
       };
     }
@@ -201,10 +203,11 @@ function createSettingsStore(options) {
         && Array.isArray(error.details.errors)
         ? error.details.errors.map((item) => (item && item.field) || null).filter(Boolean)
         : [];
+      console.warn('[settings] 配置项不合法 fields=' + fields.join(','));
       return {
         config: defaultConfig(),
         source: 'default',
-        warning: '设置文件里有不合法的配置项，已暂时使用默认设置（原文件已保留）',
+        warning: '设置里有几项不合法，已暂时用默认设置（原文件保留着）。可以在「设置与自检」里重新保存一次，覆盖掉不合法的项。',
         details: { reason: 'invalid', fields },
       };
     }

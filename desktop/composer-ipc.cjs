@@ -11,10 +11,96 @@
  */
 
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
+const { spawn } = require('node:child_process');
 
 const { applyAppid } = require('./appid-postprocess.cjs');
 const { sanitizeProjectName, suggestName } = require('../scripts/composer/atomic.cjs');
+
+const APP_ROOT = path.join(__dirname, '..');
+const COMPOSER_CLI = path.join(APP_ROOT, 'scripts', 'composer', 'cli.cjs');
+
+/**
+ * 用 node 子进程跑 Composer CLI（--json 输出）。
+ *
+ * 只在主进程提交目录失败时兜底：同一个 Composer、同一套门禁，只是换一个
+ * 能拿到「目录改名」权限的进程。计划与版本信息落临时文件，跑完即删。
+ */
+function composeInNode(options, tempRoot) {
+  return new Promise((resolve) => {
+    let tmpDir;
+    try {
+      const baseTmp = tempRoot || os.tmpdir();
+      fs.mkdirSync(baseTmp, { recursive: true });
+      tmpDir = fs.mkdtempSync(path.join(baseTmp, 'smartstore-compose-'));
+    } catch (error) {
+      console.warn('[composer] 子进程临时目录创建失败 code=' + (error && error.code) + ' message=' + (error && error.message));
+      resolve({ ok: false, code: 'COMPOSE_FAILED', message: '临时目录创建失败' });
+      return;
+    }
+    const cleanup = () => {
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (error) { /* 清理失败不影响结论 */ }
+    };
+    let child;
+    let outFd = null;
+    const outFile = path.join(tmpDir, 'compose-output.txt');
+    try {
+      const planFile = path.join(tmpDir, 'plan.json');
+      fs.writeFileSync(planFile, JSON.stringify(options.plan), 'utf8');
+      const args = [COMPOSER_CLI, '--plan', planFile, '--out', options.parentDir, '--mode', options.mode || 'development', '--json'];
+      if (options.projectName) args.push('--project-name', options.projectName);
+      if (options.storeId) args.push('--store-id', options.storeId);
+      if (options.role) args.push('--role', options.role);
+      if (options.backendVersions) {
+        const versionsFile = path.join(tmpDir, 'backend-versions.json');
+        fs.writeFileSync(versionsFile, JSON.stringify(options.backendVersions), 'utf8');
+        args.push('--backend-versions', versionsFile);
+      }
+      // 用文件而不是管道接子进程输出：受限环境下管道 stdio 会直接 EPERM。
+      outFd = fs.openSync(outFile, 'w');
+      child = spawn(process.execPath, args, {
+        cwd: APP_ROOT,
+        // 让 electron.exe 以纯 node 方式运行，避免再次继承主进程的限制。
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+        stdio: ['ignore', outFd, outFd],
+        windowsHide: true,
+      });
+    } catch (error) {
+      if (outFd !== null) { try { fs.closeSync(outFd); } catch (closeError) { /* ignore */ } }
+      console.warn('[composer] 子进程准备失败 code=' + (error && error.code) + ' message=' + (error && error.message));
+      cleanup();
+      resolve({ ok: false, code: 'COMPOSE_FAILED', message: error.message });
+      return;
+    }
+    child.on('error', (error) => {
+      if (outFd !== null) { try { fs.closeSync(outFd); outFd = null; } catch (closeError) { /* ignore */ } }
+      console.warn('[composer] 子进程启动失败 code=' + (error && error.code) + ' message=' + (error && error.message));
+      cleanup();
+      resolve({ ok: false, code: 'COMPOSE_FAILED', message: error.message });
+    });
+    child.on('close', (code) => {
+      if (outFd !== null) { try { fs.closeSync(outFd); outFd = null; } catch (closeError) { /* ignore */ } }
+      let text = '';
+      try { text = fs.readFileSync(outFile, 'utf8'); } catch (error) { /* 读不到就走兜底 */ }
+      cleanup();
+      const start = text.lastIndexOf('{');
+      if (start >= 0) {
+        try {
+          const parsed = JSON.parse(text.slice(start));
+          if (!parsed || parsed.ok !== true) {
+            console.warn('[composer] 子进程返回失败 code=' + (parsed && parsed.code) + ' message=' + (parsed && parsed.message));
+          }
+          resolve(parsed);
+          return;
+        } catch (error) { /* 落到下面的兜底 */ }
+      }
+      const tail = text.trim().split('\n').filter(Boolean).slice(-6).join(' / ');
+      console.warn('[composer] 子进程退出 code=' + code + ' output=' + tail);
+      resolve({ ok: false, code: 'COMPOSE_FAILED', message: tail.split(' / ').slice(-1)[0] || '生成失败' });
+    });
+  });
+}
 
 const MAX_PAYLOAD_BYTES = 256 * 1024;
 const MAX_PLAN_BYTES = 64 * 1024;
@@ -75,6 +161,45 @@ function createComposerIpc(options) {
     approvedParents.add(previewParentDir);
   }
 
+  // P5c：界面内可见、可确认的默认导出位置。
+  // 由主进程自己决定并预先批准，渲染进程只能引用这个 token，
+  // 仍然拿不到「任意路径直接写盘」的能力；原生「选择目录」对话框照旧保留。
+  const DEFAULT_PARENT_TOKEN = '__default__';
+  const defaultParentDir = typeof opts.defaultParentDir === 'string' && opts.defaultParentDir.trim()
+    ? path.resolve(opts.defaultParentDir)
+    : null;
+  let defaultParentReady = false;
+  if (defaultParentDir) {
+    try {
+      fs.mkdirSync(defaultParentDir, { recursive: true });
+      defaultParentReady = true;
+    } catch (error) {
+      // 目录建不出来时不预先批准；界面会提示用户改用手动选择，而不是给一个坏按钮。
+      console.warn('[composer] 默认导出位置创建失败 code=' + (error && error.code));
+    }
+    if (defaultParentReady) approvedParents.add(defaultParentDir);
+  }
+
+  // 目录改名被系统拒绝时的整段重试间隔（ms）；测试可注入更短的值。
+  const commitRetryDelays = Array.isArray(opts.commitRetryDelays) && opts.commitRetryDelays.length > 0
+    ? opts.commitRetryDelays.map((ms) => (Number.isFinite(ms) && ms >= 0 ? ms : 0))
+    : [500, 1500];
+
+  // 主进程目录改名被系统拒绝时，允许改用 node 子进程跑同一个 Composer CLI。
+  const enableCommitFallback = opts.enableCommitFallback !== false;
+  // 子进程临时目录：系统 %TEMP% 在这台机器上对 Electron 不可写，交给主进程指定。
+  const composeTempRoot = typeof opts.composeTempRoot === 'string' && opts.composeTempRoot.trim()
+    ? opts.composeTempRoot
+    : '';
+  const runComposeInNode = typeof opts.composeInNode === 'function'
+    ? opts.composeInNode
+    : (options) => composeInNode(options, composeTempRoot);
+
+  function resolveParentToken(value) {    if (value === PREVIEW_PARENT_TOKEN) return previewParentDir;
+    if (value === DEFAULT_PARENT_TOKEN) return defaultParentDir;
+    return value;
+  }
+
   function resultError(code, message, details) {
     return { ok: false, code, message, details: details || null };
   }
@@ -105,9 +230,7 @@ function createComposerIpc(options) {
     if (active) return resultError('EXPORT_BUSY', '已有导出任务正在运行');
     if (payloadSize(payload) > MAX_PAYLOAD_BYTES) return resultError('PAYLOAD_TOO_LARGE', '配置内容超过 256 KB');
     if (payloadSize(payload && payload.plan) > MAX_PLAN_BYTES) return resultError('PAYLOAD_TOO_LARGE', 'Plan 超过 64 KB');
-    const requestedParent = payload && payload.parentDir === PREVIEW_PARENT_TOKEN
-      ? previewParentDir
-      : (payload && payload.parentDir);
+    const requestedParent = resolveParentToken(payload && payload.parentDir);
     const forbiddenKeys = FORBIDDEN_MEDIA_KEYS
       .filter((key) => payload && Object.prototype.hasOwnProperty.call(payload, key));
     if (forbiddenKeys.length > 0) {
@@ -115,6 +238,10 @@ function createComposerIpc(options) {
     }
     if (typeof requestedParent !== 'string' || !requestedParent) {
       return resultError('TARGET_PARENT_MISSING', '未选择导出位置');
+    }
+    // 默认位置的目录如果没准备好，直接给出可操作提示，而不是含混的「未经确认」。
+    if (payload && payload.parentDir === DEFAULT_PARENT_TOKEN && !defaultParentReady) {
+      return resultError('TARGET_PARENT_MISSING', '这台电脑没能准备默认导出位置，请选择其他目录');
     }
     const parentDir = path.resolve(requestedParent);
     if (!approvedParents.has(parentDir)) {
@@ -154,7 +281,7 @@ function createComposerIpc(options) {
       const media = resolvedMedia && resolvedMedia.media ? resolvedMedia.media : undefined;
       const poster = resolvedMedia ? (resolvedMedia.poster || { included: Boolean(media) }) : null;
 
-      const result = await compose({
+      const composeOnce = () => compose({
         plan: payload.plan,
         parentDir,
         projectName: payload.projectName,
@@ -175,6 +302,45 @@ function createComposerIpc(options) {
           }
         },
       });
+
+      // COMMIT_FAILED = staging 目录改名被系统拒绝（杀软/索引器短暂占用）。
+      // 实测同一位置在同一台机器上会随机成功/失败，所以按递增间隔整段重试；
+      // 这里不放松任何校验，只是把「偶发」和「真的不行」区分开。
+      let result = await composeOnce();
+      for (const delay of commitRetryDelays) {
+        if (!result || result.ok === true || result.code !== 'COMMIT_FAILED' || signal.cancelled) break;
+        console.warn('[composer] COMMIT_FAILED，' + delay + 'ms 后整段重试');
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        if (signal.cancelled) break;
+        result = await composeOnce();
+      }
+      if (result && result.ok !== true && result.code === 'COMMIT_FAILED') {
+        // 主进程里 staging 目录改名被系统拒绝（本机 Electron 主进程对目录改名
+        // 存在 EPERM 的已知环境问题，同目录下 node 进程正常）。此时交给 node
+        // 子进程跑同一个 Composer CLI：校验、门禁、产物都与主进程路径一致，
+        // 只是换了一个能拿到目录改名权限的进程。
+        if (enableCommitFallback && !media) {
+          console.warn('[composer] 主进程提交失败，改用 node 子进程重跑 Composer');
+          const fallback = await runComposeInNode({
+            plan: payload.plan,
+            parentDir,
+            projectName: payload.projectName,
+            mode: payload.mode,
+            storeId: payload.storeId,
+            backendVersions: payload.backendVersions,
+            role: payload.role,
+          });
+          if (fallback && fallback.ok) {
+            console.warn('[composer] node 子进程导出成功 path=' + fallback.outputPath);
+            result = fallback;
+          } else {
+            console.warn('[composer] node 子进程导出仍失败 code=' + (fallback && fallback.code));
+            result = fallback || result;
+          }
+        } else {
+          console.warn('[composer] 多次重试仍 COMMIT_FAILED，请换一个导出位置');
+        }
+      }
       if (result && result.ok) {
         exportedOutputs.add(result.outputPath);
         // 海报结论来自主进程实际解析结果，不由渲染进程声称。
@@ -209,7 +375,7 @@ function createComposerIpc(options) {
     }
     let parentDir;
     try {
-      parentDir = path.resolve(payload.parentDir);
+      parentDir = path.resolve(resolveParentToken(payload.parentDir) || '');
     } catch (error) {
       return resultError('TARGET_PATH_INVALID', '导出位置路径不合法');
     }
@@ -289,12 +455,27 @@ function createComposerIpc(options) {
     }
   }
 
+  /**
+   * P5c：界面要能在导出前把目标位置显示给用户。
+   * 只回路径（不含任何写盘动作），权限边界仍是「主进程已批准的父目录」。
+   */
+  async function defaultTarget() {
+    if (!defaultParentDir || !defaultParentReady) {
+      return resultError(
+        'TARGET_PARENT_MISSING',
+        '这台电脑没能准备默认导出位置，请点「选择其他目录」自己指定一个',
+      );
+    }
+    return { ok: true, path: defaultParentDir, token: DEFAULT_PARENT_TOKEN };
+  }
+
   return {
     approvedParents,
     exportedOutputs,
     getActive: () => active,
     handlers: {
       'composer:choose-directory': chooseDirectory,
+      'composer:default-target': defaultTarget,
       'composer:validate': validate,
       'composer:preflight-target': preflightTarget,
       'composer:export': exportProject,

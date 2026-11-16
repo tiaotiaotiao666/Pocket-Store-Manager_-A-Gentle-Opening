@@ -18,6 +18,7 @@ import {
   isDesktopExportAvailable,
   subscribeProgress,
   chooseDirectory,
+  fetchDefaultTarget,
   validatePlan,
   preflightTarget,
   exportProject,
@@ -457,6 +458,8 @@ export default function App() {
   const [draftEditorOpen, setDraftEditorOpen] = useState(false);
   const [thumbnails, setThumbnails] = useState({});
   const [storeImageBusy, setStoreImageBusy] = useState(false);
+  // P5c：默认导出位置（主进程给路径，界面负责显示；点按钮才真正写盘）。
+  const [defaultTarget, setDefaultTarget] = useState({ status: 'loading', path: '', token: '', message: '' });
   const [onboardingConfirmOpen, setOnboardingConfirmOpen] = useState(false);
   const [onboardingCreating, setOnboardingCreating] = useState(false);
   const [templateRefineText, setTemplateRefineText] = useState('');
@@ -611,8 +614,36 @@ export default function App() {
       .catch(() => {
         if (!alive) return;
         dispatch({ type: 'SETTINGS_LOAD_SUCCESS', config: withRuntimeAgentConfig(settingsServiceRef.current.defaults) });
-        setNotice('设置读取失败，已使用默认值');
+        setNotice('设置没读出来，已先用默认值。可以点右上角「设置与自检」再读取一次；还是不行就重启应用，或在那里导出日志给我们看。');
       });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    // P5c：先拿到默认导出位置，让「导出到默认位置」在界面上可见、可确认。
+    let alive = true;
+    if (!isDesktopExportAvailable()) {
+      setDefaultTarget({
+        status: 'desktop-required',
+        path: '',
+        token: '',
+        message: '浏览器预览不能写出工程；请在桌面应用里导出。',
+      });
+      return () => { alive = false; };
+    }
+    fetchDefaultTarget().then((result) => {
+      if (!alive) return;
+      if (result.status === 'ok') {
+        setDefaultTarget({ status: 'ok', path: result.path, token: result.token, message: '' });
+        return;
+      }
+      setDefaultTarget({
+        status: result.status,
+        path: '',
+        token: '',
+        message: result.message || '读不到默认导出位置，可以点「选择其他目录」自己指定。',
+      });
+    });
     return () => { alive = false; };
   }, []);
 
@@ -1935,6 +1966,45 @@ export default function App() {
     await runDeployExport(chosen.path, plan, projectName, warnings);
   };
 
+  const handleDeployExportDefault = async () => {
+    if (deployBusy.current) return;
+    const gate = selectCanChooseDirectory(state);
+    if (!gate.can) {
+      setNotice(`还不能导出：${gate.reason}`);
+      return;
+    }
+    if (!isDesktopExportAvailable()) {
+      dispatch({
+        type: 'DEPLOY_FAILURE',
+        error: { code: 'DESKTOP_REQUIRED', message: DESKTOP_REQUIRED_MESSAGE },
+      });
+      return;
+    }
+
+    // 默认位置只由主进程提供；这里再取一次是为了防止启动时那次读取失败。
+    let parentDir = defaultTarget.status === 'ok' ? defaultTarget.path : '';
+    if (!parentDir) {
+      const fetched = await fetchDefaultTarget();
+      if (fetched.status !== 'ok') {
+        dispatch({
+          type: 'DEPLOY_FAILURE',
+          error: {
+            code: fetched.code || 'TARGET_PARENT_MISSING',
+            message: fetched.message || '读不到默认导出位置，请点「选择其他目录」指定一个。',
+          },
+        });
+        return;
+      }
+      parentDir = fetched.path;
+      setDefaultTarget({ status: 'ok', path: fetched.path, token: fetched.token, message: '' });
+    }
+
+    dispatch({ type: 'DEPLOY_START' });
+    const { plan, warnings } = buildPlanFromSession(state);
+    const projectName = sanitizeProjectName(state.store.name || state.agentDraft.storeName);
+    await runDeployExport(parentDir, plan, projectName, warnings);
+  };
+
   const handleDeployRetry = async () => {
     if (deployBusy.current) return;
     const directory = state.deploy.directory;
@@ -1980,13 +2050,30 @@ export default function App() {
           });
         }
       }
-      // 已有导出位置时提前暴露同名冲突；未选择目录不伪造目标路径。
+      // 已有导出位置时提前暴露同名冲突；没有任何位置信息时不伪造目标路径。
+      // P5c：用户没手动选目录时，用主进程给的默认位置做同一套只读检查。
       const rawTargetName = String(state.deploy.projectName || state.store.name || state.agentDraft.storeName || '').trim();
-      if (desktop && state.deploy.directory && rawTargetName) {
-        const target = await preflightTarget({
-          parentDir: state.deploy.directory,
-          projectName: sanitizeProjectName(rawTargetName),
-        });
+      const preflightParent = state.deploy.directory
+        || (defaultTarget.status === 'ok' ? (defaultTarget.token || defaultTarget.path) : '');
+      if (desktop && preflightParent && rawTargetName) {
+        const projectNameForCheck = sanitizeProjectName(rawTargetName);
+        let target = await preflightTarget({ parentDir: preflightParent, projectName: projectNameForCheck });
+        // P5c：记住的老目录已经不可用时，自动改查默认位置；
+        // 默认位置可用就忘掉老目录，别让用户点着一个永远失败的按钮。
+        if (
+          target.status === 'failed'
+          && state.deploy.directory
+          && defaultTarget.status === 'ok'
+        ) {
+          const fallback = await preflightTarget({
+            parentDir: defaultTarget.token || defaultTarget.path,
+            projectName: projectNameForCheck,
+          });
+          if (fallback.status === 'ok' || fallback.status === 'conflict') {
+            dispatch({ type: 'DEPLOY_FORGET_DIRECTORY' });
+            target = fallback;
+          }
+        }
         merged = mergeTargetPreflight(merged, target);
       }
       dispatch({
@@ -2424,7 +2511,7 @@ case PHASES.DEPLOY: {
               templateName={selectedTemplate?.name ?? '默认骨架'}
               styleName={styleName}
               directory={state.deploy.directory}
-              projectName={state.deploy.projectName}
+              projectName={state.deploy.projectName || sanitizeProjectName(state.store.name || state.agentDraft.storeName)}
               result={state.deploy.result}
               error={state.deploy.error}
               previewOnly={state.deploy.previewOnly}
@@ -2432,6 +2519,9 @@ case PHASES.DEPLOY: {
               warnings={state.deploy.warnings}
               busy={state.deploy.busy}
               blockedReason={chooseGate.can ? null : chooseGate.reason}
+              defaultDirectory={defaultTarget.status === 'ok' ? defaultTarget.path : ''}
+              defaultDirectoryError={defaultTarget.status === 'ok' ? null : (defaultTarget.message || null)}
+              onExportDefault={handleDeployExportDefault}
               onChooseDirectory={handleDeployChooseDirectory}
               onRetry={handleDeployRetry}
               onCancel={handleDeployCancel}

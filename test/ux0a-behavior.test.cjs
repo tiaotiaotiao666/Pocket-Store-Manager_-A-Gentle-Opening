@@ -204,7 +204,8 @@ test('UX0a-5 config.json 损坏：先备份原文件，再用默认设置继续�
 
   const loaded = await store.loadConfig();
   assert.equal(loaded.source, 'default');
-  assert.match(loaded.warning, /已保留备份并恢复默认设置/);
+  assert.match(loaded.warning, /设置文件读不出来/);
+    assert.match(loaded.warning, /备份/);
   assert.equal(loaded.details.reason, 'unreadable');
   assert.equal(loaded.config.apiBaseUrl, 'http://127.0.0.1:3000/api/v1', '默认配置必须可直接使用');
 
@@ -229,7 +230,8 @@ test('UX0a-5 config.json 损坏：先备份原文件，再用默认设置继续�
   const store2 = createSettingsStore({ userDataDir: dir2, now: () => new Date('2026-11-16T02:05:00Z') });
   const loaded2 = await store2.loadConfig();
   assert.equal(loaded2.source, 'default');
-  assert.match(loaded2.warning, /不合法的配置项/);
+  assert.match(loaded2.warning, /不合法/);
+    assert.match(loaded2.warning, /设置与自检/);
   assert.equal(loaded2.details.reason, 'invalid');
   assert.ok(Array.isArray(loaded2.details.fields) && loaded2.details.fields.includes('agentTransport'));
   assert.equal(fs.readFileSync(path.join(dir2, 'config.json'), 'utf8'), invalid, '配置项不合法时不得改写原文件');

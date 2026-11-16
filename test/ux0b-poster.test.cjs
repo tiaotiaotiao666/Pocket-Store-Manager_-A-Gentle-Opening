@@ -447,7 +447,8 @@ test('UX0b-7 config.json 损坏：默认配置可用，原始内容可从备份�
 
   const loaded = await store.loadConfig();
   assert.equal(loaded.source, 'default');
-  assert.match(loaded.warning, /已保留备份并恢复默认设置/);
+  assert.match(loaded.warning, /设置文件读不出来/);
+    assert.match(loaded.warning, /备份/);
   assert.equal(loaded.details.reason, 'unreadable');
   const backups = fs.readdirSync(userDataDir).filter((name) => name.startsWith('config.json.bak-'));
   assert.equal(backups.length, 1, '损坏文件应先留下备份');

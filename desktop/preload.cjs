@@ -25,6 +25,7 @@ ipcRenderer.on('project:flush-request', () => {
 contextBridge.exposeInMainWorld('smartStore', Object.freeze({
   isDesktop: true,
   chooseExportDirectory: () => ipcRenderer.invoke('composer:choose-directory'),
+  defaultExportDirectory: () => ipcRenderer.invoke('composer:default-target'),
   composerValidate: (payload) => ipcRenderer.invoke('composer:validate', payload),
   composerPreflightTarget: (payload) => ipcRenderer.invoke('composer:preflight-target', payload),
   composerExport: (payload) => ipcRenderer.invoke('composer:export', payload),

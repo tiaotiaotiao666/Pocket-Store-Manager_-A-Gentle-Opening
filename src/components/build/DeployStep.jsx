@@ -45,6 +45,9 @@ export default function DeployStep({
   warnings = [],
   busy = false,
   blockedReason = null,
+  defaultDirectory = '',
+  defaultDirectoryError = null,
+  onExportDefault,
   onChooseDirectory,
   onRetry,
   onCancel,
@@ -57,6 +60,14 @@ export default function DeployStep({
   const currentIndex = Number(step) || 0;
   const working = WORKING_STATUSES.has(status);
   const canCancel = CANCELLABLE_STATUSES.has(status) && !busy;
+  // P5c：默认导出位置要能在点按钮之前就看见；导出中也要能看见目标。
+  const targetLabel = defaultDirectory
+    ? `${defaultDirectory}${projectName ? `\\${projectName}` : ''}`
+    : '';
+  const workingTarget = directory
+    ? `${directory}${projectName ? `\\${projectName}` : ''}`
+    : '';
+  const canUseDefault = Boolean(onExportDefault) && Boolean(defaultDirectory) && !busy && !blockedReason;
 
   return (
     <section className="deploy-step">
@@ -106,22 +117,52 @@ export default function DeployStep({
               <span className="deploy-actions-note">检查产物阶段不可取消，完成后才交付目录。</span>
             ) : null}
           </div>
+          {workingTarget ? (
+            <p className="deploy-actions-note" id="deploy-working-target">
+              正在写入：{workingTarget}
+            </p>
+          ) : null}
         </>
+      ) : null}
+
+      {(status === 'idle' || status === 'choosing' || status === 'cancelled' || status === 'done') ? (
+        <div className="deploy-target-block">
+          <div className="deploy-target-line">
+            <strong>导出位置</strong>
+            <span className="deploy-path" id="deploy-default-target">
+              {defaultDirectory
+                ? `${defaultDirectory}${projectName ? `\\${projectName}` : ''}`
+                : (defaultDirectoryError || '正在读取默认导出位置…')}
+            </span>
+          </div>
+          <p className="deploy-actions-note">
+            {defaultDirectory
+              ? '这是本机的默认位置，点下面的按钮才会真正写入；同名目录不会被覆盖。'
+              : '读不到默认位置时可以点「选择其他目录」自己指定一个。'}
+          </p>
+        </div>
       ) : null}
 
       {(status === 'idle' || status === 'choosing' || status === 'cancelled' || status === 'done') ? (
         <div className="deploy-actions deploy-actions--start">
           <button
             type="button"
-            className={status === 'done' ? 'secondary-button deploy-action' : 'primary-button deploy-action'}
+            className="primary-button deploy-action"
+            id="deploy-export-default"
+            onClick={onExportDefault}
+            disabled={!canUseDefault || status === 'choosing'}
+          >
+            {status === 'choosing' ? '正在打开目录选择器…' : '导出到默认位置'}
+          </button>
+          <button
+            type="button"
+            className={status === 'done' ? 'secondary-button deploy-action' : 'ghost-button deploy-action'}
             onClick={onChooseDirectory}
             disabled={status === 'choosing' || busy || Boolean(blockedReason)}
           >
-            {status === 'choosing'
-              ? '正在打开目录选择器…'
-              : status === 'done'
-                ? '换一个目录重新导出'
-                : (status === 'cancelled' ? '重新选择导出位置' : '选择导出位置')}
+            {status === 'done'
+              ? '换一个目录重新导出'
+              : (status === 'cancelled' ? '重新选择导出位置' : '选择其他目录')}
           </button>
           <span className="deploy-actions-note">
             {blockedReason

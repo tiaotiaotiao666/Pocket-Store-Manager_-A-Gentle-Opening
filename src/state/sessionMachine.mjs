@@ -2014,6 +2014,17 @@ function baseReducer(state, action) {
         },
       };
 
+    case 'DEPLOY_FORGET_DIRECTORY':
+      // P5c：记住的目录已不可用，回到「使用默认位置」的状态。
+      return {
+        ...state,
+        deploy: {
+          ...state.deploy,
+          directory: '',
+          resultDigest: null,
+        },
+      };
+
     case 'DEPLOY_FAILURE':
       return {
         ...state,
@@ -2021,6 +2032,9 @@ function baseReducer(state, action) {
           ...state.deploy,
           status: DEPLOY_STATUS.FAILED,
           error: action.error || { code: 'COMPOSE_FAILED', message: '导出失败，请重试。' },
+          // P5c：位置不可用（老路径不存在、不可写、未确认）时忘掉这个目录，
+          // 下次点「导出到默认位置」就走当前可用的默认位置，而不是反复撞同一个坏路径。
+          directory: forgetDirectoryOnFailure(state.deploy, action.error) ? '' : state.deploy.directory,
           busy: false,
         },
       };
@@ -2284,6 +2298,26 @@ function restorePresentation(snapshot, state) {
  * 合并策略：同一动作名 + 同一字段连续触发只压第一次，避免每次按键都占一格。
  * 栈不持久化（重启清空）。
  */
+/**
+ * P5c：导出失败时，哪些错误码说明「这个目录本身已经不能用了」。
+ *
+ * 命中时清空记住的目录，让下一次「导出到默认位置」使用当前可用的默认位置；
+ * 同名冲突（TARGET_EXISTS）不在其中——用户可能就想换项目名重试同一目录。
+ */
+const DIRECTORY_FORGOTTEN_CODES = new Set([
+  'TARGET_PARENT_MISSING',
+  'TARGET_NOT_WRITABLE',
+  'TARGET_CHECK_FAILED',
+  'TARGET_PATH_INVALID',
+  'TARGET_CHECK_TIMEOUT',
+]);
+
+function forgetDirectoryOnFailure(deploy, error) {
+  if (!deploy || !deploy.directory) return false;
+  const code = error && error.code;
+  return DIRECTORY_FORGOTTEN_CODES.has(code);
+}
+
 export function reducer(state, action) {
   // 晚响应必须连 undo 元数据也不触碰，严格保持原 state 引用。
   if ((action.type === 'AGENT_TURN_SUCCESS' || action.type === 'AGENT_TURN_FAILURE')

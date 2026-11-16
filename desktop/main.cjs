@@ -99,6 +99,69 @@ try {
   // 指针文件只是给人看的，失败不影响客户端启动与保存。
 }
 
+/**
+ * P5c：默认导出位置必须真的可写，否则界面上的「导出到默认位置」会变成一个坏按钮。
+ *
+ * 优先放用户的「文档」下；但实测这台机器上「文档/桌面/家目录」都被 OneDrive
+ * 或系统策略接管，Electron 主进程写入直接 EPERM，而被同步的目录里做「整棵
+ * 工程目录改名」也会随机 EPERM（Composer 交付正是这一步）。所以候选顺序里
+ * 加入了不被同步的本地应用数据目录，并按真实产物形态做探测（多文件、多层、
+ * 再改名），只有真能完成这次改名才算可用。
+ */
+function resolveDefaultExportParent() {
+  const candidates = [];
+  const push = (dir) => {
+    if (typeof dir === 'string' && dir && !candidates.includes(dir)) candidates.push(dir);
+  };
+
+  // 开发/受限环境可用显式覆盖：这种情况下仍要做同样的可写探测，不信任配置值。
+  if (process.env.SMARTSTORE_EXPORT_DIR) push(process.env.SMARTSTORE_EXPORT_DIR);
+  try { push(path.join(app.getPath('documents'), '轻启导出')); } catch (error) { /* ignore */ }
+  try { push(path.join(app.getPath('desktop'), '轻启导出')); } catch (error) { /* ignore */ }
+  // 不被 OneDrive 同步的本地目录：导出工程改名最稳的位置。
+  try { push(path.join(process.env.LOCALAPPDATA || app.getPath('appData'), '轻启导出')); } catch (error) { /* ignore */ }
+  try { push(path.join(require('node:os').homedir(), '轻启导出')); } catch (error) { /* ignore */ }
+  try { push(path.join(userDataDir, 'exports')); } catch (error) { /* ignore */ }
+
+  for (const dir of candidates) {
+    if (probeExportCommit(dir)) return dir;
+  }
+  return null;
+}
+
+/**
+ * 用真实产物的形态探一次「整棵目录改名」：多层子目录 + 一百多个文件。
+ * 只写一个空目录再改名会误判——这台机器上小目录改名能过，真实工程树过不去。
+ */
+function probeExportCommit(dir) {
+  const stamp = `${process.pid}-${Date.now()}`;
+  const staging = path.join(dir, `.commit-probe-${stamp}`);
+  const finalPath = path.join(dir, `.commit-probe-${stamp}-done`);
+  try {
+    fsSync.mkdirSync(dir, { recursive: true });
+    fsSync.mkdirSync(staging, { recursive: true });
+    for (let group = 0; group < 8; group += 1) {
+      const sub = path.join(staging, `g${group}`);
+      fsSync.mkdirSync(sub);
+      for (let file = 0; file < 18; file += 1) {
+        fsSync.writeFileSync(path.join(sub, `f${file}.js`), 'probe');
+      }
+    }
+    fsSync.renameSync(staging, finalPath);
+    fsSync.rmSync(finalPath, { recursive: true, force: true });
+    return true;
+  } catch (error) {
+    try { fsSync.rmSync(staging, { recursive: true, force: true }); } catch (cleanupError) { /* ignore */ }
+    try { fsSync.rmSync(finalPath, { recursive: true, force: true }); } catch (cleanupError) { /* ignore */ }
+    return false;
+  }
+}
+
+const defaultExportParent = resolveDefaultExportParent();
+if (!defaultExportParent) {
+  console.warn('[composer] 没有可写的默认导出位置，界面将要求用户手动选择目录');
+}
+
 const imageAdapter = {
   resize(buffer, maxWidth) {
     try {
@@ -170,6 +233,11 @@ registerComposerIpc(ipcMain, {
   // UX0b：海报素材由主进程按资产 ID 读取真实字节，渲染进程只传受控引用。
   resolveMedia: createPosterMediaResolver({ assets: assetStore }),
   previewParentDir: path.join(app.getPath('userData'), 'preview-projects'),
+  // P5c：默认导出位置由主进程探测到真正可写的位置后交给渲染层显示；
+  // 仍保留原生「选择目录」对话框给需要自选位置的用户。
+  defaultParentDir: defaultExportParent,
+  // 系统 %TEMP% 对 Electron 不可写的机器上，node 兜底子进程的临时文件放这里。
+  composeTempRoot: path.join(app.getPath('userData'), 'compose-tmp'),
 });
 
 registerProjectIpc(ipcMain, {

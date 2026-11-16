@@ -77,14 +77,14 @@ export function createSettingsService() {
       if (mode === 'desktop') {
         const api = bridge();
         if (!api || typeof api.settingsLoad !== 'function') {
-          return defaultLoadResult('当前版本不支持设置读取，已使用默认值');
+          return defaultLoadResult('这个版本还不支持读取设置，已用默认值；装最新版本就能改这些选项。');
         }
         const result = await withTimeout(api.settingsLoad(), 2500, null);
         if (!result) {
-          return defaultLoadResult('设置读取超时（主进程未响应），已使用默认值；请重启桌面应用');
+          return defaultLoadResult('设置读取超时，已用默认值。请重启桌面应用再试；还不行就在「设置与自检」里导出诊断日志。');
         }
         if (result.ok !== true) {
-          return defaultLoadResult(result.message || '设置读取失败，已使用默认值');
+          return defaultLoadResult(result.message || '设置没读出来，已用默认值。可以在「设置与自检」里重试，或重启应用。');
         }
         const data = result.data || {};
         return {
@@ -102,10 +102,10 @@ export function createSettingsService() {
         const config = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
         return { status: 'ok', config, source: 'file', warning: null };
       } catch (error) {
-        return defaultLoadResult('浏览器设置已损坏，已使用默认值');
+        return defaultLoadResult('浏览器里的设置已损坏，已用默认值。重新保存一次设置即可覆盖。');
       }
     } catch (error) {
-      return defaultLoadResult('设置读取失败，已使用默认值');
+      return defaultLoadResult('设置没读出来，已用默认值。可以重新打开设置页再试一次。');
     }
   }
 

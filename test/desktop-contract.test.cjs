@@ -34,6 +34,8 @@ function makeContext(options) {
     shell: { openPath: async () => '' },
     compose,
     validateComposition: opts.validateComposition || (() => ({ ok: true, warnings: [] })),
+    ...(opts.defaultParentDir ? { defaultParentDir: opts.defaultParentDir } : {}),
+    ...(opts.previewParentDir ? { previewParentDir: opts.previewParentDir } : {}),
   });
   return { parent, created, compose };
 }
@@ -310,7 +312,7 @@ test('preload 只暴露白名单方法且进度订阅可退订', () => {
   assert.strictEqual(exposed.key, 'smartStore');
   const api = exposed.value;
   assert.strictEqual(api.isDesktop, true);
-  ['chooseExportDirectory', 'composerValidate', 'composerPreflightTarget', 'composerExport', 'composerCancel', 'composerReadReport', 'onComposerProgress', 'exportProject', 'openPath', 'pickMaterials', 'saveImage'].forEach((name) => {
+  ['chooseExportDirectory', 'defaultExportDirectory', 'composerValidate', 'composerPreflightTarget', 'composerExport', 'composerCancel', 'composerReadReport', 'onComposerProgress', 'exportProject', 'openPath', 'pickMaterials', 'saveImage'].forEach((name) => {
     assert.strictEqual(typeof api[name], 'function', '缺少桥接方法 ' + name);
   });
   assert.strictEqual(Object.prototype.hasOwnProperty.call(api, 'ipcRenderer'), false);
@@ -324,4 +326,237 @@ test('preload 只暴露白名单方法且进度订阅可退订', () => {
   received = null;
   listenerSets.get('composer:progress')({}, { stage: 'verify' });
   assert.strictEqual(received, null);
+});
+
+// ---- P5c：界面内可见、可确认的默认导出位置 ----
+
+test('P5c 默认导出位置由主进程决定，并把目录建好', async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'p5c-default-'));
+  const defaultDir = path.join(base, '轻启导出');
+  const ctx = makeContext({ defaultParentDir: defaultDir });
+
+  const target = await ctx.created.handlers['composer:default-target'](senderEvent('file:///x'), {});
+  assert.strictEqual(target.ok, true);
+  assert.strictEqual(target.path, path.resolve(defaultDir));
+  assert.strictEqual(target.token, '__default__');
+  assert.strictEqual(fs.existsSync(defaultDir), true, '默认导出位置应当被创建，用户才能直接导出');
+  assert.strictEqual(ctx.created.approvedParents.has(path.resolve(defaultDir)), true);
+});
+
+test('P5c 用默认位置 token 直接导出，不需要弹原生目录对话框', async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'p5c-export-'));
+  const defaultDir = path.join(base, '轻启导出');
+  let dialogCalls = 0;
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'p5c-dialog-'));
+  const created = createComposerIpc({
+    dialog: {
+      showOpenDialog: async () => {
+        dialogCalls += 1;
+        return { canceled: true, filePaths: [] };
+      },
+    },
+    shell: { openPath: async () => '' },
+    compose: async (payload) => {
+      const outputPath = path.join(payload.parentDir, payload.projectName || 'demo');
+      fs.mkdirSync(outputPath, { recursive: true });
+      return { ok: true, outputPath, lockDigest: 'sha256:' + 'b'.repeat(64) };
+    },
+    validateComposition: () => ({ ok: true, warnings: [] }),
+    defaultParentDir: defaultDir,
+  });
+  void parent;
+
+  const result = await created.handlers['composer:export'](senderEvent('file:///x'), {
+    parentDir: '__default__',
+    plan: { planVersion: 'p.v1' },
+    projectName: '柑橘小馆演示店',
+  });
+
+  assert.strictEqual(result.ok, true, '默认位置导出应当成功');
+  assert.strictEqual(result.outputPath, path.join(path.resolve(defaultDir), '柑橘小馆演示店'));
+  assert.strictEqual(dialogCalls, 0, '默认位置导出不应触发原生目录对话框');
+  assert.strictEqual(created.exportedOutputs.has(result.outputPath), true);
+});
+
+test('P5c 默认位置导出前的只读预检也认这个 token', async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'p5c-preflight-'));
+  const defaultDir = path.join(base, '轻启导出');
+  const ctx = makeContext({ defaultParentDir: defaultDir });
+
+  const free = await ctx.created.handlers['composer:preflight-target'](senderEvent('file:///x'), {
+    parentDir: '__default__',
+    projectName: '柑橘小馆演示店',
+  });
+  assert.strictEqual(free.ok, true);
+  assert.strictEqual(free.exists, false);
+
+  // 不静默覆盖：同名目录已存在时必须给出冲突与建议名。
+  fs.mkdirSync(path.join(path.resolve(defaultDir), '柑橘小馆演示店'), { recursive: true });
+  const taken = await ctx.created.handlers['composer:preflight-target'](senderEvent('file:///x'), {
+    parentDir: '__default__',
+    projectName: '柑橘小馆演示店',
+  });
+  assert.strictEqual(taken.ok, true);
+  assert.strictEqual(taken.exists, true);
+  assert.ok(taken.suggestedName && taken.suggestedName !== '柑橘小馆演示店', '应给出不覆盖的建议名');
+});
+
+test('P5c 未配置默认位置时明确报错，不回落到任意路径', async () => {
+  const ctx = makeContext();
+  const target = await ctx.created.handlers['composer:default-target'](senderEvent('file:///x'), {});
+  assert.strictEqual(target.ok, false);
+  assert.strictEqual(target.code, 'TARGET_PARENT_MISSING');
+
+  const exported = await ctx.created.handlers['composer:export'](senderEvent('file:///x'), {
+    parentDir: '__default__',
+    plan: { planVersion: 'p.v1' },
+    projectName: 'demo',
+  });
+  assert.strictEqual(exported.ok, false);
+  assert.strictEqual(exported.code, 'TARGET_PARENT_MISSING');
+});
+
+test('P5c 默认位置建不出来时明确报错，界面不会给一个坏按钮', async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'p5c-blocked-'));
+  const blocker = path.join(base, 'blocked');
+  fs.writeFileSync(blocker, 'x');
+  const ctx = makeContext({ defaultParentDir: path.join(blocker, '轻启导出') });
+
+  const target = await ctx.created.handlers['composer:default-target'](senderEvent('file:///x'), {});
+  assert.strictEqual(target.ok, false);
+  assert.strictEqual(target.code, 'TARGET_PARENT_MISSING');
+
+  const exported = await ctx.created.handlers['composer:export'](senderEvent('file:///x'), {
+    parentDir: '__default__',
+    plan: { planVersion: 'p.v1' },
+    projectName: 'demo',
+  });
+  assert.strictEqual(exported.ok, false);
+  assert.strictEqual(exported.code, 'TARGET_PARENT_MISSING');
+  assert.match(exported.message, /选择其他目录/);
+  assert.strictEqual(ctx.created.approvedParents.has(path.resolve(base, 'blocked', '轻启导出')), false);
+});
+
+test('P5c 目录改名被系统拒绝时整段重试，成功后再交付', async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'p5c-retry-'));
+  const defaultDir = path.join(base, 'exports');
+  let attempts = 0;
+  const created = createComposerIpc({
+    dialog: createDialogStub(base),
+    shell: { openPath: async () => '' },
+    compose: async (payload) => {
+      attempts += 1;
+      if (attempts < 3) {
+        return { ok: false, code: 'COMMIT_FAILED', message: '目录提交失败：EPERM' };
+      }
+      const outputPath = path.join(payload.parentDir, payload.projectName || 'demo');
+      fs.mkdirSync(outputPath, { recursive: true });
+      return { ok: true, outputPath, lockDigest: 'sha256:' + 'c'.repeat(64) };
+    },
+    validateComposition: () => ({ ok: true, warnings: [] }),
+    defaultParentDir: defaultDir,
+    commitRetryDelays: [1, 1],
+    enableCommitFallback: false,
+  });
+
+  const result = await created.handlers['composer:export'](senderEvent('file:///x'), {
+    parentDir: '__default__',
+    plan: { planVersion: 'p.v1' },
+    projectName: 'demo',
+  });
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(attempts, 3, '应当在失败后重试到成功，而不是第一次失败就放弃');
+  assert.strictEqual(created.exportedOutputs.has(result.outputPath), true);
+});
+
+test('P5c 重试次数用尽后仍然如实失败，不假装成功', async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'p5c-retry-fail-'));
+  let attempts = 0;
+  const created = createComposerIpc({
+    dialog: createDialogStub(base),
+    shell: { openPath: async () => '' },
+    compose: async () => {
+      attempts += 1;
+      return { ok: false, code: 'COMMIT_FAILED', message: '目录提交失败：EPERM' };
+    },
+    validateComposition: () => ({ ok: true, warnings: [] }),
+    defaultParentDir: path.join(base, 'exports'),
+    commitRetryDelays: [1, 1],
+    enableCommitFallback: false,
+  });
+
+  const result = await created.handlers['composer:export'](senderEvent('file:///x'), {
+    parentDir: '__default__',
+    plan: { planVersion: 'p.v1' },
+    projectName: 'demo',
+  });
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'COMMIT_FAILED');
+  assert.strictEqual(attempts, 3);
+  assert.strictEqual(created.exportedOutputs.size, 0);
+});
+
+test('P5c 主进程提交失败后改用 node 子进程重跑同一个 Composer', async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'p5c-fallback-'));
+  const defaultDir = path.join(base, 'exports');
+  const fallbackCalls = [];
+  const created = createComposerIpc({
+    dialog: createDialogStub(base),
+    shell: { openPath: async () => '' },
+    compose: async () => ({ ok: false, code: 'COMMIT_FAILED', message: '目录提交失败：EPERM' }),
+    composeInNode: async (options) => {
+      fallbackCalls.push(options);
+      const outputPath = path.join(options.parentDir, options.projectName);
+      fs.mkdirSync(outputPath, { recursive: true });
+      return { ok: true, outputPath, lockDigest: 'sha256:' + 'd'.repeat(64), fileCount: 1 };
+    },
+    validateComposition: () => ({ ok: true, warnings: [] }),
+    defaultParentDir: defaultDir,
+    commitRetryDelays: [1, 1],
+  });
+
+  const result = await created.handlers['composer:export'](senderEvent('file:///x'), {
+    parentDir: '__default__',
+    plan: { planVersion: 'p.v1' },
+    projectName: 'demo',
+  });
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(fallbackCalls.length, 1);
+  assert.strictEqual(path.resolve(fallbackCalls[0].parentDir), path.resolve(defaultDir), '兜底仍必须落在已确认的默认位置');
+  assert.strictEqual(fallbackCalls[0].plan.planVersion, 'p.v1');
+  assert.strictEqual(created.exportedOutputs.has(result.outputPath), true);
+});
+
+test('P5c node 子进程兜底也失败时如实返回失败', async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'p5c-fallback-fail-'));
+  const created = createComposerIpc({
+    dialog: createDialogStub(base),
+    shell: { openPath: async () => '' },
+    compose: async () => ({ ok: false, code: 'COMMIT_FAILED', message: '目录提交失败：EPERM' }),
+    composeInNode: async () => ({ ok: false, code: 'COMMIT_FAILED', message: '目录提交失败：EPERM' }),
+    validateComposition: () => ({ ok: true, warnings: [] }),
+    defaultParentDir: path.join(base, 'exports'),
+    commitRetryDelays: [1, 1],
+  });
+
+  const result = await created.handlers['composer:export'](senderEvent('file:///x'), {
+    parentDir: '__default__',
+    plan: { planVersion: 'p.v1' },
+    projectName: 'demo',
+  });
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'COMMIT_FAILED');
+  assert.strictEqual(created.exportedOutputs.size, 0);
+});
+
+test('P5c 未在对话框确认的任意路径仍然被拒绝', async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'p5c-unapproved-'));
+  const ctx = makeContext({ defaultParentDir: path.join(base, '轻启导出') });
+  const result = await ctx.created.handlers['composer:export'](senderEvent('file:///x'), {
+    parentDir: path.join(base, '别人选的目录'),
+    plan: { planVersion: 'p.v1' },
+    projectName: 'demo',
+  });
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'TARGET_NOT_WRITABLE');
 });

@@ -168,7 +168,16 @@ function createProjectIpc(options) {
       try {
         return ok(await settings.loadConfig());
       } catch (error) {
-        return toResult(error, 'SETTINGS_INVALID', '设置读取失败');
+        // 技术细节只进日志：错误码、原因、字段都不出现在界面文案里。
+        console.warn(
+          '[settings] load failed code=' + (error && error.code)
+          + ' cause=' + (error && error.details && error.details.cause),
+        );
+        return toResult(
+          error,
+          'SETTINGS_INVALID',
+          '设置文件读不出来，已先用默认值。重启应用可以再试一次；技术细节已写进日志。',
+        );
       }
     },
 

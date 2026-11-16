@@ -350,9 +350,9 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
         icon: 'image',
         tone: 'accent',
         title: '海报素材（可选）',
-        body: state.visual.image?.dataUrl && state.visual.image.provider === 'user-upload'
-          ? '已选用你上传的图片，可以直接继续。'
-          : '未添加素材：可以上传一张图，或直接跳过；不影响小程序生成。',
+        body: state.visual.imageAssetId && state.visual.image?.provider === 'user-upload'
+          ? '已选用你上传的图片（已保存到项目），可以直接继续。'
+          : '未添加素材：可以上传一张 PNG 图，或直接跳过；不影响小程序生成。',
       });
       break;
     case PHASES.DEPLOY:
@@ -443,6 +443,8 @@ export default function App() {
   const [promptTips, setPromptTips] = useState([]);
   const [promptBusy, setPromptBusy] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
+  // UX0b：海报素材落盘/回读进行中（避免重复上传）。
+  const [posterBusy, setPosterBusy] = useState(false);
   const [draftEditorOpen, setDraftEditorOpen] = useState(false);
   const [thumbnails, setThumbnails] = useState({});
   const [storeImageBusy, setStoreImageBusy] = useState(false);
@@ -895,15 +897,14 @@ export default function App() {
       setNotice('项目文件已损坏且没有可用备份，已以空白项目打开；损坏文件保留在项目目录内。');
     }
 
-    const assetId = result.doc && result.doc.visual && result.doc.visual.imageAssetId;
-    if (assetId && service.mode === 'desktop') {
-      const asset = await service.readAsset(projectId, assetId, 720).catch(() => null);
-      if (asset && asset.status === 'ok') {
-        const meta = result.doc.visual.imageMeta || {};
-        dispatch({
-          type: 'SET_IMAGE',
-          image: { dataUrl: asset.asset.dataUrl, provider: meta.provider, note: meta.note },
-        });
+    const posterAssetId = result.doc && result.doc.visual && result.doc.visual.imageAssetId;
+    if (posterAssetId && service.mode === 'desktop') {
+      // UX0b：按已保存的资产 ID 回读预览；读取失败要明确提示，不静默变成"已选好"。
+      const asset = await service.readAsset(projectId, posterAssetId, 720).catch(() => null);
+      if (asset && asset.status === 'ok' && asset.asset && asset.asset.dataUrl) {
+        dispatch({ type: 'SET_POSTER_PREVIEW', dataUrl: asset.asset.dataUrl });
+      } else {
+        setNotice('海报素材预览读取失败，可以重新选择图片或跳过这一步');
       }
     }
   };
@@ -1440,34 +1441,81 @@ export default function App() {
     }
   };
 
-  // UX0-5：素材空状态里的「上传图片」——写进 visual.image，来源标记为用户上传，
-  // 绝不伪装成模型生成结果。
-  const handleImageUpload = (file) => {
-    if (!file) return;
-    // accept 只是第一层限制；这里按类型/体积再挡一次，避免把超大或非图片文件塞进项目文档。
-    // 注意：这里只做"读进来"，并没有做安全图片解码，解码与媒体校验仍以导出链路为准。
-    if (!/^image\/(png|jpeg|webp)$/.test(String(file.type || ''))) {
-      setNotice('请选择 PNG、JPEG 或 WebP 图片');
+  // UX0b：海报素材走已有本地资产链路 ——
+  // 主进程选图(pickImages) → 落盘(attachImages) → 回读预览(readAsset)。
+  // 渲染进程不读磁盘、不拼 dataUrl；只有资产真的保存成功才允许"使用此图并继续"。
+  const handlePickPoster = async () => {
+    if (posterBusy) return;
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    if (service.mode !== 'desktop') {
+      setNotice('浏览器模式不会把图片写进项目，请在桌面应用中上传海报素材');
       return;
     }
-    if (file.size > MAX_POSTER_UPLOAD_BYTES) {
-      setNotice('图片超过 2 MB，请压缩后再上传');
+    if (!projectId) {
+      setNotice('请先在工作台新建或打开项目，再上传海报素材');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '');
-      if (!dataUrl) {
-        setNotice('图片读取失败，请重试');
+    setPosterBusy(true);
+    try {
+      const picked = await service.pickImages(1);
+      if (picked.status !== 'ok') {
+        setNotice(picked.message || '选择图片失败，请重试');
+        return;
+      }
+      const item = Array.isArray(picked.items) ? picked.items[0] : null;
+      // 用户取消选择：保持现状（已有素材不动）。
+      if (!item) return;
+      if (item.mime !== 'image/png') {
+        setNotice('海报素材目前只支持 PNG 图片，请重新选择');
+        return;
+      }
+      if (Number.isFinite(item.bytes) && item.bytes > MAX_POSTER_UPLOAD_BYTES) {
+        // 超限直接不上传：之前已选的素材保持不变。
+        setNotice('图片超过 2 MB，请压缩后再上传');
+        return;
+      }
+      const attached = await service.attachImages(projectId, [item.token]);
+      if (attached.status !== 'ok') {
+        setNotice(attached.message || '保存图片失败，请重试');
+        return;
+      }
+      const asset = Array.isArray(attached.assets) ? attached.assets[0] : null;
+      if (!asset || !asset.assetId) {
+        setNotice('保存图片失败，请重试');
+        return;
+      }
+      if (asset.mime !== 'image/png') {
+        setNotice('海报素材目前只支持 PNG 图片，请重新选择');
+        return;
+      }
+      if (Number.isFinite(asset.bytes) && asset.bytes > MAX_POSTER_UPLOAD_BYTES) {
+        setNotice('图片超过 2 MB，请压缩后再上传');
+        return;
+      }
+      const preview = await service.readAsset(projectId, asset.assetId, 720);
+      if (preview.status !== 'ok' || !preview.asset || !preview.asset.dataUrl) {
+        // 资产可能已落盘，但预览读不出来：明确提示，不假装成功、也不改已有素材。
+        setNotice('图片已保存，但预览读取失败，请重新选择图片');
         return;
       }
       dispatch({
-        type: 'SET_IMAGE',
-        image: { dataUrl, provider: 'user-upload', note: '你上传的图片，不是模型生成结果' },
+        type: 'SET_POSTER_ASSET',
+        assetId: asset.assetId,
+        meta: {
+          provider: 'user-upload',
+          width: asset.width,
+          height: asset.height,
+          note: '你上传的图片，不是模型生成结果',
+        },
+        preview: preview.asset.dataUrl,
       });
-    };
-    reader.onerror = () => setNotice('图片读取失败，请重试');
-    reader.readAsDataURL(file);
+      setNotice('海报素材已保存到项目');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '保存图片失败，请重试');
+    } finally {
+      setPosterBusy(false);
+    }
   };
 
   const handleStoreSubmit = () => {
@@ -1573,7 +1621,15 @@ export default function App() {
           return;
         }
       }
-      const result = await exportProject({ parentDir: directory, plan, projectName, mode: 'development' });
+      // UX0b：海报素材只传受控引用（项目 ID + 资产 ID），字节由主进程读取。
+      const result = await exportProject({
+        parentDir: directory,
+        plan,
+        projectName,
+        mode: 'development',
+        projectId: state.project.activeId || null,
+        posterAssetId: state.visual.imageAssetId || null,
+      });
       if (result.status === 'ok') {
         const payload = result.result || {};
         const mergedWarnings = [...(extraWarnings || []), ...(payload.warnings || [])];
@@ -2044,9 +2100,16 @@ export default function App() {
         return (
           <ImageReview
             image={state.visual.image}
-            busy={imageBusy}
-            onUpload={handleImageUpload}
-            onUse={() => dispatch({ type: 'APPROVE_IMAGE', material: 'uploaded' })}
+            assetId={state.visual.imageAssetId ?? null}
+            busy={posterBusy}
+            onPick={handlePickPoster}
+            onUse={() => {
+              if (!state.visual.imageAssetId) {
+                setNotice('图片还没有保存到项目，请重新选择图片');
+                return;
+              }
+              dispatch({ type: 'APPROVE_IMAGE', material: 'uploaded' });
+            }}
             onSkip={() => dispatch({ type: 'APPROVE_IMAGE', material: 'skipped' })}
             canGenerate={canGenerateImage()}
             generateBlockedReason={IMAGE_GENERATION_BLOCKED_REASON}

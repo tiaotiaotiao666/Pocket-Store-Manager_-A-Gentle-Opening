@@ -350,6 +350,31 @@ function createAssetStore(options) {
     };
   }
 
+  /**
+   * UX0b：主进程内部读取资产**完整字节**（不做缩略图），供 Composer 导出使用。
+   * 与 readAsset 共用同一套项目/资产校验，渲染进程没有任何路径可达这里。
+   */
+  async function readAssetBytes(projectId, assetId) {
+    assertProjectId(projectId);
+    if (typeof assetId !== 'string' || !ASSET_ID_RE.test(assetId)) {
+      throw new ProjectStoreError('ASSET_ID_INVALID', '资产标识无效');
+    }
+    const doc = await readProjectDocument(projectId);
+    const images = Array.isArray(doc.assets && doc.assets.images) ? doc.assets.images : [];
+    const meta = images.find((item) => item.assetId === assetId);
+    if (!meta || typeof meta.fileName !== 'string' || !/^[0-9a-f]{16}\.(png|jpg|jpeg|webp)$/.test(meta.fileName)) {
+      throw new ProjectStoreError('ASSET_NOT_FOUND', '图片资产不存在或不属于当前项目');
+    }
+    const file = path.join(assetsDirectory(projectId), meta.fileName);
+    let buffer;
+    try {
+      buffer = await fsp.readFile(file);
+    } catch (error) {
+      throw new ProjectStoreError('ASSET_READ_FAILED', '图片文件无法读取', { cause: error.code });
+    }
+    return { meta: { ...meta }, buffer, sha256: `sha256:${sha256Prefix(buffer)}` };
+  }
+
   /** 删除资产：仍被业务字段引用时只报告引用，不静默删除。 */
   async function removeAsset(projectId, assetId) {
     assertProjectId(projectId);
@@ -390,6 +415,7 @@ function createAssetStore(options) {
     pickImages,
     attachImages,
     readAsset,
+    readAssetBytes,
     removeAsset,
     assetsDirectory,
     pendingCount: () => pendingTokens.size,

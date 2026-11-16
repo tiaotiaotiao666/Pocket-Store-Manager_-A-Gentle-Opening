@@ -9,6 +9,7 @@
 
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 const { writeFileAtomic, ProjectStoreError, PROJECT_ID_RE } = require('./project-store.cjs');
 
@@ -129,15 +130,34 @@ function createSettingsStore(options) {
   /**
    * UX0a-4：内容损坏时先留带时间戳的备份，原文件不动。
    * 备份只复制、不移动，也不记录文件内容，避免把配置/密钥写进日志或界面。
+   * UX0b：同一个未变化的损坏文件不重复备份（按内容摘要去重）。
    */
-  async function backupUnreadableConfig() {
+  async function backupUnreadableConfig(raw) {
+    const digest = crypto.createHash('sha256').update(raw, 'utf8').digest('hex');
+    let existing = [];
+    try {
+      existing = await fsp.readdir(userDataDir);
+    } catch (error) {
+      existing = [];
+    }
+    for (const name of existing) {
+      if (!name.startsWith('config.json.bak-')) continue;
+      try {
+        const bytes = await fsp.readFile(path.join(userDataDir, name));
+        if (crypto.createHash('sha256').update(bytes).digest('hex') === digest) {
+          return { backup: name, reused: true };
+        }
+      } catch (error) {
+        /* 旧备份不可读时跳过，继续尝试新建 */
+      }
+    }
     const stamp = now().toISOString().replace(/[:.]/g, '-');
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const name = attempt === 0 ? `config.json.bak-${stamp}` : `config.json.bak-${stamp}-${attempt}`;
       const target = path.join(userDataDir, name);
       try {
         await fsp.copyFile(configPath, target, fsp.constants.COPYFILE_EXCL);
-        return { backup: name };
+        return { backup: name, reused: false };
       } catch (error) {
         if (error.code === 'EEXIST') continue;
         return { backup: null, backupError: error.code || 'UNKNOWN' };
@@ -160,7 +180,7 @@ function createSettingsStore(options) {
       parsed = JSON.parse(raw);
     } catch (error) {
       // 情况一：内容损坏（不是合法 JSON）。先备份原文件，再用默认设置继续。
-      const { backup } = await backupUnreadableConfig();
+      const { backup } = await backupUnreadableConfig(raw);
       return {
         config: defaultConfig(),
         source: 'default',

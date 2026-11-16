@@ -177,6 +177,14 @@ export default function DeployStep({
               <dt>工程目录</dt>
               <dd className="deploy-path">{result?.outputPath || (directory && projectName ? `${directory}/${projectName}` : '—')}</dd>
             </div>
+            <div className="deploy-summary-row">
+              <dt>海报素材</dt>
+              <dd>
+                {result && result.poster && result.poster.included
+                  ? '已包含你上传的首页背景图（assets/media/home-background.png）'
+                  : '未添加海报素材，不影响基础小程序页面'}
+              </dd>
+            </div>
             {result?.lockDigest ? (
               <div className="deploy-summary-row">
                 <dt>Lock 摘要</dt>

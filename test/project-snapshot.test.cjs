@@ -242,8 +242,14 @@ test('phase 降级：building / 空 candidates / 无效果图不把用户卡在�
   assert.strictEqual(snapshot.fromDocument({
     ...doc,
     phase: 'image-review',
-    visual: { ...doc.visual, prompt: 'x', imageAssetId: null },
+    visual: { ...doc.visual, prompt: '', imageAssetId: null },
   }).phase, 'store-info');
+  // UX0b：海报素材可选，「跳过海报」的项目必须能回到 image-review，不能因缺 imageAssetId 被降级。
+  assert.strictEqual(snapshot.fromDocument({
+    ...doc,
+    phase: 'image-review',
+    visual: { ...doc.visual, prompt: 'x', imageAssetId: null },
+  }).phase, 'image-review');
   assert.strictEqual(snapshot.fromDocument({ ...doc, phase: '不存在的阶段' }).phase, 'onboarding');
 });
 

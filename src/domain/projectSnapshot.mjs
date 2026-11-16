@@ -493,7 +493,9 @@ function resolvePhase(phase, candidates, visual) {
   if (phase === PHASES.BUILDING) return PHASES.FEATURES;
   if (phase === PHASES.TEMPLATE_PICK && candidates.length === 0) return PHASES.FEATURES;
   if (phase === PHASES.PROMPT_STUDIO && !visual.prompt) return PHASES.STORE_INFO;
-  if (phase === PHASES.IMAGE_REVIEW && (!visual.prompt || !visual.imageAssetId)) return PHASES.STORE_INFO;
+  // UX0b：海报素材是可选项，"跳过海报"的项目也必须能恢复到 IMAGE_REVIEW；
+  // 因此这里只要求提示词存在，不再要求 imageAssetId。
+  if (phase === PHASES.IMAGE_REVIEW && !visual.prompt) return PHASES.STORE_INFO;
   return phase;
 }
 

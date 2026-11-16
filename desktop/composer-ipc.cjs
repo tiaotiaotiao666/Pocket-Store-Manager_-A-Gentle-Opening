@@ -20,6 +20,21 @@ const MAX_PAYLOAD_BYTES = 256 * 1024;
 const MAX_PLAN_BYTES = 64 * 1024;
 const TRUSTED_URL = /^(file:\/\/|http:\/\/127\.0\.0\.1:5173\/)/;
 
+/**
+ * UX0b：渲染进程不得把媒体内容本身（dataUrl / Buffer / 路径）塞进导出请求，
+ * 只能传项目内的资产引用，真实字节由主进程读取。
+ */
+const FORBIDDEN_MEDIA_KEYS = Object.freeze([
+  'media',
+  'mediaBytes',
+  'dataUrl',
+  'imageDataUrl',
+  'assetPath',
+  'absolutePath',
+  'filePath',
+  'posterPath',
+]);
+
 function isTrustedSender(event) {
   const frame = event && event.senderFrame;
   const url = frame && frame.url;
@@ -40,6 +55,8 @@ function createComposerIpc(options) {
   const shell = opts.shell;
   const compose = opts.compose;
   const validateComposition = opts.validateComposition;
+  // UX0b：受控媒体解析器由 main 注入；渲染进程只能传项目 ID + 海报资产 ID。
+  const resolveMedia = typeof opts.resolveMedia === 'function' ? opts.resolveMedia : null;
   const approvedParents = new Set();
   const exportedOutputs = new Set();
   let active = null;
@@ -91,6 +108,11 @@ function createComposerIpc(options) {
     const requestedParent = payload && payload.parentDir === PREVIEW_PARENT_TOKEN
       ? previewParentDir
       : (payload && payload.parentDir);
+    const forbiddenKeys = FORBIDDEN_MEDIA_KEYS
+      .filter((key) => payload && Object.prototype.hasOwnProperty.call(payload, key));
+    if (forbiddenKeys.length > 0) {
+      return resultError('MEDIA_REQUEST_INVALID', '不接受渲染进程直接传入媒体内容，请传入项目内的海报资产引用');
+    }
     if (typeof requestedParent !== 'string' || !requestedParent) {
       return resultError('TARGET_PARENT_MISSING', '未选择导出位置');
     }
@@ -105,6 +127,33 @@ function createComposerIpc(options) {
     let lastProgressAt = 0;
 
     try {
+      // UX0b：海报素材只按受控引用在主进程解析；缺图、越权、篡改、格式不符一律阻断本次导出。
+      const posterAssetId = (payload && (payload.posterAssetId || payload.imageAssetId)) || null;
+      let resolvedMedia = null;
+      if (posterAssetId && !resolveMedia) {
+        return resultError('MEDIA_RESOLVER_MISSING', '主进程未配置媒体解析器，已阻断本次导出');
+      }
+      if (resolveMedia) {
+        let resolved;
+        try {
+          resolved = await resolveMedia({
+            projectId: (payload && payload.projectId) || '',
+            posterAssetId,
+          });
+        } catch (error) {
+          return resultError('MEDIA_ASSET_READ_FAILED', '海报素材读取失败');
+        }
+        if (!resolved || resolved.ok === false) {
+          return resultError(
+            (resolved && resolved.code) || 'MEDIA_INVALID',
+            (resolved && resolved.message) || '海报素材校验失败',
+          );
+        }
+        resolvedMedia = resolved;
+      }
+      const media = resolvedMedia && resolvedMedia.media ? resolvedMedia.media : undefined;
+      const poster = resolvedMedia ? (resolvedMedia.poster || { included: Boolean(media) }) : null;
+
       const result = await compose({
         plan: payload.plan,
         parentDir,
@@ -113,6 +162,7 @@ function createComposerIpc(options) {
         storeId: payload.storeId,
         backendVersions: payload.backendVersions,
         ...(payload.role === undefined ? {} : { role: payload.role }),
+        ...(media ? { media } : {}),
         signal,
         onProgress: (progress) => {
           const now = Date.now();
@@ -127,7 +177,8 @@ function createComposerIpc(options) {
       });
       if (result && result.ok) {
         exportedOutputs.add(result.outputPath);
-        return result;
+        // 海报结论来自主进程实际解析结果，不由渲染进程声称。
+        return poster === null ? result : { ...result, poster };
       }
       return result;
     } finally {
@@ -273,4 +324,5 @@ module.exports = {
   isTrustedSender,
   MAX_PAYLOAD_BYTES,
   MAX_PLAN_BYTES,
+  FORBIDDEN_MEDIA_KEYS,
 };

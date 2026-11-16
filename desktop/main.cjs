@@ -8,6 +8,7 @@ const composer = require('../scripts/composer/index.cjs');
 const { registerComposerIpc } = require('./composer-ipc.cjs');
 const { createProjectStore } = require('./project-store.cjs');
 const { createAssetStore } = require('./asset-store.cjs');
+const { createPosterMediaResolver } = require('./poster-media.cjs');
 const { createSettingsStore } = require('./settings-store.cjs');
 const { registerProjectIpc } = require('./project-ipc.cjs');
 const { registerFlushGuard, recoverPendingWrites } = require('./flush-guard.cjs');
@@ -154,6 +155,8 @@ registerComposerIpc(ipcMain, {
   shell,
   compose: composer.compose,
   validateComposition: composer.validateComposition,
+  // UX0b：海报素材由主进程按资产 ID 读取真实字节，渲染进程只传受控引用。
+  resolveMedia: createPosterMediaResolver({ assets: assetStore }),
   previewParentDir: path.join(app.getPath('userData'), 'preview-projects'),
 });
 

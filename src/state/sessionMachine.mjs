@@ -1501,7 +1501,49 @@ function baseReducer(state, action) {
     }
 
     case 'SET_IMAGE':
-      return { ...state, visual: { ...state.visual, image: action.image } };
+      // UX0a 遗留入口：只放预览，不声称素材已选用（没有 assetId 就不算上传成功）。
+      return {
+        ...state,
+        visual: { ...state.visual, image: action.image, imageAssetId: null, imageMeta: null },
+      };
+
+    case 'SET_POSTER_ASSET': {
+      // UX0b：资产已在桌面端落盘成功后才走这里。
+      // - imageAssetId 是真实资产 ID，会进 project.json；
+      // - imageMeta 只保存来源/尺寸等必要信息；
+      // - image.dataUrl 仅供运行中预览，projectSnapshot 不落盘。
+      const assetId = typeof action.assetId === 'string' && action.assetId ? action.assetId : null;
+      if (!assetId) return state;
+      const meta = action.meta && typeof action.meta === 'object' ? action.meta : {};
+      return {
+        ...state,
+        visual: {
+          ...state.visual,
+          imageAssetId: assetId,
+          imageMeta: {
+            provider: 'user-upload',
+            note: typeof meta.note === 'string' ? meta.note : '你上传的图片，不是模型生成结果',
+            width: Number.isFinite(meta.width) ? meta.width : undefined,
+            height: Number.isFinite(meta.height) ? meta.height : undefined,
+          },
+          image: typeof action.preview === 'string' && action.preview
+            ? { dataUrl: action.preview, provider: 'user-upload', note: '你上传的图片，不是模型生成结果' }
+            : state.visual.image,
+        },
+      };
+    }
+
+    case 'SET_POSTER_PREVIEW':
+      // 重开项目后按已保存的 imageAssetId 回读预览；不改动资产引用本身。
+      if (!state.visual.imageAssetId) return state;
+      if (typeof action.dataUrl !== 'string' || !action.dataUrl) return state;
+      return {
+        ...state,
+        visual: {
+          ...state.visual,
+          image: { dataUrl: action.dataUrl, provider: 'user-upload', note: '你上传的图片，不是模型生成结果' },
+        },
+      };
 
     case 'ADD_IMAGE_ROUND': {
       let next = appendMessages(state, state.activeSessionId, [
@@ -1520,11 +1562,12 @@ function baseReducer(state, action) {
 
     case 'APPROVE_IMAGE': {
       const deployStyle = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
-      // UX0a-3：区分「已选用上传图片」与「未添加海报素材」。
-      // local-demo 占位图不算素材；只有用户上传（provider=user-upload）且带了 dataUrl 才算。
+      // UX0a-3 / UX0b：区分「已选用上传图片」与「未添加海报素材」。
+      // 只有资产已真实落盘（imageAssetId）且预览来源为 user-upload 才算已选用；
+      // 单凭一段 dataUrl 不足以声称素材已选用。
       const uploaded = Boolean(
-        state.visual.image
-        && state.visual.image.dataUrl
+        state.visual.imageAssetId
+        && state.visual.image
         && state.visual.image.provider === 'user-upload',
       );
       const material = action.material === 'uploaded' && uploaded ? 'uploaded' : 'skipped';
@@ -1547,7 +1590,14 @@ function baseReducer(state, action) {
           { label: '装修风格', value: deployStyle.name, note: deployStyle.caption },
         ],
       });
-      return { ...entered, deploy: createInitialDeploySlice() };
+      return {
+        ...entered,
+        // 跳过海报就明确解除引用：导出不会偷偷带上用户没选用的图片。
+        visual: material === 'uploaded'
+          ? entered.visual
+          : { ...entered.visual, image: null, imageAssetId: null, imageMeta: null },
+        deploy: createInitialDeploySlice(),
+      };
     }
 
     case 'DEPLOY_START':

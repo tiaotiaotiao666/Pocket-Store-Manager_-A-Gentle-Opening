@@ -22,6 +22,20 @@ const EXPORT_ERROR_TEXT = Object.freeze({
   SECRET_DETECTED: '生成内容包含敏感信息，已阻止导出。',
   INTERNAL_ADDRESS: '生成内容包含内部地址，已阻止导出。',
   COMPOSE_FAILED: '生成过程出错，请重试。',
+  // UX0b：海报素材相关（主进程按资产 ID 读取真实字节，任何一项不合规都阻断本次导出）。
+  MEDIA_REQUEST_INVALID: '海报素材请求不合法，已拒绝导出。',
+  MEDIA_PROJECT_MISSING: '找不到当前项目，无法读取海报素材。',
+  MEDIA_PROJECT_NOT_FOUND: '项目不存在或已被删除，无法读取海报素材。',
+  MEDIA_ASSET_ID_INVALID: '海报素材标识不合法，请重新选择图片。',
+  MEDIA_ASSET_NOT_IN_PROJECT: '海报素材不存在或不属于当前项目，请重新选择或跳过海报。',
+  MEDIA_ASSET_READ_FAILED: '海报素材读取失败，请重新选择图片或跳过。',
+  MEDIA_TYPE_UNSUPPORTED: '海报素材目前只支持 PNG 图片。',
+  MEDIA_TYPE_MISMATCH: '海报素材文件内容不是有效 PNG，请重新选择。',
+  MEDIA_SIZE_INVALID: '海报素材不能超过 2 MB。',
+  MEDIA_DIMENSION_INVALID: '无法识别海报素材尺寸，请重新选择图片。',
+  MEDIA_DIMENSION_MISMATCH: '海报素材尺寸与登记信息不一致，请重新选择图片。',
+  MEDIA_RESOLVER_MISSING: '当前版本不支持导出海报素材，已阻断本次导出。',
+  MEDIA_INVALID: '海报素材校验失败，请重新选择图片或跳过。',
 });
 
 export const DESKTOP_REQUIRED_MESSAGE = EXPORT_ERROR_TEXT.DESKTOP_REQUIRED;
@@ -181,20 +195,26 @@ export async function preflightTarget({ parentDir, projectName } = {}, options =
   };
 }
 
-export async function exportProject({ parentDir, plan, projectName, mode = 'development', storeId, backendVersions, role }) {
+export async function exportProject({
+  parentDir, plan, projectName, mode = 'development', storeId, backendVersions, role, projectId, posterAssetId,
+}) {
   const api = bridge();
   if (!api || typeof api.composerExport !== 'function') {
     return { status: 'desktop-required', message: DESKTOP_REQUIRED_MESSAGE };
   }
   const payload = { parentDir, plan, projectName, mode, storeId, backendVersions };
   if (role !== undefined) payload.role = role;
+  // UX0b：只传受控引用，媒体字节由主进程按资产 ID 读取。
+  if (projectId) payload.projectId = projectId;
+  if (posterAssetId) payload.posterAssetId = posterAssetId;
   const result = await api.composerExport(payload);
   if (!result || result.ok === false) {
     const code = (result && result.code) || 'COMPOSE_FAILED';
+    const known = Object.prototype.hasOwnProperty.call(EXPORT_ERROR_TEXT, code);
     return {
       status: code === 'EXPORT_CANCELLED' ? 'cancelled' : (code === 'TARGET_EXISTS' ? 'conflict' : 'failed'),
       code,
-      message: describeExportError(code),
+      message: known ? EXPORT_ERROR_TEXT[code] : ((result && result.message) || describeExportError(code)),
       details: result && result.details,
       suggestedName: result && result.details && result.details.suggestedName,
     };

@@ -160,8 +160,10 @@ test('UX0a-4 上传素材与跳过素材分别进入正确的导出状态', asyn
   const { PHASES } = await loadModule('state/constants.mjs');
 
   const withUpload = machine.reducer(state, {
-    type: 'SET_IMAGE',
-    image: { dataUrl: 'data:image/png;base64,AAAA', provider: 'user-upload', note: '你上传的图片' },
+    type: 'SET_POSTER_ASSET',
+    assetId: 'a_0123456789abcdef',
+    meta: { provider: 'user-upload', width: 32, height: 24 },
+    preview: 'data:image/png;base64,AAAA',
   });
   const usedDeploy = machine.reducer(withUpload, { type: 'APPROVE_IMAGE', material: 'uploaded' });
   assert.equal(usedDeploy.phase, PHASES.DEPLOY);

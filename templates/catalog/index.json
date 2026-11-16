@@ -6,7 +6,7 @@
       "id": "ordering-base",
       "version": "1.0.0",
       "root": "templates/base/ordering-base/1.0.0/src",
-      "digest": "sha256:74222d9498f612add5190f02aa5e2b5c2360221aece13400e0b006f46f7025ee"
+      "digest": "sha256:944b8f6e9883916ecc3c2275c0460ffd38111c13e4307d1af9f4abc88601ab6a"
     },
     "registryVersion": "2026.11.0",
     "sourceOfTruth": "templates/base/** + templates/registry/registry.v1.json + templates/{components,features,frontend-packs}/**",

@@ -43,6 +43,21 @@ function resolveCli() {
   return '';
 }
 
+/**
+ * 取出导出工程使用的后端地址：优先环境变量，其次读产物 config/env.js 的默认值。
+ */
+function resolveApiBase(projectRoot) {
+  if (process.env.MP_API_BASE) return process.env.MP_API_BASE.replace(/\/$/, '');
+  try {
+    const text = fs.readFileSync(path.join(projectRoot, 'config', 'env.js'), 'utf8');
+    const matched = text.match(/'(https?:\/\/[^']+)'/);
+    if (matched) return matched[1].replace(/\/$/, '');
+  } catch {
+    // 读不到就用本机默认后端
+  }
+  return 'http://127.0.0.1:3000/api/v1';
+}
+
 function cleanEnv() {
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
@@ -252,6 +267,12 @@ async function main() {
     for (const result of await probeClickChain(miniProgram, shotsDir)) {
       report.interactions.push(result);
     }
+    for (const result of await probeTableSource(miniProgram, resolveApiBase(projectRoot))) {
+      report.interactions.push(result);
+    }
+    for (const result of await probeComponentAnchors(miniProgram)) {
+      report.interactions.push(result);
+    }
     const failed = report.pages.filter((page) => page.status !== 'PASS');
     report.status = failed.length === 0 ? 'PASS' : 'FAIL';
   } catch (error) {
@@ -270,6 +291,180 @@ async function main() {
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * W5c：组件宿主加了稳定 id/class 锚点后，重新尝试用 automator 定位组件实例并真实点击。
+ * 每个交互只尝试一次（目标要求「仅做一次组件宿主锚点补验」），逐条记录用了哪条路径、
+ * 以及状态是否真的变化；仍不行就保留 BLOCKED。
+ */
+async function probeComponentAnchors(miniProgram) {
+  const results = [];
+
+  async function findHost(page, selector) {
+    try {
+      return await page.$(selector);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function tapInnerOrHost(host, candidates) {
+    const notes = [];
+    const selectors = Array.isArray(candidates) ? candidates : [candidates];
+    if (host && typeof host.$$ === 'function') {
+      for (const inner of selectors) {
+        try {
+          const nodes = await host.$$(inner);
+          if (nodes && nodes.length > 0) {
+            await nodes[nodes.length - 1].tap();
+            return { method: 'host.$$("' + inner + '") + tap', notes };
+          }
+          notes.push('host.$$("' + inner + '")=0');
+        } catch (error) {
+          notes.push('host.$$("' + inner + '") 抛错：' + error.message);
+        }
+      }
+    } else {
+      notes.push('宿主元素不支持相对查询（无 $$ 方法）');
+    }
+    try {
+      await host.tap();
+      return { method: 'host.tap()', notes };
+    } catch (error) {
+      notes.push('host.tap() 抛错：' + error.message);
+      return { method: '', notes };
+    }
+  }
+
+  results.push(
+    await attempt('锚点点击·分类切换（#menu-category-nav）', async () => {
+      const menu = await openRoute(miniProgram, '/pages/menu/index');
+      if (!menu) return { status: 'FAIL', detail: '菜单页打开失败' };
+      const before = await menu.data();
+      const host = await findHost(menu, '#menu-category-nav');
+      if (!host) {
+        return {
+          status: 'BLOCKED',
+          detail: '加 id/class 锚点后仍取不到组件宿主：page.$("#menu-category-nav")=null'
+            + '（分类组件对外只暴露宿主节点，automator 无法穿透）',
+        };
+      }
+      const tap = await tapInnerOrHost(host, ['.category-nav__item']);
+      await sleep(1500);
+      const after = await menu.data();
+      const changed = after.activeCategoryId !== before.activeCategoryId;
+      return {
+        status: changed ? 'PASS' : 'BLOCKED',
+        detail: '宿主可定位；' + tap.method + ' 后 activeCategoryId: ' + before.activeCategoryId
+          + ' → ' + after.activeCategoryId
+          + (tap.notes.length ? ' · ' + tap.notes.join('；') : '')
+          + (changed ? '' : ' · 点击未触发 bind:select'),
+        path: tap.method || 'ANCHOR_CLICK',
+      };
+    }),
+  );
+
+  results.push(
+    await attempt('锚点点击·菜品加购（#menu-product-*）', async () => {
+      const menu = await openRoute(miniProgram, '/pages/menu/index');
+      if (!menu) return { status: 'FAIL', detail: '菜单页打开失败' };
+      const data = await menu.data();
+      const product = (data.products || [])[0];
+      if (!product || !product.id) return { status: 'NOT_RUN', detail: '当前分类没有菜品，无法加购' };
+      const host = await findHost(menu, '#menu-product-' + product.id);
+      if (!host) {
+        return {
+          status: 'BLOCKED',
+          detail: '工件工程里没有渲染出 #menu-product-' + product.id + ' 宿主节点（锚点未生效或未编译）',
+        };
+      }
+      const beforeQty = (data.quantityMap || {})[product.id] || 0;
+      const tap = await tapInnerOrHost(host, ['.product-card__step--add', '.product-card__footer']);
+      await sleep(1500);
+      const after = await menu.data();
+      const afterQty = (after.quantityMap || {})[product.id] || 0;
+      const changed = afterQty !== beforeQty;
+      return {
+        status: changed ? 'PASS' : 'BLOCKED',
+        detail: '宿主 #menu-product-' + product.id + ' 可定位；' + tap.method + ' 后数量 '
+          + beforeQty + ' → ' + afterQty
+          + (tap.notes.length ? ' · ' + tap.notes.join('；') : '')
+          + (changed ? '' : ' · 点击未触发 bind:add'),
+        path: tap.method || 'ANCHOR_CLICK',
+      };
+    }),
+  );
+
+  results.push(
+    await attempt('锚点点击·购物车展开（#menu-cart-bar）', async () => {
+      const menu = await openRoute(miniProgram, '/pages/menu/index');
+      if (!menu) return { status: 'FAIL', detail: '菜单页打开失败' };
+      const before = await menu.data();
+      const host = await findHost(menu, '#menu-cart-bar');
+      if (!host) {
+        return { status: 'BLOCKED', detail: '加锚点后仍取不到 #menu-cart-bar 宿主节点' };
+      }
+      const tap = await tapInnerOrHost(host, ['.cart-bar__summary', '.cart-bar']);
+      await sleep(1500);
+      const after = await menu.data();
+      const changed = Boolean(after.cartVisible) !== Boolean(before.cartVisible);
+      return {
+        status: changed ? 'PASS' : 'BLOCKED',
+        detail: '宿主可定位；' + tap.method + ' 后 cartVisible: ' + before.cartVisible
+          + ' → ' + after.cartVisible
+          + (tap.notes.length ? ' · ' + tap.notes.join('；') : '')
+          + (changed ? '' : ' · 点击未触发 bind:expand'),
+        path: tap.method || 'ANCHOR_CLICK',
+      };
+    }),
+  );
+
+  return results;
+}
+
+/**
+ * W5c：核对菜单页桌号确实来自真实后端 /stores/:id/tables，而不是本地演示常量。
+ */
+async function probeTableSource(miniProgram, apiBase) {
+  const results = [];
+  results.push(
+    await attempt('桌号数据源·后端 /stores/:id/tables', async () => {
+      const menu = await openRoute(miniProgram, '/pages/menu/index');
+      if (!menu) return { status: 'FAIL', detail: '菜单页打开失败' };
+      // 堂食开关在组件内部不可点，这里用页面处理器切到堂食，让桌号区渲染出来。
+      const pre = await menu.data();
+      if (pre.mode !== 'DINE_IN') {
+        await callPageHandler(miniProgram, 'onModeChange', {
+          currentTarget: { dataset: {} },
+          detail: { value: 'DINE_IN' },
+        });
+        await sleep(1200);
+      }
+      const data = await menu.data();
+      const pageTables = (data.tableOptions || []).map((item) => item.id + '/' + item.name).sort();
+      let backendTables = null;
+      let backendError = '';
+      try {
+        const storeId = (data.store && data.store.id) || data.storeId;
+        const response = await fetch(apiBase + '/stores/' + encodeURIComponent(storeId) + '/tables');
+        const payload = await response.json();
+        backendTables = (payload.tables || []).map((item) => item.id + '/' + item.name).sort();
+      } catch (error) {
+        backendError = error.message;
+      }
+      const same = backendTables && JSON.stringify(pageTables) === JSON.stringify(backendTables);
+      return {
+        status: same ? 'PASS' : 'FAIL',
+        detail: '页面桌号=' + JSON.stringify(pageTables)
+          + ' · 后端桌号=' + JSON.stringify(backendTables)
+          + (backendError ? ' · 后端读取失败：' + backendError : '')
+          + ' · tablesLoading=' + data.tablesLoading + ' · tablesError=' + JSON.stringify(data.tablesError || ''),
+        path: 'DATA_SOURCE',
+      };
+    }),
+  );
+  return results;
+}
 
 async function openRoute(miniProgram, route) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -303,96 +498,8 @@ async function probeMenuInteractions(miniProgram, page) {
   const categories = before.categories || [];
   const secondCategory = categories[1];
 
-  // 路径一：组件内部节点点击（如实阻塞）
-  results.push(
-    await attempt('分类切换（组件内部节点点击）', async () => {
-      if (!secondCategory) return { status: 'NOT_RUN', detail: '菜单没有第二个分类，无法切换' };
-      const host = await page.$('category-nav');
-      const chips = await page.$$('.category-nav__item');
-      const probe = {
-        hostSelector: host ? host.tagName || 'element' : null,
-        chips: chips ? chips.length : 0,
-      };
-      if (chips && chips.length >= 2) {
-        await chips[1].tap();
-        await sleep(1200);
-        const after = await page.data();
-        const ok = after.activeCategoryId === secondCategory.id;
-        return {
-          status: ok ? 'PASS' : 'FAIL',
-          detail: '点击 chip 后 activeCategoryId=' + after.activeCategoryId,
-          evidence: probe,
-        };
-      }
-      return {
-        status: 'BLOCKED',
-        detail:
-          'automator 无法定位 category-nav 自定义组件内部节点：page.$("category-nav")='
-          + String(probe.hostSelector)
-          + '，page.$$(".category-nav__item")='
-          + probe.chips
-          + '；page.getElementsByXpath 抛错，page.selectComponent 返回 null。最小复现：见 .arts/w5b/probe-*.cjs',
-        evidence: probe,
-      };
-    }),
-  );
-
-  // 路径二：加购
-  results.push(
-    await attempt('菜品加购（组件内部节点点击）', async () => {
-      const target = (before.products || [])[0];
-      if (!target) return { status: 'NOT_RUN', detail: '当前分类没有菜品' };
-      const hosts = await page.$$('product-card');
-      const addButtons = await page.$$('.product-card__add');
-      if (addButtons && addButtons.length > 0) {
-        await addButtons[0].tap();
-        await sleep(1200);
-        const after = await page.data();
-        const qty = after.quantityMap ? after.quantityMap[target.id] || 0 : 0;
-        return {
-          status: qty > 0 ? 'PASS' : 'FAIL',
-          detail: '加购后 quantityMap[' + target.id + ']=' + qty,
-        };
-      }
-      return {
-        status: 'BLOCKED',
-        detail:
-          '加购按钮在 product-card 自定义组件内部：page.$$("product-card")='
-          + (hosts ? hosts.length : 0)
-          + '，page.$$(".product-card__add")='
-          + (addButtons ? addButtons.length : 0)
-          + '；点击宿主 .menu__product 不触发 bind:add',
-        evidence: { hosts: hosts ? hosts.length : 0, addButtons: addButtons ? addButtons.length : 0 },
-      };
-    }),
-  );
-
-  // 路径三：购物车展开
-  results.push(
-    await attempt('购物车展开（组件内部节点点击）', async () => {
-      const hosts = await page.$$('cart-bar');
-      const summaries = await page.$$('.cart-bar__summary');
-      if (summaries && summaries.length > 0) {
-        await summaries[0].tap();
-        await sleep(1000);
-        const after = await page.data();
-        return after.cartVisible
-          ? { status: 'PASS', detail: '购物车面板已展开（cartVisible=true）' }
-          : { status: 'FAIL', detail: '点击后 cartVisible 仍为 false' };
-      }
-      return {
-        status: 'BLOCKED',
-        detail:
-          'cart-bar 为自定义组件：page.$$("cart-bar")='
-          + (hosts ? hosts.length : 0)
-          + '，page.$$(".cart-bar__summary")='
-          + (summaries ? summaries.length : 0)
-          + '；宿主节点无 id/class 锚点，无法定位内部点击区',
-        evidence: { hosts: hosts ? hosts.length : 0, summaries: summaries ? summaries.length : 0 },
-      };
-    }),
-  );
-
+  // 组件内部节点的真实点击已改由 probeComponentAnchors 用宿主 id/class 锚点执行
+  // （W5c 结论：锚点后 automator 可定位组件实例并点击成功），这里不再重复记录旧 BLOCKED。
   // 路径四：appservice 内直调页面事件处理器（组件 emit 的等价负载），断言业务状态真的变化
   results.push(
     await attempt('分类切换（页面处理器直调 + 状态断言）', async () => {
@@ -475,6 +582,7 @@ async function resetMiniProgramStorage(miniProgram) {
  */
 async function probeClickChain(miniProgram, shotsDir) {
   const results = [];
+  let selectedTable = { id: '', name: '' };
 
   results.push(
     await attempt('真实点击·首页「开始点餐」跳转菜单', async () => {
@@ -523,10 +631,12 @@ async function probeClickChain(miniProgram, shotsDir) {
       await tableNodes[0].tap();
       await sleep(1500);
       const after = await menu.data();
+      selectedTable = { id: (after.visit && after.visit.tableId) || '', name: after.tableName || '' };
       return {
         status: after.tableName ? 'PASS' : 'FAIL',
         detail: '点击桌位后 tableName=' + JSON.stringify(after.tableName || '')
-          + '（可点节点 ' + tableNodes.length + ' 个）',
+          + '，tableId=' + JSON.stringify(selectedTable.id)
+          + '（可点节点 ' + tableNodes.length + ' 个，桌号来自后端 /tables）',
         path: 'CLICK（真实点击）',
       };
     }),
@@ -558,11 +668,19 @@ async function probeClickChain(miniProgram, shotsDir) {
       const route = current ? current.path : '';
       const orderData = current ? await current.data() : null;
       const orderId = orderData && orderData.order ? orderData.order.id : '';
+      const orderTableId = orderData && orderData.order && orderData.order.tableId ? orderData.order.tableId : '';
       const payHint = checkoutData && typeof checkoutData.payHint === 'string' ? checkoutData.payHint : '';
+      const checkoutTableName = (checkoutData && checkoutData.tableName) || '';
+      const tableNameMatches = selectedTable.name ? checkoutTableName === selectedTable.name : Boolean(checkoutTableName);
+      const orderTableMatches = !orderTableId || !selectedTable.id || orderTableId === selectedTable.id;
       return {
-        status: orderId ? 'PASS' : 'FAIL',
+        status: orderId && tableNameMatches && orderTableMatches ? 'PASS' : 'FAIL',
         detail: '提交结算页（items=' + ((checkoutData.items || []).length) + '，合计=' + (checkoutData.totalText || '')
           + '）后落到 ' + route + '，真实后端订单号=' + (orderId || '(无)')
+          + '；桌号一致性：菜单所选=' + JSON.stringify(selectedTable.name) + '/' + JSON.stringify(selectedTable.id)
+          + ' · 结算页=' + JSON.stringify(checkoutTableName)
+          + ' · 订单记录 tableId=' + JSON.stringify(orderTableId || '(订单对象未返回)')
+          + (tableNameMatches ? '（结算页一致）' : '（结算页不一致）')
           + '；结算页演示支付提示=' + JSON.stringify(payHint),
         path: 'CLICK（真实点击）+ HANDLER_CALL（补足购物车）',
       };

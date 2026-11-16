@@ -32,7 +32,11 @@ Page({
     detailVisible: false,
     detailProduct: {},
     detailQuantity: 0,
-    tableOptions: config.DEMO_TABLES,
+    // 桌号是门店实时业务数据：只来自后端 /stores/:id/tables，
+    // 加载中 / 空列表 / 请求失败都要有显式状态，不回退固定 A01/A02。
+    tableOptions: [],
+    tablesLoading: false,
+    tablesError: '',
     slotProps,
   },
 
@@ -112,6 +116,7 @@ Page({
         wx.setNavigationBarTitle({ title: store.name });
       }
       this.refreshCart();
+      this.loadTables(store.id || visit.storeId);
     } catch (error) {
       const described = errorText.describeError(error);
       this.setData({
@@ -125,6 +130,40 @@ Page({
         done();
       }
     }
+  },
+
+  /**
+   * 读取门店实时桌号。三种状态都要落到 data 上，供页面显式渲染：
+   * tablesLoading=true 加载中；tablesError 非空 = 请求失败（带重试）；
+   * tablesLoading=false 且 tablesError 为空且列表为空 = 门店确实没有可用桌号。
+   * 任何情况下都不回退到本地固定桌号。
+   */
+  async loadTables(storeId) {
+    const targetStoreId = storeId || this.data.storeId || visitStore.load().storeId;
+    if (!targetStoreId) {
+      this.setData({ tablesLoading: false, tablesError: '缺少门店标识，无法读取桌号', tableOptions: [] });
+      return;
+    }
+    this.setData({ tablesLoading: true, tablesError: '' });
+    try {
+      const payload = await storeService.getTables(targetStoreId);
+      const list = payload && Array.isArray(payload.tables) ? payload.tables : [];
+      const tableOptions = list
+        .filter((item) => item && typeof item.id === 'string' && item.id)
+        .map((item) => ({ id: item.id, name: String(item.name || item.id) }));
+      this.setData({ tableOptions, tablesLoading: false, tablesError: '' });
+    } catch (error) {
+      const described = errorText.describeError(error);
+      this.setData({
+        tableOptions: [],
+        tablesLoading: false,
+        tablesError: described.message || '桌号加载失败',
+      });
+    }
+  },
+
+  onRetryTables() {
+    this.loadTables();
   },
 
   findCategoryName(categories, categoryId) {

@@ -35,6 +35,25 @@
   font-weight: 600;
 }
 
+.menu__table--active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.menu__tables-hint {
+  font-size: 22rpx;
+  color: var(--color-muted);
+}
+
+.menu__tables-retry {
+  margin-left: 14rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid var(--color-border);
+  font-size: 22rpx;
+  color: var(--color-primary);
+}
+
 .menu__error {
   padding: 28rpx 24rpx;
 }

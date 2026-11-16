@@ -14,7 +14,7 @@
       "index.wxml",
       "index.wxss"
     ],
-    "digest": "sha256:cce45ca394e543a03fd389404d1cd0124be7d1c34dad285cb9db9c77b62112f7"
+    "digest": "sha256:579723f161b3555d50304d472a06dbe455dffcfa61e39827207c22f28125edff"
   },
   "components": [
     {
@@ -35,49 +35,49 @@
       "tag": "state-view",
       "componentId": "state-view",
       "mode": "conditional",
-      "sourceLine": 36,
+      "sourceLine": 48,
       "usage": "<state-view wx:if=\"{{loading}}\" state=\"loading\" title=\"正在加载菜单\" />"
     },
     {
       "tag": "error-banner",
       "componentId": "error-banner",
       "mode": "always",
-      "sourceLine": 39,
+      "sourceLine": 51,
       "usage": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onRetry\" />"
     },
     {
       "tag": "category-nav",
       "componentId": "category-nav",
       "mode": "always",
-      "sourceLine": 52,
-      "usage": "<category-nav categories=\"{{categories}}\" active-id=\"{{activeCategoryId}}\" bind:select=\"onSelectCategory\" />"
+      "sourceLine": 64,
+      "usage": "<category-nav id=\"menu-category-nav\" class=\"menu__nav-host\" categories=\"{{categories}}\" active-id=\"{{activeCategoryId}}\" bind:select=\"onSelectCategory\" />"
     },
     {
       "tag": "product-card",
       "componentId": "product-card",
       "mode": "always",
-      "sourceLine": 64,
-      "usage": "<product-card product=\"{{item}}\" quantity=\"{{quantityMap[item.id] || 0}}\" disabled=\"{{item.available === false}}\" bind:add=\"onProductAdd\" bind:remove=\"onProductRemove\" bind:openDetail=\"onOpenDetail\" /"
+      "sourceLine": 76,
+      "usage": "<product-card id=\"menu-product-{{item.id}}\" class=\"menu__card-host\" product=\"{{item}}\" quantity=\"{{quantityMap[item.id] || 0}}\" disabled=\"{{item.available === false}}\" bind:add=\"onProductAdd\" bind:rem"
     },
     {
       "tag": "cart-bar",
       "componentId": "cart-bar",
       "mode": "always",
-      "sourceLine": 85,
-      "usage": "<cart-bar total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" submitting=\"{{false}}\" bind:expand=\"onExpandCart\" bind:checkout=\"onCheckout\" />"
+      "sourceLine": 99,
+      "usage": "<cart-bar id=\"menu-cart-bar\" class=\"menu__cart-host\" total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" submitting=\"{{false}}\" bind:expand=\"onExpandCart\" bind:chec"
     },
     {
       "tag": "cart-panel",
       "componentId": "cart-panel",
       "mode": "modal",
-      "sourceLine": 93,
+      "sourceLine": 109,
       "usage": "<cart-panel visible=\"{{cartVisible}}\" items=\"{{cartSummary.items}}\" total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" submitting=\"{{false}}\" bind:close=\"onPanelCl"
     },
     {
       "tag": "product-detail",
       "componentId": "product-detail",
       "mode": "modal",
-      "sourceLine": 105,
+      "sourceLine": 121,
       "usage": "<product-detail visible=\"{{detailVisible}}\" product=\"{{detailProduct}}\" quantity=\"{{detailQuantity}}\" bind:close=\"onDetailClose\" bind:add=\"onDetailAdd\" bind:remove=\"onDetailRemove\" />"
     },
     {
@@ -131,6 +131,7 @@
       "collectProducts",
       "findCategoryName",
       "loadCatalog",
+      "loadTables",
       "onCheckout",
       "onDetailAdd",
       "onDetailClose",
@@ -145,6 +146,7 @@
       "onProductAdd",
       "onProductRemove",
       "onRetry",
+      "onRetryTables",
       "onSelectCategory",
       "refreshCart",
       "removeProduct"
@@ -175,6 +177,8 @@
       "storeId",
       "tableName",
       "tableOptions",
+      "tablesError",
+      "tablesLoading",
       "visit"
     ]
   },

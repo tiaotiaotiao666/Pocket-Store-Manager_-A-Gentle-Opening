@@ -4,6 +4,7 @@ import {
   validateAgentDraft,
 } from '../../domain/agentDraft.mjs';
 import { mergeAgentRunDraft } from '../../domain/agentRunDraft.mjs';
+import { summarizeDraftChanges } from '../../domain/agentRunProcess.mjs';
 import { AGENT_RUN_CONTRACT_VERSION, getAgentRunConfig } from './agentServiceConfig.js';
 import {
   createAgentTurnError,
@@ -177,6 +178,8 @@ export function createAgentRunService(options = {}) {
         degraded: degradation.degraded,
         degradation,
         stopReason: degradation.stopReason,
+        // W3：本轮到底改了什么（人话摘要），供过程卡展示；不涉及工具参数。
+        changeSummary: summarizeDraftChanges(draft, merged),
         requestId: response.requestId ?? requestId ?? null,
         contractVersion: AGENT_RUN_CONTRACT_VERSION,
       };

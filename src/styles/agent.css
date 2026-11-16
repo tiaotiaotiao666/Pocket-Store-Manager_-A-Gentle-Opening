@@ -289,36 +289,203 @@
   color: var(--muted);
 }
 
-/* W2：部分完成（降级）提示 —— 草稿可用，但必须让用户看到不是全部工具都成功。 */
-.agent-partial {
+/* W3：唯一主过程卡 —— 处理中 / 部分完成 / 完成 / 失败可重试共用一套结构。 */
+.agent-process {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px;
-  border: 1px solid #eccfa1;
+  gap: 10px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
+  background: linear-gradient(160deg, #fbfcfe, #f4f7fb);
+}
+
+.agent-process.is-partial {
+  border-color: #eccfa1;
   background: linear-gradient(150deg, #fffdf6, #fdf6e7);
 }
 
-.agent-partial-head {
+.agent-process.is-failed {
+  border-color: #e7c2bd;
+  background: linear-gradient(150deg, #fff9f8, #fdf1ef);
+}
+
+.agent-process.is-done {
+  border-color: #cfe3d2;
+  background: linear-gradient(150deg, #fbfefb, #f2f9f3);
+}
+
+.agent-process-head {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  color: #8a6524;
-  font-size: 12.5px;
-  line-height: 1.6;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.agent-partial-head svg {
-  flex: none;
-  margin-top: 2px;
+.agent-process-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.agent-partial-note {
+.agent-process.is-running .agent-process-badge { color: #4b6cb7; }
+.agent-process.is-running .agent-process-badge svg { animation: agent-spin 1.4s linear infinite; }
+.agent-process.is-partial .agent-process-badge { color: #8a6524; }
+.agent-process.is-failed .agent-process-badge { color: #96453c; }
+.agent-process.is-done .agent-process-badge { color: #3f7a4c; }
+
+.agent-process-headline {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.agent-process-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-process-step {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.agent-process-step svg {
+  flex: none;
+  transform: translateY(2px);
+  color: var(--muted);
+}
+
+.agent-process-step.is-done svg { color: #4b8b5c; }
+.agent-process-step.is-failed svg { color: #b4574a; }
+.agent-process-step.is-partial svg { color: #b8862f; }
+.agent-process-step.is-active svg { color: #4b6cb7; animation: agent-spin 1.4s linear infinite; }
+
+.agent-process-step-label {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.agent-process-step.is-pending .agent-process-step-label {
+  color: var(--muted);
+}
+
+.agent-process-step-state {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.agent-process-step-detail {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.agent-process-step-detail::before {
+  content: '· ';
+}
+
+.agent-process-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.agent-process-changes-title {
+  margin: 0 0 4px;
   font-size: 11px;
-  line-height: 1.65;
-  color: #96773a;
+  color: var(--muted);
+}
+
+.agent-process-changes ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-process-change-item {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.agent-process-change-item::before {
+  content: '· ';
+  color: var(--muted);
+}
+
+.agent-process-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.agent-process-tip {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.agent-process-history {
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.agent-process-history summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.agent-process-history ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-process-history-item {
+  display: flex;
+  gap: 6px;
+  line-height: 1.55;
+}
+
+.agent-process-history-title {
+  flex: none;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.agent-process-history-item.is-partial .agent-process-history-title { color: #8a6524; }
+.agent-process-history-item.is-failed .agent-process-history-title { color: #96453c; }
+
+@keyframes agent-spin {
+  from { transform: rotate(0deg) translateY(2px); }
+  to { transform: rotate(360deg) translateY(2px); }
 }
 
 /* W2：一次性提示（草稿被手改保护、请求期间新增图片）。 */

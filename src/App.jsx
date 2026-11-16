@@ -2082,7 +2082,8 @@ export default function App() {
               lastError={agent.lastError}
               attempts={agent.attempts}
               simulateFailure={agent.simulateFailure}
-              degradation={agent.degradation}
+              process={agent.process}
+              processHistory={agent.processHistory}
               staleDraftNotice={agent.staleDraftNotice}
               hint={agent.hint}
               onRetry={handleAgentRetry}

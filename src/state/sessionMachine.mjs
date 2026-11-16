@@ -21,6 +21,11 @@ import {
   validateAgentDraft,
 } from '../domain/agentDraft.mjs';
 import {
+  PROCESS_HISTORY_LIMIT,
+  buildProcessView,
+  compactProcessRound,
+} from '../domain/agentRunProcess.mjs';
+import {
   INTRO_SCRIPT,
   FEATURE_INTRO,
   BUILDING_INTRO,
@@ -210,7 +215,18 @@ function createInitialAgentSlice() {
     staleDraftNotice: null,
     // 请求期间新增图片等一次性提示。
     hint: null,
+    // W3：本轮过程卡视图模型（唯一主卡）+ 历史轮次摘要（默认折叠）。
+    process: null,
+    processHistory: [],
   };
+}
+
+/** 把上一轮过程卡压成历史摘要，最多保留 PROCESS_HISTORY_LIMIT 条。 */
+function archiveProcessHistory(agent) {
+  const previous = compactProcessRound(agent?.process, new Date().toISOString());
+  if (!previous) return Array.isArray(agent?.processHistory) ? agent.processHistory : [];
+  const rest = Array.isArray(agent?.processHistory) ? agent.processHistory : [];
+  return [previous, ...rest].slice(0, PROCESS_HISTORY_LIMIT);
 }
 
 function isCurrentAgentTurnCompletion(state, action) {
@@ -1280,6 +1296,8 @@ function baseReducer(state, action) {
           lastError: null,
           staleDraftNotice: null,
           hint: null,
+          processHistory: archiveProcessHistory(withMessage.agent),
+          process: buildProcessView({ status: AGENT_STATUS.REQUESTING }),
         },
       };
     }
@@ -1301,6 +1319,8 @@ function baseReducer(state, action) {
           lastError: null,
           staleDraftNotice: null,
           hint: null,
+          processHistory: archiveProcessHistory(state.agent),
+          process: buildProcessView({ status: AGENT_STATUS.REQUESTING }),
         },
       };
     }
@@ -1335,6 +1355,13 @@ function baseReducer(state, action) {
               message: '你在等待回复期间改动了资料，已保留你现在的草稿。需要合并服务端的整理结果，可以再发一次这条消息。',
             },
             hint: null,
+            // 过程卡按真实 trace 展示，但明确草稿没有被应用。
+            process: buildProcessView({
+              trace: action.trace ?? null,
+              degradation: runFields.degradation,
+              changeSummary: [],
+              runId: runFields.runId,
+            }),
           },
         };
       }
@@ -1373,6 +1400,13 @@ function baseReducer(state, action) {
               message: '请求期间新增了图片，这次回复没有使用它们；发送下一条消息时会带上图片走多模态链路。',
             }
             : null,
+          // W3：本轮过程卡（步骤只来自真实 trace；降级时不得显示全绿）。
+          process: buildProcessView({
+            trace: action.trace ?? null,
+            degradation: runFields.degradation,
+            changeSummary: Array.isArray(action.changeSummary) ? action.changeSummary : [],
+            runId: runFields.runId,
+          }),
         },
       };
     }
@@ -1399,6 +1433,8 @@ function baseReducer(state, action) {
           simulateFailure: false,
           staleDraftNotice: null,
           hint: null,
+          // 失败态也只用一张主卡：说明这一步没走完，并给出是否可以重试。
+          process: buildProcessView({ status: AGENT_STATUS.FAILED, lastError }),
         },
       };
     }

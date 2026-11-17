@@ -1,0 +1,299 @@
+/**
+ * 由 scripts/frontend-capabilities.cjs 从 Base Manifest、Base 页面配置/控制器与 templates/catalog 生成。
+ * 请勿手改；更新：node scripts/frontend-capabilities.cjs；校验：node scripts/frontend-capabilities.cjs --check
+ */
+export const FRONTEND_CAPABILITIES_SNAPSHOT = {
+  "version": "frontend-facts.v1",
+  "pageIds": [
+    "home",
+    "menu"
+  ],
+  "components": {
+    "cart-bar": {
+      "props": [
+        "submitting",
+        "totalCents",
+        "totalQuantity"
+      ],
+      "events": [
+        "checkout",
+        "expand"
+      ]
+    },
+    "cart-panel": {
+      "props": [
+        "items",
+        "submitting",
+        "totalCents",
+        "totalQuantity",
+        "visible"
+      ],
+      "events": [
+        "add",
+        "checkout",
+        "close",
+        "remove"
+      ]
+    },
+    "category-nav": {
+      "props": [
+        "activeId",
+        "categories"
+      ],
+      "events": [
+        "select"
+      ]
+    },
+    "error-banner": {
+      "props": [
+        "action",
+        "message",
+        "requestId"
+      ],
+      "events": [
+        "close",
+        "retry"
+      ]
+    },
+    "fulfillment-switch": {
+      "props": [
+        "dineInEnabled",
+        "tableName",
+        "tableRequired",
+        "takeawayEnabled",
+        "value"
+      ],
+      "events": [
+        "change"
+      ]
+    },
+    "order-card": {
+      "props": [
+        "actingId",
+        "actingStatus",
+        "actionable",
+        "order",
+        "role"
+      ],
+      "events": [
+        "advance",
+        "cancel",
+        "open",
+        "pay"
+      ]
+    },
+    "product-card": {
+      "props": [
+        "disabled",
+        "product",
+        "quantity"
+      ],
+      "events": [
+        "add",
+        "openDetail",
+        "remove"
+      ]
+    },
+    "product-detail": {
+      "props": [
+        "product",
+        "quantity",
+        "visible"
+      ],
+      "events": [
+        "add",
+        "close",
+        "remove"
+      ]
+    },
+    "state-view": {
+      "props": [
+        "actionText",
+        "description",
+        "state",
+        "title"
+      ],
+      "events": [
+        "retry"
+      ]
+    },
+    "store-header": {
+      "props": [
+        "address",
+        "businessHours",
+        "compact",
+        "mode",
+        "storeName",
+        "tableName"
+      ],
+      "events": []
+    }
+  },
+  "slots": [
+    "home-hero",
+    "home-marketing",
+    "menu-aside",
+    "menu-hero"
+  ],
+  "actions": [
+    "home.goMenu",
+    "home.goMerchant",
+    "home.goMine",
+    "home.goOrders",
+    "home.onModeChange",
+    "home.onOpenOrder",
+    "home.onPickTable",
+    "home.onRetry",
+    "home.onRetryTables",
+    "menu.onCheckout",
+    "menu.onDetailAdd",
+    "menu.onDetailClose",
+    "menu.onDetailRemove",
+    "menu.onExpandCart",
+    "menu.onModeChange",
+    "menu.onOpenDetail",
+    "menu.onPanelAdd",
+    "menu.onPanelClose",
+    "menu.onPanelRemove",
+    "menu.onPickTable",
+    "menu.onProductAdd",
+    "menu.onProductRemove",
+    "menu.onRetry",
+    "menu.onRetryTables",
+    "menu.onSelectCategory"
+  ],
+  "dataPaths": [
+    "cart.count",
+    "cart.items",
+    "cart.totalCents",
+    "home.demoHint",
+    "home.identityLabel",
+    "home.mode",
+    "home.pendingPaymentCount",
+    "home.tableName",
+    "home.versionNotice",
+    "menu.activeCategoryName",
+    "menu.categories",
+    "menu.detailProduct",
+    "menu.detailQuantity",
+    "menu.mode",
+    "menu.products",
+    "menu.tableName",
+    "store.address",
+    "store.businessHours",
+    "store.fulfillment.dineIn",
+    "store.fulfillment.takeaway",
+    "store.name"
+  ],
+  "themeTokens": [
+    "pageBackground",
+    "primaryColor",
+    "accentColor",
+    "textColor",
+    "tabBarBackground",
+    "tabBarColor",
+    "tabBarSelectedColor"
+  ],
+  "sizeKeys": [
+    "homeHero",
+    "productCard",
+    "carousel"
+  ],
+  "pageFacts": {
+    "home": {
+      "components": [
+        "error-banner",
+        "fulfillment-switch",
+        "order-card",
+        "poster-carousel",
+        "state-view",
+        "store-header"
+      ],
+      "slots": [
+        "home-hero",
+        "home-marketing"
+      ],
+      "dataPaths": [
+        "home.demoHint",
+        "home.identityLabel",
+        "home.mode",
+        "home.pendingPaymentCount",
+        "home.tableName",
+        "home.versionNotice",
+        "store.address",
+        "store.businessHours",
+        "store.fulfillment.dineIn",
+        "store.fulfillment.takeaway",
+        "store.name"
+      ]
+    },
+    "menu": {
+      "components": [
+        "cart-bar",
+        "cart-panel",
+        "category-nav",
+        "error-banner",
+        "fulfillment-switch",
+        "loading-block",
+        "product-card",
+        "product-detail",
+        "state-view",
+        "store-header"
+      ],
+      "slots": [
+        "menu-aside",
+        "menu-hero"
+      ],
+      "dataPaths": [
+        "cart.count",
+        "cart.items",
+        "cart.totalCents",
+        "menu.activeCategoryName",
+        "menu.categories",
+        "menu.detailProduct",
+        "menu.detailQuantity",
+        "menu.mode",
+        "menu.products",
+        "menu.tableName",
+        "store.address",
+        "store.businessHours",
+        "store.fulfillment.dineIn",
+        "store.fulfillment.takeaway",
+        "store.name"
+      ]
+    }
+  },
+  "keyActions": {
+    "home": [
+      "home.goMenu",
+      "home.goMerchant",
+      "home.goMine",
+      "home.goOrders",
+      "home.onModeChange",
+      "home.onOpenOrder",
+      "home.onPickTable",
+      "home.onRetry",
+      "home.onRetryTables"
+    ],
+    "menu": [
+      "menu.onCheckout",
+      "menu.onDetailAdd",
+      "menu.onDetailClose",
+      "menu.onDetailRemove",
+      "menu.onExpandCart",
+      "menu.onModeChange",
+      "menu.onOpenDetail",
+      "menu.onPanelAdd",
+      "menu.onPanelClose",
+      "menu.onPanelRemove",
+      "menu.onPickTable",
+      "menu.onProductAdd",
+      "menu.onProductRemove",
+      "menu.onRetry",
+      "menu.onRetryTables",
+      "menu.onSelectCategory"
+    ]
+  }
+} as const;
+
+export default FRONTEND_CAPABILITIES_SNAPSHOT;

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "frontend-pack-draft.v1",
+  "displayName": "恶意候选 fixture",
+  "pages": [
+    {
+      "pageId": "home",
+      "nodes": [
+        {
+          "type": "raw",
+          "wxml": "<view bindtap=\"evil\">{{store.name}}</view>",
+          "script": "javascript:alert(1)"
+        }
+      ],
+      "styles": ["position:fixed;top:0"],
+      "pageJson": {
+        "usingComponents": { "evil": "/tmp/evil" }
+      }
+    }
+  ]
+}

@@ -1,10 +1,12 @@
 import { useRef } from 'react';
 
 /**
- * P3：参考截图 → 可复用/近似/不支持 → 确认 → 候选模板 面板。
+ * P3/P4：参考截图 →（兼容区）可复用/近似/不支持 → 确认 → 候选模板；
+ * 下方再接「生成候选前端」主链（P4）。
  *
- * 只负责展示后端/领域层算好的视图模型（`screenRef.view`）并回传意图；
- * 不在这里做任何白名单判断，也不生成页面代码。
+ * 只负责展示后端/领域层算好的视图模型（`screenRef.view` 与 `frontendView`）
+ * 并回传意图；不在这里做任何白名单判断，也不生成页面代码。
+ * 兼容区保持 P3 的行为不变：旧识别/确认/候选模板链路仍可独立走通。
  */
 export default function ScreenReferencePanel({
   view,
@@ -12,6 +14,7 @@ export default function ScreenReferencePanel({
   uploadDisabled = false,
   localError = null,
   persisted = true,
+  frontendPanel = null,
   onPickFile,
   onPick,
   onRecognize,
@@ -210,6 +213,8 @@ export default function ScreenReferencePanel({
           <p className="screen-ref-note">采用后仍可在下一步预览、返回修改或重新生成；不会自动发布。</p>
         </div>
       ) : null}
+
+      {frontendPanel}
     </section>
   );
 }

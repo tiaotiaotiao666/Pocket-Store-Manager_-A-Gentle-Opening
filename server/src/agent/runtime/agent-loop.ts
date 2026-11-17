@@ -27,7 +27,9 @@ import {
   type AgentTokenUsage,
   type ChatCompletionRequest,
   type ChatCompletionResult,
+  type ChatContentPart,
   type ChatMessage,
+  type ChatMessageContent,
   type ChatModel,
   type ChatToolCall,
 } from './runtime.types';
@@ -90,6 +92,8 @@ export interface AgentStepTrace {
   toolCallCount: number;
   promptTokens: number;
   completionTokens: number;
+  /** 上游输出被截断（finish_reason=length 或适配器字符上限）；不得解析为完整 JSON。 */
+  truncated: boolean;
   note?: 'empty_reply_nudge';
 }
 
@@ -105,6 +109,8 @@ export interface AgentRunResult {
   modelCalls: number;
   latencyMs: number;
   model: string;
+  /** 任一步模型输出被截断；调用方必须按稳定错误码失败，不得解析残片。 */
+  truncated: boolean;
   /** 非正常完成（触达上限/取消）或最终回复为空时为 true，调用方应提供兜底文案。 */
   degraded: boolean;
 }
@@ -113,10 +119,16 @@ export interface AgentRunOptions {
   model: ChatModel;
   registry: ToolRegistry;
   systemPrompt: string;
-  userMessage: string;
+  /**
+   * 用户消息：纯文本（旧行为不变）或类型化 `text + image_url` 片段数组。
+   * 片段数组只允许内联 data URL 图片，由 normalizeUserContent 二次校验。
+   */
+  userMessage: string | readonly ChatContentPart[];
   /** 允许本次运行使用的工具白名单；省略表示注册表中的全部工具。 */
   tools?: readonly string[];
   limits?: Partial<AgentRunLimits>;
+  /** 单次模型调用输出 token 上限；省略时完全保持适配器默认行为。 */
+  maxTokens?: number;
   runId?: string;
   requestId?: string;
   signal?: AbortSignal;
@@ -188,9 +200,8 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
   if (typeof options.systemPrompt !== 'string' || options.systemPrompt.trim().length === 0) {
     throw new AgentConfigurationError('systemPrompt 不能为空。');
   }
-  if (typeof options.userMessage !== 'string' || options.userMessage.trim().length === 0) {
-    throw new AgentConfigurationError('userMessage 不能为空。');
-  }
+  const userContent = normalizeUserContent(options.userMessage);
+  const maxTokens = normalizeMaxTokens(options.maxTokens);
 
   const descriptors = options.registry.descriptors(options.tools);
   const executor = new ToolExecutor({
@@ -202,7 +213,7 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
 
   const messages: ChatMessage[] = [
     { role: 'system', content: options.systemPrompt },
-    { role: 'user', content: options.userMessage },
+    { role: 'user', content: userContent },
   ];
   const steps: AgentStepTrace[] = [];
   const toolCallTraces: AgentToolCallTrace[] = [];
@@ -249,7 +260,11 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
 
       modelCalls += 1;
       const step = modelCalls;
-      const request: ChatCompletionRequest = { messages, tools: descriptors };
+      const request: ChatCompletionRequest = {
+        messages,
+        tools: descriptors,
+        ...(maxTokens === undefined ? {} : { maxTokens }),
+      };
 
       let completion: ChatCompletionResult;
       try {
@@ -290,6 +305,8 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
         toolCallCount: calls.length,
         promptTokens: stepUsage?.promptTokens ?? 0,
         completionTokens: stepUsage?.completionTokens ?? 0,
+        // finish_reason=length 或适配器字符裁剪都视为截断；残片绝不解析为完整输出。
+        truncated: completion.truncated === true || finishReason === 'length',
       };
       steps.push(stepTrace);
 
@@ -308,7 +325,7 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
       });
 
       if (calls.length === 0) {
-        const text = (assistant.content ?? '').trim();
+        const text = assistantText(assistant.content).trim();
         if (text.length === 0) {
           if (!nudged) {
             nudged = true;
@@ -410,6 +427,7 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
     modelCalls,
     latencyMs: Date.now() - startedAt,
     model: modelName,
+    truncated: steps.some((trace) => trace.truncated),
     degraded: status !== 'completed' || reply.length === 0,
   };
 
@@ -483,7 +501,8 @@ function normalizeAssistantMessage(message: ChatMessage, step: number): ChatMess
     );
   }
 
-  const content = typeof message.content === 'string' ? message.content : null;
+  const textContent = assistantText(message.content);
+  const content = textContent.length > 0 ? textContent : null;
   const rawCalls = Array.isArray(message.toolCalls) ? message.toolCalls : [];
   const usedIds = new Set<string>();
   const calls: ChatToolCall[] = rawCalls.map((call, index) => {
@@ -551,6 +570,86 @@ function nonNegativeInteger(value: unknown): number {
 
 function sanitizeModelName(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+/** 多模态 content parts 的硬边界（与 frontend-reconstruct.v1 单图上限同量级）。 */
+const MAX_USER_CONTENT_PARTS = 4;
+const MAX_USER_TEXT_CHARS = 8_000;
+const MAX_IMAGE_DATA_URL_CHARS = 800_000;
+const IMAGE_DATA_URL_PATTERN =
+  /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+
+/**
+ * 规范化用户消息：
+ * - 字符串：完全保持旧行为，只拒绝空白；
+ * - 片段：只允许 text 与内联 data URL image_url，图片必须是纯 base64 的 PNG/JPEG/WebP。
+ *   远程 URL、文件路径、其它 scheme 一律拒绝，防止服务端被当成任意图片代理。
+ */
+function normalizeUserContent(
+  content: string | readonly ChatContentPart[],
+): ChatMessageContent {
+  if (typeof content === 'string') {
+    if (content.trim().length === 0) {
+      throw new AgentConfigurationError('userMessage 不能为空。');
+    }
+    return content;
+  }
+  if (!Array.isArray(content) || content.length === 0 || content.length > MAX_USER_CONTENT_PARTS) {
+    throw new AgentConfigurationError(
+      `userMessage 片段数量必须是 1–${MAX_USER_CONTENT_PARTS}。`,
+    );
+  }
+
+  let textChars = 0;
+  let hasText = false;
+  const parts: ChatContentPart[] = [];
+  for (const part of content) {
+    if (part !== null && typeof part === 'object' && part.type === 'text') {
+      const text = typeof part.text === 'string' ? part.text : '';
+      if (text.trim().length === 0) {
+        throw new AgentConfigurationError('文本片段不能为空。');
+      }
+      textChars += Array.from(text).length;
+      if (textChars > MAX_USER_TEXT_CHARS) {
+        throw new AgentConfigurationError('userMessage 文本片段超过长度上限。');
+      }
+      hasText = true;
+      parts.push({ type: 'text', text });
+      continue;
+    }
+    if (part !== null && typeof part === 'object' && part.type === 'image_url') {
+      const url = part.imageUrl !== null && typeof part.imageUrl === 'object'
+        ? part.imageUrl.url
+        : undefined;
+      if (typeof url !== 'string' || !IMAGE_DATA_URL_PATTERN.test(url)) {
+        throw new AgentConfigurationError('图片必须是 PNG/JPEG/WebP 的内联 data URL。');
+      }
+      if (url.length > MAX_IMAGE_DATA_URL_CHARS) {
+        throw new AgentConfigurationError('图片 data URL 超过长度上限。');
+      }
+      parts.push({ type: 'image_url', imageUrl: { url } });
+      continue;
+    }
+    throw new AgentConfigurationError('userMessage 包含不支持的内容片段。');
+  }
+
+  if (!hasText) throw new AgentConfigurationError('userMessage 至少需要一个文本片段。');
+  return parts;
+}
+
+/** 单次调用 maxTokens：只接受正有限数；其它值视为未配置（保持适配器默认）。 */
+function normalizeMaxTokens(value: number | undefined): number | undefined {
+  if (value === undefined || !Number.isFinite(value) || value <= 0) return undefined;
+  return Math.max(1, Math.floor(value));
+}
+
+/** 提取纯文本内容：字符串原样返回；片段数组拼接 text 片段（图片不参与文本）。 */
+function assistantText(content: ChatMessageContent | null | undefined): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .map((part) => (part !== null && typeof part === 'object' && part.type === 'text' ? part.text : ''))
+    .join('');
 }
 
 function clampInteger(

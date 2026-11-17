@@ -176,6 +176,7 @@ function inspectOutput(outputPath, options) {
     fileCount: null,
     files: null,
     verify: null,
+    candidate: null,
   };
 
   const finish = () => {
@@ -341,7 +342,12 @@ function inspectOutput(outputPath, options) {
     }
   }
 
-  // ---- 7. 可选：完整 verifyOutput ----
+  // ---- 7. 候选 overlay 一致性（P5） ----
+  if (opts.candidate) {
+    result.candidate = inspectCandidateOutput(root, report, opts.candidate, add);
+  }
+
+  // ---- 8. 可选：完整 verifyOutput ----
   if (opts.deep) {
     const verified = verifyOutput(root, { mode: opts.mode || 'development' });
     if (!verified.ok) {
@@ -359,6 +365,79 @@ function inspectOutput(outputPath, options) {
   }
 
   return finish();
+}
+
+/** 在产物 pages/**\/*.wxss 里找候选 FrontendPack 标记（有限深度/文件数，避免任意扫描）。 */
+function findWxssCandidateMarker(root, marker) {
+  const pagesDir = path.join(root, 'pages');
+  let visited = 0;
+  const walk = (dir, depth) => {
+    if (depth > 3 || visited > 200) return false;
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (error) {
+      return false;
+    }
+    for (const entry of entries) {
+      visited += 1;
+      if (visited > 200) return false;
+      const target = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (walk(target, depth + 1)) return true;
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith('.wxss')) continue;
+      try {
+        if (fs.readFileSync(target, 'utf8').includes(marker)) return true;
+      } catch (error) {
+        /* 单个文件读失败不影响「没找到」的结论 */
+      }
+    }
+    return false;
+  };
+  return walk(pagesDir, 0);
+}
+
+/**
+ * P5：候选 overlay 一致性（导出必须与 dry-run 同源）。
+ * 只认三处可观察证据：config/store.generated.js 的 frontendPackId/Version、
+ * 页面 WXSS 的 FrontendPack 标记、generation-report 的 candidate 记录。
+ */
+function inspectCandidateOutput(root, report, candidate, add) {
+  const candidateId = candidate && typeof candidate.candidateId === 'string' ? candidate.candidateId : '';
+  const candidateVersion = candidate && typeof candidate.candidateVersion === 'string' ? candidate.candidateVersion : '';
+  if (!candidateId || !candidateVersion) {
+    add('CANDIDATE_OUTPUT_MISMATCH', '候选一致性检查缺少 candidateId/version');
+    return { candidateId, candidateVersion, matched: false };
+  }
+  const storeConfigFile = path.join(root, 'config', 'store.generated.js');
+  let storeConfigText = '';
+  try {
+    storeConfigText = fs.readFileSync(storeConfigFile, 'utf8');
+  } catch (error) {
+    add('CANDIDATE_OUTPUT_MISMATCH', '产物缺少 config/store.generated.js：' + (error.code || error.message), { file: 'config/store.generated.js' });
+  }
+  if (storeConfigText) {
+    const idMatch = /["']?frontendPackId["']?\s*:\s*["']([^"']+)["']/.exec(storeConfigText);
+    const versionMatch = /["']?frontendPackVersion["']?\s*:\s*["']([^"']+)["']/.exec(storeConfigText);
+    if (!idMatch || idMatch[1] !== candidateId) {
+      add('CANDIDATE_OUTPUT_MISMATCH', '产物配置里的 FrontendPack 不是请求的候选（可能已回落 Base）', { file: 'config/store.generated.js' });
+    }
+    if (!versionMatch || versionMatch[1] !== candidateVersion) {
+      add('CANDIDATE_OUTPUT_MISMATCH', '产物配置里的候选版本不一致', { file: 'config/store.generated.js' });
+    }
+  }
+  const marker = 'FrontendPack ' + candidateId + '@' + candidateVersion;
+  if (!findWxssCandidateMarker(root, marker)) {
+    add('CANDIDATE_OUTPUT_MISMATCH', '产物页面 WXSS 没有候选 FrontendPack 标记');
+  }
+  const unresolved = Array.isArray(report && report.unresolved) ? report.unresolved : [];
+  const line = unresolved.find((item) => typeof item === 'string' && item.startsWith('candidate:'));
+  if (!line || !line.includes(candidateId + '@' + candidateVersion)) {
+    add('OUTPUT_REPORT_STALE', '生成报告没有记录当前候选状态（candidate 行缺失）');
+  }
+  return { candidateId, candidateVersion, matched: true };
 }
 
 /** 严格版本：失败即抛错（code 从问题里取第一个）。 */

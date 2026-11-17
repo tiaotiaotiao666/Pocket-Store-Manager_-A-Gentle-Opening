@@ -43,6 +43,19 @@ function cancelled(signal) {
   return Boolean(signal && signal.cancelled);
 }
 
+/**
+ * 显式注册表来源：默认（都不传）时行为与历史完全一致。
+ * 桌面端候选链路会传私有 overlay 的 registryRoot + [overlayRoot, REPO_ROOT] assetRoots，
+ * 或直接传已加载的 `loaded`，避免重复读盘；任何来源都必须通过同一套冻结/完整性校验。
+ */
+function loadRegistryForCompose(opts) {
+  if (opts.loaded) return opts.loaded;
+  const registryOptions = { verifyFreeze: true };
+  if (opts.registryRoot !== undefined) registryOptions.registryRoot = opts.registryRoot;
+  if (opts.assetRoots !== undefined) registryOptions.assetRoots = opts.assetRoots;
+  return loadRegistry(registryOptions);
+}
+
 async function compose(options) {
   const opts = options || {};
   const started = Date.now();
@@ -78,7 +91,7 @@ async function compose(options) {
 
   await idle();
   emitProgress(opts.onProgress, 1);
-  const loaded = loadRegistry({ verifyFreeze: true });
+  const loaded = loadRegistryForCompose(opts);
   if (!loaded.ok) return loaded;
   mark('registry');
 
@@ -237,7 +250,7 @@ function validateComposition(plan, options) {
   const opts = options || {};
   const planValidation = validatePlan(plan);
   if (!planValidation.ok) return planValidation;
-  const loaded = opts.loaded || loadRegistry({ verifyFreeze: true });
+  const loaded = opts.loaded || loadRegistryForCompose(opts);
   if (!loaded.ok) return loaded;
   const graph = resolvePlan(plan, loaded, { onlineRecipe: opts.recipeStage === 'direct', role: opts.role });
   if (!graph.ok) return graph;
@@ -260,5 +273,6 @@ function validateComposition(plan, options) {
 module.exports = {
   compose,
   validateComposition,
+  loadRegistryForCompose,
   STAGE_NAMES,
 };

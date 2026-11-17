@@ -24,6 +24,8 @@ const { REGISTRY_VERSION } = require('./version.cjs');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const DEFAULT_REGISTRY_ROOT = path.join(REPO_ROOT, 'templates', 'registry');
+/** 默认资产根就是仓库根：索引里的 `templates/...` 直接按仓库解析（默认行为完全不变）。 */
+const DEFAULT_ASSET_ROOTS = Object.freeze([REPO_ROOT]);
 
 function readJson(file) {
   try {
@@ -42,10 +44,38 @@ function resolveInside(root, relative) {
   return resolved;
 }
 
+/**
+ * 归一化资产根列表。
+ * 默认只有仓库根；显式传入时（例如桌面端私有 overlay）按顺序解析 `entry.path`：
+ * 命中第一个“该相对路径真实存在的根”，否则回落到第一个根（用于给出稳定的错误）。
+ * 该入参是内部可信配置，不接受模型/远端输入。
+ */
+function normalizeAssetRoots(raw) {
+  if (raw === undefined) return [...DEFAULT_ASSET_ROOTS];
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const roots = [];
+  for (const item of raw) {
+    if (typeof item !== 'string' || item.trim() === '' || !path.isAbsolute(item)) return null;
+    roots.push(path.resolve(item));
+  }
+  return roots;
+}
+
 function loadRegistry(options) {
   const opts = options || {};
   const registryRoot = opts.registryRoot || DEFAULT_REGISTRY_ROOT;
   const verifyFreeze = opts.verifyFreeze !== false;
+  const assetRoots = normalizeAssetRoots(opts.assetRoots);
+  if (!assetRoots) {
+    return fail('REGISTRY_UNREADABLE', 'assetRoots', 'assetRoots 必须是非空绝对路径数组');
+  }
+  const resolveAssetPath = (relative) => {
+    for (const root of assetRoots) {
+      const resolved = resolveInside(root, relative);
+      if (resolved && fs.existsSync(resolved)) return resolved;
+    }
+    return resolveInside(assetRoots[0], relative);
+  };
   const indexFile = path.join(registryRoot, 'registry.v1.json');
   const lockFile = path.join(registryRoot, 'registry.lock.json');
 
@@ -109,7 +139,7 @@ function loadRegistry(options) {
       continue;
     }
 
-    const assetDir = resolveInside(REPO_ROOT, entry.path);
+    const assetDir = resolveAssetPath(entry.path);
     const integrity = assetDigest({ ...entry, dir: assetDir || path.join(REPO_ROOT, entry.path) });
     if (verifyFreeze && entry.integrity && entry.integrity !== integrity) {
       errors.push({
@@ -120,9 +150,9 @@ function loadRegistry(options) {
       });
       continue;
     }
-    const manifestFile = resolveInside(REPO_ROOT, path.join(entry.path, 'manifest.json'));
+    const manifestFile = resolveAssetPath(path.join(entry.path, 'manifest.json'));
     if (entry.kind === 'recipe') {
-      const recipeFile = resolveInside(REPO_ROOT, path.join(entry.path, 'recipe.json'));
+      const recipeFile = resolveAssetPath(path.join(entry.path, 'recipe.json'));
       if (!recipeFile || !fs.existsSync(recipeFile)) {
         errors.push({ code: 'ENTRY_MISSING', path: entry.path + '/recipe.json', message: 'Recipe 文件不存在' });
         continue;
@@ -204,7 +234,7 @@ function loadRegistry(options) {
     for (const kind of manifest.preview ? manifest.preview.kinds : []) {
       const previewFile = path.join(path.dirname(manifestFile), manifest.preview.dir, kind + '.json');
       if (!fs.existsSync(previewFile)) {
-        errors.push({ code: 'PREVIEW_DATA_MISSING', path: path.relative(REPO_ROOT, previewFile).replace(/\\/g, '/'), message: '缺少预览数据 ' + kind });
+        errors.push({ code: 'PREVIEW_DATA_MISSING', path: path.relative(assetRoots[0], previewFile).replace(/\\/g, '/'), message: '缺少预览数据 ' + kind });
       }
     }
 
@@ -223,6 +253,7 @@ function loadRegistry(options) {
     registry,
     lock,
     registryRoot,
+    assetRoots,
     registryDigest: expectedDigest,
     assets,
     byKey,
@@ -254,6 +285,7 @@ function fileDigestOf(file) {
 module.exports = {
   REPO_ROOT,
   DEFAULT_REGISTRY_ROOT,
+  DEFAULT_ASSET_ROOTS,
   loadRegistry,
   getAsset,
   listRecipeCandidates,

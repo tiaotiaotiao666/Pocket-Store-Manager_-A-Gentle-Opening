@@ -22,6 +22,18 @@ ipcRenderer.on('project:flush-request', () => {
   });
 });
 
+// P4：候选前端进度（主进程只推有界阶段信息，不含路径/源码/base64）。
+const frontendProgressListeners = new Set();
+ipcRenderer.on('frontend:progress', (_event, payload) => {
+  frontendProgressListeners.forEach((listener) => {
+    try {
+      listener(payload);
+    } catch (error) {
+      /* 单个监听器失败不影响其他监听器 */
+    }
+  });
+});
+
 contextBridge.exposeInMainWorld('smartStore', Object.freeze({
   isDesktop: true,
   chooseExportDirectory: () => ipcRenderer.invoke('composer:choose-directory'),
@@ -74,4 +86,20 @@ contextBridge.exposeInMainWorld('smartStore', Object.freeze({
     return () => flushRequestListeners.delete(listener);
   },
   reportFlushDone: () => ipcRenderer.invoke('project:flush-done'),
+
+  // P4：图片驱动前端重构（受控候选前端）。
+  // 只暴露 8 个语义 API，全部由主进程重新校验来源/上限/工作区归属；
+  // 这里不提供任何通用 read/write/exec/spawn 通道。
+  analyzeFrontend: (payload) => ipcRenderer.invoke('frontend:analyze', payload),
+  buildCandidate: (payload) => ipcRenderer.invoke('frontend:build-candidate', payload),
+  validateCandidate: (payload) => ipcRenderer.invoke('frontend:validate-candidate', payload),
+  verifyCandidate: (payload) => ipcRenderer.invoke('frontend:verify-candidate', payload),
+  adoptCandidate: (payload) => ipcRenderer.invoke('frontend:adopt-candidate', payload),
+  discardCandidate: (payload) => ipcRenderer.invoke('frontend:discard-candidate', payload),
+  cancelFrontendRun: (payload) => ipcRenderer.invoke('frontend:cancel-run', payload),
+  onFrontendProgress: (listener) => {
+    if (typeof listener !== 'function') return () => {};
+    frontendProgressListeners.add(listener);
+    return () => frontendProgressListeners.delete(listener);
+  },
 }));

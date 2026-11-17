@@ -15,6 +15,7 @@ const { registerFlushGuard, recoverPendingWrites } = require('./flush-guard.cjs'
 const { createDiagnostics } = require('./diagnostics.cjs');
 const { probeDevtools } = require('./devtools-probe.cjs');
 const { registerPreviewIpc } = require('./preview-channel.cjs');
+const { registerFrontendReconstructIpc } = require('./frontend-reconstruct-ipc.cjs');
 const { openExternalLink, isAllowedAppUrl } = require('./external-link.cjs');
 
 /**
@@ -268,6 +269,19 @@ registerPreviewIpc(ipcMain, {
   dialog,
   shell,
   defaultProjectPath: defaultPreviewProject,
+});
+
+/**
+ * P4：候选前端的受信 IPC。
+ *
+ * 主进程独占文件与命令：渲染进程只能传 runId/attempt/Draft 与截图 base64，
+ * 目录由 userData 下的私有 workspace 推导；分析请求由主进程按设置里的
+ * apiBaseUrl 代发（渲染进程拿不到任意 URL/命令能力）。
+ */
+registerFrontendReconstructIpc(ipcMain, {
+  userDataDir,
+  // 设置里的 baseUrl / 超时 / 模拟模式由主进程读取；不信任渲染进程。
+  loadSettings: () => settingsStore.loadConfig(),
 });
 
 registerFlushGuard({

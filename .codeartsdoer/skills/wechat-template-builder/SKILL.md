@@ -17,6 +17,31 @@ description: 当店主需要新建或扩展微信原生小程序模板、入库 
 4. **缺能力即拒绝。** 必需组件、控制器动作、服务能力或后端契约任一缺失，输出 `CapabilityCoverageReport(status="rejected")` 并停止；不生成空壳页面，不静默删需求。
 5. **预览不等于验收。** 正式模板必须经过微信开发者工具真实编译和核心闭环回归；React 预览只能称为“效果预览”。
 6. **不写秘密。** API Key、AppSecret、Token、绝对路径、内网地址、外部 URL 一律不得出现在资产、Plan、Lock、报告或日志中。
+7. **区分正式资产与私有候选。** 本技能的“资产入库”流程只用于要长期复用、随仓库版本发布并冻结进全局 Registry 的正式资产；用户按一张截图做的**单项目候选重构**走 `wechat-frontend-pack-authoring` 的私有候选链，**不得**写 `templates/**`、不得运行 `registry-check --write`、不得重冻结全局 Registry。
+
+## 正式资产入库 vs 用户私有候选重构（边界）
+
+仓库里有两条互不替代的前端变更路径，先判定再动手：
+
+| 维度 | 正式资产入库（本技能默认路径） | 用户私有候选重构（`frontend-reconstruct.v1`） |
+| --- | --- | --- |
+| 适用 | 新 UI Block / Feature Pack / FrontendPack 要长期复用、随版本发布、被多个 Recipe 引用 | 只服务当前用户/当前项目的一次按图改版；需用户采用后才进入项目 |
+| 输入 | 文字需求或参考图 → 人工/Agent 整理需求与 Plan | 一张参考图 + 可选文字 → UiRequirement/VisualSpec + FrontendPackDraft DSL |
+| 写盘位置 | `templates/components|features|frontend-packs/<id>/<version>/` | 应用私有 `<userData>/projects/<projectId>/frontend-runs/<runId>/attempts/attempt-<n>/` 的 `candidate/` + `overlay/` |
+| Registry | 登记 `templates/registry/registry.v1.json`，执行 `node scripts/registry-check.cjs --write` 并重冻结全局 Registry/Lock | 只构造**本次 attempt 私有 overlay**（投影可信条目 + 候选条目），不写全局 Registry、不跑 `--write`；Composer 必须显式用该 overlay root |
+| 产物 | 正式包 + `recipe.json`/`plan.json`/`release.json`，走 `composer:build`/`composer:verify` | `frontend-pack.v1` 候选（只 WXML/WXSS/JSON + 四态 preview）+ `frontend-pack-draft.v1` 原稿与尝试元数据 |
+| 代码边界 | 只允许 WXML/WXSS/JSON；页面 JS 来自 Base | 模型只产出受控 JSON DSL；任意 JS/WXML/WXSS/WXS/命令一律拒绝，CSS 由确定性 renderer 生成 |
+| 验收 | `registry:check`、`catalog:check`、Composer 生成、微信真实编译回归 | dry-run（Composer P0–P6 + `mini:check` + output-consistency + 可观察项）→ 微信运行时 `PASS/FAIL/BLOCKED/NOT_RUN` → 最多 2 轮受控修复 |
+| 终态 | 入库并冻结，可被正式 Recipe 引用 | 用户“采用候选”后才写入项目；可撤销；不采用即丢弃 |
+| 配套 skill | 本技能 | `wechat-visual-spec` → `wechat-capability-coverage` → `wechat-frontend-pack-authoring` → `wechat-frontend-verification` |
+
+硬规则：
+
+- 用户私有候选**绝不**写正式 `templates/**`、`miniprogram/**`、`src/**`、`server/**`，也**绝不**把候选条目合并进全局 `registry.v1.json` 或重算全局 Lock。
+- 不要为了“保存”一个候选去执行 `node scripts/registry-check.cjs --write`；候选只存在于应用私有 attempt/overlay，采用后由项目快照记录相对 id/version/digest。
+- 正式导出/发布仍走既有 Composer；若要把已采用候选作为导出输入，必须使用同一个已验证 overlay 并如实标注 candidate 状态，缺 overlay 时不得静默回落 Base 冒充候选。
+- 需求不确定时先走私有候选验证；只有明确要长期入库才提升为正式资产，提升必须重新走本技能的登记、冻结、Catalog 与验证流程。
+- 候选不得反推修改 Base 控制器/服务层/主题基础样式；出现“需要任意 JS/后端能力”时在能力覆盖阶段 `rejected`。
 
 ## 第一步：读取真实上下文
 
@@ -102,7 +127,7 @@ description: 当店主需要新建或扩展微信原生小程序模板、入库 
 | 新增纯展示块 | 在 `templates/components/` 新增 UI Block |
 | 复用现有页面中的一块 | 先读区块卡；`direct-wxml` 复制片段，`base-component-use` 直接调用组件，`slot-only` 走 Planning 插槽，`promote-to-ui-block` 先立项提升 |
 | 新增业务能力 | 在 `templates/features/` 新增 Feature Pack；先确认后端契约 |
-| 换一套现有页面视觉/布局，保留 Base 控制器 | 在 `templates/frontend-packs/` 新增 FrontendPack，只生成 WXML/WXSS/JSON |
+| 换一套现有页面视觉/布局，保留 Base 控制器 | 要长期复用的正式资产：在 `templates/frontend-packs/` 新增 FrontendPack，只生成 WXML/WXSS/JSON；只是当前用户按图改版：走私有候选链，不写 `templates/` |
 | 需要全新交互逻辑 | 拆成独立的新资产/后端任务，不在本次模板生成中放开任意 JS |
 
 不要把尺寸写进 `themeTokens`，不要改写 `features[].slots[]` 来表达移动落位。
@@ -173,7 +198,9 @@ templates/features/<id>/<version>/
 
 ### 6.1 FrontendPack：只覆盖视图层
 
-当需求是“换一套首页/菜单视觉与布局”，而业务逻辑不需要新增时，新增 FrontendPack，不要重写页面 JS：
+当需求是“换一套首页/菜单视觉与布局”，而业务逻辑不需要新增时，新增 FrontendPack，不要重写页面 JS。
+
+> 注意：本小节只适用于**正式资产入库**。若只是某个用户按参考图做一次改版，不要在这里创建 `templates/frontend-packs/...`；先走 `wechat-frontend-pack-authoring` 的私有候选链（DSL → 私有 attempt + overlay），用户采用后再由项目持久化层记录引用。
 
 ```text
 templates/frontend-packs/<id>/<version>/

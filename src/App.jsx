@@ -11,7 +11,7 @@ import {
   COMPOSER_SUBMIT_LABEL,
   DEPLOY_STATUS,
 } from './state/constants.mjs';
-import { buildPlanFromSession } from './composition/planFromSession.mjs';
+import { buildPlanFromSession, buildExportPlanFromSession } from './composition/planFromSession.mjs';
 import { buildSessionPreviewViewModels } from './composition/previewViewModel.mjs';
 import { buildConversationStream } from './state/conversationStream.mjs';
 import {
@@ -58,6 +58,24 @@ import { requestAgentTurn, describeAgentTransport, configureAgentRuntime, getAge
 import { requestAgentRun, isAgentRunRoute, resolveAgentRequestRoute } from './services/agentTurn/agentRunService.js';
 import { requestScreenReference, createScreenReferenceRequestId } from './services/agentTurn/screenReferenceService.js';
 import { validateReferenceImage, candidateToSessionPatch } from './domain/screenReference.mjs';
+// P4：图片驱动前端重构（受控候选前端）——状态机在 domain，服务调用在 services。
+import {
+  FRONTEND_STATUS,
+  buildFrontendReconstructView,
+  createFrontendRunId,
+  createInitialFrontendReconstructState,
+  frontendReducer,
+  isFrontendBusy,
+} from './domain/frontendReconstruct.mjs';
+import { buildFrontendProcessView } from './domain/agentRunProcess.mjs';
+import { createFrontendReconstructService } from './services/frontendReconstruct/frontendReconstructService.js';
+import {
+  adoptionNotice,
+  adoptionStateSlice,
+  buildAdoptionRecord,
+  candidateOverlayFromAdoption,
+  undoAdoptionRecord,
+} from './services/frontendReconstruct/adoptionBridge.js';
 import { describeFlow } from './domain/flowStages.mjs';
 import { describeGalleryLegend, describeTemplateStatus } from './domain/templateStatus.mjs';
 import {
@@ -102,6 +120,7 @@ import ImportDiffCard from './components/build/ImportDiffCard.jsx';
 import AgentIntakePanel from './components/agent/AgentIntakePanel.jsx';
 import VisionImageUploader from './components/agent/VisionImageUploader.jsx';
 import ScreenReferencePanel from './components/screenRef/ScreenReferencePanel.jsx';
+import FrontendCandidatePanel from './components/screenRef/FrontendCandidatePanel.jsx';
 import DraftEditor from './components/agent/DraftEditor.jsx';
 import StoreInfoActionBar from './components/agent/StoreInfoActionBar.jsx';
 import AgentDraftSummary from './components/agent/AgentDraftSummary.jsx';
@@ -118,6 +137,22 @@ const INTRO_AUTO_ADVANCE_MS = 5200;
 // UX0a-3：海报素材上传的 UI 侧上限；不替代导出链路的媒体校验，只是先挡住明显过大的文件。
 const MAX_POSTER_UPLOAD_BYTES = 2 * 1024 * 1024;
 const COMPOSER_PHASES = [PHASES.ONBOARDING, PHASES.STORE_INFO, PHASES.TEMPLATE_PICK, PHASES.PROMPT_STUDIO, PHASES.IMAGE_REVIEW];
+
+/**
+ * P6：候选前端「本轮结束」的状态集合。
+ *
+ * 只有到达这些状态才把耗时定格；planning/idle 不是结束（用户还会继续构建/验证，
+ * 提前定格会把真实耗时显示小，等于伪造进度）。
+ */
+const FRONTEND_TERMINAL_STATUSES = new Set([
+  FRONTEND_STATUS.READY,
+  FRONTEND_STATUS.PARTIAL,
+  FRONTEND_STATUS.FAILED,
+  FRONTEND_STATUS.CANCELLED,
+  FRONTEND_STATUS.ADOPTED,
+  FRONTEND_STATUS.REJECTED,
+  FRONTEND_STATUS.NEEDS_INPUT,
+]);
 
 /** 全局 composer 文案表没有模板页条目，这里单独补上，避免改 constants 造成跨任务冲突。 */
 const TEMPLATE_PICK_COMPOSER = Object.freeze({
@@ -412,6 +447,15 @@ function withRuntimeAgentConfig(config) {
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, undefined, createInitialState);
+  // P4：候选前端的独立状态机（不塞进 sessionMachine，避免与 P5 持久化改造互相踩踏）。
+  const [frontendState, frontendDispatch] = useReducer(
+    frontendReducer,
+    undefined,
+    createInitialFrontendReconstructState,
+  );
+  const frontendServiceRef = useRef(null);
+  if (!frontendServiceRef.current) frontendServiceRef.current = createFrontendReconstructService();
+  const frontendService = frontendServiceRef.current;
   const projectServiceRef = useRef(null);
   if (!projectServiceRef.current) projectServiceRef.current = createProjectService();
   const projectService = projectServiceRef.current;
@@ -471,6 +515,13 @@ export default function App() {
   // P3：参考截图流程的即时错误与「是否已落盘」提示（都不进持久化文档）。
   const [screenRefError, setScreenRefError] = useState(null);
   const [screenRefPersisted, setScreenRefPersisted] = useState(true);
+  // P4：候选前端链路的即时错误（同样只存在内存里，不写项目快照）。
+  const [frontendLocalError, setFrontendLocalError] = useState(null);
+  // P5：已采用候选前端的项目快照记录。它跟随 project.json 生命周期，
+  // 与 P4 的候选构建状态（frontendState）分开，避免重开项目后把两者混在一起。
+  const [frontendCandidateRecord, setFrontendCandidateRecord] = useState(null);
+  // P6：候选前端本轮的真实耗时（只在真实 runId 下累计；没有就显示不了，不伪造）。
+  const [frontendTiming, setFrontendTiming] = useState({ runId: null, startedAt: null, endedAt: null });
   // 真实截图回传面板状态（工程目录来自 deploy.result，不复制到持久化文档）。
   const [realPreview, setRealPreview] = useState({ screenshots: [], busy: false, error: null });
   const templateReviseBusy = useRef(false);
@@ -515,6 +566,48 @@ export default function App() {
   const templateReviseTransport = describeTemplateReviseTransport();
   const exportedProjectPath = readExportedProjectPath(state.deploy?.result);
   const previewViewModels = useMemo(() => buildSessionPreviewViewModels(state), [state]);
+  // P4：候选前端视图模型只在 domain 里算，组件与 App 都不重复判断门槛。
+  const frontendView = useMemo(() => buildFrontendReconstructView(frontendState), [frontendState]);
+  // P6：候选前端的真实过程视图（工具标签/runId/attempt/状态/耗时）。
+  // 只有真实 trace（模型调用或工具调用）或主进程真实进度时才生成；没有证据返回 null，
+  // ChatStream 的 ProcessSummary 也只在有 title 时渲染——绝不用固定假步骤冒充运行。
+  const frontendProcessSummary = useMemo(() => {
+    const trace = frontendState.analysis && frontendState.analysis.trace ? frontendState.analysis.trace : null;
+    const progress = frontendState.progress && frontendState.progress.stage
+      ? {
+        stage: frontendState.progress.stage,
+        attempt: Number.isInteger(frontendState.progress.attempt) ? frontendState.progress.attempt : null,
+        runId: frontendState.runId,
+        at: null,
+      }
+      : null;
+    const hasTrace = Boolean(trace && (
+      (Number.isFinite(trace.modelCalls) && trace.modelCalls > 0)
+      || (Array.isArray(trace.toolCalls) && trace.toolCalls.length > 0)
+    ));
+    if (!hasTrace && !progress) return null;
+    const timing = frontendTiming.runId && frontendTiming.runId === frontendState.runId ? frontendTiming : null;
+    const view = buildFrontendProcessView({
+      status: frontendState.status,
+      trace,
+      progress,
+      runId: frontendState.runId,
+      attempt: frontendState.candidate ? frontendState.candidate.attempt : null,
+      startedAt: timing ? timing.startedAt : null,
+      endedAt: timing ? timing.endedAt : null,
+      lastError: frontendState.error,
+    });
+    return view && view.title ? view : null;
+  }, [frontendState, frontendTiming]);
+  // P5：Plan/导出必须看到「项目里已采用的候选」；没有记录时保持原 state 形状。
+  const frontendStateWithCandidate = useMemo(
+    () => (frontendCandidateRecord ? { ...state, frontendCandidate: frontendCandidateRecord } : state),
+    [state, frontendCandidateRecord],
+  );
+  const frontendCandidateOverlay = useMemo(
+    () => candidateOverlayFromAdoption(frontendCandidateRecord),
+    [frontendCandidateRecord],
+  );
 
   // P2：主线步骤条只是只读投影，不改任何业务动作；构建中不提供返回入口。
   const flowDescriptor = useMemo(
@@ -716,11 +809,14 @@ export default function App() {
       skipNextSave.current = false;
       return undefined;
     }
-    const doc = toDocument(state, {
-      projectId,
-      createdAt: state.project.createdAt,
-      appid: state.project.appid,
-    });
+    const doc = toDocument(
+      { ...state, frontendCandidate: adoptionStateSlice(frontendCandidateRecord) },
+      {
+        projectId,
+        createdAt: state.project.createdAt,
+        appid: state.project.appid,
+      },
+    );
     dispatch({ type: 'PROJECT_MARK_DIRTY' });
     let alive = true;
     service.save(projectId, doc).then((result) => {
@@ -732,6 +828,11 @@ export default function App() {
           type: 'PROJECT_SAVE_FAILED',
           error: { code: result.code, message: result.message },
         });
+        // P5：候选已采用但快照没写进去时，必须明确告诉用户「界面仍是已采用、磁盘还没落盘」。
+        if (frontendCandidateRecord && frontendCandidateRecord.status !== 'none') {
+          setNotice('候选已采用，但项目保存失败（' + (result.message || result.code || '未知原因')
+            + '）。界面保持已采用状态，恢复磁盘权限/空间后会自动重试保存。');
+        }
       }
     });
     return () => { alive = false; };
@@ -759,6 +860,7 @@ export default function App() {
     state.deploy.handoff,
     state.project.appid,
     state.project.status,
+    frontendCandidateRecord,
     state.settings.config?.autoSaveEnabled,
     state.settings.config?.autoSaveDebounceMs,
   ]);
@@ -966,7 +1068,7 @@ export default function App() {
       return;
     }
 
-    const hydrated = fromDocument(result.doc);
+    const hydrated = fromDocument(result.doc, { candidateCheck: result.candidateCheck });
     if (hydrated.phase === PHASES.PROMPT_STUDIO || hydrated.phase === PHASES.IMAGE_REVIEW) {
       promptStarted.current = true;
     }
@@ -984,6 +1086,17 @@ export default function App() {
       savedAt: result.savedAt,
       bytes: result.bytes,
     });
+    // P5：项目里的候选采用记录 + 主进程对 overlay 的校验结论。
+    // 校验通过 → verified（导出放行）；缺失/漂移 → unavailable（安全回退 + 提示 + 导出阻断）。
+    const openedCandidate = hydrated.frontendCandidate && hydrated.frontendCandidate.status !== 'none'
+      ? hydrated.frontendCandidate
+      : null;
+    setFrontendCandidateRecord(openedCandidate);
+    // 切换项目时清空上一项目的候选构建状态，避免旧候选串到新项目。
+    frontendDispatch({ type: 'FRONTEND_RESET', keepImage: false });
+    setFrontendLocalError(null);
+    const candidateNotice = adoptionNotice(openedCandidate) || hydrated.frontendCandidateNotice;
+    if (candidateNotice) setNotice(candidateNotice);
     const presentationNotice = hydrated.presentationRestore;
     if (presentationNotice && presentationNotice.message) setNotice(presentationNotice.message);
     if (result.recoveredFrom) {
@@ -1032,6 +1145,9 @@ export default function App() {
       createdAt: result.createdAt,
       appid: result.appid,
     });
+    // 新项目没有候选采用记录：清空上一项目的快照记录与候选构建状态。
+    setFrontendCandidateRecord(null);
+    frontendDispatch({ type: 'FRONTEND_RESET', keepImage: false });
     return true;
   };
 
@@ -1072,6 +1188,8 @@ export default function App() {
     setDeleteBusy(false);
     if (result.status === 'ok') {
       dispatch({ type: 'PROJECT_DELETE_SUCCESS', projectId: target.projectId });
+      // 删除的正是当前项目：候选采用记录一并清空，避免指向已删除项目。
+      if (state.project.activeId === target.projectId) setFrontendCandidateRecord(null);
     } else {
       dispatch({
         type: 'PROJECT_DELETE_FAILURE',
@@ -1100,7 +1218,45 @@ export default function App() {
 
   const handleOpenSettings = () => dispatch({ type: 'VIEW_SET', view: 'settings' });
 
-  const handleUndo = () => dispatch({ type: 'UNDO_APPLY' });
+  /**
+   * P5：撤销候选采用。
+   *
+   * 只切换项目快照里的候选记录（上一版 / Base），展示补丁由 presentation 原样保留；
+   * 写盘仍走同一条自动保存链路，失败时界面保持撤销后的状态并提示。
+   */
+  const handleFrontendUndoAdoption = () => {
+    if (!frontendCandidateRecord || frontendCandidateRecord.status === 'none') return false;
+    const undone = undoAdoptionRecord(frontendCandidateRecord);
+    if (!undone.restored) return false;
+    setFrontendCandidateRecord(undone.adoption);
+    // 撤销后旧的候选构建状态已不代表当前版本：清掉它，避免面板继续显示「已采用」。
+    frontendDispatch({ type: 'FRONTEND_RESET', keepImage: true });
+    setFrontendLocalError(null);
+    const restored = undone.adoption;
+    if (!restored) {
+      setNotice('已撤销候选采用，当前版本回到 Base 页面（展示补丁保持不变）。');
+    } else if (restored.status !== 'adopted') {
+      setNotice('已撤销候选采用，恢复到上一版 '
+        + restored.candidateId + '@' + restored.candidateVersion
+        + '；' + ((restored.issue && restored.issue.message) || '该版本当前不可用')
+        + '（展示补丁保持不变）。');
+    } else if (restored.verified !== true) {
+      // 上一版没有通过校验：撤销只恢复引用，不放行导出；由导出入口继续阻断并提示。
+      setNotice('已撤销候选采用，恢复到上一版 '
+        + restored.candidateId + '@' + restored.candidateVersion
+        + '；该版本还没有校验 overlay 摘要，导出会被阻断（不会静默回退 Base，展示补丁保持不变）。');
+    } else {
+      setNotice('已撤销候选采用，恢复上一版候选 '
+        + restored.candidateId + '@' + restored.candidateVersion + '（展示补丁保持不变）。');
+    }
+    return true;
+  };
+
+  const handleUndo = () => {
+    // 候选采用优先撤销：它不在 sessionMachine 的撤销栈里，必须单独处理。
+    if (handleFrontendUndoAdoption()) return;
+    dispatch({ type: 'UNDO_APPLY' });
+  };
   const handleRedo = () => dispatch({ type: 'REDO_APPLY' });
 
   useEffect(() => {
@@ -1204,6 +1360,9 @@ export default function App() {
 
   const reset = async () => {
     await projectServiceRef.current.flush().catch(() => {});
+    // P5：重置项目同时清掉候选采用记录（跟随当前项目，不跨项目残留）。
+    setFrontendCandidateRecord(null);
+    frontendDispatch({ type: 'FRONTEND_RESET', keepImage: false });
     dispatch({ type: 'RESET_PROJECT' });
   };
   const selectSession = (id) => dispatch({ type: 'SWITCH_SESSION', id });
@@ -1381,7 +1540,12 @@ export default function App() {
       return { ok: false, message: '需要在桌面应用中生成并预览工程。' };
     }
 
-    const { plan, warnings } = buildPlanFromSession(state);
+    const previewPlan = buildExportPlanFromSession(frontendStateWithCandidate);
+    if (!previewPlan.ok) {
+      // P5：已采用候选但 overlay 缺失/漂移/未校验 → 预览也阻断，不静默用 Base 顶替。
+      return { ok: false, message: previewPlan.message || '候选前端 overlay 未确认，已阻止生成预览工程。' };
+    }
+    const { plan, warnings } = previewPlan;
     const baseName = String(
       (state.store && state.store.name)
       || (state.agentDraft && state.agentDraft.storeName)
@@ -1394,6 +1558,7 @@ export default function App() {
       plan,
       projectName,
       mode: 'development',
+      candidateOverlay: frontendCandidateOverlay,
     });
     if (result.status !== 'ok') {
       return { ok: false, message: result.message || '生成预览工程失败。' };
@@ -1405,7 +1570,7 @@ export default function App() {
       path: payload.outputPath || '',
       warnings: [...(warnings || []), ...(payload.warnings || [])],
     };
-  }, [state]);
+  }, [state, frontendStateWithCandidate, frontendCandidateOverlay]);
 
   const handlePickPreviewScreenshot = async () => {
     const api = typeof window !== 'undefined' ? window.smartStore : null;
@@ -1676,6 +1841,287 @@ export default function App() {
     dispatch({ type: 'SCREEN_REF_RESET' });
   };
 
+  // ---- P4：参考截图 → 受控候选前端（生成候选前端主链） ----
+  // 业务判断都在 src/domain/frontendReconstruct.mjs，这里只做「调用 + 派发」。
+  const frontendProjectId = () => state.project.activeId || 'unscoped-project';
+
+  const handleFrontendUtterance = (value) => {
+    frontendDispatch({ type: 'FRONTEND_INPUT_SET', utterance: value });
+  };
+
+  const handleFrontendTargetPages = (pages) => {
+    frontendDispatch({ type: 'FRONTEND_INPUT_SET', targetPages: pages });
+  };
+
+  const handleFrontendAnalyze = async () => {
+    // 重复点击：忙碌时直接忽略（reducer 也会拒绝第二次 REQUEST）。
+    if (isFrontendBusy(frontendState)) return;
+    const image = state.screenRef.image;
+    if (!image) {
+      setFrontendLocalError('请先上传一张参考截图，再生成候选前端。');
+      return;
+    }
+    setFrontendLocalError(null);
+    const runId = createFrontendRunId();
+    const revision = frontendState.revision;
+    frontendDispatch({ type: 'FRONTEND_ANALYZE_REQUEST', runId, revision });
+    const result = await frontendService.analyze({
+      runId,
+      projectId: frontendProjectId(),
+      utterance: frontendState.request.utterance,
+      image,
+      targetPages: frontendState.request.targetPages,
+      baseTemplate: frontendState.request.baseTemplate,
+    });
+    if (!result.ok) {
+      if (result.code === 'FRONTEND_CANCELLED') {
+        frontendDispatch({ type: 'FRONTEND_CANCELLED', runId, revision });
+      } else {
+        frontendDispatch({
+          type: 'FRONTEND_ANALYZE_FAILURE',
+          runId,
+          revision,
+          error: { code: result.code, message: result.message },
+        });
+      }
+      return;
+    }
+    frontendDispatch({ type: 'FRONTEND_ANALYZE_SUCCESS', runId, revision, response: result.response });
+  };
+
+  const handleFrontendBuild = async () => {
+    if (isFrontendBusy(frontendState)) return;
+    const draft = frontendState.analysis && frontendState.analysis.draft ? frontendState.analysis.draft : null;
+    if (!draft || !frontendState.runId) {
+      setFrontendLocalError('没有可构建的草稿，请先重新生成候选前端。');
+      return;
+    }
+    setFrontendLocalError(null);
+    const runId = frontendState.runId;
+    const revision = frontendState.revision;
+    frontendDispatch({ type: 'FRONTEND_BUILD_REQUEST' });
+    const result = await frontendService.buildCandidate({
+      projectId: frontendProjectId(),
+      runId,
+      draft,
+    });
+    if (!result.ok) {
+      if (result.code === 'FRONTEND_CANCELLED') {
+        frontendDispatch({ type: 'FRONTEND_CANCELLED', runId, revision });
+      } else {
+        frontendDispatch({
+          type: 'FRONTEND_BUILD_FAILURE',
+          runId,
+          revision,
+          error: { code: result.code, message: result.message },
+        });
+      }
+      return;
+    }
+    frontendDispatch({ type: 'FRONTEND_BUILD_SUCCESS', runId, revision, result });
+  };
+
+  const handleFrontendVerify = async () => {
+    if (isFrontendBusy(frontendState) || !frontendState.candidate) return;
+    const { runId, revision, candidate } = frontendState;
+    const identity = { runId, revision, candidateId: candidate.candidateId, attempt: candidate.attempt };
+    frontendDispatch({ type: 'FRONTEND_VERIFY_REQUEST', ...identity });
+    const result = await frontendService.verifyCandidate({
+      projectId: frontendProjectId(),
+      runId,
+      attempt: candidate.attempt,
+    });
+    if (!result.ok) {
+      if (result.code === 'FRONTEND_CANCELLED') {
+        frontendDispatch({ type: 'FRONTEND_CANCELLED', runId, revision });
+      } else {
+        frontendDispatch({
+          type: 'FRONTEND_VERIFY_FAILURE',
+          ...identity,
+          error: { code: result.code, message: result.message },
+        });
+      }
+      return;
+    }
+    frontendDispatch({ type: 'FRONTEND_VERIFY_SUCCESS', ...identity, result });
+  };
+
+  // 复核（只读重查 dry-run 证据与 overlay）：同样是候选级动作，必须带身份。
+  const handleFrontendValidate = async () => {
+    if (isFrontendBusy(frontendState) || !frontendState.candidate) return;
+    const { runId, revision, candidate } = frontendState;
+    const identity = { runId, revision, candidateId: candidate.candidateId, attempt: candidate.attempt };
+    frontendDispatch({ type: 'FRONTEND_VALIDATE_REQUEST', ...identity });
+    const result = await frontendService.validateCandidate({
+      projectId: frontendProjectId(),
+      runId,
+      attempt: candidate.attempt,
+    });
+    if (!result.ok) {
+      if (result.code === 'FRONTEND_CANCELLED') {
+        frontendDispatch({ type: 'FRONTEND_CANCELLED', runId, revision });
+      } else {
+        frontendDispatch({
+          type: 'FRONTEND_VALIDATE_FAILURE',
+          ...identity,
+          error: { code: result.code, message: result.message },
+        });
+      }
+      return;
+    }
+    frontendDispatch({ type: 'FRONTEND_VALIDATE_SUCCESS', ...identity, result });
+  };
+
+  const handleFrontendAdopt = async (partialConfirmed) => {
+    if (!frontendView.canAdopt || !frontendState.candidate) return;
+    const { runId, revision, candidate } = frontendState;
+    const identity = { runId, revision, candidateId: candidate.candidateId, attempt: candidate.attempt };
+    if (frontendView.adoptNeedsPartialConfirm && partialConfirmed !== true) {
+      // 让 reducer 给出「需要单独确认 partial」的明确错误，而不是静默无反应。
+      frontendDispatch({ type: 'FRONTEND_ADOPT_REQUEST', ...identity, partialConfirmed: false });
+      return;
+    }
+    const confirmed = partialConfirmed === true;
+    frontendDispatch({ type: 'FRONTEND_ADOPT_REQUEST', ...identity, partialConfirmed: confirmed });
+    const result = await frontendService.adoptCandidate({
+      projectId: frontendProjectId(),
+      runId,
+      attempt: candidate.attempt,
+      partialConfirmed: confirmed,
+    });
+    if (!result.ok) {
+      frontendDispatch({
+        type: 'FRONTEND_ADOPT_FAILURE',
+        ...identity,
+        error: { code: result.code, message: result.message },
+      });
+      // 采用失败：不清空输入/候选，只提示；项目快照保持不变。
+      setNotice(result.message || '采用候选前端没有成功，当前版本保持不变。');
+      return;
+    }
+    // P5：采用成功 → 立刻把「同一个候选 overlay」写进项目快照（含上一版一层）。
+    // Plan 引用用 domain 的 buildPlanFromSession 现算，避免 App 自己拼 Plan。
+    const projectId = frontendProjectId();
+    const runtimeStatus = (frontendState.runtimeVerification && frontendState.runtimeVerification.status)
+      || (result.adoption && result.adoption.runtimeStatus)
+      || 'NOT_RUN';
+    let planRef = null;
+    try {
+      planRef = buildPlanFromSession({
+        ...state,
+        frontendCandidate: {
+          status: 'adopted',
+          candidateId: candidate.candidateId,
+          candidateVersion: candidate.candidateVersion,
+          integrity: candidate.digest || null,
+          runId,
+          projectId,
+          attempt: candidate.attempt,
+          verified: true,
+          verification: {
+            static: 'pass',
+            runtime: runtimeStatus,
+            repairs: frontendState.runtimeVerification && Number.isInteger(frontendState.runtimeVerification.repairs)
+              ? frontendState.runtimeVerification.repairs
+              : 0,
+          },
+        },
+      }).plan;
+    } catch (error) {
+      planRef = null;
+    }
+    const record = buildAdoptionRecord({
+      candidate,
+      runId,
+      projectId,
+      adoptionResult: result.adoption,
+      runtimeVerification: frontendState.runtimeVerification,
+      plan: planRef,
+      previous: frontendCandidateRecord,
+    });
+    if (record) setFrontendCandidateRecord(record);
+    setNotice(record && record.status === 'adopted'
+      ? '已采用候选前端，项目快照已更新；重开项目会自动校验 overlay 摘要。'
+      : '已采用候选前端，但快照记录不完整（缺少 overlay 引用或摘要），导出会被阻断；请重新构建/采用一次。');
+    frontendDispatch({ type: 'FRONTEND_ADOPT_SUCCESS', ...identity, adoption: result.adoption });
+  };
+
+  const handleFrontendDiscard = async () => {
+    if (isFrontendBusy(frontendState) || !frontendState.candidate) return;
+    const { runId, revision, candidate } = frontendState;
+    const identity = { runId, revision, candidateId: candidate.candidateId, attempt: candidate.attempt };
+    frontendDispatch({ type: 'FRONTEND_DISCARD_REQUEST', ...identity });
+    const result = await frontendService.discardCandidate({
+      projectId: frontendProjectId(),
+      runId,
+      attempt: candidate.attempt,
+    });
+    if (!result.ok) {
+      frontendDispatch({
+        type: 'FRONTEND_DISCARD_FAILURE',
+        ...identity,
+        error: { code: result.code, message: result.message },
+      });
+      return;
+    }
+    frontendDispatch({ type: 'FRONTEND_DISCARD_SUCCESS', ...identity });
+  };
+
+  const handleFrontendCancel = async () => {
+    if (!isFrontendBusy(frontendState)) return;
+    const { runId, revision } = frontendState;
+    frontendDispatch({ type: 'FRONTEND_CANCEL_REQUEST', runId, revision });
+    const result = await frontendService.cancelRun({ projectId: frontendProjectId(), runId });
+    if (result.ok) frontendDispatch({ type: 'FRONTEND_CANCELLED', runId, revision });
+  };
+
+  const handleFrontendRetry = () => {
+    setFrontendLocalError(null);
+    frontendDispatch({ type: 'FRONTEND_RETRY' });
+  };
+
+  const handleFrontendReset = () => {
+    setFrontendLocalError(null);
+    frontendDispatch({ type: 'FRONTEND_RESET', keepImage: true });
+  };
+
+  useEffect(() => {
+    const unsubscribe = frontendService.onProgress((payload) => {
+      frontendDispatch({
+        type: 'FRONTEND_PROGRESS',
+        runId: payload.runId,
+        stage: payload.stage,
+        attempt: payload.attempt,
+      });
+    });
+    return unsubscribe;
+  }, [frontendService]);
+
+  // P6：只记录「真实发生」的候选前端耗时：新 runId 开始计时，到终态定格一次。
+  // 不按渲染次数/固定步数估算，也不在 runId 缺失时编一个开始时间。
+  useEffect(() => {
+    const runId = frontendState.runId;
+    setFrontendTiming((prev) => {
+      if (!runId) {
+        return prev.runId === null ? prev : { runId: null, startedAt: null, endedAt: null };
+      }
+      if (prev.runId !== runId) {
+        return { runId, startedAt: Date.now(), endedAt: null };
+      }
+      if (prev.endedAt === null && FRONTEND_TERMINAL_STATUSES.has(frontendState.status)) {
+        return { ...prev, endedAt: Date.now() };
+      }
+      return prev;
+    });
+  }, [frontendState.runId, frontendState.status]);
+
+  // 参考截图只有一份：旧识别区选了图，候选前端主链立刻能看到同一张图。
+  // reducer 对同一张图是 no-op，不会引起重复渲染或额外 revision。
+  useEffect(() => {
+    if (!state.screenRef.image) return;
+    frontendDispatch({ type: 'FRONTEND_INPUT_SET', image: state.screenRef.image });
+  }, [state.screenRef.image]);
+
   const handleComposerSubmit = (value) => {
     // W4：空白/超长在 Composer 已拦住，这里再兜一层；连续点击/连按回车只放行一次。
     const analysis = analyzeComposerInput(value);
@@ -1897,6 +2343,7 @@ export default function App() {
         mode: 'development',
         projectId: state.project.activeId || null,
         posterAssetId: state.visual.imageAssetId || null,
+        candidateOverlay: frontendCandidateOverlay,
       });
       if (result.status === 'ok') {
         const payload = result.result || {};
@@ -1961,7 +2408,17 @@ export default function App() {
       dispatch({ type: 'DEPLOY_FAILURE', error: { code: chosen.status, message: chosen.message } });
       return;
     }
-    const { plan, warnings } = buildPlanFromSession(state);
+    const exportPlan = buildExportPlanFromSession(frontendStateWithCandidate);
+    if (!exportPlan.ok) {
+      // P5：已采用候选但 overlay 缺失/漂移/未校验 → 阻断导出，绝不静默回落 Base。
+      dispatch({
+        type: 'DEPLOY_FAILURE',
+        error: { code: exportPlan.code || 'FRONTEND_OVERLAY_MISSING', message: exportPlan.message || '候选前端 overlay 未确认，已阻止导出。' },
+      });
+      setNotice(exportPlan.message || '候选前端 overlay 未确认，已阻止导出（不会静默回退 Base）。');
+      return;
+    }
+    const { plan, warnings } = exportPlan;
     const projectName = sanitizeProjectName(state.store.name || state.agentDraft.storeName);
     await runDeployExport(chosen.path, plan, projectName, warnings);
   };
@@ -2000,7 +2457,16 @@ export default function App() {
     }
 
     dispatch({ type: 'DEPLOY_START' });
-    const { plan, warnings } = buildPlanFromSession(state);
+    const exportPlan = buildExportPlanFromSession(frontendStateWithCandidate);
+    if (!exportPlan.ok) {
+      dispatch({
+        type: 'DEPLOY_FAILURE',
+        error: { code: exportPlan.code || 'FRONTEND_OVERLAY_MISSING', message: exportPlan.message || '候选前端 overlay 未确认，已阻止导出。' },
+      });
+      setNotice(exportPlan.message || '候选前端 overlay 未确认，已阻止导出（不会静默回退 Base）。');
+      return;
+    }
+    const { plan, warnings } = exportPlan;
     const projectName = sanitizeProjectName(state.store.name || state.agentDraft.storeName);
     await runDeployExport(parentDir, plan, projectName, warnings);
   };
@@ -2020,8 +2486,16 @@ export default function App() {
     const projectName = sanitizeProjectName(
       (state.deploy.error && state.deploy.error.suggestedName) || state.deploy.projectName,
     );
-    const { plan, warnings } = buildPlanFromSession(state);
-    await runDeployExport(directory, plan, projectName, warnings);
+    const exportPlan = buildExportPlanFromSession(frontendStateWithCandidate);
+    if (!exportPlan.ok) {
+      dispatch({
+        type: 'DEPLOY_FAILURE',
+        error: { code: exportPlan.code || 'FRONTEND_OVERLAY_MISSING', message: exportPlan.message || '候选前端 overlay 未确认，已阻止导出。' },
+      });
+      setNotice(exportPlan.message || '候选前端 overlay 未确认，已阻止导出（不会静默回退 Base）。');
+      return;
+    }
+    await runDeployExport(directory, exportPlan.plan, projectName, exportPlan.warnings);
   };
 
   const handleDeployCancel = async () => {
@@ -2038,16 +2512,25 @@ export default function App() {
       let merged = { ...local, planDigest: null };
       const desktop = projectServiceRef.current.mode === 'desktop';
       if (desktop && local.errors.length === 0) {
-        const { plan } = buildPlanFromSession(state);
-        const result = await validatePlan(plan);
-        if (result.status === 'ok') {
-          merged = mergeComposerResult(local, result.result);
-        } else {
+        const exportPlan = buildExportPlanFromSession(frontendStateWithCandidate);
+        if (!exportPlan.ok) {
+          // P5：候选缺失/漂移/未校验时，体检也必须报错（导出会被阻断）。
           merged = mergeComposerResult(local, {
             ok: false,
-            code: result.code || 'COMPOSE_FAILED',
-            message: result.message,
+            code: exportPlan.code || 'FRONTEND_OVERLAY_MISSING',
+            message: exportPlan.message || '候选前端 overlay 未确认，已阻止导出。',
           });
+        } else {
+          const result = await validatePlan(exportPlan.plan, { candidateOverlay: frontendCandidateOverlay });
+          if (result.status === 'ok') {
+            merged = mergeComposerResult(local, result.result);
+          } else {
+            merged = mergeComposerResult(local, {
+              ok: false,
+              code: result.code || 'COMPOSE_FAILED',
+              message: result.message,
+            });
+          }
         }
       }
       // 已有导出位置时提前暴露同名冲突；没有任何位置信息时不伪造目标路径。
@@ -2358,12 +2841,33 @@ export default function App() {
           />
         );
         // P3：参考截图 → 候选模板。识别/确认/候选都在这一步完成，不覆盖当前版本。
+        // P4：同屏再挂「生成候选前端」主链（截图共享，状态各管各的）。
+        const frontendCandidatePanel = (
+          <FrontendCandidatePanel
+            view={frontendView}
+            imageReady={Boolean(state.screenRef.image)}
+            desktopMode={frontendService.mode === 'desktop'}
+            localError={frontendLocalError}
+            onUtteranceChange={handleFrontendUtterance}
+            onTargetPagesChange={handleFrontendTargetPages}
+            onAnalyze={handleFrontendAnalyze}
+            onBuild={handleFrontendBuild}
+            onVerify={handleFrontendVerify}
+            onValidate={handleFrontendValidate}
+            onAdopt={handleFrontendAdopt}
+            onDiscard={handleFrontendDiscard}
+            onCancel={handleFrontendCancel}
+            onRetry={handleFrontendRetry}
+            onReset={handleFrontendReset}
+          />
+        );
         const screenRefPanel = (
           <ScreenReferencePanel
             view={state.screenRef.view}
             busy={state.screenRef.status === 'recognizing'}
             localError={screenRefError}
             persisted={screenRefPersisted}
+            frontendPanel={frontendCandidatePanel}
             onPick={handleScreenRefPick}
             onPickFile={handleScreenRefFile}
             onRecognize={handleScreenRefRecognize}
@@ -2699,6 +3203,9 @@ case PHASES.DEPLOY: {
                     revealKey={conversationMessages.revealKey}
                     flushKey={activeSession.revealFlush ?? 0}
                     revealAll={conversationMessages.revealAll}
+                    // P6：候选前端流程的过程卡（安全视图）。只在「开店资料」阶段、且有真实
+                    // trace/进度时传入；null 时 ChatStream 不渲染任何过程区块，避免假进度。
+                    process={phase === PHASES.STORE_INFO ? frontendProcessSummary : null}
                   >
                     {phase !== PHASES.BUILDING ? (
                       <>

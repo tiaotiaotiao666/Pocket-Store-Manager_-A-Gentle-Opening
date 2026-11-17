@@ -178,6 +178,71 @@ function buildSlotOrderEntries(features, placements) {
   return entries;
 }
 
+/**
+ * P5：读取「已采用候选前端」的 Plan 引用。
+ *
+ * 只在快照里存在 adoption 时生效；overlay 必须是桌面层校验过的
+ * （`verified === true`，或 options.frontendOverlay 的 id/version 与快照一致）。
+ * 未校验/不可用一律**不**写 `plan.frontendPack` —— 由导出入口显式阻断，
+ * 绝不让「候选缺失」静默变成 Base 页面。
+ */
+function readFrontendCandidateForPlan(state, options) {
+  const slice = isRecord(state) && isRecord(state.frontendCandidate) ? state.frontendCandidate : null;
+  if (!slice || (slice.status !== 'adopted' && slice.status !== 'unavailable')) return null;
+  const candidateId = typeof slice.candidateId === 'string' ? slice.candidateId : '';
+  const candidateVersion = typeof slice.candidateVersion === 'string' ? slice.candidateVersion : '';
+  const integrity = typeof slice.integrity === 'string' ? slice.integrity : null;
+  const issue = isRecord(slice.issue) ? slice.issue : null;
+  if (slice.status === 'unavailable') {
+    return {
+      status: 'unavailable',
+      candidateId: candidateId || null,
+      candidateVersion: candidateVersion || null,
+      integrity,
+      verified: false,
+      code: (issue && typeof issue.code === 'string' && issue.code) || 'FRONTEND_CANDIDATE_UNAVAILABLE',
+      message: (issue && typeof issue.message === 'string' && issue.message) || '候选前端当前不可用，已回退到 Base 页面。',
+      runtimeStatus: isRecord(slice.verification) && typeof slice.verification.runtime === 'string'
+        ? slice.verification.runtime
+        : 'NOT_RUN',
+      repairs: isRecord(slice.verification) && Number.isInteger(slice.verification.repairs) ? slice.verification.repairs : 0,
+    };
+  }
+
+  const overlay = isRecord(options.frontendOverlay) ? options.frontendOverlay : null;
+  const overlayMatches = Boolean(overlay
+    && overlay.candidateId === candidateId
+    && overlay.candidateVersion === candidateVersion
+    && (!overlay.integrity || !integrity || overlay.integrity === integrity));
+  const verified = slice.verified === true || overlayMatches;
+  if (!candidateId || !candidateVersion) {
+    return {
+      status: 'unavailable',
+      candidateId: candidateId || null,
+      candidateVersion: candidateVersion || null,
+      integrity,
+      verified: false,
+      code: 'FRONTEND_CANDIDATE_INVALID',
+      message: '候选记录缺少 id/version，已回退到 Base 页面。',
+      runtimeStatus: 'NOT_RUN',
+      repairs: 0,
+    };
+  }
+  return {
+    status: verified ? 'adopted' : 'unavailable',
+    candidateId,
+    candidateVersion,
+    integrity,
+    verified,
+    code: verified ? null : 'FRONTEND_CANDIDATE_UNVERIFIED',
+    message: verified ? null : '候选 overlay 还没有通过摘要校验，导出会被阻断；不会静默回退 Base。',
+    runtimeStatus: isRecord(slice.verification) && typeof slice.verification.runtime === 'string'
+      ? slice.verification.runtime
+      : 'NOT_RUN',
+    repairs: isRecord(slice.verification) && Number.isInteger(slice.verification.repairs) ? slice.verification.repairs : 0,
+  };
+}
+
 export function buildPlanFromSession(state, options = {}) {
   const pages = options.role === 'customer'
     ? PAGES.filter((page) => page.pageId !== 'merchant-orders')
@@ -248,11 +313,26 @@ export function buildPlanFromSession(state, options = {}) {
     warnings.push('有菜品缺少名称或整数价格，未写入导出配置。');
   }
 
+  // P5：已采用候选前端只引用项目私有 overlay；未校验/缺失时不写 frontendPack，
+  // 并在 warnings 里说清「导出会被阻断」，绝不静默回落 Base。
+  const frontendCandidate = readFrontendCandidateForPlan(state, options);
+  if (frontendCandidate) {
+    if (frontendCandidate.status === 'adopted') {
+      warnings.push('本次使用已采用的候选前端 ' + frontendCandidate.candidateId + '@' + frontendCandidate.candidateVersion
+        + '（静态门禁通过，微信验证：' + frontendCandidate.runtimeStatus + '）。');
+    } else {
+      warnings.push(frontendCandidate.message || '候选前端当前不可用，已回退到 Base 页面。');
+    }
+  }
+
   const plan = {
     schemaVersion: 'composition.v1',
     planId: recipeId,
     planVersion: recipe.version,
     baseTemplate: { id: 'ordering-base', version: '1.0.0' },
+    ...(frontendCandidate && frontendCandidate.status === 'adopted'
+      ? { frontendPack: { id: frontendCandidate.candidateId, version: frontendCandidate.candidateVersion } }
+      : {}),
     registryVersion: REGISTRY_VERSION,
     pages: pages.map((page) => ({ ...page })),
     features,
@@ -286,5 +366,46 @@ export function buildPlanFromSession(state, options = {}) {
     recipeId,
     recipeDisplayName: recipe.displayName,
     themePresetId: theme.presetId,
+    frontendCandidate,
+  };
+}
+
+/**
+ * 正式导出专用入口：候选缺失/未校验/漂移时直接失败，不返回 Base Plan。
+ *
+ * 调用方（导出服务/主进程）仍然会再校验一次 overlay 与摘要；
+ * 这里的第一道闸只是让「缺 overlay 静默回落 Base」在渲染层就无法发生。
+ */
+export function buildExportPlanFromSession(state, options = {}) {
+  const built = buildPlanFromSession(state, options);
+  const candidate = built.frontendCandidate;
+  if (candidate && candidate.status !== 'adopted') {
+    return {
+      ok: false,
+      code: candidate.code || 'FRONTEND_CANDIDATE_UNAVAILABLE',
+      message: candidate.message || '候选前端当前不可用，已阻止导出（不会静默回退 Base）。',
+      plan: null,
+      warnings: built.warnings,
+      frontendCandidate: candidate,
+    };
+  }
+  if (candidate && (!built.plan.frontendPack || !built.plan.frontendPack.id)) {
+    return {
+      ok: false,
+      code: 'FRONTEND_OVERLAY_MISSING',
+      message: '候选前端 overlay 未确认，已阻止导出（不会静默回退 Base）。',
+      plan: null,
+      warnings: built.warnings,
+      frontendCandidate: candidate,
+    };
+  }
+  return {
+    ok: true,
+    plan: built.plan,
+    warnings: built.warnings,
+    frontendCandidate: candidate,
+    recipeId: built.recipeId,
+    recipeDisplayName: built.recipeDisplayName,
+    themePresetId: built.themePresetId,
   };
 }

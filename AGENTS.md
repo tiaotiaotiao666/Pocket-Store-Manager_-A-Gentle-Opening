@@ -14,7 +14,29 @@ npm run agent:smoke     # 无障碍闭环走查：工作台 → 设置页 → �
 npm run mini:check      # 小程序镜像结构校验
 npm run mirror:check    # 校验 miniprogram/ 镜像是否与真源一致（MIRROR.json 摘要）
 npm run mirror:sync     # 用 templates/base/ordering-base/1.0.0/src 覆盖同步 miniprogram/
+npm run frontend:capabilities:check  # 校验图片驱动重构的能力快照与 Catalog/Base 同源
+npm run frontend:verify -- --attempt <attemptDir> [--runtime]  # 候选 dry-run（可选真实微信验证）
+node scripts/frontend-verify.cjs --attempt <attemptDir> [--runtime]  # 同上，直接入口
 ```
+
+## 图片驱动前端重构：用户私有候选链
+
+单张参考图 → 受控 `FrontendPack` 候选 → 私有 workspace/Registry overlay → Composer dry-run 与微信验证 → 用户采用/撤销。
+契约见 [`docs/frontend-reconstruct-contract.md`](docs/frontend-reconstruct-contract.md)，本地执行侧见
+[`desktop/frontend-reconstruct/README.md`](desktop/frontend-reconstruct/README.md)，操作规范见
+[`.codeartsdoer/skills/README.md`](.codeartsdoer/skills/README.md)。
+
+- 模型只产出有界 JSON DSL（`frontend-pack-draft.v1`）；不产出任意 WXML/WXSS/JS/WXS/命令，
+  不接受外部 URL、绝对路径或模型提供的输出目录。
+- 候选只写应用私有 `<userData>/projects/<projectId>/frontend-runs/<runId>/attempts/attempt-<n>/`，
+  **不写正式 `templates/**`、不改 `miniprogram/`、不重冻结全局 Registry**；正式资产入库仍走
+  [`wechat-template-builder`](.codeartsdoer/skills/wechat-template-builder/SKILL.md)。
+- 缺必需能力即 `rejected`；`partial`（微信验证未完成）不等于验收通过；微信工具不可用时如实标
+  `BLOCKED`/`NOT_RUN`，不得用 React 预览截图冒充微信运行时截图。
+- 固定验证入口只有 `npm run frontend:verify`（脚本 `scripts/frontend-verify.cjs`，退出码 0/1/2/3），
+  内部只调用 `scripts/wechat-devtools-run.cjs`；不新增任意命令执行入口。
+- 过程卡/报告只展示真实 trace 的工具标签、`runId`/`attempt`/状态/耗时，不展示源码、base64、
+  完整 prompt 或密钥；没有真实证据时写 `BLOCKED`/`NOT_RUN`。
 
 ## 小程序目录的身份：`miniprogram/` 是只读镜像，不是交付物
 

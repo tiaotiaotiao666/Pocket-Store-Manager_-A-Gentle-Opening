@@ -6,12 +6,11 @@
 
 | 文档 | 适用任务 | 当前状态 |
 | --- | --- | --- |
-| `当前工作区交接.md` | **当前活动**：了解未提交改动、全链路 Agent 打通进度与环境阻塞 | 持续更新；T1–T14 已完成，T15/T16 为 `INCOMPLETE`；2026-11-12 新增 `agent-run.v1` 服务端运行时，并完成 T16 的 0–6 步实机走查（真实模型 + 微信运行时截图，缺口见走查清单 §9） |
+| `当前工作区交接.md` | **当前活动**：了解未提交改动、全链路 Agent 打通进度、图片驱动前端重构 P0–P6 与环境阻塞 | 持续更新；T1–T14 已完成，T15/T16 为 `INCOMPLETE`；2026-11-17 新增图片驱动前端重构 P0–P6（契约/视觉服务/私有 workspace/overlay/dry-run/桌面主链/采用持久化/导出同源 + 四个 skills + 过程可观测性）；P7 执行结果见 `docs/evidence/frontend-reconstruct/`（整体 `INCOMPLETE`） |
 | `Agent工具体系与交互健壮性.md` | Agent 运行时改造方案（function calling + 工具权限 + 轮次约束 + markdown 渲染与输入边界校验） | 服务端部分已由上游 `agent-run.v1` 落地（2026-11-12）；**桌面端接线与 UI 侧改造仍待做** |
+| `图片驱动前端重构-Flash实施计划.md` | 单张参考图 → 受控 FrontendPack 候选 → dry-run/微信验证 → 采用/撤销/持久化；含四个 skills 与完整验收矩阵 | **P0–P7 已执行；P7 部分 `BASELINE`/`BLOCKED`，整体 `INCOMPLETE`**；门禁与真实探针见 [`docs/evidence/frontend-reconstruct/`](../evidence/frontend-reconstruct/README.md)，实测结果以计划 §12 为准（由 P7 回填） |
 
-当前活动任务：**`agent-run.v1` 落地后的桌面端接线与交互健壮性**。服务端 `POST /api/v1/agent/run` 已可用（多轮 function calling，`maxToolCalls` 默认 12，超限返回 `max_tool_calls`），但 `src/` 尚无任何调用点；同时补齐 markdown 渲染与输入边界校验。
-
-2026-11-12 已完成 MySQL+后端、真实 Agent HTTP、桌面 7 步走查与微信开发者工具 `cli preview`/运行时四页截图；下一步按 `docs/2026-11-03-全链路Agent打通-人工走查清单.md` §9 关闭 P1 缺陷与覆盖缺口（字段级 diff、多槽截图回填、预检跳走回退）。详见 `当前工作区交接.md` 第 6 节。环境侧：四端口全通、`readyz database=ok`、两阶段真实模型调用均返回 200（2026-11-10 实测）。**华为云相关本阶段明确不做**。
+当前活动任务：**图片驱动前端重构收口与遗留项处理**。P0–P6 已落地；P7 已按计划 §8/§9 执行并保存真实证据，但整体验收为 `INCOMPLETE`：可执行定向门禁通过，`catalog:check`/`mini:check`/`mirror:check` 为 pre-existing 基线失败，`agent:smoke` 与微信真实编译/截图因环境不可用而 `BLOCKED`。P7 证据入口：[`docs/evidence/frontend-reconstruct/README.md`](../evidence/frontend-reconstruct/README.md)、门禁细节 [gates.md](../evidence/frontend-reconstruct/gates.md)、基线判定 [baseline.md](../evidence/frontend-reconstruct/baseline.md)、真实探针 [real-probe.md](../evidence/frontend-reconstruct/real-probe.md)、完成标准 [completion-criteria.md](../evidence/frontend-reconstruct/completion-criteria.md)、泄漏检查 [leak-check.md](../evidence/frontend-reconstruct/leak-check.md)。计划 §12 已由 P7 回填，本索引不重复验收结论；不得据此宣称微信真实运行时或全量门禁已通过。历史背景：2026-11-12 已走通 T16 0–6 步（真实模型 + 微信运行时四页渲染 + 截图回填），但 T16 仍因覆盖缺口为 `INCOMPLETE`。
 
 ## 历史摘要
 

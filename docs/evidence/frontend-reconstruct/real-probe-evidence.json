@@ -1,0 +1,303 @@
+{
+  "schemaVersion": "frontend-p7-real-evidence.v1",
+  "generatedAt": "2026-11-16T19:00:25.718Z",
+  "source": {
+    "provenance": "t13 于 2026-11-17 02:56–02:59 的真实模型探针摘要。原始合成图三张、gen_images.py、临时探针脚本与候选 attempt 原件曾位于 .tmp/frontend-real-probe/（gitignored）和系统临时 userData；这些原件已在 F3 收口清理时删除，仓库内只剩本摘要。",
+    "originalLocation": ".tmp/frontend-real-probe/（已删除；无 sha256、无图片二进制、无探针脚本）",
+    "archiveStatus": "SUMMARY_ONLY",
+    "reproducible": false,
+    "model": "DeepSeek deepseek-flash（server/.env 有可用 key，未打印；provider=deepseek，mock=false）",
+    "chain": "FrontendReconstructService 真实调用 → P2 materialize → P3 dry-run → P3 verify-runtime（原始产物未归档）",
+    "note": "全部为有界摘要：只有状态/计数/耗时/摘要与摘要值，无 prompt、图片 base64、原始模型响应或密钥。摘要中的 integrity/treeSha256 对应文件已不存在，无法从仓库校验。"
+  },
+  "reproducibility": {
+    "status": "UNVERIFIABLE",
+    "reason": "输入图片/生成脚本/候选 attempt 原件已被 F3 清理删除，仓库只保留本摘要；无 sha256 可校验，无法独立重放图片→模型→候选→dry-run 链路。",
+    "requiredToRestore": "新的取证任务：重建三张合成图与生成脚本、记录图片 sha256、重跑真实模型并归档可校验的候选摘要。",
+    "affectedCriteria": [
+      "docs/evidence/frontend-reconstruct/completion-criteria.md §10 第 1 项（UNVERIFIABLE）",
+      "P1 真实链路与三图矩阵（clear-home=UNVERIFIABLE；unsupported/blurry=UNMET）"
+    ]
+  },
+  "sample": {
+    "name": "clear-home",
+    "mediaType": "image/png",
+    "imageBytes": 28156,
+    "targetPages": [
+      "home"
+    ],
+    "archiveStatus": "DELETED",
+    "note": "图片原件已在 F3 清理中删除，未记录 sha256；这里只保留当时摘要中的字节数。"
+  },
+  "runs": [
+    {
+      "attempt": "A（首次）",
+      "archiveStatus": "SUMMARY_ONLY",
+      "status": "needs-input",
+      "coverageStatus": "partial",
+      "degradations": 3,
+      "draftPages": [],
+      "draftNodeCount": 0,
+      "modelCalls": 8,
+      "toolCalls": [
+        "get_frontend_capabilities:ok",
+        "check_frontend_coverage:ok",
+        "propose_frontend_draft:fail",
+        "propose_frontend_draft:fail",
+        "propose_frontend_draft:fail",
+        "propose_frontend_draft:fail",
+        "propose_frontend_draft:fail"
+      ],
+      "stopReason": "needs_input",
+      "measuredMs": 65027,
+      "latencyMs": 64478,
+      "materialize": null,
+      "dryRun": {
+        "status": "NOT_RUN",
+        "reason": "response-not-planned"
+      },
+      "note": "同一张图与同一请求的首次运行未产出候选（propose_frontend_draft 连续 5 次 FRONTEND_RESPONSE_INVALID → needs-input）；如实记录，不作为通过。"
+    },
+    {
+      "attempt": "B（复跑）",
+      "archiveStatus": "SUMMARY_ONLY",
+      "status": "planned",
+      "coverageStatus": "partial",
+      "missingCapabilities": 0,
+      "degradations": 2,
+      "draftPages": [
+        "home"
+      ],
+      "draftNodeCount": 19,
+      "modelCalls": 4,
+      "toolCalls": [
+        "get_frontend_capabilities:ok",
+        "check_frontend_coverage:ok",
+        "propose_frontend_draft:ok"
+      ],
+      "stopReason": "final_answer",
+      "measuredMs": 17484,
+      "latencyMs": 16907,
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "mock": false,
+      "materialize": {
+        "ok": true,
+        "code": "MATERIALIZE_OK",
+        "attempt": 1,
+        "candidateId": "fr-5038d20dde55",
+        "files": 8
+      },
+      "dryRun": {
+        "ok": true,
+        "code": "DRY_RUN_OK",
+        "summary": "dry-run 通过；candidate=fr-5038d20dde55@1.0.0；ComposerP0-P6=138 个文件；mini:check=通过；consistency=通过；可观察项 4 项：通过 1，失败 0，未执行 1，未测量 1，不适用 1（不做像素百分比判断）",
+        "issues": [],
+        "checks": {
+          "total": 7,
+          "pass": 4,
+          "fail": 0,
+          "notRun": 1,
+          "notChecked": 1,
+          "notApplicable": 1
+        },
+        "outputRelativePath": "verification/dry-run/candidate",
+        "observable": {
+          "ok": true,
+          "counts": {
+            "total": 4,
+            "pass": 1,
+            "fail": 0,
+            "notRun": 1,
+            "notChecked": 1,
+            "notApplicable": 1
+          }
+        },
+        "mini": {
+          "pages": 8,
+          "components": 14,
+          "errors": 0
+        },
+        "consistency": {
+          "ok": true,
+          "problems": 0
+        },
+        "composer": {
+          "outputRelativePath": "verification/dry-run/candidate",
+          "treeSha256": "sha256:efa1c455c35782b6ab9b96cf5061faf38867296a564805d0ec290fbf1e519a73",
+          "fileCount": 138
+        }
+      },
+      "runtime": {
+        "status": "BLOCKED",
+        "code": "RUNTIME_TOOL_MISSING",
+        "summary": "微信运行时 BLOCKED：本机未找到微信开发者工具 cli.bat（可用 WX_CLI_PATH 指定）",
+        "screenshots": 0
+      }
+    }
+  ],
+  "candidate": {
+    "archiveStatus": "DELETED",
+    "archiveNote": "候选 attempt 原件曾在系统临时 userData 的 projects/p7-real/frontend-runs/frun-p7-real/attempts/attempt-1，已随会话/F3 清理删除；以下字段仅来自 t13 摘要，无法从仓库校验。",
+    "candidateId": "fr-5038d20dde55",
+    "version": "1.0.0",
+    "integrity": "sha256:44e95b72d411a87610caf5d2f0b5dcca1a3b39bda91f4846c5ca478a57faab11",
+    "draftDigest": "sha256:5038d20dde5597cdc7d7c24ee0755619d22ab16ea5df4da0422a825445ac2b46",
+    "overlayRegistryDigest": "sha256:6283be45da72cb68a2cd615c3797a2d0221132ceb39971bf13246a983c33163c",
+    "requiresSlots": [
+      "home-hero"
+    ],
+    "files": [
+      "manifest.json",
+      "preview/empty.json",
+      "preview/error.json",
+      "preview/long.json",
+      "preview/normal.json",
+      "src/pages/home/index.json",
+      "src/pages/home/index.wxml",
+      "src/pages/home/index.wxss"
+    ],
+    "degradations": [
+      {
+        "code": "PAGE_JSON_KEY_UNSUPPORTED",
+        "path": "$.home.pageJson.navigationBarBackgroundColor"
+      },
+      {
+        "code": "PAGE_JSON_KEY_UNSUPPORTED",
+        "path": "$.home.pageJson.navigationBarTextStyle"
+      }
+    ],
+    "generatedWxml": {
+      "bytes": 2032,
+      "handlers": [
+        "onModeChange",
+        "goMenu",
+        "onPickTable",
+        "onRetryTables",
+        "onRetry",
+        "goOrders",
+        "onOpenOrder",
+        "goMine",
+        "goMerchant"
+      ],
+      "hasCanonicalTokens": {
+        "{{home.": false,
+        "{{menu.": false,
+        "{{cart.": false
+      },
+      "usesStoreBinding": true,
+      "slotFallbackComplete": true
+    }
+  },
+  "dryRun": {
+    "ok": true,
+    "code": "DRY_RUN_OK",
+    "summary": "dry-run 通过；candidate=fr-5038d20dde55@1.0.0；ComposerP0-P6=138 个文件；mini:check=通过；consistency=通过；可观察项 4 项：通过 1，失败 0，未执行 1，未测量 1，不适用 1（不做像素百分比判断）",
+    "checkCounts": {
+      "total": 7,
+      "pass": 4,
+      "fail": 0,
+      "notRun": 1,
+      "notChecked": 1,
+      "notApplicable": 1
+    },
+    "checks": [
+      {
+        "id": "mini-check",
+        "status": "pass",
+        "message": "小程序静态校验通过（8 页 / 14 组件）"
+      },
+      {
+        "id": "consistency",
+        "status": "pass",
+        "message": "产物与 Lock/报告一致（138 个文件）"
+      },
+      {
+        "id": "observable",
+        "status": "pass",
+        "message": "可观察项 4 项：通过 1，失败 0，未执行 1，未测量 1，不适用 1（不做像素百分比判断）"
+      },
+      {
+        "id": "sections:home",
+        "status": "pass",
+        "message": "19 个节点按 Draft 顺序渲染"
+      },
+      {
+        "id": "density",
+        "status": "not_applicable",
+        "message": "Draft/DSL 没有密度字段；不做像素级密度判断"
+      },
+      {
+        "id": "overflow",
+        "status": "not_checked",
+        "message": "溢出属于运行时视觉项：静态产物无法判定，本链路不做像素测量（不以百分比冒充结论）"
+      },
+      {
+        "id": "runtime-action:home.goMenu",
+        "status": "not_run",
+        "message": "微信运行时未执行，无法确认“首页 →「开始点餐」进入菜单”可点"
+      }
+    ],
+    "composer": {
+      "outputRelativePath": "verification/dry-run/candidate",
+      "treeSha256": "sha256:efa1c455c35782b6ab9b96cf5061faf38867296a564805d0ec290fbf1e519a73",
+      "fileCount": 138
+    },
+    "mini": {
+      "pages": 8,
+      "components": 14,
+      "errors": 0
+    },
+    "consistency": {
+      "ok": true,
+      "problems": 0
+    },
+    "issues": []
+  },
+  "runtime": {
+    "status": "BLOCKED",
+    "code": "RUNTIME_TOOL_MISSING",
+    "summary": "微信运行时 BLOCKED：本机未找到微信开发者工具 cli.bat（可用 WX_CLI_PATH 指定）",
+    "screenshots": 0
+  },
+  "historicalProbe": {
+    "sourceStatus": "DELETED",
+    "file": ".tmp/frontend-real-probe/evidence.json（已随 F3 清理删除；此处仅保留当时的失败摘要，不再作为证据）",
+    "observed": [
+      {
+        "sample": "clear-home",
+        "error": {
+          "httpStatus": 500,
+          "errorCode": "FRONTEND_FACTS_INVALID"
+        },
+        "measuredMs": 31995,
+        "imageBytes": 28156
+      },
+      {
+        "sample": "unsupported-business",
+        "error": {
+          "httpStatus": 500,
+          "errorCode": "FRONTEND_FACTS_INVALID"
+        },
+        "measuredMs": 18718,
+        "imageBytes": 25739
+      },
+      {
+        "sample": "blurry-home",
+        "error": {
+          "httpStatus": 500,
+          "errorCode": "FRONTEND_FACTS_INVALID"
+        },
+        "measuredMs": 11106,
+        "imageBytes": 8475
+      }
+    ],
+    "note": "原文件已随 F3 清理删除；此处仅保留当时的失败重跑摘要（三图均 FRONTEND_FACTS_INVALID(500)），不再作为当前证据。当前快照经 A1/F1 测试与 frontend:capabilities:check 校验一致，但不得用测试替代真实模型三图证据。"
+  },
+  "correction": {
+    "task": "t37（repair-round-2）",
+    "at": "2026-11-17",
+    "what": "删除指向 .tmp/frontend-real-probe/ 与候选私有目录的失效引用；补充 provenance 与不可复核声明；§10 第 1 项与三图矩阵按完成标准降级。",
+    "notChanged": "整体验收仍为 INCOMPLETE；微信真实编译仍为 BLOCKED，没有宣称任何通过。"
+  }
+}

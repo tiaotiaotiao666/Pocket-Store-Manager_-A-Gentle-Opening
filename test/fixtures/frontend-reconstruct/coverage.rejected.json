@@ -1,0 +1,20 @@
+{
+  "status": "rejected",
+  "requiredCapabilities": [
+    "page:checkout",
+    "component:live-stream",
+    "action:home.startLive",
+    "data:store.liveUrl"
+  ],
+  "missingCapabilities": [
+    "component:live-stream",
+    "action:home.startLive",
+    "data:store.liveUrl"
+  ],
+  "coveredBy": {},
+  "risks": [
+    { "capability": "component:live-stream", "reason": "Base 没有直播组件" },
+    { "capability": "action:home.startLive", "reason": "控制器没有开播动作" }
+  ],
+  "degradations": []
+}

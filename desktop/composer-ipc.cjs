@@ -17,6 +17,8 @@ const { spawn } = require('node:child_process');
 
 const { applyAppid } = require('./appid-postprocess.cjs');
 const { sanitizeProjectName, suggestName } = require('../scripts/composer/atomic.cjs');
+const adoption = require('./frontend-reconstruct/adoption.cjs');
+const { inspectOutput } = require('./output-consistency.cjs');
 
 const APP_ROOT = path.join(__dirname, '..');
 const COMPOSER_CLI = path.join(APP_ROOT, 'scripts', 'composer', 'cli.cjs');
@@ -195,6 +197,65 @@ function createComposerIpc(options) {
     ? opts.composeInNode
     : (options) => composeInNode(options, composeTempRoot);
 
+  /**
+   * P5：项目私有候选 overlay 的应用数据根目录。
+   *
+   * main.cjs 目前会把 `preview-projects` / `compose-tmp` 挂在 userData 下，
+   * 这里优先用显式注入的 userDataDir，否则从这两个已注入路径回推，
+   * 避免为了 P5 再改 main.cjs（它不在本任务范围）。
+   */
+  const userDataDir = (() => {
+    if (typeof opts.userDataDir === 'string' && opts.userDataDir.trim()) return path.resolve(opts.userDataDir);
+    if (previewParentDir) return path.dirname(previewParentDir);
+    if (composeTempRoot) return path.dirname(path.resolve(composeTempRoot));
+    return '';
+  })();
+
+  /**
+   * Plan 一旦引用 `frontendPack`，就必须解析出「同一个」项目私有 overlay：
+   * - 没有 overlay → FRONTEND_OVERLAY_MISSING（禁止静默回落 Base）；
+   * - 摘要/身份不一致 → 结构化失败；
+   * - 渲染进程只能给受控 id（路径由主进程按 id 推导）。
+   */
+  function resolvePlanCandidateOverlay(payload) {
+    const plan = payload && payload.plan && typeof payload.plan === 'object' ? payload.plan : null;
+    const frontendPack = plan && plan.frontendPack && plan.frontendPack.id ? plan.frontendPack : null;
+    const hasOverlay = Boolean(payload && payload.candidateOverlay);
+    if (!frontendPack) {
+      if (hasOverlay) {
+        return { error: resultError('FRONTEND_OVERLAY_MISMATCH', '候选 overlay 与 Plan 不一致：Plan 没有引用 frontendPack') };
+      }
+      return { required: false, resolved: null };
+    }
+    if (!hasOverlay) {
+      return { error: resultError('FRONTEND_OVERLAY_MISSING', 'Plan 引用了候选 FrontendPack，但请求里没有候选 overlay') };
+    }
+    if (!userDataDir) {
+      return { error: resultError('FRONTEND_OVERLAY_MISSING', '当前版本无法定位应用私有目录，已阻断候选 overlay 导出') };
+    }
+    const resolved = adoption.resolveExportOverlay({
+      userDataDir,
+      candidateOverlay: payload.candidateOverlay,
+      frontendPack,
+    });
+    if (!resolved.ok) {
+      return { error: resultError(resolved.code, resolved.message) };
+    }
+    return { required: true, resolved };
+  }
+
+  /** 报告里如实记录候选状态（只含 id/状态，不含路径与源码）。 */
+  function candidateReportLine(resolved) {
+    const candidate = resolved.candidate || {};
+    const runtime = candidate.runtimeStatus || 'NOT_RUN';
+    const repairs = Number.isInteger(candidate.repairs) ? candidate.repairs : 0;
+    const shortDigest = typeof candidate.integrity === 'string'
+      ? candidate.integrity.replace(/^sha256:/, '').slice(0, 12)
+      : 'unknown';
+    return 'candidate: ' + candidate.candidateId + '@' + candidate.candidateVersion
+      + ' static=pass runtime=' + runtime + ' repairs=' + repairs + ' integrity=' + shortDigest;
+  }
+
   function resolveParentToken(value) {    if (value === PREVIEW_PARENT_TOKEN) return previewParentDir;
     if (value === DEFAULT_PARENT_TOKEN) return defaultParentDir;
     return value;
@@ -219,10 +280,21 @@ function createComposerIpc(options) {
   async function validate(event, payload) {
     if (payloadSize(payload) > MAX_PAYLOAD_BYTES) return resultError('PAYLOAD_TOO_LARGE', '配置内容超过 256 KB');
     if (payloadSize(payload && payload.plan) > MAX_PLAN_BYTES) return resultError('PAYLOAD_TOO_LARGE', 'Plan 超过 64 KB');
+    const overlayState = resolvePlanCandidateOverlay(payload);
+    if (overlayState.error) return overlayState.error;
     const role = payload && payload.role;
+    const options = {
+      ...(role === undefined ? {} : { role }),
+      ...(overlayState.resolved
+        ? { registryRoot: overlayState.resolved.overlayRoot, assetRoots: overlayState.resolved.assetRoots }
+        : {}),
+    };
     const result = role === undefined
-      ? validateComposition(payload && payload.plan)
-      : validateComposition(payload && payload.plan, { role });
+      ? validateComposition(payload && payload.plan, Object.keys(options).length ? options : undefined)
+      : validateComposition(payload && payload.plan, options);
+    if (result && result.ok === true && overlayState.resolved) {
+      return { ...result, candidate: { ...overlayState.resolved.candidate } };
+    }
     return result;
   }
 
@@ -247,6 +319,12 @@ function createComposerIpc(options) {
     if (!approvedParents.has(parentDir)) {
       return resultError('TARGET_NOT_WRITABLE', '导出位置未经系统对话框确认');
     }
+
+    // P5：正式导出必须与 dry-run 同源。Plan 引用候选 FrontendPack 时，
+    // 这里先解析并校验项目私有 overlay；缺失/漂移直接失败，绝不静默回落 Base。
+    const overlayState = resolvePlanCandidateOverlay(payload);
+    if (overlayState.error) return overlayState.error;
+    const resolvedCandidate = overlayState.resolved;
 
     const taskId = (payload.taskId && String(payload.taskId)) || 'task-' + Date.now();
     const signal = { cancelled: false };
@@ -290,6 +368,14 @@ function createComposerIpc(options) {
         backendVersions: payload.backendVersions,
         ...(payload.role === undefined ? {} : { role: payload.role }),
         ...(media ? { media } : {}),
+        // 候选 overlay：同一份私有 Registry（只读）+ 报告里的 candidate 状态。
+        ...(resolvedCandidate
+          ? {
+            registryRoot: resolvedCandidate.overlayRoot,
+            assetRoots: resolvedCandidate.assetRoots,
+            unresolved: [candidateReportLine(resolvedCandidate)],
+          }
+          : {}),
         signal,
         onProgress: (progress) => {
           const now = Date.now();
@@ -319,7 +405,8 @@ function createComposerIpc(options) {
         // 存在 EPERM 的已知环境问题，同目录下 node 进程正常）。此时交给 node
         // 子进程跑同一个 Composer CLI：校验、门禁、产物都与主进程路径一致，
         // 只是换了一个能拿到目录改名权限的进程。
-        if (enableCommitFallback && !media) {
+        // 候选 overlay 不走这条兜底：CLI 没有 overlay 参数，回落会变成 Base 冒充候选。
+        if (enableCommitFallback && !media && !resolvedCandidate) {
           console.warn('[composer] 主进程提交失败，改用 node 子进程重跑 Composer');
           const fallback = await runComposeInNode({
             plan: payload.plan,
@@ -342,9 +429,30 @@ function createComposerIpc(options) {
         }
       }
       if (result && result.ok) {
+        // 候选导出：产物必须真的带上同一个 FrontendPack（config/wxss/report 三处同源），
+        // 否则宁可如实失败，也不把 Base 页面当成候选交付。
+        if (resolvedCandidate) {
+          const consistency = inspectOutput(result.outputPath, {
+            candidate: {
+              candidateId: resolvedCandidate.candidate.candidateId,
+              candidateVersion: resolvedCandidate.candidate.candidateVersion,
+            },
+          });
+          if (!consistency.ok) {
+            console.warn('[composer] 候选产物一致性未通过 code=' + consistency.code);
+            return resultError(
+              'FRONTEND_OUTPUT_INCONSISTENT',
+              '导出产物与候选 overlay 不一致，已阻止交付：' + (consistency.message || consistency.code),
+              { outputPath: result.outputPath, problems: consistency.problems.slice(0, 5) },
+            );
+          }
+        }
         exportedOutputs.add(result.outputPath);
         // 海报结论来自主进程实际解析结果，不由渲染进程声称。
-        return poster === null ? result : { ...result, poster };
+        const withPoster = poster === null ? result : { ...result, poster };
+        return resolvedCandidate
+          ? { ...withPoster, candidate: { ...resolvedCandidate.candidate } }
+          : withPoster;
       }
       return result;
     } finally {

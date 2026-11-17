@@ -1,0 +1,33 @@
+{
+  "summary": "越界 rect 的负向 fixture",
+  "mustKeep": [{ "kind": "page", "ref": "page:home" }],
+  "pages": [
+    {
+      "pageId": "home",
+      "order": 1,
+      "layout": "single-column",
+      "targetSize": { "width": 375, "height": 812 },
+      "regions": [
+        {
+          "id": "r-header",
+          "type": "header",
+          "order": 1,
+          "rect": { "x": 1.2, "y": 0, "w": 0.5, "h": 0.2 },
+          "children": [],
+          "confidence": 0.9
+        }
+      ]
+    }
+  ],
+  "visual": {
+    "theme": { "primaryColor": "#B34A0F" },
+    "sizes": { "homeHero": "lg" },
+    "density": "compact"
+  },
+  "bindings": [],
+  "unknownRegions": [],
+  "lowConfidence": [],
+  "inferredInteractions": [],
+  "unsupported": [],
+  "degradations": []
+}

@@ -67,10 +67,20 @@ function collectRequiredFiles() {
     'desktop/preload.cjs',
     'desktop/composer-ipc.cjs',
     'scripts/validate-miniprogram.cjs',
+    // P1：服务端只读能力快照必须随包分发（桌面 overlay/renderer 后续读取同一份事实）。
+    'server/src/agent/frontend-reconstruct/capabilities.snapshot.json',
+    'scripts/frontend-capabilities.cjs',
     'dist/index.html',
   ]);
 
   walk(path.join(REPO_ROOT, 'scripts', 'composer'), REPO_ROOT, []).forEach((file) => required.add(file));
+
+  // P2+ 的桌面前端重构执行模块（workspace/overlay/dry-run/verify）一旦落地，
+  // 必须全部进入安装包；目录存在时强制枚举，避免“只在本机仓库能找到文件”。
+  const frontendDesktopDir = path.join(REPO_ROOT, 'desktop', 'frontend-reconstruct');
+  if (fs.existsSync(frontendDesktopDir)) {
+    walk(frontendDesktopDir, REPO_ROOT, []).forEach((file) => required.add(file));
+  }
 
   const registryRoot = path.join(REPO_ROOT, 'templates', 'registry');
   ['registry.v1.json', 'registry.lock.json', 'migration.json', 'preview-registry.json', 'expansion-order.json'].forEach((file) => {
@@ -139,7 +149,7 @@ function main() {
     return;
   }
 
-  console.log('  ✓ 注册表、Base、Composer 运行时、desktop 与 dist 均在 files 覆盖内');
+  console.log('  ✓ 注册表、Base、Composer 运行时、前端能力快照、desktop 与 dist 均在 files 覆盖内');
   console.log('  ✓ 旧复制模板脚本未进入安装包');
 }
 

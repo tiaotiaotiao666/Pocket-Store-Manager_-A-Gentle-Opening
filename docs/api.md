@@ -543,6 +543,8 @@
 | 422 | `PREVIEW_STALE` | previewToken 过期/不匹配 |
 | 422 | `DELIVERY_NOT_SUPPORTED` | 出现 `delivery: true` |
 
+> Agent 端点（`/agent/*`）使用独立错误码：`agent-turn.v1/v2`、`agent-run.v1` 见 `docs/agent-turn-contract.md` 与 `docs/agent-runtime.md`；图片驱动前端重构使用 `FRONTEND_*`，见 §11 与 `docs/frontend-reconstruct-contract.md`。
+
 ### 10.2 `GET /merchant/stores/:storeId/imports/:importId`
 
 返回导入结果（需 `OWNER`）：
@@ -592,3 +594,110 @@
 
 - 导出工程 `config/store.generated.js` 的 `meta` 写入 `storeConfigVersion/catalogVersion`；缺失写 `null` 并进入 `versionGaps`。
 - 小程序启动时对比本地 `meta.catalogVersion` 与在线 `GET /catalog.version`，落后时提示刷新，但**以在线数据为准**。
+
+## 11. Agent 前端重构增补（frontend-reconstruct.v1，2026-11-17）
+
+本节只登记线上 HTTP 契约与边界；字段级约束、UiRequirement/VisualSpec、能力覆盖、DSL 白名单与状态机以
+`docs/frontend-reconstruct-contract.md` 为准。桌面候选工作区、Registry overlay、dry-run 与微信验证属于本地执行侧，不在本 API 内。
+
+### 11.1 `POST /api/v1/agent/frontend-reconstruct`
+
+- 鉴权：复用 `AgentAuthGuard`；production 需 Bearer，development 且 `AGENT_REQUIRE_AUTH=false` 可省略。
+- 请求体（JSON）上限 **2 MiB**；`Content-Type: application/json; charset=utf-8`。
+- 严格未知键拒绝；**恰好一张** `kind:"reference"` 图片；服务端按解码字节校验，不信任客户端声明。
+
+请求：
+
+```json
+{
+  "contractVersion": "frontend-reconstruct.v1",
+  "requestId": "fr-0001",
+  "utterance": "按截图重构首页，保留下单，整体更紧凑",
+  "images": [
+    { "kind": "reference", "mediaType": "image/png", "dataBase64": "<单张参考图 base64>" }
+  ],
+  "targetPages": ["home"],
+  "current": {
+    "baseTemplate": { "id": "ordering-base", "version": "1.0.0" },
+    "frontendPack": null,
+    "presentationPatch": {}
+  },
+  "client": { "surface": "desktop", "phase": "frontend-reconstruct" },
+  "projectId": null
+}
+```
+
+响应 `200`：
+
+```json
+{
+  "contractVersion": "frontend-reconstruct.v1",
+  "runId": "frun-0001",
+  "status": "planned",
+  "requirement": { "...": "UiRequirement/VisualSpec" },
+  "coverage": {
+    "status": "covered",
+    "requiredCapabilities": ["page:home", "action:home.goMenu"],
+    "missingCapabilities": [],
+    "coveredBy": { "page:home": "page:home", "action:home.goMenu": "action:home.goMenu" },
+    "risks": [],
+    "degradations": []
+  },
+  "draft": { "...": "frontend-pack-draft.v1 JSON DSL；仅 planned 非空" },
+  "questions": [],
+  "trace": { "modelCalls": 2, "toolCalls": [{ "name": "propose_frontend_draft", "ok": true }], "stopReason": "final_answer", "degraded": false },
+  "meta": { "provider": "deepseek", "model": "deepseek-flash", "mock": false, "latencyMs": 1200 }
+}
+```
+
+### 11.2 状态与图片限制
+
+全链路状态（桌面本地状态机）：`idle → analyzing → planning → [awaiting-capability-confirmation?] → generating → validating → verifying-runtime → ready | partial → adopted`；`rejected` / `cancelled` 为终态，`failed` 可用新 `runId` 显式重试，`adopted` 可显式撤销回 `idle`。`partial` 必须显式确认才可 `adopted`，不得当作已验收。
+
+| 字段/项 | 规则 |
+| --- | --- |
+| `status` | `planned`（`draft` 非空，coverage 为 covered/partial）、`needs-input`（`draft=null`，`questions` 至少 1 条）、`rejected`（`draft=null`，coverage 为 rejected 且 `missingCapabilities` 非空） |
+| `images` | 恰好 1 张；`kind` 只能 `reference`；`image/jpeg` / `image/png` / `image/webp`；解码后 ≤ **409600 字节** |
+| `utterance` | 可空（只发图）；trim 后 ≤ **500 码点**；禁止控制字符 |
+| `targetPages` | 1–2 项，仅 `home` / `menu`；首期不扩页 |
+| `draft` | 只允许 `frontend-pack-draft.v1`；五类节点 `component/slot/container/text/button`；不接受任意 WXML/WXSS/JS/WXS、URL、绝对路径或命令 |
+
+### 11.3 模型工具（服务端内部，不由 HTTP 调用方直接调用）
+
+| 工具 | 权限 | 说明 |
+| --- | --- | --- |
+| `get_frontend_capabilities` | read | 返回目标页真实组件 props/events、插槽、控制器动作、dataPath、主题/尺寸 token；生成前先读 |
+| `check_frontend_coverage` | read | 提交 UiRequirement；覆盖结论由服务端按真实事实计算，模型不能声明 covered |
+| `propose_frontend_draft` | write（仅内存） | 提交 FrontendPackDraft；完整 DSL/页面集合/mustKeep/覆盖交叉校验，不写磁盘 |
+| `repair_frontend_draft` | write（仅内存） | 只接受服务端门禁产生的结构化 `{path,code}` issues + 路径补丁；最多 2 轮 |
+
+### 11.4 运行上限
+
+| 项 | 上限 |
+| --- | --- |
+| 模型调用 / 工具调用 / 墙钟 | 8 次 / 16 次 / 120000 ms（`FRONTEND_MAX_MODEL_CALLS` / `FRONTEND_MAX_TOOL_CALLS` / `FRONTEND_TIMEOUT_MS` 可下调，不可超过契约上限） |
+| 模型输出 | 重构默认 `FRONTEND_MAX_TOKENS=6000`，适配器硬上限 8000；`finish_reason=length` 或裁剪时返回 `FRONTEND_MODEL_RESPONSE_INVALID`，**不解析截断 JSON** |
+| 修复 | 2 轮；issues 1–8 条；`previousDraft` ≤32 KiB |
+| 页面 | 1–2 页（`home`/`menu`）；每页 ≤48 节点、深度 ≤4 |
+
+### 11.5 FRONTEND_* 错误码
+
+错误体统一 `{ code, message, requestId }`；`message` 固定文案，不回填用户输入、base64、模型原文、路径或堆栈。主要码：
+
+| HTTP | code | 场景 |
+| ---: | --- | --- |
+| 400 | `FRONTEND_REQUEST_INVALID` / `FRONTEND_CONTRACT_MISMATCH` / `FRONTEND_UTTERANCE_INVALID` | 请求体/未知键/契约版本/utterance 非法 |
+| 400 | `FRONTEND_IMAGE_REQUIRED` / `FRONTEND_IMAGE_COUNT_INVALID` / `FRONTEND_IMAGE_KIND_INVALID` | 缺图/多图/非 reference |
+| 422 | `FRONTEND_IMAGE_TYPE_UNSUPPORTED` / `FRONTEND_IMAGE_INVALID` / `FRONTEND_IMAGE_TOO_LARGE` | 类型/伪 base64/文件头/超 409600 字节 |
+| 422 | `FRONTEND_TARGET_PAGES_UNSUPPORTED` | `targetPages` 超出 home/menu |
+| 422 | `FRONTEND_REQUIREMENT_INVALID` / `FRONTEND_COVERAGE_INVALID` / `FRONTEND_COVERAGE_REJECTED` / `FRONTEND_DRAFT_INVALID` | Requirement/Coverage/Draft 非法或缺必需能力 |
+| 409 | `FRONTEND_STATE_TRANSITION_INVALID` / `FRONTEND_REPAIR_LIMIT_EXCEEDED` | 非法迁移/修复超过 2 轮 |
+| 499 / 504 / 429 | `FRONTEND_ABORTED` / `FRONTEND_TIME_LIMIT` / `FRONTEND_MODEL_CALL_LIMIT` / `FRONTEND_TOOL_CALL_LIMIT` | 取消/超时/模型或工具调用超限 |
+| 502 | `FRONTEND_MODEL_RESPONSE_INVALID` / `FRONTEND_RESPONSE_INVALID` | 模型 JSON 非法或响应组合不合约（C1/C2） |
+| 500 | `FRONTEND_FACTS_INVALID` / `FRONTEND_INTERNAL_ERROR` | 能力事实快照非法/内部错误 |
+
+### 11.6 桌面本地边界（不属于本 API）
+
+- 候选只写应用私有 `<userData>/projects/<projectId>/frontend-runs/<runId>/attempts/attempt-<n>/` 与私有 Registry overlay；不写正式 `templates/**`、不重冻结全局 Registry、不改 `miniprogram/`。
+- 固定验证入口为 `npm run frontend:verify -- --attempt <attemptDir> [--runtime]`（脚本 `scripts/frontend-verify.cjs`，退出码 0/1/2/3），内部只调用 `scripts/wechat-devtools-run.cjs`，不执行模型提供的命令。
+- 本 API 不返回图片 base64、完整 prompt、原始模型响应或本机路径；日志只保留 runId/requestId/步骤/计数/错误码/耗时。

@@ -30,17 +30,22 @@ export type ConfigReader = (key: string) => unknown;
 
 const DEFAULT_BASE_URL = 'https://api.deepseek.com';
 const DEFAULT_MODEL = 'deepseek-chat';
+/** 带图请求使用 DEEPSEEK_VISION_MODEL；默认值与 env.validation.ts 保持一致。 */
+const DEFAULT_VISION_MODEL = 'deepseek-flash';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
 const DEFAULT_MAX_TOKENS = 1_200;
 const MIN_MAX_TOKENS = 100;
-const MAX_MAX_TOKENS = 4_000;
+// 视觉/重构类输出可能较长：允许调用方提高到 8000，但仍必须有硬上限。
+const MAX_MAX_TOKENS = 8_000;
 const MAX_ASSISTANT_CONTENT_CHARS = 20_000;
 
 export interface DeepseekChatSettings {
   baseUrl: string;
   apiKey: string;
   model: string;
+  /** 有图（多模态 user content）时使用的视觉模型。 */
+  visionModel: string;
   timeoutMs: number;
   maxTokens: number;
   temperature: number;
@@ -58,6 +63,7 @@ export function readDeepseekChatSettings(read: ConfigReader): DeepseekChatSettin
   const rawBaseUrl = String(read('DEEPSEEK_API_BASE_URL') ?? DEFAULT_BASE_URL).trim();
   const baseUrl = (rawBaseUrl || DEFAULT_BASE_URL).replace(/\/+$/, '');
   const rawModel = String(read('DEEPSEEK_MODEL') ?? DEFAULT_MODEL).trim();
+  const rawVisionModel = String(read('DEEPSEEK_VISION_MODEL') ?? DEFAULT_VISION_MODEL).trim();
   const rawTimeout = Number(read('DEEPSEEK_TIMEOUT_MS') ?? DEFAULT_TIMEOUT_MS);
   const rawMaxTokens = Number(read('DEEPSEEK_MAX_TOKENS') ?? DEFAULT_MAX_TOKENS);
 
@@ -65,6 +71,7 @@ export function readDeepseekChatSettings(read: ConfigReader): DeepseekChatSettin
     baseUrl,
     apiKey: String(read('DEEPSEEK_API_KEY') ?? '').trim(),
     model: rawModel || DEFAULT_MODEL,
+    visionModel: rawVisionModel || DEFAULT_VISION_MODEL,
     timeoutMs:
       Number.isFinite(rawTimeout) && rawTimeout > 0
         ? Math.min(MAX_TIMEOUT_MS, Math.max(1, Math.floor(rawTimeout)))
@@ -120,11 +127,16 @@ export class DeepseekChatModel implements ChatModel {
     const onParentAbort = () => controller.abort();
     parentSignal?.addEventListener('abort', onParentAbort, { once: true });
 
+    // 有图请求切到视觉模型；无图请求保持原模型与既有行为完全一致。
+    const hasImages = requestHasImagePart(request.messages);
+    const model = hasImages ? settings.visionModel : settings.model;
+    const maxTokens = resolveMaxTokens(request.maxTokens, settings.maxTokens);
+
     const body: Record<string, unknown> = {
-      model: settings.model,
+      model,
       messages: toWireMessages(request.messages),
       temperature: settings.temperature,
-      max_tokens: settings.maxTokens,
+      max_tokens: maxTokens,
       stream: false,
       ...(settings.reasoningEffort ? { reasoning_effort: settings.reasoningEffort } : {}),
     };
@@ -210,11 +222,16 @@ export class DeepseekChatModel implements ChatModel {
       throw invalidResponseError();
     }
 
-    const content = truncateCharacters(extractTextContent(message.content), MAX_ASSISTANT_CONTENT_CHARS);
+    const rawContent = extractTextContent(message.content);
+    const content = truncateCharacters(rawContent, MAX_ASSISTANT_CONTENT_CHARS);
     const toolCalls = extractToolCalls(message.tool_calls);
     if (content.trim().length === 0 && toolCalls.length === 0) {
       throw invalidResponseError();
     }
+
+    const finishReason = typeof choice?.finish_reason === 'string' ? choice.finish_reason : '';
+    // 两种截断都要显式标记：上游 length 截断，或适配器自身字符上限裁剪。
+    const truncated = finishReason === 'length' || content !== rawContent;
 
     const latencyMs = Math.max(0, Date.now() - startedAt);
     const result: ChatCompletionResult = {
@@ -223,10 +240,11 @@ export class DeepseekChatModel implements ChatModel {
         content: content.length > 0 ? content : null,
         ...(toolCalls.length === 0 ? {} : { toolCalls }),
       },
-      finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : '',
-      model: isPlainObject(payload) && typeof payload.model === 'string' ? payload.model : settings.model,
+      finishReason,
+      model: isPlainObject(payload) && typeof payload.model === 'string' ? payload.model : model,
       usage: extractUsage(payload),
       latencyMs,
+      truncated,
     };
 
     this.logger?.log({
@@ -265,14 +283,41 @@ function toWireMessages(messages: readonly ChatMessage[]): Record<string, unknow
       return {
         role: 'tool',
         tool_call_id: message.toolCallId ?? '',
-        content: message.content ?? '',
+        content: typeof message.content === 'string' ? message.content : '',
       };
     }
     if (message.role === 'system') {
-      return { role: 'system', content: message.content ?? '' };
+      return { role: 'system', content: typeof message.content === 'string' ? message.content : '' };
     }
-    return { role: 'user', content: message.content ?? '' };
+    // user 消息支持多模态 content parts；纯字符串路径与旧行为逐字节一致。
+    return { role: 'user', content: toWireUserContent(message.content) };
   });
+}
+
+function toWireUserContent(content: ChatMessage['content']): unknown {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content.map((part) => {
+    if (part.type === 'text') {
+      return { type: 'text', text: part.text };
+    }
+    return { type: 'image_url', image_url: { url: part.imageUrl.url } };
+  });
+}
+
+/** 是否存在图片片段；决定用 DEEPSEEK_VISION_MODEL 还是 DEEPSEEK_MODEL。 */
+function requestHasImagePart(messages: readonly ChatMessage[]): boolean {
+  for (const message of messages) {
+    if (!Array.isArray(message.content)) continue;
+    if (message.content.some((part) => part.type === 'image_url')) return true;
+  }
+  return false;
+}
+
+/** max_tokens：调用方覆盖值优先，但仍受适配器硬上限约束。 */
+function resolveMaxTokens(requested: number | undefined, fallback: number): number {
+  if (requested === undefined || !Number.isFinite(requested) || requested <= 0) return fallback;
+  return Math.min(MAX_MAX_TOKENS, Math.max(MIN_MAX_TOKENS, Math.floor(requested)));
 }
 
 function toWireTools(tools: readonly AgentToolDescriptor[]): Record<string, unknown>[] {

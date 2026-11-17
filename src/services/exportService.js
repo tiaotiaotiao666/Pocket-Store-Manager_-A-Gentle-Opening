@@ -38,7 +38,37 @@ const EXPORT_ERROR_TEXT = Object.freeze({
   MEDIA_DIMENSION_MISMATCH: '海报素材尺寸与登记信息不一致，请重新选择图片。',
   MEDIA_RESOLVER_MISSING: '当前版本不支持导出海报素材，已阻断本次导出。',
   MEDIA_INVALID: '海报素材校验失败，请重新选择图片或跳过。',
+  // P5：已采用候选前端的私有 overlay（正式导出必须与 dry-run 同源）。
+  FRONTEND_OVERLAY_MISSING: '项目里还有已采用的候选前端，但 overlay 未确认；已阻止导出（不会静默回退 Base）。',
+  FRONTEND_CANDIDATE_UNAVAILABLE: '已采用的候选前端当前不可用（缺失或摘要漂移），请重开项目确认或重新生成候选。',
+  FRONTEND_CANDIDATE_UNVERIFIED: '候选 overlay 还没有通过摘要校验，已阻止导出。',
+  FRONTEND_DIGEST_MISMATCH: '候选 overlay 摘要与快照不一致，已阻止导出。',
+  FRONTEND_OVERLAY_MISMATCH: '导出的 Plan 与候选 overlay 不是同一个候选，已阻止导出。',
+  FRONTEND_CANDIDATE_INVALID: '候选 overlay 记录不合法，已阻止导出。',
 });
+
+const CANDIDATE_OVERLAY_KEYS = Object.freeze([
+  'projectId',
+  'runId',
+  'attempt',
+  'candidateId',
+  'candidateVersion',
+  'integrity',
+  'runtimeStatus',
+  'repairs',
+]);
+
+/** 只把候选的受控 id 传给主进程：渲染进程从不传 overlay 路径或摘要之外的内容。 */
+function sanitizeCandidateOverlay(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const overlay = {};
+  for (const key of CANDIDATE_OVERLAY_KEYS) {
+    if (value[key] === undefined || value[key] === null) continue;
+    overlay[key] = value[key];
+  }
+  if (!overlay.projectId || !overlay.runId || !Number.isInteger(overlay.attempt) || !overlay.candidateId) return null;
+  return overlay;
+}
 
 export const DESKTOP_REQUIRED_MESSAGE = EXPORT_ERROR_TEXT.DESKTOP_REQUIRED;
 
@@ -166,6 +196,8 @@ export async function validatePlan(plan, options = {}) {  const api = bridge();
   const timeoutMs = options.timeoutMs ?? DEFAULT_VALIDATE_TIMEOUT_MS;
   const payload = { plan };
   if (options.role !== undefined) payload.role = options.role;
+  const overlay = sanitizeCandidateOverlay(options.candidateOverlay);
+  if (overlay) payload.candidateOverlay = overlay;
   let outcome;
   try {
     outcome = await withTimeout(api.composerValidate(payload), timeoutMs);
@@ -257,13 +289,34 @@ export async function preflightTarget({ parentDir, projectName } = {}, options =
 
 export async function exportProject({
   parentDir, plan, projectName, mode = 'development', storeId, backendVersions, role, projectId, posterAssetId,
+  candidateOverlay,
 }) {
   const api = bridge();
   if (!api || typeof api.composerExport !== 'function') {
     return { status: 'desktop-required', message: DESKTOP_REQUIRED_MESSAGE };
   }
+  // P5：Plan 引用了项目私有 FrontendPack，却没有候选 overlay → 直接阻断，绝不静默导出 Base。
+  if (plan && plan.frontendPack && plan.frontendPack.id) {
+    if (!candidateOverlay || !candidateOverlay.candidateId) {
+      return {
+        status: 'failed',
+        code: 'FRONTEND_OVERLAY_MISSING',
+        message: EXPORT_ERROR_TEXT.FRONTEND_OVERLAY_MISSING,
+      };
+    }
+    if (candidateOverlay.candidateId !== plan.frontendPack.id
+      || (candidateOverlay.candidateVersion && candidateOverlay.candidateVersion !== plan.frontendPack.version)) {
+      return {
+        status: 'failed',
+        code: 'FRONTEND_OVERLAY_MISMATCH',
+        message: EXPORT_ERROR_TEXT.FRONTEND_OVERLAY_MISMATCH,
+      };
+    }
+  }
   const payload = { parentDir, plan, projectName, mode, storeId, backendVersions };
   if (role !== undefined) payload.role = role;
+  const overlay = sanitizeCandidateOverlay(candidateOverlay);
+  if (overlay) payload.candidateOverlay = overlay;
   // UX0b：只传受控引用，媒体字节由主进程按资产 ID 读取。
   if (projectId) payload.projectId = projectId;
   if (posterAssetId) payload.posterAssetId = posterAssetId;
@@ -279,7 +332,26 @@ export async function exportProject({
       suggestedName: result && result.details && result.details.suggestedName,
     };
   }
-  return { status: 'ok', result };
+  return { status: 'ok', result, candidate: result && result.candidate ? result.candidate : null };
+}
+
+/** 导出结果里的候选状态摘要（如实标注，不把 partial 说成已验证）。 */
+export function describeExportCandidate(result) {
+  const candidate = result && result.candidate;
+  if (!candidate || !candidate.candidateId) return null;
+  const runtime = typeof candidate.runtimeStatus === 'string' ? candidate.runtimeStatus : 'NOT_RUN';
+  return {
+    candidateId: candidate.candidateId,
+    candidateVersion: candidate.candidateVersion || null,
+    runtimeStatus: runtime,
+    runtimeLabel: runtime === 'PASS'
+      ? '微信验证通过'
+      : runtime === 'BLOCKED' || runtime === 'NOT_RUN'
+        ? '微信验证未完成（如实标注）'
+        : '微信验证未通过',
+    integrity: candidate.integrity || null,
+    usedOverlay: candidate.usedOverlay === true,
+  };
 }
 
 export async function cancelExport(taskId) {

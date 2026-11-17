@@ -11,6 +11,7 @@ const path = require('node:path');
 
 const { isTrustedSender } = require('./composer-ipc.cjs');
 const { ProjectStoreError } = require('./project-store.cjs');
+const adoption = require('./frontend-reconstruct/adoption.cjs');
 
 const MAX_CREATE_PAYLOAD = 8 * 1024;
 const MAX_SAVE_PAYLOAD = 1.2 * 1024 * 1024;
@@ -86,7 +87,44 @@ function createProjectIpc(options) {
     'project:load': async (_event, payload) => {
       const projectId = payload && payload.projectId;
       try {
-        return ok(await store.loadProject(projectId));
+        const loaded = await store.loadProject(projectId);
+        const doc = loaded && loaded.doc && typeof loaded.doc === 'object' ? loaded.doc : null;
+        if (!doc || !doc.frontendCandidate || doc.frontendCandidate.status !== 'adopted') {
+          return ok(loaded);
+        }
+        // P5：重开项目必须校验私有候选 overlay 的摘要；缺失/漂移 → 安全回退并提示。
+        const userDataDir = typeof opts.userDataDir === 'string' && opts.userDataDir
+          ? opts.userDataDir
+          : (store.userDataDir || '');
+        const inspection = adoption.inspectAdoption({
+          userDataDir,
+          projectId,
+          adoption: doc.frontendCandidate,
+        });
+        const candidateCheck = inspection.ok
+          ? {
+            ok: true,
+            overlayRelative: inspection.overlayRelative,
+            verification: {
+              static: 'pass',
+              runtime: inspection.verification ? inspection.verification.runtime : 'NOT_RUN',
+              repairs: inspection.verification ? inspection.verification.repairs : 0,
+              screenshots: inspection.verification ? inspection.verification.screenshots : 0,
+              checkedAt: new Date().toISOString(),
+            },
+          }
+          : { ok: false, code: inspection.code, message: inspection.message };
+        const safeDoc = candidateCheck.ok
+          ? doc
+          : {
+            ...doc,
+            frontendCandidate: adoption.pickAdoption({
+              ...doc.frontendCandidate,
+              status: 'unavailable',
+              issue: { code: candidateCheck.code, message: candidateCheck.message },
+            }),
+          };
+        return ok({ ...loaded, doc: safeDoc, candidateCheck });
       } catch (error) {
         return toResult(error, 'PROJECT_READ_FAILED', '项目读取失败');
       }
@@ -97,8 +135,13 @@ function createProjectIpc(options) {
         return fail('PROJECT_TOO_LARGE', '项目数据过大，请清理会话记录');
       }
       const projectId = payload && payload.projectId;
+      const doc = payload && payload.doc;
+      // P5：候选采用记录只允许白名单字段落盘（不写 base64/绝对路径/原始 trace/大错误文本）。
+      if (doc && typeof doc === 'object' && !Array.isArray(doc)) {
+        doc.frontendCandidate = adoption.pickAdoption(doc.frontendCandidate);
+      }
       try {
-        return ok(await store.saveProject(projectId, payload && payload.doc));
+        return ok(await store.saveProject(projectId, doc));
       } catch (error) {
         return toResult(error, 'PROJECT_WRITE_FAILED', '保存失败，请检查磁盘空间或权限');
       }

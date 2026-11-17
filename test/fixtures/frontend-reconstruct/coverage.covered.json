@@ -1,0 +1,22 @@
+{
+  "status": "covered",
+  "requiredCapabilities": [
+    "page:home",
+    "component:store-header",
+    "slot:home-hero",
+    "action:home.goMenu",
+    "data:store.name",
+    "data:menu.products"
+  ],
+  "missingCapabilities": [],
+  "coveredBy": {
+    "page:home": "page:home",
+    "component:store-header": "component:store-header",
+    "slot:home-hero": "slot:home-hero",
+    "action:home.goMenu": "action:home.goMenu",
+    "data:store.name": "data:store.name",
+    "data:menu.products": "data:menu.products"
+  },
+  "risks": [],
+  "degradations": []
+}

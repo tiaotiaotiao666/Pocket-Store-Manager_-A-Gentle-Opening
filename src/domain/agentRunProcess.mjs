@@ -21,17 +21,91 @@ export const TOOL_STEP_LABELS = Object.freeze({
   update_store_draft: '更新门店资料',
 });
 
+/**
+ * P6：图片驱动前端重构（frontend-reconstruct.v1）的四个真实工具 → 人话标签。
+ *
+ * 与 `TOOL_STEP_LABELS` 分开维护，避免改变既有 `agent-run.v1` 过程卡的冻结标签；
+ * 只有真实 trace 里出现过的调用才生成步骤，未知工具一律折叠为「辅助步骤」。
+ */
+export const FRONTEND_TOOL_STEP_LABELS = Object.freeze({
+  get_frontend_capabilities: '读取前端能力',
+  check_frontend_coverage: '检查能力覆盖',
+  propose_frontend_draft: '生成候选 DSL',
+  repair_frontend_draft: '修复候选 DSL',
+});
+
+const FRONTEND_TOOL_STEP_IDS = Object.freeze({
+  get_frontend_capabilities: 'frontend-capabilities',
+  check_frontend_coverage: 'frontend-coverage',
+  propose_frontend_draft: 'frontend-propose',
+  repair_frontend_draft: 'frontend-repair',
+});
+
+/** 前端重构进度阶段（来自主进程真实 `frontend:progress`，不是模型自述）。 */
+export const FRONTEND_STAGE_STEP_LABELS = Object.freeze({
+  analyze: '识别截图与能力覆盖',
+  materialize: '写入私有候选工作区',
+  compose: 'Composer P0–P6 校验',
+  'mini-check': '小程序静态校验',
+  consistency: '产物一致性检查',
+  observable: '可观察项对照',
+  verify: '微信真实编译与截图',
+  adopt: '写入采用记录',
+  done: '完成',
+});
+
+const FRONTEND_STATUS_LABELS = Object.freeze({
+  idle: '等待输入',
+  analyzing: '识别中',
+  generating: '生成中',
+  validating: '校验中',
+  verifying: '微信验证中',
+  ready: '已验证',
+  partial: '部分完成',
+  needs_input: '待补充',
+  rejected: '当前不支持',
+  failed: '失败',
+  cancelled: '已取消',
+  adopted: '已采用',
+});
+
+const FRONTEND_STATUS_TONES = Object.freeze({
+  idle: 'idle',
+  analyzing: 'running',
+  generating: 'running',
+  validating: 'running',
+  verifying: 'running',
+  ready: 'done',
+  adopted: 'done',
+  partial: 'partial',
+  needs_input: 'partial',
+  rejected: 'failed',
+  failed: 'failed',
+  cancelled: 'idle',
+});
+
+const FRONTEND_BUSY = new Set(['analyzing', 'generating', 'validating', 'verifying']);
+const FRONTEND_STATUS_SET = new Set(Object.keys(FRONTEND_STATUS_TONES));
+const RUN_ID_PATTERN = /^(?:frun|run)[-_][A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const MAX_PROCESS_TEXT = 200;
+const MAX_PROCESS_DURATION_MS = 24 * 60 * 60 * 1000;
+
 const TOOL_TO_STEP = Object.freeze({
   get_store_draft: 'read',
   update_store_draft: 'update',
+  get_frontend_capabilities: 'frontend-capabilities',
+  check_frontend_coverage: 'frontend-coverage',
+  propose_frontend_draft: 'frontend-propose',
+  repair_frontend_draft: 'frontend-repair',
 });
+
 
 /** 未知工具统一折叠成「辅助步骤」，不回显工具真名，避免把内部实现细节抛给店主。 */
 export const UNKNOWN_TOOL_LABEL = '辅助步骤';
 
 export function translateToolName(name) {
   const key = typeof name === 'string' ? name.trim() : '';
-  return TOOL_STEP_LABELS[key] || UNKNOWN_TOOL_LABEL;
+  return TOOL_STEP_LABELS[key] || FRONTEND_TOOL_STEP_LABELS[key] || UNKNOWN_TOOL_LABEL;
 }
 
 function isObject(value) {
@@ -287,6 +361,168 @@ export function buildProcessView({
     roundId: typeof runId === 'string' && runId ? runId : null,
     tools: { ok: okCount, failed: failedCount, total: calls.length },
   };
+}
+
+function cleanProcessText(value, limit = MAX_PROCESS_TEXT) {
+  const text = String(value === undefined || value === null ? '' : value)
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/data:image\/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, '<image>')
+    .replace(/\b(?:prompt|authorization|api[-_]?key|secret|token)\s*[:=]\s*[^，；,\s]+/gi, '<secret>')
+    .replace(/\bsk-[A-Za-z0-9_-]{8,}/g, '<secret>')
+    .replace(/[A-Za-z]:[\\/][^\s，；,）)]*/g, '<local-path>')
+    .replace(/\\\\[^\s，；,）)]+/g, '<local-path>')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length <= limit ? text : text.slice(0, limit) + '…';
+}
+
+function cleanRunId(value) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  return RUN_ID_PATTERN.test(text) ? text : null;
+}
+
+function resolveFrontendDurationMs(options) {
+  const explicit = Number(options.durationMs);
+  if (Number.isFinite(explicit) && explicit >= 0) {
+    return Math.min(Math.floor(explicit), MAX_PROCESS_DURATION_MS);
+  }
+  const started = Number(options.startedAt);
+  const ended = Number(options.endedAt);
+  if (Number.isFinite(started) && Number.isFinite(ended) && ended >= started) {
+    return Math.min(Math.floor(ended - started), MAX_PROCESS_DURATION_MS);
+  }
+  return null;
+}
+
+function formatDurationMs(durationMs) {
+  if (!Number.isInteger(durationMs) || durationMs < 0) return null;
+  if (durationMs < 1000) return `${durationMs}ms`;
+  if (durationMs < 60_000) return `${(durationMs / 1000).toFixed(1)}s`;
+  return `${Math.round(durationMs / 60_000)}min`;
+}
+
+function frontendToolSteps(trace) {
+  const calls = toolCallsOf(trace);
+  const steps = [];
+  const unknown = calls.filter((call) => !FRONTEND_TOOL_STEP_IDS[call?.name]);
+  for (const name of Object.keys(FRONTEND_TOOL_STEP_LABELS)) {
+    const sameTool = calls.filter((call) => call?.name === name);
+    if (sameTool.length === 0) continue;
+    const failed = sameTool.filter((call) => call?.ok !== true).length;
+    const succeeded = sameTool.filter((call) => call?.ok === true).length;
+    const truncated = sameTool.some((call) => call?.truncated === true);
+    let state = 'done';
+    let detail = '';
+    if (failed > 0 && succeeded === 0) {
+      state = 'failed';
+      detail = `尝试 ${sameTool.length} 次未成功`;
+    } else if (failed > 0) {
+      state = 'failed';
+      detail = `${succeeded} 次成功、${failed} 次未成功`;
+    } else if (sameTool.length > 1) {
+      detail = `执行 ${sameTool.length} 次`;
+    }
+    if (truncated) detail = detail ? `${detail}，结果被截断` : '结果被截断';
+    steps.push({
+      id: FRONTEND_TOOL_STEP_IDS[name],
+      label: FRONTEND_TOOL_STEP_LABELS[name],
+      state,
+      detail,
+    });
+  }
+  if (unknown.length > 0) {
+    const failed = unknown.filter((call) => call?.ok !== true).length;
+    steps.push({
+      id: 'frontend-aux',
+      label: UNKNOWN_TOOL_LABEL,
+      state: failed > 0 ? 'failed' : 'done',
+      detail: failed > 0 ? `${failed} 次辅助调用未成功` : '',
+    });
+  }
+  return steps;
+}
+
+function frontendStageStep(progress, status, existingSteps) {
+  if (!isObject(progress)) return null;
+  const stage = typeof progress.stage === 'string' ? progress.stage : '';
+  const label = FRONTEND_STAGE_STEP_LABELS[stage];
+  if (!label) return null;
+  // 工具步骤已经表达过同一件事时不重复（阶段仍是真实进度，不伪造）。
+  const stageId = `stage:${stage}`;
+  if (existingSteps.some((step) => step.id === stageId)) return null;
+  let state = 'done';
+  if (FRONTEND_BUSY.has(status)) state = 'active';
+  else if (status === 'failed' || status === 'rejected') state = 'failed';
+  else if (status === 'partial' || status === 'needs_input') state = 'partial';
+  return { id: stageId, label, state, detail: '' };
+}
+
+/**
+ * P6：把 `frontend-reconstruct.v1` 的**真实** trace 与进度事件转成安全过程卡视图。
+ *
+ * 输入只允许：
+ * - `trace`：服务端真实返回的 `{modelCalls, toolCalls:[{name,ok,truncated}], stopReason}`；
+ * - `progress`：主进程真实 `frontend:progress` 的 `{stage, attempt, runId, at}`；
+ * - 真实耗时（`durationMs` 或 `startedAt/endedAt`）与状态。
+ *
+ * 硬约束：
+ * - 不展示工具参数/结果、原始 JSON、源码、base64、完整 prompt、密钥或本机绝对路径；
+ * - 没有真实 trace/进度时不编造步骤；未知工具只显示「辅助步骤」；
+ * - runId/attempt/状态/耗时只在真实存在时展示，不用 0 或“约”伪造。
+ */
+export function buildFrontendProcessView(options = {}) {
+  const opts = isObject(options) ? options : {};
+  const status = FRONTEND_STATUS_SET.has(opts.status) ? opts.status : 'idle';
+  const trace = isObject(opts.trace) ? opts.trace : null;
+  const progress = isObject(opts.progress) ? opts.progress : null;
+  const runId = cleanRunId(opts.runId)
+    || cleanRunId(progress?.runId)
+    || cleanRunId(trace?.runId);
+  const rawAttempt = Number.isInteger(opts.attempt) ? opts.attempt : (Number.isInteger(progress?.attempt) ? progress.attempt : null);
+  const attempt = Number.isInteger(rawAttempt) && rawAttempt >= 1 && rawAttempt <= 9999 ? rawAttempt : null;
+  const durationMs = resolveFrontendDurationMs(opts);
+  const durationLabel = formatDurationMs(durationMs);
+
+  const steps = frontendToolSteps(trace);
+  const stageStep = frontendStageStep(progress, status, steps);
+  if (stageStep) steps.push(stageStep);
+
+  const calls = toolCallsOf(trace);
+  const failedCount = calls.filter((call) => call?.ok !== true).length;
+  const tone = FRONTEND_STATUS_TONES[status];
+  const title = FRONTEND_STATUS_LABELS[status];
+  let headline = '';
+  if (opts.lastError) {
+    const errorText = typeof opts.lastError === 'string'
+      ? opts.lastError
+      : (opts.lastError.message || opts.lastError.code);
+    headline = cleanProcessText(errorText);
+  } else if (calls.length > 0) {
+    headline = failedCount > 0
+      ? `本轮共 ${calls.length} 次真实工具调用，${failedCount} 次未成功。`
+      : `本轮共 ${calls.length} 次真实工具调用，全部成功。`;
+  } else if (progress && FRONTEND_STAGE_STEP_LABELS[progress.stage]) {
+    headline = `当前阶段：${FRONTEND_STAGE_STEP_LABELS[progress.stage]}`;
+  } else if (status !== 'idle') {
+    headline = FRONTEND_STATUS_LABELS[status];
+  }
+
+  let notice = '';
+  if (status === 'partial') notice = '微信验证未完成或部分步骤未成功；采用前需要单独确认。';
+  else if (status === 'needs_input') notice = '需要补充具体信息后才能生成候选。';
+  else if (status === 'rejected') notice = '缺少必需能力，本轮没有写任何候选文件。';
+  else if (status === 'failed') notice = '这一轮没有成功；输入与当前版本都没有被改动。';
+  else if (status === 'cancelled') notice = '任务已取消，输入与当前版本都没有变化。';
+
+  const meta = { runId, attempt, status, durationMs, durationLabel };
+  const metaLines = [];
+  if (runId) metaLines.push(`运行 ${runId}`);
+  if (attempt) metaLines.push(`第 ${attempt} 次尝试`);
+  metaLines.push(`状态：${FRONTEND_STATUS_LABELS[status]}`);
+  if (durationLabel) metaLines.push(`耗时 ${durationLabel}`);
+
+  return { tone, title, headline, notice, steps, meta, metaLines };
 }
 
 function stopReasonHint(stopReason) {

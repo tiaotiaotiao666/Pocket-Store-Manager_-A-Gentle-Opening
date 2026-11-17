@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "frontend-pack-draft.v1",
+  "displayName": "参考图首页候选",
+  "pages": [
+    {
+      "pageId": "home",
+      "nodes": [
+        {
+          "type": "component",
+          "componentId": "store-header",
+          "props": {
+            "storeName": { "kind": "data", "dataPath": "store.name" }
+          },
+          "events": {}
+        },
+        { "type": "slot", "slotId": "home-hero" },
+        {
+          "type": "container",
+          "style": { "direction": "column", "gap": "md", "padding": "md" },
+          "children": [
+            {
+              "type": "text",
+              "textToken": "store.businessHours",
+              "style": { "size": "md", "weight": 600, "colorToken": "textColor" }
+            },
+            {
+              "type": "text",
+              "textToken": "menu.products",
+              "style": { "size": "sm", "weight": 400, "colorToken": "textColor" }
+            },
+            {
+              "type": "button",
+              "label": "开始点餐",
+              "action": "home.goMenu",
+              "style": { "size": "lg", "weight": 600, "colorToken": "primaryColor" }
+            }
+          ]
+        },
+        {
+          "type": "component",
+          "componentId": "cart-bar",
+          "props": {
+            "count": { "kind": "data", "dataPath": "cart.count" },
+            "totalCents": { "kind": "data", "dataPath": "cart.totalCents" }
+          },
+          "events": { "checkout": "menu.onCheckout" }
+        }
+      ],
+      "styles": [],
+      "pageJson": {
+        "navigationBarTitleText": "扫码点餐",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#F7F3EC"
+      }
+    }
+  ]
+}

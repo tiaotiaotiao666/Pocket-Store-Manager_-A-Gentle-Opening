@@ -1,8 +1,8 @@
 # Agent Runtime 与多轮 function calling
 
-> 状态：已实现（2026-11-12，服务端）
-> 契约：`agent-run.v1`，`POST /api/v1/agent/run`
-> 代码：`server/src/agent/runtime/`、`server/src/agent/store-setup/`
+> 状态：`agent-run.v1` 已实现（2026-11-12，服务端）；`frontend-reconstruct.v1` 四个前端重构工具已实现（2026-11-17，服务端 + 桌面本地链）
+> 契约：`agent-run.v1`（`POST /api/v1/agent/run`）、`frontend-reconstruct.v1`（`POST /api/v1/agent/frontend-reconstruct`，见 §11 与 [`frontend-reconstruct-contract.md`](frontend-reconstruct-contract.md)）
+> 代码：`server/src/agent/runtime/`、`server/src/agent/store-setup/`、`server/src/agent/frontend-reconstruct/`、`desktop/frontend-reconstruct/`
 > 关联：[`agent-turn-contract.md`](agent-turn-contract.md)（单轮抽取，仍为默认链路）
 
 ## 1. 解决什么问题
@@ -15,7 +15,7 @@
 2. **工具层**：工具声明 JSON Schema、超时、重试、副作用、是否并发安全、是否需要审批；执行器负责参数解析、校验、超时、重试、并发、结果截断。
 3. **业务层**：开店资料 Agent 只暴露两个工具（`get_store_draft` / `update_store_draft`），草稿存在单次请求的内存里；最终 `missingFields` / `errors` / `nextQuestion` 仍由服务端 `validateInternalDraft` 重算，模型无权决定。
 
-边界：Runtime 不执行任意代码、不访问数据库、不读写文件；工具是业务代码显式注册的纯函数。当前 `agent-run.v1` 尚未接入桌面端 UI，现有桌面链路仍走 `agent-turn.v1/v2`。
+边界：Runtime 不执行任意代码、不访问数据库、不读写文件；工具是业务代码显式注册的纯函数。当前 `agent-run.v1` 尚未接入桌面端 UI；图片驱动前端重构（`frontend-reconstruct.v1`）已接桌面候选面板，但走独立端点与受控工具链（见 §11），不是 `agent-run.v1` 的 UI 接线。
 
 ## 2. 目录与职责
 
@@ -255,6 +255,7 @@ export interface AgentToolDefinition<Args extends JsonObject> {
 `DeepseekChatModel` 走 OpenAI 兼容 `POST {baseUrl}/chat/completions`：
 
 - 默认 `baseUrl=https://api.deepseek.com`、`model=deepseek-chat`、`timeoutMs=30000`、`maxTokens=1200`、`temperature=0.2`。
+- **多模态（2026-11-17）**：`ChatMessage.content` 支持类型化片段 `text` + `image_url`；请求含图片时使用 `DEEPSEEK_VISION_MODEL`（默认 `deepseek-flash`），无图时保持原 `DEEPSEEK_MODEL` 与旧 wire shape。调用方可显式设置 `maxTokens`（重构专用默认 6000），适配器把值 clamp 到 **100–8000**；`finish_reason=length` 或内容被裁剪时在结果上标 `truncated`，业务层必须拒绝解析截断 JSON。
 - 请求带 `tools`，并固定 `tool_choice: 'auto'`；`response_format` 只在调用方显式要求 `json_object` 时发送。
 - 消息映射：assistant 的 `toolCalls` → `tool_calls`；tool 消息带 `tool_call_id`。
 - 空 content 且无 tool_calls 视为非法响应；assistant content 最多保留 20000 字符。
@@ -328,13 +329,67 @@ npx vitest run \
 npx tsc -p tsconfig.json --noEmit --incremental false
 ```
 
-## 11. 已知边界与后续
+## 11. frontend-reconstruct.v1 前端重构工具（2026-11-17）
+
+同一 Runtime 被图片驱动前端重构复用：`POST /api/v1/agent/frontend-reconstruct`，契约见
+[`frontend-reconstruct-contract.md`](frontend-reconstruct-contract.md)。它不是 `agent-run.v1` 的替代，也不改变既有
+`/agent/turn`、`/agent/run`、`/agent/template-revise` 行为。
+
+### 11.1 四个业务工具
+
+| 工具 | sideEffect | timeout | 约束 |
+| --- | --- | ---: | --- |
+| `get_frontend_capabilities({pageIds})` | read | 5000ms | 只返回目标页真实组件 props/events、插槽、动作、dataPath、主题/尺寸 token；`pageIds` 仅 home/menu |
+| `check_frontend_coverage({requirement, requestedCapabilities?})` | read | 5000ms | 提交完整 UiRequirement；`covered/partial/rejected` 由服务端按事实计算，模型不能声明 covered |
+| `propose_frontend_draft({draft})` | write（仅内存） | 5000ms | 校验 `frontend-pack-draft.v1`、页面集合、mustKeep、coverage 交叉不变量；不写磁盘 |
+| `repair_frontend_draft({issues, patch})` | write（仅内存） | 5000ms | 只接受本次门禁产生的 `{path,code}`（1–8 条）+ 路径补丁；最多 2 轮；不能改 Base/Registry/源码 |
+
+读工具声明 `retry: {maxAttempts:2, backoffMs:100, retryOnTimeout:true}`；写工具默认串行。工具结果只回传模型修复所需的最小字段，错误详情有界且可定位到 `$` DSL path。
+
+### 11.2 事实与截断
+
+- 能力事实来自打包只读快照 `server/src/agent/frontend-reconstruct/capabilities.snapshot.json`（页面事实内嵌），
+  由 `scripts/frontend-capabilities.cjs` 生成，`--check` 与 Catalog/Base 同源；不接受客户端上传的 id 集合。
+- P1 执行入口强制 `pageFacts`：`validateFrontendPackDraftForP1` / `validateFrontendReconstructResponseForP1`
+  缺省或空 pageFacts 直接 `FRONTEND_FACTS_INVALID`（fail closed），不允许退回只看全局事实。
+- prompt 只使用 canonical dataPath：`<pageId>.<key>`、`cart.*`、`store.*`；禁止原始 WXML token
+  （`cartSummary.*`、`products.length`、`item.*`），运行时由 renderer 映射为真实 WXML 表达式。
+- 模型输出被截断（`finish_reason=length` 或字符裁剪）时直接 `FRONTEND_MODEL_RESPONSE_INVALID`，**不解析残片**。
+
+### 11.3 运行上限
+
+| 项 | 默认 | 上限/允许范围 |
+| --- | ---: | --- |
+| 模型调用 | 8 | `FRONTEND_MAX_MODEL_CALLS`，1–8 |
+| 工具调用 | 16 | `FRONTEND_MAX_TOOL_CALLS`，1–16 |
+| 墙钟 | 120000ms | `FRONTEND_TIMEOUT_MS`，1000–120000 |
+| 模型输出 token | 6000 | `FRONTEND_MAX_TOKENS`，100–6000（适配器硬上限 8000） |
+| 修复 | 2 轮 | 契约固定，不得放宽；第 3 次 `FRONTEND_REPAIR_LIMIT_EXCEEDED` |
+
+### 11.4 过程卡与可观测性
+
+- 服务端响应 `trace` 只含 `modelCalls`、`toolCalls:[{name,ok}]`、`stopReason`、`degraded`，不含参数、结果、源码、图片或 prompt。
+- 桌面过程卡使用 `buildFrontendProcessView`（`src/domain/agentRunProcess.mjs`）：只翻译四个真实工具名与真实 progress stage，
+  展示 `runId`/`attempt`/状态/耗时；没有真实 trace/进度时不编造步骤，未知工具折叠为「辅助步骤」。
+- 视图不包含工具参数/结果、原始 JSON、源码、base64、完整 prompt、密钥或本机绝对路径；错误文本先脱敏再截断。
+- `ChatStream` 只消费领域层算好的安全 `process` 视图；不读取消息正文、不序列化 trace、不注入 HTML。
+  `src/App.jsx` 的接线与最终展示位置不在 P6 文档任务范围（当前 P4 候选面板仍展示自身进度），P7 走查时确认，避免两处重复过程卡。
+
+### 11.5 明确边界
+
+- 状态机：`idle → analyzing → planning → [awaiting-capability-confirmation?] → generating → validating → verifying-runtime → ready | partial → adopted`；`rejected`/`cancelled` 终态，`failed` 换新 runId 重试，`adopted` 显式撤销；`partial` 必须显式确认，不能显示“已验收”。
+- 模型不决定覆盖结论；缺必需能力时返回 `rejected`，不物化候选。
+- 候选只写应用私有 workspace/overlay，不写正式 `templates/**`、不重冻结全局 Registry、不改 `miniprogram/`。
+- 只执行仓库固定的 `scripts/wechat-devtools-run.cjs`；不接受模型或远端提供的命令。
+- 真实微信运行时不可用/未登录/端口关闭时只能 `BLOCKED`/`NOT_RUN`，不得伪造 PASS。
+
+## 12. 已知边界与后续
 
 - 未接入桌面 UI：当前只有服务端端点与类型；前端仍走 `agent-turn.v1/v2`。
 - 无持久会话：每次 run 的草稿只存在于内存，响应即结束；多轮上下文由客户端每次回传 `draft` 表达。
 - 无流式输出：`ChatModel.complete` 是一次性响应；SSE/增量回复未实现。
 - 审批只是钩子：没有 UI/人工确认通道，`requiresApproval` 的工具在未注入钩子时会被拒绝。
 - 无 token 预算：只累计并返回 usage，不按 token 截断上下文。
-- 无图片：`agent-run.v1` 不接受图片；视觉仍属于 `agent-turn.v2`。
+- 无图片：`agent-run.v1` 不接受图片；视觉图片抽取仍属于 `agent-turn.v2`，参考图重构走 `frontend-reconstruct.v1`（§11）。
 - HTTP 断开未接入取消：`runAgent` 支持 `AbortSignal`，但 controller 尚未把客户端断开映射为 signal。
 - 工具结果超限会截断：需要完整大对象时应分页或让工具返回摘要，不要依赖模型看完整结果。

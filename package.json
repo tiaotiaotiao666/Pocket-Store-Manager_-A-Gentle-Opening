@@ -41,7 +41,10 @@
     "wechat:run": "node scripts/wechat-devtools-run.cjs",
     "wechat:stub": "node scripts/wechat-runtime-stub.cjs",
     "server:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-server-local.ps1",
-    "check:packaging": "node scripts/check-packaging.cjs"
+    "check:packaging": "node scripts/check-packaging.cjs",
+    "frontend:capabilities": "node scripts/frontend-capabilities.cjs",
+    "frontend:capabilities:check": "node scripts/frontend-capabilities.cjs --check",
+    "frontend:verify": "node scripts/frontend-verify.cjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -76,6 +79,8 @@
       "templates/recipes/**",
       "scripts/composer/**",
       "scripts/validate-miniprogram.cjs",
+      "scripts/frontend-capabilities.cjs",
+      "server/src/agent/frontend-reconstruct/capabilities.snapshot.json",
       "package.json"
     ],
     "win": {

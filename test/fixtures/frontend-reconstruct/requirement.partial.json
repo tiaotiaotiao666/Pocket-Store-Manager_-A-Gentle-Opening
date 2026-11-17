@@ -1,0 +1,89 @@
+{
+  "summary": "首页改为紧凑单列，保留开始点餐与门店名；品牌主视觉用纯色占位",
+  "mustKeep": [
+    { "kind": "page", "ref": "page:home" },
+    { "kind": "action", "ref": "action:home.goMenu" },
+    { "kind": "data", "ref": "data:store.name" }
+  ],
+  "pages": [
+    {
+      "pageId": "home",
+      "order": 1,
+      "layout": "single-column",
+      "targetSize": { "width": 375, "height": 812 },
+      "regions": [
+        {
+          "id": "r-header",
+          "type": "header",
+          "order": 1,
+          "rect": { "x": 0, "y": 0, "w": 1, "h": 0.18 },
+          "children": [
+            {
+              "id": "r-logo",
+              "type": "other",
+              "order": 1,
+              "rect": { "x": 0.04, "y": 0.02, "w": 0.3, "h": 0.08 },
+              "children": [],
+              "confidence": 0.9
+            }
+          ],
+          "confidence": 0.92
+        },
+        {
+          "id": "r-hero",
+          "type": "hero",
+          "order": 2,
+          "rect": { "x": 0, "y": 0.18, "w": 1, "h": 0.34 },
+          "children": [],
+          "confidence": 0.8
+        },
+        {
+          "id": "r-cta",
+          "type": "form",
+          "order": 3,
+          "rect": { "x": 0.06, "y": 0.55, "w": 0.88, "h": 0.12 },
+          "children": [],
+          "confidence": 0.75
+        },
+        {
+          "id": "r-list",
+          "type": "list",
+          "order": 4,
+          "rect": { "x": 0, "y": 0.68, "w": 1, "h": 0.32 },
+          "children": [],
+          "confidence": 0.7
+        }
+      ]
+    }
+  ],
+  "visual": {
+    "theme": {
+      "primaryColor": "#B34A0F",
+      "pageBackground": "#F7F3EC",
+      "accentColor": "#9C2E12"
+    },
+    "sizes": { "homeHero": "lg", "productCard": "md" },
+    "density": "compact"
+  },
+  "bindings": [
+    { "regionId": "r-header", "dataPath": "store.name", "status": "bound" },
+    { "regionId": "r-cta", "eventName": "home.goMenu", "status": "bound" },
+    { "regionId": "r-list", "dataPath": "menu.products", "status": "bound" },
+    { "regionId": "r-hero", "status": "unknown" }
+  ],
+  "unknownRegions": [
+    { "label": "顶部右侧图标", "reason": "图形含义无法确定，未绑定任何动作" }
+  ],
+  "lowConfidence": [
+    { "regionId": "r-list", "confidence": 0.7, "reason": "商品卡密度较高，只能近似为两列列表" }
+  ],
+  "inferredInteractions": [
+    { "regionId": "r-cta", "label": "主按钮点击进入点餐", "reason": "按钮文案可见，但未推定具体路由" }
+  ],
+  "unsupported": [
+    { "label": "拍照识图入口", "reason": "Base 没有对应页面与控制器动作" }
+  ],
+  "degradations": [
+    { "regionId": "r-hero", "label": "主视觉图", "reason": "不复刻品牌图片，使用纯色占位", "severity": "warn" }
+  ]
+}

@@ -38,6 +38,7 @@ export const KNOWN_TOP_KEYS = Object.freeze([
   'presentation',
   'agentDraft',
   'screenRef',
+  'frontendCandidate',
   'agentConfirmedSeq',
   'assets',
   'sessions',
@@ -590,12 +591,330 @@ export function restoreScreenRef(saved) {
   return { ...slice, view: buildScreenRefView(slice) };
 }
 
+// ---------------------------------------------------------------------------
+// P5：已采用候选前端（项目私有 FrontendPack overlay）的持久化
+// ---------------------------------------------------------------------------
+
+export const FRONTEND_CANDIDATE_SCHEMA_VERSION = 'frontend-candidate-adoption.v1';
+export const FRONTEND_CANDIDATE_STATUSES = Object.freeze(['none', 'adopted', 'unavailable']);
+export const FRONTEND_CANDIDATE_LIMITS = Object.freeze({
+  maxText: 120,
+  maxId: 80,
+  maxVersion: 24,
+  maxPath: 240,
+  maxIssueChars: 160,
+  maxScreenshots: 24,
+  maxPreviousDepth: 1,
+});
+
+const FRONTEND_RUNTIME_STATUSES = Object.freeze(['PASS', 'FAIL', 'BLOCKED', 'NOT_RUN']);
+const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
+const DRIVE_PATTERN = /^[A-Za-z]:/;
+
+/** overlay/证据路径只接受规范 POSIX 相对路径：绝对路径、盘符、`..`、反斜杠一律丢弃。 */
+function canonicalRelativePath(value) {
+  if (typeof value !== 'string' || !value || value.length > FRONTEND_CANDIDATE_LIMITS.maxPath) return null;
+  if (value !== value.trim() || value.includes('\\') || value.includes('\0')) return null;
+  if (value.startsWith('/') || DRIVE_PATTERN.test(value)) return null;
+  const segments = value.split('/');
+  if (!segments.every((segment) => segment && segment !== '.' && segment !== '..')) return null;
+  return value;
+}
+
+/** 长 base64/dataURL 正文一律不落盘：长度异常且字符集像 blob 的值直接判空。 */
+function looksLikeBlob(value) {
+  return typeof value === 'string' && value.length > 400 && /^[A-Za-z0-9+/=\s]+$/.test(value);
+}
+
+function candidateText(value, maxLength) {
+  if (typeof value !== 'string' || looksLikeBlob(value)) return '';
+  return value
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
+function candidateDigest(value) {
+  return typeof value === 'string' && SHA256_PATTERN.test(value) ? value : null;
+}
+
+function candidateAttempt(value) {
+  return Number.isInteger(value) && value >= 1 && value <= 9999 ? value : null;
+}
+
+function candidateRunId(value) {
+  const text = candidateText(value, 80);
+  return /^frun-[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/.test(text) ? text : null;
+}
+
+function pickFrontendCandidatePlan(raw) {
+  const plan = isPlainObject(raw) ? raw : {};
+  const pack = isPlainObject(plan.frontendPack) ? plan.frontendPack : {};
+  const base = isPlainObject(plan.baseTemplate) ? plan.baseTemplate : {};
+  return {
+    planId: candidateText(plan.planId, 60) || null,
+    planVersion: candidateText(plan.planVersion, 24) || null,
+    frontendPack: {
+      id: candidateText(pack.id, FRONTEND_CANDIDATE_LIMITS.maxId) || null,
+      version: candidateText(pack.version, FRONTEND_CANDIDATE_LIMITS.maxVersion) || null,
+    },
+    baseTemplate: {
+      id: candidateText(base.id, 40) || 'ordering-base',
+      version: candidateText(base.version, FRONTEND_CANDIDATE_LIMITS.maxVersion) || null,
+    },
+  };
+}
+
+function pickFrontendCandidateVerification(raw) {
+  const source = isPlainObject(raw) ? raw : {};
+  return {
+    static: source.static === 'pass' ? 'pass' : (source.static === 'fail' ? 'fail' : 'unknown'),
+    runtime: FRONTEND_RUNTIME_STATUSES.includes(source.runtime) ? source.runtime : 'NOT_RUN',
+    repairs: Number.isInteger(source.repairs) && source.repairs >= 0 && source.repairs <= 2 ? source.repairs : 0,
+    screenshots: Number.isInteger(source.screenshots) && source.screenshots >= 0
+      ? Math.min(source.screenshots, FRONTEND_CANDIDATE_LIMITS.maxScreenshots)
+      : 0,
+    checkedAt: candidateText(source.checkedAt, 40) || null,
+  };
+}
+
+function pickFrontendCandidateEvidence(raw) {
+  const source = isPlainObject(raw) ? raw : {};
+  return {
+    dryRunRelative: canonicalRelativePath(source.dryRunRelative),
+    runtimeRelative: canonicalRelativePath(source.runtimeRelative),
+  };
+}
+
+function pickFrontendCandidateIssue(raw) {
+  if (!isPlainObject(raw)) return null;
+  const code = candidateText(raw.code, 60);
+  const message = candidateText(raw.message, FRONTEND_CANDIDATE_LIMITS.maxIssueChars);
+  if (!code && !message) return null;
+  return {
+    code: code || 'FRONTEND_CANDIDATE_INVALID',
+    message: message || '已采用的候选前端当前不可用，已回退到 Base 页面。',
+  };
+}
+
+export function createEmptyFrontendCandidateState() {
+  return {
+    schemaVersion: FRONTEND_CANDIDATE_SCHEMA_VERSION,
+    status: 'none',
+    candidateId: null,
+    candidateVersion: null,
+    integrity: null,
+    runId: null,
+    projectId: null,
+    attempt: null,
+    overlayRelative: null,
+    attemptRelative: null,
+    registryDigest: null,
+    plan: pickFrontendCandidatePlan(null),
+    verification: pickFrontendCandidateVerification(null),
+    evidence: pickFrontendCandidateEvidence(null),
+    adoptedAt: null,
+    previous: null,
+    issue: null,
+    // verified 只存在于内存：重开项目后由桌面层校验 overlay 摘要再置 true。
+    verified: false,
+  };
+}
+
+function unavailableCandidate(code, message, extra) {
+  const empty = createEmptyFrontendCandidateState();
+  return {
+    ...empty,
+    ...(isPlainObject(extra) ? extra : {}),
+    status: 'unavailable',
+    issue: { code, message },
+  };
+}
+
+/**
+ * 已采用候选 → project.json 白名单字段。
+ *
+ * 只保留 id/version/摘要/相对引用/Plan 引用/验证状态；base64、绝对路径、
+ * 原始 trace、大错误文本与未知字段一律丢弃。缺 overlay 引用或摘要时失败关闭
+ * （status=unavailable），避免「看起来已采用、实际没有 overlay」的假状态。
+ */
+export function pickFrontendCandidate(raw, options = {}) {
+  const empty = createEmptyFrontendCandidateState();
+  if (!isPlainObject(raw)) return empty;
+  const depth = Number.isInteger(options.depth) && options.depth >= 0 ? options.depth : 0;
+  const declared = FRONTEND_CANDIDATE_STATUSES.includes(raw.status) ? raw.status : 'none';
+  if (declared === 'none') return empty;
+
+  const candidateId = candidateText(raw.candidateId, FRONTEND_CANDIDATE_LIMITS.maxId);
+  const candidateVersion = candidateText(raw.candidateVersion, FRONTEND_CANDIDATE_LIMITS.maxVersion);
+  const integrity = candidateDigest(raw.integrity);
+  const overlayRelative = canonicalRelativePath(raw.overlayRelative);
+  const attemptRelative = canonicalRelativePath(raw.attemptRelative);
+  const registryDigest = candidateDigest(raw.registryDigest);
+  const plan = pickFrontendCandidatePlan(raw.plan);
+  const verification = pickFrontendCandidateVerification(raw.verification);
+  const evidence = pickFrontendCandidateEvidence(raw.evidence);
+  const adoptedAt = candidateText(raw.adoptedAt, 40) || null;
+  const identity = {
+    candidateId: candidateId || null,
+    candidateVersion: candidateVersion || null,
+    integrity,
+    runId: candidateRunId(raw.runId),
+    projectId: candidateText(raw.projectId, FRONTEND_CANDIDATE_LIMITS.maxId) || null,
+    attempt: candidateAttempt(raw.attempt),
+    plan,
+    verification,
+    evidence,
+    adoptedAt,
+  };
+
+  if (!candidateId || !candidateVersion) {
+    return unavailableCandidate('FRONTEND_CANDIDATE_INVALID', '候选记录缺少 id/version，已回退到 Base 页面。', identity);
+  }
+  if (declared === 'adopted') {
+    if (!overlayRelative) {
+      return unavailableCandidate('FRONTEND_OVERLAY_MISSING', '候选 overlay 引用缺失，已回退到 Base 页面。', { ...identity, integrity, registryDigest });
+    }
+    if (!integrity) {
+      return unavailableCandidate('FRONTEND_DIGEST_MISSING', '候选摘要缺失，已回退到 Base 页面。', { ...identity, overlayRelative, attemptRelative, registryDigest });
+    }
+  }
+
+  return {
+    schemaVersion: FRONTEND_CANDIDATE_SCHEMA_VERSION,
+    status: declared,
+    ...identity,
+    overlayRelative,
+    attemptRelative,
+    registryDigest,
+    // 只保留一层「上一版本」，撤销恢复上一个采用记录；不递归保存历史。
+    previous: depth < FRONTEND_CANDIDATE_LIMITS.maxPreviousDepth && isPlainObject(raw.previous)
+      ? pickFrontendCandidate(raw.previous, { depth: depth + 1 })
+      : null,
+    issue: declared === 'unavailable'
+      ? (pickFrontendCandidateIssue(raw.issue) || { code: 'FRONTEND_CANDIDATE_UNAVAILABLE', message: '已采用的候选前端当前不可用，已回退到 Base 页面。' })
+      : null,
+    verified: false,
+  };
+}
+
+/**
+ * project.json → 内存切片。
+ *
+ * `check` 是重开项目时桌面层对私有 overlay 的校验结论：
+ * - `{ok:true, verification?}`：确认摘要一致，允许导出；
+ * - `{ok:false, code, message}`：缺失/漂移 → 安全回退到 Base 并给出提示；
+ * - 未提供：保留 adopted 但标 verified=false（导出前必须再校验，不允许静默回退）。
+ */
+export function restoreFrontendCandidate(saved, check) {
+  const base = pickFrontendCandidate(saved);
+  if (base.status === 'none') return base;
+  if (!isPlainObject(check)) {
+    if (base.status === 'unavailable') return base;
+    return {
+      ...base,
+      status: 'adopted',
+      verified: false,
+      issue: {
+        code: 'FRONTEND_CANDIDATE_UNVERIFIED',
+        message: '重开项目后还没有校验候选完整性；导出前会再次校验，不会静默回退 Base。',
+      },
+    };
+  }
+  if (check.ok === true) {
+    return {
+      ...base,
+      status: 'adopted',
+      verified: true,
+      issue: null,
+      verification: isPlainObject(check.verification)
+        ? pickFrontendCandidateVerification({ ...base.verification, ...check.verification })
+        : base.verification,
+    };
+  }
+  return {
+    ...base,
+    status: 'unavailable',
+    verified: false,
+    issue: {
+      code: candidateText(check.code, 60) || 'FRONTEND_CANDIDATE_INVALID',
+      message: candidateText(check.message, FRONTEND_CANDIDATE_LIMITS.maxIssueChars)
+        || '候选完整性校验未通过，已回退到 Base 页面。',
+    },
+  };
+}
+
+/**
+ * 构造「已采用候选」快照记录（采用动作由上层调用；本函数只负责形状与白名单）。
+ * `previous` 传采用前的记录，用于撤销与重开后恢复上一版本。
+ */
+export function buildFrontendAdoption(input = {}) {
+  const source = isPlainObject(input) ? input : {};
+  const candidate = isPlainObject(source.candidate) ? source.candidate : {};
+  return pickFrontendCandidate({
+    schemaVersion: FRONTEND_CANDIDATE_SCHEMA_VERSION,
+    status: 'adopted',
+    candidateId: candidate.candidateId,
+    candidateVersion: candidate.candidateVersion,
+    integrity: candidate.integrity,
+    runId: candidate.runId,
+    projectId: candidate.projectId ?? source.projectId,
+    attempt: candidate.attempt,
+    overlayRelative: candidate.overlayRelative,
+    attemptRelative: candidate.attemptRelative,
+    registryDigest: candidate.registryDigest ?? (isPlainObject(source.plan) ? source.plan.registryDigest : null),
+    plan: source.plan,
+    verification: source.verification,
+    evidence: source.evidence ?? candidate.evidence,
+    adoptedAt: source.adoptedAt,
+    previous: source.previous ?? null,
+  });
+}
+
+/**
+ * 撤销：返回上一版本记录（没有则为 none）与被撤销的记录。
+ * 完整 Plan 与展示补丁由会话状态/快照的 `presentation` 承担，这里只恢复候选引用。
+ */
+export function undoFrontendAdoption(current) {
+  const record = pickFrontendCandidate(current);
+  if (record.status === 'none') {
+    return { restored: false, reason: 'no-candidate', adoption: record, undone: null };
+  }
+  const previous = isPlainObject(record.previous) ? pickFrontendCandidate({ ...record.previous, previous: null }) : null;
+  return {
+    restored: true,
+    adoption: previous || createEmptyFrontendCandidateState(),
+    undone: record,
+  };
+}
+
+/** 面板/执行层可用的只读摘要（不含路径）。 */
+export function describeFrontendCandidate(record) {
+  const source = pickFrontendCandidate(record);
+  if (source.status === 'none') {
+    return { status: 'none', label: '', planRef: null, runtimeStatus: 'NOT_RUN', repairs: 0, notice: null, verified: false };
+  }
+  return {
+    status: source.status,
+    label: source.candidateId ? `${source.candidateId}@${source.candidateVersion}` : '',
+    planRef: {
+      planId: source.plan.planId,
+      planVersion: source.plan.planVersion,
+      frontendPack: source.plan.frontendPack,
+    },
+    runtimeStatus: source.verification.runtime,
+    repairs: source.verification.repairs,
+    notice: source.issue ? source.issue.message : null,
+    verified: source.verified === true,
+  };
+}
+
 /**
  * 内存 state → project.json 文档。
  * meta: { projectId, createdAt, updatedAt, appid }
  */
-export function toDocument(state, meta) {
-  const input = isPlainObject(state) ? state : {};
+export function toDocument(state, meta) {  const input = isPlainObject(state) ? state : {};
   const project = isPlainObject(input.project) ? input.project : {};
   const deploy = isPlainObject(input.deploy) ? input.deploy : {};
   const options = isPlainObject(meta) ? meta : {};
@@ -625,6 +944,7 @@ export function toDocument(state, meta) {
     presentation,
     agentDraft,
     screenRef: pickScreenRef(input.screenRef),
+    frontendCandidate: pickFrontendCandidate(input.frontendCandidate),
     agentConfirmedSeq: agent.status === 'confirmed' ? integerOrNull(agent.confirmedAtSeq) : null,
     assets: { images: pickImages(input.assets?.images ?? input.assetImages) },
     sessions: sessions.length > 0
@@ -707,8 +1027,12 @@ function resolveSessions(sessions, activeSessionId) {
  * project.json 文档 → 可 dispatch 的 hydration 切片。
  * 返回 { phase, activeSessionId, sessions, seq, store, features, build, visual,
  *        agentDraft, agent, deploy, project }。
+ *
+ * options.candidateCheck（可选）是桌面层在加载后对私有 overlay 的校验结论；
+ * 缺失/漂移时 `frontendCandidate` 回退为 unavailable 并通过
+ * `frontendCandidateNotice` 提示，绝不静默把 Base 页面当成候选。
  */
-export function fromDocument(doc) {
+export function fromDocument(doc, options = {}) {
   const source = isPlainObject(doc) ? doc : {};
   const draft = normalizeAgentDraft(source.agentDraft);
   const validation = validateAgentDraft(draft);
@@ -745,6 +1069,16 @@ export function fromDocument(doc) {
     handoff: deploySource.handoff,
   };
 
+  const frontendCandidate = restoreFrontendCandidate(
+    source.frontendCandidate,
+    isPlainObject(options.candidateCheck) ? options.candidateCheck : null,
+  );
+  const frontendCandidateNotice = frontendCandidate.status === 'unavailable'
+    ? (frontendCandidate.issue?.message || '候选前端当前不可用，已回退到 Base 页面。')
+    : (frontendCandidate.status === 'adopted' && frontendCandidate.verified !== true
+      ? (frontendCandidate.issue?.message || '重开项目后还没有校验候选完整性；导出前会再次校验。')
+      : null);
+
   return {
     phase,
     activeSessionId,
@@ -760,6 +1094,8 @@ export function fromDocument(doc) {
     agentDraft: draft,
     agent,
     screenRef: restoreScreenRef(source.screenRef),
+    frontendCandidate,
+    frontendCandidateNotice,
     deploy,
     assets: { images: pickImages(source.assets?.images) },
     project: {

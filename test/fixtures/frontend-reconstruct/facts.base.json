@@ -1,0 +1,58 @@
+{
+  "version": "frontend-facts.v1",
+  "pageIds": ["home", "menu"],
+  "components": {
+    "store-header": {
+      "props": ["storeName", "tableName", "businessHours", "mode", "address"],
+      "events": []
+    },
+    "fulfillment-switch": {
+      "props": ["value", "dineInEnabled", "takeawayEnabled"],
+      "events": ["change"]
+    },
+    "category-nav": {
+      "props": ["categories", "activeId"],
+      "events": ["select"]
+    },
+    "product-card": {
+      "props": ["product", "role", "actionable"],
+      "events": ["add", "open"]
+    },
+    "cart-bar": {
+      "props": ["count", "totalCents"],
+      "events": ["checkout", "expand"]
+    }
+  },
+  "slots": ["home-hero", "home-marketing", "menu-hero", "menu-aside"],
+  "actions": [
+    "home.goMenu",
+    "home.goOrders",
+    "home.goMine",
+    "home.goMerchant",
+    "menu.onProductAdd",
+    "menu.onProductRemove",
+    "menu.onCheckout",
+    "menu.onExpandCart"
+  ],
+  "dataPaths": [
+    "store.name",
+    "store.businessHours",
+    "store.address",
+    "store.fulfillment.dineIn",
+    "store.fulfillment.takeaway",
+    "menu.categories",
+    "menu.products",
+    "cart.count",
+    "cart.totalCents"
+  ],
+  "themeTokens": [
+    "pageBackground",
+    "primaryColor",
+    "accentColor",
+    "textColor",
+    "tabBarBackground",
+    "tabBarColor",
+    "tabBarSelectedColor"
+  ],
+  "sizeKeys": ["homeHero", "productCard", "carousel"]
+}

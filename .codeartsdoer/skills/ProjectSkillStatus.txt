@@ -1,1 +1,5 @@
 wechat-template-builder=true
+wechat-visual-spec=true
+wechat-capability-coverage=true
+wechat-frontend-pack-authoring=true
+wechat-frontend-verification=true

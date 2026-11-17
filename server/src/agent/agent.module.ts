@@ -6,6 +6,8 @@ import { AgentController } from './agent.controller';
 import { AgentService } from './agent.service';
 import { createAgentLogSink } from './agent-runtime.logger';
 import { AGENT_CHAT_MODEL, AGENT_FETCH, AGENT_PROVIDER } from './agent.types';
+import { FrontendReconstructController } from './frontend-reconstruct/controller';
+import { FrontendReconstructService } from './frontend-reconstruct/service';
 import { TemplateCandidatesController } from './presentation/template-candidates.controller';
 import { TemplateCandidatesService } from './presentation/template-candidates.service';
 import { TemplateReviseController } from './presentation/template-revise.controller';
@@ -28,12 +30,14 @@ const agentModelLogger = new Logger('AgentModel');
     StoreSetupAgentController,
     TemplateReviseController,
     TemplateCandidatesController,
+    FrontendReconstructController,
   ],
   providers: [
     AgentService,
     StoreSetupAgentService,
     TemplateReviseService,
     TemplateCandidatesService,
+    FrontendReconstructService,
     DeepseekAgentProvider,
     DeepseekPresentationProvider,
     SessionAuthGuard,

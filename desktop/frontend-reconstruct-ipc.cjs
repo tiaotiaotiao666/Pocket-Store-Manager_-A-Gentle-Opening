@@ -959,7 +959,9 @@ function createFrontendReconstructIpc(options) {
       return ok({
         status,
         code: bounded(result.code, 60) || null,
-        message: status === RUNTIME_PASS ? '微信真实编译与关键页面验证通过' : '微信验证没有拿到 PASS',
+        message: status === RUNTIME_PASS
+          ? '微信真实编译与关键页面/关键交互验证通过'
+          : '微信验证没有拿到 PASS',
         summary: bounded(result.summary, MAX_MESSAGE_CHARS),
         screenshots,
         pages: (Array.isArray(result.pages) ? result.pages : []).slice(0, 24).map((page) => ({
@@ -970,6 +972,7 @@ function createFrontendReconstructIpc(options) {
         interactions: (Array.isArray(result.interactions) ? result.interactions : []).slice(0, 32).map((item) => ({
           label: bounded(item && item.label, 60),
           status: bounded(item && item.status, 12),
+          critical: !(item && item.critical === false),
           detail: bounded(item && item.detail, MAX_MESSAGE_CHARS),
         })),
       });

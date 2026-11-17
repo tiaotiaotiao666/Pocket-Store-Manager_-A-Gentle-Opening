@@ -1,0 +1,245 @@
+{
+  "schemaVersion": "wechat-devtools-run.v1",
+  "generatedAt": "2026-11-17T11:25:12.166Z",
+  "projectRoot": "E:\\智能开店app\\generated-projects\\松月食堂",
+  "cliPath": "E:\\微信web开发者工具\\cli.bat",
+  "status": "FAIL",
+  "steps": [
+    {
+      "id": "login",
+      "title": "开发者工具登录态",
+      "status": "PASS",
+      "command": "E:\\微信web开发者工具\\cli.bat islogin",
+      "startedAt": "2026-11-17T11:25:12.169Z",
+      "finishedAt": "2026-11-17T11:25:12.544Z",
+      "durationMs": 375,
+      "exitCode": 0,
+      "stdout": "{\"login\":true}",
+      "stderr": "- initialize\n\n(node:40956) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)\n√ IDE server has started, listening on http://127.0.0.1:40539\n- preparing\n√ islogin"
+    },
+    {
+      "id": "compile",
+      "title": "cli open --project（真实编译）",
+      "status": "PASS",
+      "command": "E:\\微信web开发者工具\\cli.bat open --project E:\\智能开店app\\generated-projects\\松月食堂",
+      "startedAt": "2026-11-17T11:25:12.544Z",
+      "finishedAt": "2026-11-17T11:25:16.966Z",
+      "durationMs": 4422,
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "- initialize\n\n(node:8896) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)\n√ IDE server has started, listening on http://127.0.0.1:40539\n- preparing\n√ open"
+    },
+    {
+      "id": "automation",
+      "title": "cli auto --auto-port（自动化端口）",
+      "status": "PASS",
+      "command": "E:\\微信web开发者工具\\cli.bat auto --project E:\\智能开店app\\generated-projects\\松月食堂 --auto-port 9420",
+      "startedAt": "2026-11-17T11:25:16.966Z",
+      "finishedAt": "2026-11-17T11:25:23.693Z",
+      "durationMs": 6727,
+      "exitCode": 0,
+      "stdout": "{\n  \"autoPort\": 9420,\n  \"requestedAutoPort\": 9420\n}",
+      "stderr": "- initialize\n\n(node:51568) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)\n√ IDE server has started, listening on http://127.0.0.1:40539\n- preparing\n- Fetching AppID () permissions\n√ Using AppID: wx3b1c04f63cf6cfd0\n√ auto"
+    }
+  ],
+  "blocked": null,
+  "pages": [
+    {
+      "route": "/pages/home/index",
+      "label": "首页",
+      "status": "PASS",
+      "screenshot": "E:\\智能开店app\\.tmp\\p0-evidence\\packaged-shots2\\pages-home-index.png",
+      "data": {
+        "keys": [
+          "store",
+          "products",
+          "__webviewId__"
+        ],
+        "error": "",
+        "storeName": "松月食堂",
+        "categories": 0,
+        "products": 2,
+        "emptyCart": null,
+        "payHint": "",
+        "productName": "",
+        "productPrice": ""
+      },
+      "error": "",
+      "observation": ""
+    },
+    {
+      "route": "/pages/menu/index",
+      "label": "菜单",
+      "status": "PASS",
+      "screenshot": "E:\\智能开店app\\.tmp\\p0-evidence\\packaged-shots2\\pages-menu-index.png",
+      "data": {
+        "keys": [
+          "catalog",
+          "__webviewId__"
+        ],
+        "error": "",
+        "storeName": "",
+        "categories": 0,
+        "products": 0,
+        "emptyCart": null,
+        "payHint": "",
+        "productName": "",
+        "productPrice": ""
+      },
+      "error": "",
+      "observation": "分类 0 个 · 菜品种类 0 个"
+    },
+    {
+      "route": "/pages/product-detail/index",
+      "label": "菜品详情",
+      "status": "FAIL",
+      "screenshot": "",
+      "data": null,
+      "error": "页面打开失败（重试 3 次仍失败）：/pages/product-detail/index",
+      "observation": ""
+    },
+    {
+      "route": "/pages/checkout/index",
+      "label": "结算/下单入口",
+      "status": "FAIL",
+      "screenshot": "",
+      "data": null,
+      "error": "页面打开失败（重试 3 次仍失败）：/pages/checkout/index",
+      "observation": ""
+    }
+  ],
+  "interactions": [
+    {
+      "label": "分类切换（页面处理器直调 + 状态断言）",
+      "critical": false,
+      "status": "NOT_RUN",
+      "detail": "菜单没有第二个分类，无法切换"
+    },
+    {
+      "label": "菜品加购（页面处理器直调 + 状态断言）",
+      "critical": true,
+      "status": "NOT_RUN",
+      "detail": "当前分类没有菜品"
+    },
+    {
+      "label": "购物车展开（页面处理器直调 + 状态断言）",
+      "critical": false,
+      "status": "FAIL",
+      "detail": "页面缺少处理器 onExpandCart"
+    },
+    {
+      "label": "真实点击·首页选桌 →「开始点餐」进入菜单",
+      "critical": true,
+      "status": "FAIL",
+      "detail": "页面缺少处理器 onModeChange"
+    },
+    {
+      "label": "真实点击·选择餐桌（菜单页 .menu__table）",
+      "critical": true,
+      "status": "FAIL",
+      "detail": "页面缺少处理器 onModeChange"
+    },
+    {
+      "label": "真实点击·结算提交下单",
+      "critical": true,
+      "status": "NOT_RUN",
+      "detail": "菜单没有菜品，无法构造购物车"
+    },
+    {
+      "label": "真实点击·订单详情「演示模拟支付」",
+      "critical": false,
+      "status": "NOT_RUN",
+      "detail": "当前不在订单详情页（pages/menu/index），跳过演示模拟支付"
+    },
+    {
+      "label": "桌号数据源·首页/菜单/结算均来自后端 /stores/:id/tables",
+      "critical": false,
+      "status": "FAIL",
+      "detail": "页面缺少处理器 onModeChange"
+    },
+    {
+      "label": "锚点点击·分类切换（#menu-category-nav）",
+      "critical": false,
+      "status": "BLOCKED",
+      "detail": "加 id/class 锚点后仍取不到组件宿主：page.$(\"#menu-category-nav\")=null（分类组件对外只暴露宿主节点，automator 无法穿透）"
+    },
+    {
+      "label": "锚点点击·菜品加购（#menu-product-*）",
+      "critical": false,
+      "status": "NOT_RUN",
+      "detail": "当前分类没有菜品，无法加购"
+    },
+    {
+      "label": "锚点点击·购物车展开（#menu-cart-bar）",
+      "critical": false,
+      "status": "BLOCKED",
+      "detail": "加锚点后仍取不到 #menu-cart-bar 宿主节点"
+    }
+  ],
+  "identity": {
+    "composer": false,
+    "missing": [
+      "composition.lock.json",
+      "generation-report.json"
+    ],
+    "appidKind": "real",
+    "appidMasked": "wx3b****f6cfd0"
+  },
+  "projectPages": [
+    "pages/home/index",
+    "pages/menu/index",
+    "pages/orders/index",
+    "pages/mine/index"
+  ],
+  "bundle": {
+    "ready": true,
+    "observation": "第 1 次 reLaunch(/pages/home/index) 后首页 data 有 3 个字段"
+  },
+  "verdict": {
+    "status": "FAIL",
+    "reason": "页面未通过：菜品详情（FAIL）",
+    "pages": {
+      "total": 4,
+      "PASS": 2,
+      "FAIL": 2,
+      "BLOCKED": 0,
+      "NOT_RUN": 0
+    },
+    "interactions": {
+      "total": 11,
+      "PASS": 0,
+      "FAIL": 4,
+      "BLOCKED": 2,
+      "NOT_RUN": 5
+    },
+    "critical": {
+      "total": 4,
+      "passed": 0,
+      "failed": 2,
+      "blocked": 0,
+      "notRun": 2
+    },
+    "degraded": [
+      {
+        "label": "分类切换（页面处理器直调 + 状态断言）",
+        "status": "NOT_RUN"
+      },
+      {
+        "label": "真实点击·订单详情「演示模拟支付」",
+        "status": "NOT_RUN"
+      },
+      {
+        "label": "锚点点击·分类切换（#menu-category-nav）",
+        "status": "BLOCKED"
+      },
+      {
+        "label": "锚点点击·菜品加购（#menu-product-*）",
+        "status": "NOT_RUN"
+      },
+      {
+        "label": "锚点点击·购物车展开（#menu-cart-bar）",
+        "status": "BLOCKED"
+      }
+    ]
+  }
+}

@@ -22,6 +22,14 @@ const {
   assertCanonicalDir,
   isProtectedRepoDir,
 } = require('./workspace.cjs');
+// P0：与预览链路共用的 CLI 解析与工程身份检查。
+const { inspectDevtoolsTarget, resolveDevtoolsCli } = require('../devtools-cli.cjs');
+// P0：总状态规则只写一份（页面 + 关键交互）。
+const {
+  computeVerificationStatus,
+  countByStatus,
+  normalizeStatus,
+} = require('./verification-status.cjs');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const DEFAULT_SCRIPT = path.join(REPO_ROOT, 'scripts', 'wechat-devtools-run.cjs');
@@ -82,18 +90,40 @@ function sanitizeText(value) {
 }
 
 /**
+ * 安装版里本模块位于 app.asar（或 app.asar.unpacked）内，子进程必须拿到真实文件路径。
+ * 只在路径里出现 app.asar 段且 unpacked 版本存在时才替换，开发态原样返回。
+ * @param {string} target
+ * @returns {string}
+ */
+function unpackedPathFor(target) {
+  if (typeof target !== 'string' || !/[\\/]app\.asar[\\/]/.test(target)) return target;
+  const candidate = target.replace(/([\\/])app\.asar([\\/])/, '$1app.asar.unpacked$2');
+  try {
+    if (fs.existsSync(candidate)) return candidate;
+  } catch (error) {
+    /* 读不到就退回原路径，由后续存在性检查给出 BLOCKED */
+  }
+  return target;
+}
+
+/**
  * 解析开发者工具 CLI（只读，不启动任何进程）。
- * 显式 `cliPath` 优先（必须是绝对路径）；否则复用 `wechat-devtools-run.cjs#resolveCli`。
+ * 显式 `cliPath` 优先（必须是绝对路径）；否则走 `desktop/devtools-cli.cjs` 的
+ * 同一份搜索顺序（与「打开预览」链路共用，P0）。
  */
 function resolveToolchain(options) {
   const opts = options || {};
   const scriptPath = opts.scriptPath === undefined ? DEFAULT_SCRIPT : opts.scriptPath;
-  if (typeof scriptPath !== 'string' || !path.isAbsolute(scriptPath) || !fs.existsSync(scriptPath)) {
+  if (typeof scriptPath !== 'string' || !path.isAbsolute(scriptPath)) {
     return { ok: false, code: CODES.TOOL_MISSING, reason: '缺少固定微信验证脚本（scripts/wechat-devtools-run.cjs）' };
   }
   // 固定脚本不可替换：任何不同的 scriptPath 都拒绝，避免把包装层变成任意脚本执行入口。
   if (path.resolve(scriptPath) !== path.resolve(DEFAULT_SCRIPT)) {
     return { ok: false, code: CODES.INPUT_INVALID, reason: '只允许固定微信验证脚本（拒绝自定义 scriptPath）' };
+  }
+  const execScript = unpackedPathFor(scriptPath);
+  if (!fs.existsSync(execScript)) {
+    return { ok: false, code: CODES.TOOL_MISSING, reason: '缺少固定微信验证脚本（scripts/wechat-devtools-run.cjs）' };
   }
   let cliPath = '';
   if (opts.cliPath !== undefined) {
@@ -106,8 +136,9 @@ function resolveToolchain(options) {
     cliPath = opts.cliPath;
   } else {
     try {
-      // 只读探测（环境变量 + 固定候选路径），不会启动 DevTools。
-      cliPath = require(path.join(REPO_ROOT, 'scripts', 'wechat-devtools-run.cjs')).resolveCli();
+      // 只读探测（环境变量 + 固定候选 + 安装目录扫描），不会启动 DevTools。
+      // 与「打开预览」链路共用 desktop/devtools-cli.cjs 的同一份搜索顺序。
+      cliPath = resolveDevtoolsCli() || '';
     } catch (error) {
       return { ok: false, code: CODES.TOOL_MISSING, reason: '无法探测开发者工具 CLI：' + boundedDetail(error) };
     }
@@ -115,7 +146,7 @@ function resolveToolchain(options) {
   if (!cliPath) {
     return { ok: false, code: CODES.TOOL_MISSING, reason: '本机未找到微信开发者工具 cli.bat（可用 WX_CLI_PATH 指定）' };
   }
-  return { ok: true, scriptPath, cliPath };
+  return { ok: true, scriptPath, execScript, cliPath };
 }
 
 /**
@@ -149,7 +180,7 @@ function buildRunArgs(options) {
   return {
     ok: true,
     args: [
-      scriptPath,
+      unpackedPathFor(scriptPath),
       projectDir,
       '--auto-port',
       String(autoPort),
@@ -163,10 +194,23 @@ function buildRunArgs(options) {
   };
 }
 
+/** 安装版里 process.execPath 是 electron.exe：必须靠 ELECTRON_RUN_AS_NODE 才按 Node 跑脚本。 */
+function isElectronRuntime() {
+  return Boolean(process.versions && process.versions.electron)
+    || /electron(\.exe)?$/i.test(path.basename(process.execPath || ''));
+}
+
 function cleanEnv() {
   const env = { ...process.env };
-  // DevTools 的 CLI 在 ELECTRON_RUN_AS_NODE=1 下会退化成纯 Node（既有环境坑）。
-  delete env.ELECTRON_RUN_AS_NODE;
+  if (isElectronRuntime()) {
+    // 安装版：脚本本身要由 electron.exe 以 Node 模式执行。
+    // 脚本内部派生 cli.bat 前会自行剔除该变量（scripts/wechat-devtools-run.cjs#cleanEnv），
+    // 不会把开发者工具也退化成纯 Node。
+    env.ELECTRON_RUN_AS_NODE = '1';
+  } else {
+    // 开发态（node.exe）不需要它；继承到 DevTools CLI 会让其退化成纯 Node（既有环境坑）。
+    delete env.ELECTRON_RUN_AS_NODE;
+  }
   return env;
 }
 
@@ -260,15 +304,6 @@ function readReport(evidencePath) {
     return { ok: false, reason: '证据文件必须是对象', bytes: stats.size };
   }
   return { ok: true, report, bytes: stats.size };
-}
-
-function countByStatus(list) {
-  const counts = { total: 0, PASS: 0, FAIL: 0, BLOCKED: 0, NOT_RUN: 0 };
-  for (const item of Array.isArray(list) ? list : []) {
-    counts.total += 1;
-    if (item && Object.prototype.hasOwnProperty.call(counts, item.status)) counts[item.status] += 1;
-  }
-  return counts;
 }
 
 /**
@@ -365,6 +400,17 @@ async function verifyRuntime(options) {
   }
   if (!fs.existsSync(path.join(opts.projectDir, 'app.json'))) {
     return baseResult(STATUS.BLOCKED, CODES.INPUT_INVALID, 'projectDir 不像小程序工程（缺少 app.json）');
+  }
+
+  // P0：工程身份检查与「打开预览」链路共用 desktop/devtools-cli.cjs 的同一实现。
+  // 候选验证不强制真实 AppID（否则同一台机器永远只能 BLOCKED），但身份事实要进证据。
+  const identity = inspectDevtoolsTarget({
+    projectDir: opts.projectDir,
+    requireComposer: false,
+    requireAppId: false,
+  });
+  if (!identity.ok) {
+    return baseResult(STATUS.BLOCKED, CODES.INPUT_INVALID, '工程身份检查未通过：' + identity.message);
   }
 
   const timeoutMs = opts.timeoutMs === undefined ? DEFAULT_TIMEOUT_MS : opts.timeoutMs;
@@ -514,7 +560,7 @@ async function verifyRuntime(options) {
   const interactionCounts = countByStatus(report.interactions);
   const stepCounts = countByStatus(report.steps);
   const warnings = [];
-  let status = report.status;
+  let status = normalizeStatus(report.status);
   let downgradeCode = null;
   if (status === STATUS.PASS && runOutcome.exitCode !== 0) {
     status = STATUS.BLOCKED;
@@ -529,11 +575,31 @@ async function verifyRuntime(options) {
     downgradeCode = CODES.INCONSISTENT;
     warnings.push('证据声称 PASS 但存在未通过页面');
   }
+  // P0：包装层自己再算一次总状态（页面 + 关键交互），不接受「页面通过就算通过」的证据。
+  const verdict = computeVerificationStatus({ ...report, status });
+  if (status === STATUS.PASS && verdict.status !== STATUS.PASS) {
+    status = verdict.status === STATUS.FAIL ? STATUS.FAIL : STATUS.BLOCKED;
+    downgradeCode = CODES.INCONSISTENT;
+    warnings.push('证据声称 PASS 但总判定为 ' + verdict.status + '：' + verdict.reason);
+  }
 
   artifacts.screenshots = collectScreenshots(report, shotsDir);
   details.pages = pageCounts;
   details.interactions = interactionCounts;
   details.steps = stepCounts;
+  details.criticalInteractions = verdict.critical;
+  details.verdict = {
+    status: verdict.status,
+    reason: sanitizeText(verdict.reason),
+    degraded: (verdict.degraded || []).slice(0, 8).map((item) => ({
+      label: truncate(item.label, 60),
+      status: item.status,
+    })),
+  };
+  details.identity = {
+    composer: identity.composer,
+    appidKind: identity.appidKind,
+  };
   details.reportBytes = read.bytes;
   if (report.blocked) details.blockedReason = sanitizeText(report.blocked);
   if (warnings.length > 0) details.warnings = warnings;
@@ -543,8 +609,10 @@ async function verifyRuntime(options) {
       : status === STATUS.NOT_RUN ? CODES.NOT_RUN : CODES.BLOCKED);
   const summary = '微信运行时 ' + status
     + '：页面 ' + pageCounts.PASS + '/' + pageCounts.total + ' 通过'
-    + '，交互 ' + (interactionCounts.PASS || 0) + '/' + interactionCounts.total + ' 通过'
+    + '，关键交互 ' + verdict.critical.passed + '/' + verdict.critical.total + ' 通过'
+    + '，交互合计 ' + (interactionCounts.PASS || 0) + '/' + interactionCounts.total + ' 通过'
     + '，截图 ' + artifacts.screenshots.length + ' 张'
+    + (status !== STATUS.PASS ? '；判定：' + sanitizeText(verdict.reason) : '')
     + (report.blocked ? '；阻塞：' + sanitizeText(report.blocked) : '');
 
   return finish(status, code, summary, {
@@ -560,7 +628,8 @@ async function verifyRuntime(options) {
     })),
     interactions: (Array.isArray(report.interactions) ? report.interactions : []).slice(0, 32).map((item) => ({
       label: truncate(item && item.label, 60),
-      status: item && item.status,
+      status: normalizeStatus(item && item.status),
+      critical: !(item && item.critical === false),
       detail: sanitizeText(item && item.detail),
       path: truncate(item && item.path, 40),
     })),

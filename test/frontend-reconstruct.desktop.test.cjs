@@ -551,7 +551,16 @@ test('采用门槛：静态通过但微信未跑必须单独确认；确认后�
 
 test('微信 CLI 不可用时 verify 如实 BLOCKED，绝不伪造 PASS', async (t) => {
   const userDataDir = tempUserData(t, 'verify');
-  const created = createFrontendReconstructIpc({ userDataDir });
+  // P0：CLI 解析现在与「预览」链路共用同一份搜索顺序（会扫安装目录），
+  // 所以这里显式指定一个不存在的 cliPath，避免测试依赖本机是否装了开发者工具。
+  const missingCli = path.join(userDataDir, 'missing-cli.bat');
+  const created = createFrontendReconstructIpc({
+    userDataDir,
+    reconstruct: {
+      ...reconstruct,
+      verifyRuntimeCandidate: (input) => reconstruct.verifyRuntimeCandidate({ ...input, cliPath: missingCli }),
+    },
+  });
   const event = trustedEvent();
   const built = await created.handlers['frontend:build-candidate'](event, {
     projectId: 'p_verify1234',

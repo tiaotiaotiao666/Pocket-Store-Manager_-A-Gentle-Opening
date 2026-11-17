@@ -48,6 +48,7 @@
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
+    "miniprogram-automator": "^0.13.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -57,7 +58,6 @@
     "concurrently": "^9.1.0",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8",
-    "miniprogram-automator": "^0.13.0",
     "vite": "^6.0.1",
     "wait-on": "^8.0.1"
   },
@@ -67,6 +67,7 @@
     "directories": {
       "output": "release"
     },
+    "asar": false,
     "files": [
       "desktop/**/*",
       "dist/**/*",
@@ -80,6 +81,7 @@
       "scripts/composer/**",
       "scripts/validate-miniprogram.cjs",
       "scripts/frontend-capabilities.cjs",
+      "scripts/wechat-devtools-run.cjs",
       "server/src/agent/frontend-reconstruct/capabilities.snapshot.json",
       "package.json"
     ],

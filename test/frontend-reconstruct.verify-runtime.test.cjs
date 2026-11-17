@@ -145,7 +145,8 @@ test('PASS：只信任脚本证据，返回截图清单与四态结论', async (
       pages: [{ route: '/pages/home/index', label: '首页', status: 'PASS', screenshot: screenshotFile }],
       interactions: [
         { label: '真实点击·首页选桌 →「开始点餐」进入菜单', status: 'PASS', detail: '进入 pages/menu/index', path: 'CLICK（真实点击）' },
-        { label: '锚点点击·购物车展开', status: 'BLOCKED', detail: '宿主不可定位', path: 'ANCHOR_CLICK' },
+        // P0：交互项用 critical 声明是否参与总状态；参考项的非 PASS 只进 degraded。
+        { label: '锚点点击·购物车展开', status: 'BLOCKED', detail: '宿主不可定位', path: 'ANCHOR_CLICK', critical: false },
       ],
     }));
     return { exitCode: 0 };

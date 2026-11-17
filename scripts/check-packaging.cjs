@@ -60,13 +60,68 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
+/**
+ * P0：安装版微信验证的运行依赖断言。
+ *
+ * 只有「脚本进包 + automator 进包」同时成立，安装版才可能给出真实 PASS/FAIL/BLOCKED；
+ * 任何一项缺失都必须在打包检查阶段失败，而不是等用户在安装版里点「验证」拿到 BLOCKED。
+ */
+function checkRuntimeDependencyContract(pkg) {
+  const errors = [];
+  const notes = [];
+  const dependencies = pkg.dependencies || {};
+  const devDependencies = pkg.devDependencies || {};
+
+  if (!dependencies['miniprogram-automator']) {
+    errors.push('miniprogram-automator 必须在 dependencies 里（devDependencies 不会进安装包）');
+  }
+  if (devDependencies['miniprogram-automator']) {
+    errors.push('miniprogram-automator 不能同时留在 devDependencies');
+  }
+  if (pkg.build && pkg.build.asar === true) {
+    errors.push('build.asar 不能为 true：固定脚本必须能被 electron.exe 以 Node 模式直接执行');
+  }
+
+  const moduleRoot = path.join(REPO_ROOT, 'node_modules', 'miniprogram-automator');
+  if (!fs.existsSync(moduleRoot)) {
+    errors.push('本机没有安装 miniprogram-automator（请先 npm install），无法保证打包完整性');
+  } else {
+    const manifest = readJson(path.join(moduleRoot, 'package.json'));
+    notes.push('miniprogram-automator@' + manifest.version);
+    for (const name of Object.keys(manifest.dependencies || {})) {
+      if (!fs.existsSync(path.join(REPO_ROOT, 'node_modules', name))) {
+        errors.push('miniprogram-automator 的运行依赖缺失：node_modules/' + name);
+      }
+    }
+  }
+
+  // 固定脚本自身依赖的仓库内模块也必须可打包（相对 require 不能落在 files 覆盖外）。
+  const runnerSource = path.join(REPO_ROOT, 'scripts', 'wechat-devtools-run.cjs');
+  if (!fs.existsSync(runnerSource)) {
+    errors.push('缺少固定验证脚本 scripts/wechat-devtools-run.cjs');
+  } else {
+    const source = fs.readFileSync(runnerSource, 'utf8');
+    for (const match of source.matchAll(/require\('(\.\.[^']+)'\)/g)) {
+      const resolved = path.resolve(path.dirname(runnerSource), match[1]);
+      const relative = path.relative(REPO_ROOT, resolved).replace(/\\/g, '/');
+      if (!fs.existsSync(resolved)) {
+        errors.push('固定脚本引用了不存在的模块：' + relative);
+      }
+    }
+  }
+  return { errors, notes };
+}
+
 function collectRequiredFiles() {
   const required = new Set([
     'package.json',
     'desktop/main.cjs',
     'desktop/preload.cjs',
     'desktop/composer-ipc.cjs',
+    'desktop/devtools-cli.cjs',
     'scripts/validate-miniprogram.cjs',
+    // P0：安装版要走同一条真实微信验证链，固定脚本必须随包分发。
+    'scripts/wechat-devtools-run.cjs',
     // P1：服务端只读能力快照必须随包分发（桌面 overlay/renderer 后续读取同一份事实）。
     'server/src/agent/frontend-reconstruct/capabilities.snapshot.json',
     'scripts/frontend-capabilities.cjs',
@@ -141,6 +196,8 @@ function main() {
   if (legacy) {
     errors.push('scripts/generate-mini-program.cjs 是已废弃脚本，不得进入安装包');
   }
+  const runtime = checkRuntimeDependencyContract(pkg);
+  runtime.errors.forEach((error) => errors.push(error));
 
   if (errors.length > 0) {
     errors.forEach((error) => console.log('  ✗ ' + error));
@@ -151,6 +208,8 @@ function main() {
 
   console.log('  ✓ 注册表、Base、Composer 运行时、前端能力快照、desktop 与 dist 均在 files 覆盖内');
   console.log('  ✓ 旧复制模板脚本未进入安装包');
+  console.log('  ✓ 微信验证运行依赖就位：scripts/wechat-devtools-run.cjs'
+    + (runtime.notes.length > 0 ? ' + ' + runtime.notes.join('、') : ''));
 }
 
 main();

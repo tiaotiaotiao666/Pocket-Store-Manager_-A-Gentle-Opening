@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "wechat-devtools-run.v1",
+  "generatedAt": "2026-11-17T11:35:49.395Z",
+  "projectRoot": "E:\\智能开店app\\.tmp\\p0-installed-project",
+  "cliPath": "E:\\微信web开发者工具\\cli.bat",
+  "status": "BLOCKED",
+  "steps": [
+    {
+      "id": "login",
+      "title": "开发者工具登录态",
+      "status": "BLOCKED",
+      "command": "E:\\微信web开发者工具\\cli.bat islogin",
+      "startedAt": "2026-11-17T11:35:49.397Z",
+      "finishedAt": "2026-11-17T11:35:49.719Z",
+      "durationMs": 322,
+      "exitCode": 0,
+      "stdout": "[error] Please ensure that the IDE has been properly installed",
+      "stderr": "- initialize\n\n(node:45432) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)\n× initialize error: Error: EPERM: operation not permitted, open 'C:\\Users\\leiji\\AppData\\Local\\微信开发者工具\\User Data\\ed8461ab1234904c2024e5e3db39a821\\Default\\.cli', Error: EPERM: operation not permitted, open 'C:\\Users\\leiji\\AppData\\Local\\微信开发者工具\\User Data\\ed8461ab1234904c2024e5e3db39a821\\Default\\.cli'\n    at Object.writeFileSync (node:fs:2426:20)\n    at E:\\微信web开发者工具\\resources\\app.asar.unpacked\\js\\common\\cli\\index.js:129:43084\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"
+    }
+  ],
+  "blocked": "开发者工具未登录（cli islogin 未返回 login:true）。",
+  "pages": [],
+  "interactions": [],
+  "identity": {
+    "composer": false,
+    "missing": [
+      "composition.lock.json",
+      "generation-report.json"
+    ],
+    "appidKind": "real",
+    "appidMasked": "wx3b****f6cfd0"
+  }
+}

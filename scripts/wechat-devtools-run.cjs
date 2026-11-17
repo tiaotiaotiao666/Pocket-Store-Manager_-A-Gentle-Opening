@@ -22,12 +22,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
-const CLI_CANDIDATES = [
-  process.env.WX_CLI_PATH,
-  'D:\\Downloads\\微信web开发者工具\\cli.bat',
-  'C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\cli.bat',
-  'C:\\Program Files\\Tencent\\微信web开发者工具\\cli.bat',
-].filter(Boolean);
+// P0：CLI 搜索顺序 / 工程身份检查 / 失败语义与「预览」链路共用同一实现，
+// 避免同一台机器上「预览能打开、验证说工具缺失」的分叉结论。
+const {
+  classifyCliFailure,
+  inspectDevtoolsTarget,
+  resolveDevtoolsCli,
+} = require('../desktop/devtools-cli.cjs');
+// P0：总状态由页面 + 交互共同决定，规则只写一份（见 verification-status.cjs）。
+const { computeVerificationStatus } = require('../desktop/frontend-reconstruct/verification-status.cjs');
 
 const ROUTES = [
   { route: '/pages/home/index', label: '首页' },
@@ -37,10 +40,7 @@ const ROUTES = [
 ];
 
 function resolveCli() {
-  for (const candidate of CLI_CANDIDATES) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return '';
+  return resolveDevtoolsCli() || '';
 }
 
 /**
@@ -91,23 +91,25 @@ function runCli(cliPath, args, timeoutMs = 180000) {
   });
 }
 
+/**
+ * 读取工程 app.json 的页面清单，作为「新包是否就绪」和路由探测的共同依据。
+ */
+function readProjectPages(projectRoot) {
+  try {
+    const appJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'app.json'), 'utf8'));
+    return Array.isArray(appJson.pages) ? appJson.pages.filter((item) => typeof item === 'string') : [];
+  } catch (error) {
+    return [];
+  }
+}
+
 function tail(text, limit = 1200) {
   const value = String(text || '');
   return value.length <= limit ? value : '…' + value.slice(-limit);
 }
 
 function detectBlockedReason(result) {
-  const output = (result.stdout || '') + '\n' + (result.stderr || '');
-  if (/APPID_ERROR|不存在此 AppID/.test(output)) {
-    return 'APPID_ERROR：导出工程使用 touristappid 占位，开发者工具拒绝打开；本机没有真实小程序 AppID，无法进入编译。';
-  }
-  if (/service port|服务端口/.test(output)) {
-    return 'SERVICE_PORT_DISABLED：开发者工具服务端口未开启，CLI 无法调用。';
-  }
-  if (/login/i.test(output) && /false/i.test(output)) {
-    return 'NOT_LOGGED_IN：开发者工具未登录。';
-  }
-  return '';
+  return classifyCliFailure(result);
 }
 
 async function main() {
@@ -140,6 +142,22 @@ async function main() {
     return;
   }
 
+  // P0：与预览链路共用同一份工程身份检查（路径 / Composer 产物 / AppID 分类）。
+  // 候选验证不强制真实 AppID（否则永远只能 BLOCKED），但身份事实要如实记录。
+  const identity = inspectDevtoolsTarget({ projectDir: projectRoot });
+  report.identity = {
+    composer: identity.composer,
+    missing: identity.missing,
+    appidKind: identity.appidKind,
+    appidMasked: identity.appidMasked,
+  };
+  if (!identity.ok) {
+    report.status = 'BLOCKED';
+    report.blocked = identity.message;
+    finish(report, jsonOut);
+    return;
+  }
+
   if (!report.cliPath) {
     report.status = 'BLOCKED';
     report.blocked = '本机未找到微信开发者工具 cli.bat（可用 WX_CLI_PATH 指定）。';
@@ -148,7 +166,9 @@ async function main() {
   }
 
   const login = await runCli(report.cliPath, ['islogin'], 90000);
-  const loggedIn = /"login"\s*:\s*true/.test(login.stdout);
+  // CLI 把 {"login":true} 写在 stdout 还是 stderr 取决于它是否需要先拉起 IDE server，
+  // 两个流都看；拿不到 login:true 一律 BLOCKED，不猜。
+  const loggedIn = /"login"\s*:\s*true/.test((login.stdout || '') + '\n' + (login.stderr || ''));
   report.steps.push({
     id: 'login',
     title: '开发者工具登录态',
@@ -212,26 +232,30 @@ async function main() {
     // getPageMetaByWebviewId(...) is null（devtools 2.02 + automator 0.13）。
     await sleep(3000);
     // 编译完成 ≠ 模拟器已在跑新包：DevTools 可能先返回旧 bundle 的页面数据。
-    // 这里用「首页 data 是否含本轮新增的 tablesLoading 字段」作为新包就绪信号，
-    // 等不到就重试 reLaunch，最多 10 次（每次 2s），仍失败则记 BLOCKED 让报告说清楚。
+    // P0：就绪信号改为「本工程 app.json 的首个页面能被 reLaunch 打开且 data 非空」，
+    // 不再绑定某个版本才有的字段（旧判定依赖 tablesLoading，对不含该字段的工程恒 BLOCKED）。
+    const projectPages = readProjectPages(projectRoot);
+    const homeRoute = '/' + (projectPages[0] || 'pages/home/index').replace(/^\/+/, '');
     let bundleReady = false;
     let bundleObservation = '';
     for (let probe = 0; probe < 10; probe += 1) {
       try {
-        const page = await miniProgram.reLaunch('/pages/home/index');
+        const page = await miniProgram.reLaunch(homeRoute);
         await sleep(2000);
         const data = await page.data();
-        if (Object.prototype.hasOwnProperty.call(data, 'tablesLoading')) {
+        const keyCount = data && typeof data === 'object' ? Object.keys(data).length : 0;
+        if (keyCount > 0) {
           bundleReady = true;
-          bundleObservation = '第 ' + (probe + 1) + ' 次 reLaunch 后识别到新包（存在 tablesLoading 字段）';
+          bundleObservation = '第 ' + (probe + 1) + ' 次 reLaunch(' + homeRoute + ') 后首页 data 有 ' + keyCount + ' 个字段';
           break;
         }
-        bundleObservation = '第 ' + (probe + 1) + ' 次 reLaunch 仍是旧包（data 键数=' + Object.keys(data || {}).length + '）';
+        bundleObservation = '第 ' + (probe + 1) + ' 次 reLaunch(' + homeRoute + ') 后首页 data 为空';
       } catch (error) {
         bundleObservation = '第 ' + (probe + 1) + ' 次 reLaunch 失败：' + error.message;
         await sleep(2000);
       }
     }
+    report.projectPages = projectPages;
     report.bundle = { ready: bundleReady, observation: bundleObservation };
     if (!bundleReady) {
       report.status = 'BLOCKED';
@@ -301,8 +325,19 @@ async function main() {
     for (const result of await probeComponentAnchors(miniProgram)) {
       report.interactions.push(result);
     }
-    const failed = report.pages.filter((page) => page.status !== 'PASS');
-    report.status = failed.length === 0 ? 'PASS' : 'FAIL';
+    // P0：总状态由「页面 + 关键交互」共同决定——关键下单动作失败不能 PASS，
+    // 关键交互拿不到结论（BLOCKED / NOT_RUN）也不能 PASS。参考项的非 PASS 结果
+    // 记入 degraded 如实展示，但不定级。
+    const verdict = computeVerificationStatus(report);
+    report.status = verdict.status;
+    report.verdict = {
+      status: verdict.status,
+      reason: verdict.reason,
+      pages: verdict.pages,
+      interactions: verdict.interactions,
+      critical: verdict.critical,
+      degraded: verdict.degraded,
+    };
   } catch (error) {
     report.status = 'BLOCKED';
     report.blocked = '自动化连接失败：' + (error && error.message ? error.message : String(error));
@@ -832,12 +867,31 @@ async function callPageHandler(miniProgram, handler, payload) {
   return result;
 }
 
+/**
+ * 记录一条交互结论。
+ *
+ * 关键项（决定总状态）：加购、首页选桌→菜单、菜单选桌、结算提交下单。
+ * 参考项：组件锚点补验（automator 无法穿透自定义组件）、页面处理器直调的分类切换/购物车展开
+ * （关键链路的等价断言已由点击链覆盖）、桌号数据源一致性、演示模拟支付（依赖订单状态）。
+ * 参考项 FAIL 仍然让总状态 FAIL，只是 BLOCKED/NOT_RUN 不把候选打成阻塞。
+ */
+const ADVISORY_INTERACTIONS = new Set([
+  '锚点点击·分类切换（#menu-category-nav）',
+  '锚点点击·菜品加购（#menu-product-*）',
+  '锚点点击·购物车展开（#menu-cart-bar）',
+  '分类切换（页面处理器直调 + 状态断言）',
+  '购物车展开（页面处理器直调 + 状态断言）',
+  '桌号数据源·首页/菜单/结算均来自后端 /stores/:id/tables',
+  '真实点击·订单详情「演示模拟支付」',
+]);
+
 async function attempt(label, fn) {
+  const critical = !ADVISORY_INTERACTIONS.has(label);
   try {
     const result = await fn();
-    return { label, ...result };
+    return { label, critical, ...result };
   } catch (error) {
-    return { label, status: 'FAIL', detail: error && error.message ? error.message : String(error) };
+    return { label, critical, status: 'FAIL', detail: error && error.message ? error.message : String(error) };
   }
 }
 
@@ -853,9 +907,17 @@ function finish(report, jsonOut) {
     lines.push('  [' + page.status + '] ' + page.label + ' ' + page.route + (page.screenshot ? ' → ' + page.screenshot : ''));
   }
   for (const item of report.interactions || []) {
-    lines.push('  [' + item.status + '] 交互·' + item.label + '：' + item.detail);
+    lines.push('  [' + item.status + '] 交互' + (item.critical === false ? '（参考）' : '') + '·' + item.label + '：' + item.detail);
   }
   if (report.blocked) lines.push('  阻塞原因：' + report.blocked);
+  if (report.verdict) {
+    lines.push('  判定：页面 ' + report.verdict.pages.PASS + '/' + report.verdict.pages.total
+      + ' 通过 · 关键交互 ' + report.verdict.critical.passed + '/' + report.verdict.critical.total
+      + ' 通过 · ' + report.verdict.reason);
+    for (const item of report.verdict.degraded || []) {
+      lines.push('  [参考项未通过] ' + item.label + '：' + item.status);
+    }
+  }
   lines.push('  结论：' + report.status);
   console.log(lines.join('\n'));
   if (jsonOut) {
@@ -873,4 +935,11 @@ if (require.main === module) {
   });
 }
 
-module.exports = { runCli, detectBlockedReason, resolveCli };
+module.exports = {
+  ADVISORY_INTERACTIONS,
+  attempt,
+  computeVerificationStatus,
+  detectBlockedReason,
+  resolveCli,
+  runCli,
+};

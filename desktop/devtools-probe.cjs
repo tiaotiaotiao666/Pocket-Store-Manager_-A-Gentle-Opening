@@ -18,6 +18,58 @@ const UNINSTALL_KEYS = [
 ];
 
 const EXECUTABLES = ['wechatdevtools.exe', 'cli.bat'];
+const PROCESSS_NAMES = ['微信开发者工具', 'wechatdevtools'];
+
+/**
+ * 只读判断开发者工具是否已经启动（Windows 进程列表）。
+ * 不执行工具、不发命令；tasklist 只用于读取进程名。
+ */
+function isDevtoolsRunning() {
+  return new Promise((resolve) => {
+    execFile('tasklist.exe', ['/FO', 'CSV', '/NH'], {
+      timeout: 2500,
+      windowsHide: true,
+      maxBuffer: 2 * 1024 * 1024,
+    }, (error, stdout) => {
+      if (error) {
+        resolve(false);
+        return;
+      }
+      const text = String(stdout || '').toLowerCase();
+      resolve(PROCESSS_NAMES.some((name) => text.includes(name.toLowerCase())));
+    });
+  });
+}
+
+/**
+ * 只读读取开发者工具窗口标题。
+ * 用窗口标题判断“是否已经打开了小程序工程/页面”，而不是只看进程是否存在。
+ */
+function getDevtoolsWindowTitle() {
+  return new Promise((resolve) => {
+    const script = "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-Process | Where-Object { $_.ProcessName -like '*微信*' -and $_.MainWindowTitle } | Select-Object -First 1 -ExpandProperty MainWindowTitle";
+    execFile('powershell.exe', ['-NoProfile', '-Command', script], {
+      timeout: 2500,
+      windowsHide: true,
+      maxBuffer: 64 * 1024,
+      encoding: 'utf8',
+    }, (error, stdout) => {
+      if (error) {
+        resolve('');
+        return;
+      }
+      resolve(String(stdout || '').trim());
+    });
+  });
+}
+
+async function readDevtoolsWindowState() {
+  const windowTitle = await getDevtoolsWindowTitle();
+  const running = Boolean(windowTitle) || await isDevtoolsRunning();
+  const projectOpen = Boolean(windowTitle)
+    && (/-预览-/.test(windowTitle) || /miniprogram/i.test(windowTitle));
+  return { running, projectOpen, windowTitle };
+}
 
 function runRegQuery(key) {
   return new Promise((resolve) => {
@@ -65,17 +117,38 @@ async function probeDevtools() {
   for (const key of UNINSTALL_KEYS) {
     const installLocation = await runRegQuery(key);
     if (installLocation && hasExecutable(installLocation)) {
-      return { found: true, path: installLocation, version: null, via: 'registry' };
+      const windowState = await readDevtoolsWindowState();
+      return {
+        found: true,
+        path: installLocation,
+        version: null,
+        via: 'registry',
+        ...windowState,
+      };
     }
   }
 
   for (const candidate of defaultCandidates()) {
     if (hasExecutable(candidate)) {
-      return { found: true, path: candidate, version: null, via: 'default-path' };
+      const windowState = await readDevtoolsWindowState();
+      return {
+        found: true,
+        path: candidate,
+        version: null,
+        via: 'default-path',
+        ...windowState,
+      };
     }
   }
 
-  return { found: false, path: null, version: null, via: 'none' };
+  return { found: false, path: null, version: null, via: 'none', running: false, projectOpen: false, windowTitle: '' };
 }
 
-module.exports = { probeDevtools, hasExecutable, defaultCandidates };
+module.exports = {
+  probeDevtools,
+  hasExecutable,
+  defaultCandidates,
+  isDevtoolsRunning,
+  getDevtoolsWindowTitle,
+  readDevtoolsWindowState,
+};

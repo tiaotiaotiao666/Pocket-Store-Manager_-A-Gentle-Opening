@@ -18,20 +18,28 @@ export const FLOW_STAGES = Object.freeze([
     backLabel: null,
   }),
   Object.freeze({
-    key: 'template',
-    label: '模板 / 参考截图',
-    hint: '挑骨架，或用一张截图生成候选模板',
-    entryPhase: PHASES.TEMPLATE_PICK,
+    key: 'capabilities',
+    label: '能力与定制',
+    hint: '基础/扩展能力，定制可跳过',
+    entryPhase: PHASES.FEATURES,
     backPhase: PHASES.STORE_INFO,
     backLabel: '返回修改门店资料',
   }),
   Object.freeze({
+    key: 'template',
+    label: '页面骨架',
+    hint: '生成并挑选页面骨架',
+    entryPhase: PHASES.TEMPLATE_PICK,
+    backPhase: PHASES.FEATURES,
+    backLabel: '返回调整能力',
+  }),
+  Object.freeze({
     key: 'material',
-    label: '素材',
-    hint: '提示词与门店图片',
+    label: '装修与视觉',
+    hint: '风格、提示词与效果图',
     entryPhase: PHASES.PROMPT_STUDIO,
     backPhase: PHASES.TEMPLATE_PICK,
-    backLabel: '返回换模板',
+    backLabel: '返回换骨架',
   }),
   Object.freeze({
     key: 'export',
@@ -45,16 +53,15 @@ export const FLOW_STAGES = Object.freeze([
 
 export const FLOW_STAGE_KEYS = Object.freeze(FLOW_STAGES.map((stage) => stage.key));
 
-/** 阶段 → 相位。一个阶段可以覆盖多个相位（例如门店资料包含开场与能力勾选）。 */
+/** 阶段 → 相位。一个阶段可以覆盖多个相位（例如能力阶段包含生成中的过渡相位）。 */
 const STAGE_PHASES = Object.freeze({
   store: Object.freeze([
     PHASES.HOME,
     PHASES.ONBOARDING,
-    PHASES.FEATURES,
-    PHASES.BUILDING,
     PHASES.STORE_INFO,
   ]),
-  template: Object.freeze([PHASES.TEMPLATE_PICK]),
+  capabilities: Object.freeze([PHASES.FEATURES]),
+  template: Object.freeze([PHASES.BUILDING, PHASES.TEMPLATE_PICK]),
   material: Object.freeze([PHASES.PROMPT_STUDIO, PHASES.IMAGE_REVIEW]),
   export: Object.freeze([PHASES.DEPLOY]),
 });

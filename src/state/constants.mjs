@@ -40,7 +40,7 @@ export const COMPOSER_PLACEHOLDER = Object.freeze({
 export const COMPOSER_SUBMIT_LABEL = Object.freeze({
   [PHASES.ONBOARDING]: '命名并开始',
   [PHASES.STORE_INFO]: '整理资料',
-  [PHASES.FEATURES]: '加入定制能力',
+  [PHASES.FEATURES]: '确认当前选择，继续',
   [PHASES.PROMPT_STUDIO]: '确认这版提示词',
   [PHASES.IMAGE_REVIEW]: '确认这版效果',
 });

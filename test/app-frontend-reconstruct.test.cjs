@@ -830,9 +830,11 @@ test('P4 ScreenReferencePanel 保留旧链路并承载新面板；新控件名�
     .forEach((name) => {
       assert.match(compat, new RegExp(name), '旧面板仍必须保留 ' + name);
     });
-  assert.match(compat, /\{frontendPanel\}/);
+  assert.match(compat, /cloneElement\(frontendPanel, \{ uploadSlot \}\)/);
+  assert.match(compat, /\{candidatePanel\}/);
+  assert.match(compat, /id="screen-ref-upload-button"/);
   assert.match(compat, /id="screen-ref-panel"/);
-  assert.match(compat, /aria-label="参考截图生成候选模板"/);
+  assert.match(compat, /aria-label="参考小程序截图"/);
 
   const panel = read(PANEL_PATH);
   const ids = [...panel.matchAll(/id="([^"]+)"/g)].map((match) => match[1]);
@@ -840,7 +842,7 @@ test('P4 ScreenReferencePanel 保留旧链路并承载新面板；新控件名�
   assert.equal(new Set(ids).size, ids.length, 'id 不能重复：' + ids.join(','));
   const labels = [...panel.matchAll(/aria-label="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(labels).size, labels.length, 'aria-label 不能重复：' + labels.join(','));
-  ['生成候选前端', '构建候选工程', '验证候选工程（微信）', '复核候选前端（只读）', '采用候选前端', '放弃此候选前端', '取消候选前端任务'].forEach((name) => {
+  ['识别并生成候选方案', '构建候选工程', '验证候选工程（微信）', '复核候选前端（只读）', '采用候选前端', '放弃此候选前端', '取消候选前端任务'].forEach((name) => {
     assert.ok(panel.includes(name), '缺少可读控件名：' + name);
   });
   assert.match(panel, /aria-label="我已知悉微信验证未完成，仍要采用候选前端"/);
@@ -858,9 +860,12 @@ test('P4 ScreenReferencePanel 保留旧链路并承载新面板；新控件名�
 test('P4 agent:smoke 增加候选前端主链 UIA 断言（不伪造通过）', () => {
   const source = read(SMOKE_PATH);
   assert.match(source, /FRONTEND_PANEL_TEXTS/);
-  assert.match(source, /'生成候选前端'/);
-  assert.match(source, /'构建候选工程'/);
-  assert.match(source, /'候选前端需求说明'/);
+  assert.match(source, /'门店基本资料'/);
+  assert.match(source, /'菜品资料与菜单图片'/);
+  assert.match(source, /'门店环境图片'/);
+  assert.match(source, /'参考小程序截图'/);
+  assert.match(source, /'识别并生成候选方案'/);
+  assert.match(source, /'补充要求'/);
   assert.match(source, /'目标页面：首页'/);
   assert.match(source, /function assertFrontendPanel/);
   assert.match(source, /NOT_VISIBLE/);

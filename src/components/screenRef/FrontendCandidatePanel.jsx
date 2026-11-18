@@ -49,6 +49,7 @@ export default function FrontendCandidatePanel({
   imageReady = false,
   localError = null,
   desktopMode = false,
+  uploadSlot = null,
   onUtteranceChange,
   onTargetPagesChange,
   onAnalyze,
@@ -92,11 +93,11 @@ export default function FrontendCandidatePanel({
     <section
       className={`frontend-candidate is-${safe.tone || 'idle'}`}
       role="region"
-      aria-label="生成候选前端"
+      aria-label="参考截图候选方案"
       id="frontend-reconstruct-panel"
     >
       <header className="frontend-candidate-head">
-        <h4 className="frontend-candidate-title">生成候选前端</h4>
+        <h4 className="frontend-candidate-title">候选前端方案</h4>
         <p className="frontend-candidate-status" role="note">
           {safe.title || '还没生成候选前端'}：{safe.body || ''}
         </p>
@@ -110,6 +111,8 @@ export default function FrontendCandidatePanel({
           </p>
         )}
       </header>
+
+      {uploadSlot}
 
       {localError ? <p className="screen-ref-error" role="alert">{localError}</p> : null}
       {safe.error ? (
@@ -130,14 +133,15 @@ export default function FrontendCandidatePanel({
 
       <div className="frontend-candidate-input">
         <label className="frontend-candidate-label" htmlFor="frontend-reconstruct-utterance">
-          候选前端需求说明（可只发图）
+          补充要求（可选，500 字以内）
         </label>
         <textarea
           id="frontend-reconstruct-utterance"
           className="frontend-candidate-textarea"
-          aria-label="候选前端需求说明输入框"
-          rows={2}
+          aria-label="补充要求输入框"
+          rows={3}
           maxLength={500}
+          placeholder="例如：保留顶部搜索和双列菜品卡片，整体更清爽一些。也可以只上传截图。"
           value={request.utterance || ''}
           disabled={safe.busy}
           onChange={(event) => {
@@ -145,7 +149,7 @@ export default function FrontendCandidatePanel({
           }}
         />
         <fieldset className="frontend-candidate-pages" aria-label="目标页面">
-          <legend>目标页面（首期支持首页与菜单页）</legend>
+          <legend>目标页（首页或菜单页）</legend>
           {(request.targetPageOptions || []).map((option) => (
             <label key={`frontend-target-${option.id}`} className="frontend-candidate-check">
               <input
@@ -160,8 +164,18 @@ export default function FrontendCandidatePanel({
             </label>
           ))}
         </fieldset>
+        {analysis?.status === 'needs-input' && analysis.questions.length ? (
+          <div className="frontend-candidate-needs-input" role="alert">
+            <strong>请补充以下信息后重试：</strong>
+            <ul aria-label="补充要求待确认问题">
+              {analysis.questions.map((question, index) => (
+                <li key={`frontend-input-question-${index}`}>{question.label ? `${question.label}：` : ''}{question.text}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {imageReady ? null : (
-          <p className="screen-ref-note">先在下方「参考截图」区上传一张截图，再生成候选前端。</p>
+          <p className="screen-ref-note">请先上传一张参考截图，再识别并生成候选方案。</p>
         )}
       </div>
 
@@ -173,35 +187,41 @@ export default function FrontendCandidatePanel({
           disabled={!safe.canAnalyze}
           onClick={onAnalyze}
         >
-          生成候选前端
+          {safe.status === 'analyzing' ? '正在识别并生成…' : '识别并生成候选方案'}
         </button>
-        <button
-          type="button"
-          id="frontend-build-button"
-          className="btn btn-primary"
-          disabled={!safe.canBuild}
-          onClick={onBuild}
-        >
-          构建候选工程
-        </button>
-        <button
-          type="button"
-          id="frontend-verify-button"
-          className="btn btn-ghost"
-          disabled={!safe.canVerify}
-          onClick={onVerify}
-        >
-          验证候选工程（微信）
-        </button>
-        <button
-          type="button"
-          id="frontend-validate-button"
-          className="btn btn-ghost"
-          disabled={!safe.canValidate}
-          onClick={onValidate}
-        >
-          复核候选前端（只读）
-        </button>
+        {analysis?.status === 'planned' ? (
+          <button
+            type="button"
+            id="frontend-build-button"
+            className="btn btn-primary"
+            disabled={!safe.canBuild}
+            onClick={onBuild}
+          >
+            构建候选工程
+          </button>
+        ) : null}
+        {candidate ? (
+          <>
+            <button
+              type="button"
+              id="frontend-verify-button"
+              className="btn btn-ghost"
+              disabled={!safe.canVerify}
+              onClick={onVerify}
+            >
+              验证候选工程（微信）
+            </button>
+            <button
+              type="button"
+              id="frontend-validate-button"
+              className="btn btn-ghost"
+              disabled={!safe.canValidate}
+              onClick={onValidate}
+            >
+              复核候选前端（只读）
+            </button>
+          </>
+        ) : null}
         {safe.canCancel ? (
           <button type="button" id="frontend-cancel-button" className="btn btn-ghost" onClick={onCancel}>
             取消候选前端任务
@@ -292,7 +312,7 @@ export default function FrontendCandidatePanel({
               emptyText="没有额外风险。"
             />
           ) : null}
-          {analysis.questions.length ? (
+          {analysis.status !== 'needs-input' && analysis.questions.length ? (
             <div className="frontend-candidate-group">
               <h5>需要你补充（{analysis.questions.length}）</h5>
               <ul aria-label="候选前端待确认问题">

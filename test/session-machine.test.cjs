@@ -60,12 +60,12 @@ test('SUBMIT_NAME rejects blank names and accepts a valid store name', async () 
   assert.ok(named.sessions[0].messages.some((message) => message.text.includes('轻启')));
 });
 
-test('SKIP_INTRO and ENTER_FEATURES both land on the features phase', async () => {
+test('SKIP_INTRO lands on store info and ENTER_FEATURES lands on features', async () => {
   const { machine, state } = await seeded();
   const { PHASES } = await loadConstants();
   const skipped = machine.reducer(state, { type: 'SKIP_INTRO' });
-  assert.equal(skipped.phase, PHASES.FEATURES);
-  const entered = machine.reducer(state, { type: 'ENTER_FEATURES' });
+  assert.equal(skipped.phase, PHASES.STORE_INFO);
+  const entered = machine.reducer(skipped, { type: 'ENTER_FEATURES' });
   assert.equal(entered.phase, PHASES.FEATURES);
 });
 
@@ -80,12 +80,12 @@ test('SKIP_INTRO flushes queued reveals while keeping every message', async () =
   const skipped = machine.reducer(state, { type: 'SKIP_INTRO' });
   const flushed = skipped.sessions.find((item) => item.id === skipped.activeSessionId);
   assert.equal(flushed.revealFlush, 1);
-  assert.equal(flushed.messages.length, queued + 1);
-  assert.ok(flushed.messages.some((message) => message.meta?.kind === 'feature-intro'));
+  assert.equal(flushed.messages.length, queued);
   assert.ok(flushed.messages.some((message) => message.text.includes('轻启')));
 
-  const entered = machine.reducer(state, { type: 'ENTER_FEATURES' });
-  assert.equal(entered.sessions.find((item) => item.id === entered.activeSessionId).revealFlush, 0);
+  const entered = machine.reducer(skipped, { type: 'ENTER_FEATURES' });
+  assert.ok(entered.sessions.find((item) => item.id === entered.activeSessionId).messages.some((message) => message.meta?.kind === 'feature-intro'));
+  assert.equal(entered.sessions.find((item) => item.id === entered.activeSessionId).revealFlush, 1);
 });
 
 test('TOGGLE_FEATURE keeps required features locked and toggles optional ones', async () => {
@@ -126,7 +126,7 @@ test('BUILD_READY selects the first candidate and moves to template picking', as
   assert.equal(picked.build.selectedId, 'warm-bistro');
 });
 
-test('CONFIRM_TEMPLATE opens a new step session with a system handoff', async () => {
+test('CONFIRM_TEMPLATE opens a visual step session with a system handoff', async () => {
   const { machine, state } = await seeded();
   const { PHASES } = await loadConstants();
   const building = machine.reducer(state, { type: 'SUBMIT_CUSTOMIZE', value: '' });
@@ -134,40 +134,43 @@ test('CONFIRM_TEMPLATE opens a new step session with a system handoff', async ()
     type: 'BUILD_READY',
     candidates: [{ id: 'warm-bistro', name: '街巷食集', score: 88 }],
   });
-  const storeInfo = machine.reducer(picked, { type: 'CONFIRM_TEMPLATE' });
+  const visual = machine.reducer(picked, { type: 'CONFIRM_TEMPLATE' });
 
-  assert.equal(storeInfo.phase, PHASES.STORE_INFO);
-  assert.equal(storeInfo.sessions.length, picked.sessions.length + 1);
-  const active = storeInfo.sessions.find((session) => session.id === storeInfo.activeSessionId);
-  assert.equal(active.title, '店铺装修');
+  assert.equal(visual.phase, PHASES.PROMPT_STUDIO);
+  assert.equal(visual.sessions.length, picked.sessions.length + 1);
+  const active = visual.sessions.find((session) => session.id === visual.activeSessionId);
+  assert.equal(active.title, '视觉生成');
   assert.equal(active.kind, 'step');
   assert.equal(active.messages[0].role, 'system');
   assert.ok(active.messages[0].text.includes('会话交接'));
   assert.equal(active.messages[0].meta.kind, 'handoff');
   assert.deepEqual(active.messages[0].meta.fields, [
     { label: '店铺名', value: '松月食堂' },
-    { label: '页面风格', value: '街巷食集', note: '已确认的页面骨架' },
+    { label: '装修风格', value: '温暖家常', note: '暖木色与柔光，适合社区餐馆' },
   ]);
-  const previous = storeInfo.sessions.find((session) => session.id === 'session-main');
+  const previous = visual.sessions.find((session) => session.id === 'session-main');
   assert.equal(previous.status, 'done');
 });
 
-test('SUBMIT_STORE_INFO enters prompt studio and keeps the chosen style', async () => {
+test('SUBMIT_STORE_INFO enters features and CONFIRM_TEMPLATE opens visual studio', async () => {
   const { machine, state } = await seeded();
   const { PHASES } = await loadConstants();
-  let next = machine.reducer(state, { type: 'SUBMIT_CUSTOMIZE', value: '' });
+  let next = machine.reducer(state, {
+    type: 'SUBMIT_STORE_INFO',
+    summary: '店铺：松月食堂 · 社区餐馆',
+    styleId: 'fresh',
+  });
+  assert.equal(next.phase, PHASES.FEATURES);
+  assert.equal(next.visual.styleId, 'fresh');
+
+  next = machine.reducer(next, { type: 'SUBMIT_CUSTOMIZE', value: '' });
   next = machine.reducer(next, {
     type: 'BUILD_READY',
     candidates: [{ id: 'warm-bistro', name: '街巷食集', score: 88 }],
   });
   next = machine.reducer(next, { type: 'CONFIRM_TEMPLATE' });
-  next = machine.reducer(next, {
-    type: 'SUBMIT_STORE_INFO',
-    summary: '店铺：松月食堂 · 社区餐馆',
-    styleId: 'fresh',
-  });
+
   assert.equal(next.phase, PHASES.PROMPT_STUDIO);
-  assert.equal(next.visual.styleId, 'fresh');
   const visualSession = next.sessions.find((session) => session.id === 'session-visual');
   assert.deepEqual(visualSession.messages[0].meta.fields, [
     { label: '店铺名', value: '松月食堂' },
@@ -178,13 +181,13 @@ test('SUBMIT_STORE_INFO enters prompt studio and keeps the chosen style', async 
 test('CONFIRM_PROMPT switches phase but keeps the same session for image review', async () => {
   const { machine, state } = await seeded();
   const { PHASES } = await loadConstants();
-  let next = machine.reducer(state, { type: 'SUBMIT_CUSTOMIZE', value: '' });
+  let next = machine.reducer(state, { type: 'SUBMIT_STORE_INFO', summary: '店铺资料', styleId: 'warm' });
+  next = machine.reducer(next, { type: 'SUBMIT_CUSTOMIZE', value: '' });
   next = machine.reducer(next, {
     type: 'BUILD_READY',
     candidates: [{ id: 'warm-bistro', name: '街巷食集', score: 88 }],
   });
   next = machine.reducer(next, { type: 'CONFIRM_TEMPLATE' });
-  next = machine.reducer(next, { type: 'SUBMIT_STORE_INFO', summary: '店铺资料', styleId: 'warm' });
   const sessionBefore = next.activeSessionId;
   const review = machine.reducer(next, { type: 'CONFIRM_PROMPT' });
   assert.equal(review.phase, PHASES.IMAGE_REVIEW);
@@ -304,21 +307,21 @@ test('onboarding script exposes the expected fixed copy', async () => {
   assert.equal(script.SKIP_HINT.action, '跳过');
   assert.equal(script.DEPLOY_STEPS.length, 4);
 });
-test('SUBMIT_STORE_INFO opens a dedicated visual generation session', async () => {
+test('CONFIRM_TEMPLATE opens a dedicated visual generation session', async () => {
   const { machine, state } = await seeded();
   const { PHASES } = await loadConstants();
-  let next = machine.reducer(state, { type: 'SUBMIT_CUSTOMIZE', value: '' });
-  next = machine.reducer(next, {
-    type: 'BUILD_READY',
-    candidates: [{ id: 'warm-bistro', name: '街巷食集', score: 88 }],
-  });
-  next = machine.reducer(next, { type: 'CONFIRM_TEMPLATE' });
-  const before = next.sessions.length;
-  const visual = machine.reducer(next, {
+  let next = machine.reducer(state, {
     type: 'SUBMIT_STORE_INFO',
     summary: '店铺：松月食堂 · 社区餐馆',
     styleId: 'fresh',
   });
+  next = machine.reducer(next, { type: 'SUBMIT_CUSTOMIZE', value: '' });
+  next = machine.reducer(next, {
+    type: 'BUILD_READY',
+    candidates: [{ id: 'warm-bistro', name: '街巷食集', score: 88 }],
+  });
+  const before = next.sessions.length;
+  const visual = machine.reducer(next, { type: 'CONFIRM_TEMPLATE' });
 
   assert.equal(visual.phase, PHASES.PROMPT_STUDIO);
   assert.equal(visual.sessions.length, before + 1);
@@ -327,20 +330,18 @@ test('SUBMIT_STORE_INFO opens a dedicated visual generation session', async () =
   assert.equal(active.title, '视觉生成');
   assert.equal(active.messages[0].role, 'system');
   assert.ok(active.messages[0].text.includes('会话交接'));
-  const storeSession = visual.sessions.find((session) => session.id === 'session-store');
-  assert.equal(storeSession.status, 'done');
   assert.equal(visual.visual.styleId, 'fresh');
 });
 
 test('prompt studio and image review share the visual generation session', async () => {
   const { machine, state } = await seeded();
-  let next = machine.reducer(state, { type: 'SUBMIT_CUSTOMIZE', value: '' });
+  let next = machine.reducer(state, { type: 'SUBMIT_STORE_INFO', summary: '店铺资料', styleId: 'warm' });
+  next = machine.reducer(next, { type: 'SUBMIT_CUSTOMIZE', value: '' });
   next = machine.reducer(next, {
     type: 'BUILD_READY',
     candidates: [{ id: 'warm-bistro', name: '街巷食集', score: 88 }],
   });
   next = machine.reducer(next, { type: 'CONFIRM_TEMPLATE' });
-  next = machine.reducer(next, { type: 'SUBMIT_STORE_INFO', summary: '店铺资料', styleId: 'warm' });
   const visualSession = next.activeSessionId;
   assert.equal(visualSession, 'session-visual');
   const review = machine.reducer(next, { type: 'CONFIRM_PROMPT' });
@@ -486,6 +487,36 @@ test('ADD_PROJECT_IMAGES 合并去重、限制 6 张，空输入不改变状态'
   assert.strictEqual(many.assets.images.length, 6);
   assert.deepStrictEqual(many.assets.images.map((item) => item.assetId), ['a_1', 'a_2', 'a_3', 'a_4', 'a_5', 'a_6']);
   assert.deepStrictEqual(base.assets.images, []);
+
+  const removed = machine.reducer(dedup, { type: 'REMOVE_PROJECT_IMAGE', assetId: 'a_2' });
+  assert.deepStrictEqual(removed.assets.images.map((item) => item.assetId), ['a_1', 'a_3']);
+  assert.strictEqual(machine.reducer(removed, { type: 'REMOVE_PROJECT_IMAGE', assetId: 'missing' }), removed);
+});
+
+test('参考截图回读只补全同一个 assetId，保留历史状态且不换图', async () => {
+  const machine = await loadMachine();
+  const base = machine.createInitialState();
+  const selected = machine.reducer(base, {
+    type: 'SCREEN_REF_IMAGE_SET',
+    image: { assetId: 'a_ref', name: 'ref.png', mediaType: 'image/png', bytes: 2, dataBase64: 'AA==' },
+  });
+  const historical = {
+    ...selected,
+    screenRef: { ...selected.screenRef, status: 'ready', confirmedAt: '2026-01-01T00:00:00.000Z' },
+  };
+  const hydrated = machine.reducer(historical, {
+    type: 'SCREEN_REF_IMAGE_HYDRATE',
+    image: { assetId: 'a_ref', dataBase64: 'BBBB', previewUrl: 'data:image/jpeg;base64,BBBB', bytes: 3 },
+  });
+  assert.equal(hydrated.screenRef.image.dataBase64, 'BBBB');
+  assert.equal(hydrated.screenRef.image.assetId, 'a_ref');
+  assert.equal(hydrated.screenRef.imageRevision, selected.screenRef.imageRevision);
+  assert.equal(hydrated.screenRef.status, 'ready');
+  assert.equal(hydrated.screenRef.confirmedAt, historical.screenRef.confirmedAt);
+  assert.strictEqual(machine.reducer(hydrated, {
+    type: 'SCREEN_REF_IMAGE_HYDRATE',
+    image: { assetId: 'other', dataBase64: 'CCCC' },
+  }), hydrated);
 });
 
 test('新建项目与删除当前项目不会丢失已加载的设置', async () => {

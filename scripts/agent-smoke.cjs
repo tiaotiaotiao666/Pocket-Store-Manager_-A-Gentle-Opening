@@ -27,7 +27,18 @@ const {
 const WORKBENCH_TEXTS = ['我的项目', '新建项目：创建空白门店项目', '搜索项目'];
 const SETTINGS_TEXTS = ['运行环境与自检', '返回项目', '重新自检', '保存设置'];
 // P4：候选前端主链只在「开店资料」阶段出现；控件必须有唯一可读名称（UIA name）。
-const FRONTEND_PANEL_TEXTS = ['生成候选前端', '构建候选工程', '候选前端需求说明', '目标页面：首页'];
+const FRONTEND_PANEL_TEXTS = [
+  '门店基本资料',
+  '菜品资料与菜单图片',
+  '门店环境图片',
+  '参考小程序截图',
+  '识别菜品并回写',
+  '添加环境图片',
+  '上传截图',
+  '识别并生成候选方案',
+  '补充要求',
+  '目标页面：首页',
+];
 const TIMING = [];
 
 function parseArgs(argv) {
@@ -80,16 +91,32 @@ function sleep(ms) {
   }
 }
 
+function waitForWorkbench(windowId, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  let last = snapshot({ windowId });
+  let navigated = false;
+  while (Date.now() < deadline) {
+    if (hasText(last, '搜索项目')) return last;
+    if (!navigated && hasText(last, '我的项目：打开工作台')) {
+      clickByQuery(windowId, '我的项目：打开工作台');
+      navigated = true;
+    }
+    sleep(400);
+    last = snapshot({ windowId });
+  }
+  return last;
+}
+
 /** 轮询到面板出现；超时返回 null（不抛错，方便如实标 NOT_VISIBLE）。 */
 function waitForFrontendPanel(windowId, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   let last = snapshot({ windowId });
   while (Date.now() < deadline) {
-    if (hasText(last, '生成候选前端')) return last;
+    if (hasText(last, '识别并生成候选方案')) return last;
     sleep(400);
     last = snapshot({ windowId });
   }
-  return hasText(last, '生成候选前端') ? last : null;
+  return hasText(last, '识别并生成候选方案') ? last : null;
 }
 
 /**
@@ -102,7 +129,7 @@ function waitForFrontendPanel(windowId, timeoutMs) {
 function assertFrontendPanel(win, waitTimeoutMs) {
   let snap = snapshot({ windowId: win.id });
   let openedProject = false;
-  if (!hasText(snap, '生成候选前端')) {
+  if (!hasText(snap, '识别并生成候选方案')) {
     const card = snap.nodes.find((node) => node.name && node.name.startsWith('打开项目：'));
     if (!card) return { visible: false, reason: '工作台里没有可打开的项目' };
     clickByQuery(win.id, card.name);
@@ -113,7 +140,7 @@ function assertFrontendPanel(win, waitTimeoutMs) {
 
   let visible = false;
   let reason = '';
-  if (hasText(snap, '生成候选前端')) {
+  if (hasText(snap, '识别并生成候选方案')) {
     assertSnap(snap, FRONTEND_PANEL_TEXTS, '候选前端主链控件');
     visible = true;
   } else {
@@ -124,7 +151,7 @@ function assertFrontendPanel(win, waitTimeoutMs) {
   if (openedProject) {
     try {
       clickByQuery(win.id, '我的项目：打开工作台');
-      waitForText(win.id, '我的项目', { timeoutMs: waitTimeoutMs });
+      waitForWorkbench(win.id, waitTimeoutMs);
     } catch (error) {
       // 返回失败不掩盖主断言：上面已经给出真实结论。
       line(`  ! 从项目页返回工作台失败：${error.message}`);
@@ -160,12 +187,11 @@ function main(argv) {
   let snap = snapshot({ windowId: win.id, timeoutMs: flags.timeoutMs || undefined });
   line(`[3/7] 初始快照 ${snap.snapshotId} | refs=${snap.refCount} | ${elapsedSinceLast()}ms`);
 
-  // 允许从设置页开始：先回到项目工作台，保证走查可重复。
-  if (!hasText(snap, '我的项目') && hasText(snap, '运行环境与自检')) {
+  if (hasText(snap, '运行环境与自检')) {
     line('  检测到当前停在设置页，先点击「返回项目」。');
     clickByQuery(win.id, '返回项目');
-    snap = waitForText(win.id, '我的项目', { timeoutMs: waitTimeoutMs });
   }
+  snap = waitForWorkbench(win.id, waitTimeoutMs);
 
   assertSnap(snap, WORKBENCH_TEXTS, '项目工作台');
   const card = snap.nodes.find((node) => node.name.startsWith('打开项目：'));
@@ -182,14 +208,14 @@ function main(argv) {
 
   record('back');
   clickByQuery(win.id, '返回项目');
-  const back = waitForText(win.id, '我的项目', { timeoutMs: waitTimeoutMs });
+  const back = waitForWorkbench(win.id, waitTimeoutMs);
   assertSnap(back, WORKBENCH_TEXTS, '返回后的项目工作台');
 
   record('frontend-panel');
   line(`[6/7] 最终快照 ${back.snapshotId} | refs=${back.refCount} | ${elapsedSinceLast()}ms`);
   const frontend = assertFrontendPanel(win, waitTimeoutMs);
   if (frontend.visible) {
-    line('[7/7] 候选前端主链控件已通过 UIA 断言（生成/构建/需求说明/目标页面）');
+    line('[7/7] 四分区与候选前端主链控件已通过 UIA 断言（识别/补充要求/目标页面）');
   } else {
     line(`[7/7] 候选前端主链 NOT_VISIBLE：${frontend.reason}（未在「开店资料」阶段，未伪造断言）`);
   }

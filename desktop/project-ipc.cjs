@@ -268,11 +268,13 @@ function createProjectIpc(options) {
     },
 
     'devtools:probe': async () => {
-      if (!probeDevtools) return ok({ found: false, path: null, version: null, via: 'none' });
+      if (!probeDevtools) {
+        return ok({ found: false, path: null, version: null, via: 'none', running: false, projectOpen: false, windowTitle: '' });
+      }
       try {
         return ok(await probeDevtools());
       } catch (error) {
-        return ok({ found: false, path: null, version: null, via: 'none', error: error.message });
+        return ok({ found: false, path: null, version: null, via: 'none', running: false, projectOpen: false, windowTitle: '', error: error.message });
       }
     },
   };

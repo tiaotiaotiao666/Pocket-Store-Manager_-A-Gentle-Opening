@@ -9,6 +9,7 @@ export default function FeaturePicker({
   custom = '',
   onCustomChange,
   onCustomize,
+  onSkip,
   busy = false,
 }) {
   const selected = new Set(selectedIds);
@@ -90,7 +91,15 @@ export default function FeaturePicker({
           onClick={handleCustomize}
         >
           <Plus size={16} />
-          加入定制能力
+          确认当前选择，继续
+        </button>
+        <button
+          type="button"
+          className="feature-customize-button is-ghost"
+          disabled={busy}
+          onClick={() => onSkip?.()}
+        >
+          暂不定制，跳过
         </button>
       </div>
     </section>

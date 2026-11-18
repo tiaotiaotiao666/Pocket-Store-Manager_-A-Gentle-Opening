@@ -114,24 +114,25 @@ test('店铺资料页：渲染 VisionImageUploader，并以 AgentImageDraft 透�
   );
   assert.match(
     source,
-    /const images = \[\.\.\.agentImages\.menu, \.\.\.agentImages\.store\]/,
-    '必须从本地图片状态汇总 menu + store drafts',
+    /imageKinds\.flatMap[\s\S]{0,180}agentImages\[kind\]/,
+    '必须按图片用途从本地 AgentImageDraft 状态选择图片',
+  );
+  assert.match(
+    source,
+    /\[\.\.\.agentImages\.menu, \.\.\.agentImages\.store\]/,
+    '普通对话仍汇总 menu + store drafts',
   );
 });
 
-test('店铺资料页：门店环境照同时写入现有 assets 通道', () => {
+test('店铺资料页：环境图只使用真实 Electron 资产，可删除并单独分析', () => {
   const source = readApp();
-  assert.match(
-    source,
-    /kind === 'store'[\s\S]{0,220}ADD_PROJECT_IMAGES/,
-    '环境照必须通过 ADD_PROJECT_IMAGES 进入 state.assets.images',
-  );
-  assert.match(
-    source,
-    /function toVisionAsset\(draft\)[\s\S]*?assetId:\s*draft\.id[\s\S]*?mime:\s*draft\.mediaType/,
-    'assets 条目必须符合 projectSnapshot.pickImages 的白名单字段',
-  );
-  assert.doesNotMatch(source, /dataBase64:\s*draft\.dataBase64/, '不得把 base64 写进持久化 assets');
+  assert.match(source, /service\.attachImages\(projectId, items\.map/);
+  assert.match(source, /dispatch\(\{ type: 'ADD_PROJECT_IMAGES', images: assets \}\)/);
+  assert.match(source, /service\.removeAsset\(projectId, assetId\)/);
+  assert.match(source, /dispatch\(\{ type: 'REMOVE_PROJECT_IMAGE', assetId \}\)/);
+  assert.match(source, /onAnalyzeImage=\{handleAnalyzeStoreImage\}/);
+  assert.doesNotMatch(source, /function toVisionAsset|assetId:\s*draft\.id/);
+  assert.match(source, /const assets = attached\.assets\.slice\(0, room\)/, '环境资产必须直接来自 Electron attachImages 返回值');
 });
 
 test('导出完成视图：渲染 RealPreviewPanel 并接 preload 打开工程/选择截图', () => {

@@ -1,0 +1,261 @@
+/* ---------- 首次使用 / 关键步骤环境引导 ---------- */
+.env-guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(31, 29, 26, 0.45);
+  backdrop-filter: blur(4px);
+  animation: fade-in 0.18s var(--ease-soft) both;
+}
+
+.env-guide-card {
+  width: min(680px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--bg-elev);
+  box-shadow: 0 30px 80px rgba(31, 29, 26, 0.28);
+  animation: pop-in 0.24s var(--ease-spring) both;
+}
+
+.env-guide-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.env-guide-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  flex: none;
+}
+
+.env-guide-head h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.env-guide-head p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.env-guide-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.env-guide-group {
+  margin: 4px 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.env-guide-group:first-child {
+  margin-top: 0;
+}
+
+/* 预览前逐项勾选清单 */
+.env-guide-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.env-guide-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-xs);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.env-guide-check-item.is-checked {
+  border-color: var(--line);
+  background: var(--bg-elev);
+}
+
+.env-guide-check-item input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  accent-color: var(--ink);
+  flex: none;
+}
+
+.env-guide-check-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.env-guide-check-item-body b {
+  font-size: 12.5px;
+}
+
+.env-guide-check-item-body em {
+  font-style: normal;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.env-guide-hint {
+  font-size: 11px;
+  color: var(--warn);
+}
+
+.env-guide-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-xs);
+  background: var(--bg);
+}
+
+.env-guide-check-icon {
+  display: inline-flex;
+  margin-top: 1px;
+  color: var(--muted);
+}
+
+.env-guide-check.is-pass .env-guide-check-icon {
+  color: var(--success);
+}
+
+.env-guide-check.is-warn .env-guide-check-icon {
+  color: var(--warn);
+}
+
+.env-guide-check.is-fail .env-guide-check-icon {
+  color: var(--warn);
+}
+
+.env-guide-check-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.env-guide-check-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.env-guide-check-title b {
+  font-size: 13px;
+}
+
+.env-guide-check-title em {
+  font-size: 11px;
+  font-style: normal;
+  color: var(--muted);
+}
+
+.env-guide-check-body p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.env-guide-steps {
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-xs);
+  background: var(--bg);
+}
+
+.env-guide-steps > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  list-style: none;
+}
+
+.env-guide-steps > summary::-webkit-details-marker {
+  display: none;
+}
+
+.env-guide-steps > summary::before {
+  content: '+';
+  display: inline-block;
+  width: 14px;
+  color: var(--muted);
+}
+
+.env-guide-steps[open] > summary::before {
+  content: '−';
+}
+
+.env-guide-steps ol {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.env-guide-steps li {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.env-guide-steps li b {
+  display: block;
+  font-size: 12px;
+  color: var(--ink);
+  margin-bottom: 1px;
+}
+
+.env-guide-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.env-guide-spacer {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .env-guide-backdrop {
+    padding: 10px;
+  }
+
+  .env-guide-card {
+    padding: 16px;
+    border-radius: 14px;
+  }
+}

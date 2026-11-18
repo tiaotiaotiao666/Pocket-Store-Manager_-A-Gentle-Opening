@@ -51,31 +51,32 @@ function planWith(overrides = {}) {
   };
 }
 
-test('L1 主线固定四步，当前步/可返回/下一步都说清楚', async () => {
+test('L1 主线固定五步，当前步/可返回/下一步都说清楚', async () => {
   const { describeFlow, FLOW_STAGES } = await loadFlow();
   const { PHASES } = await loadPhases();
 
   assert.deepEqual(FLOW_STAGES.map((stage) => stage.label), [
     '门店资料',
-    '模板 / 参考截图',
-    '素材',
+    '能力与定制',
+    '页面骨架',
+    '装修与视觉',
     '导出',
   ]);
 
   const store = describeFlow(PHASES.STORE_INFO);
   assert.equal(store.currentKey, 'store');
-  assert.deepEqual(store.steps.map((step) => step.state), ['current', 'todo', 'todo', 'todo']);
+  assert.deepEqual(store.steps.map((step) => step.state), ['current', 'todo', 'todo', 'todo', 'todo']);
   assert.equal(store.back, null, '第一站没有「返回修改」');
-  assert.equal(store.next.label, '模板 / 参考截图');
+  assert.equal(store.next.label, '能力与定制');
 
   const template = describeFlow(PHASES.TEMPLATE_PICK);
-  assert.deepEqual(template.steps.map((step) => step.state), ['done', 'current', 'todo', 'todo']);
-  assert.equal(template.back.phase, PHASES.STORE_INFO);
-  assert.equal(template.back.label, '返回修改门店资料');
-  assert.equal(template.next.label, '素材');
+  assert.deepEqual(template.steps.map((step) => step.state), ['done', 'done', 'current', 'todo', 'todo']);
+  assert.equal(template.back.phase, PHASES.FEATURES);
+  assert.equal(template.back.label, '返回调整能力');
+  assert.equal(template.next.label, '装修与视觉');
 
   const materialImage = describeFlow(PHASES.IMAGE_REVIEW);
-  assert.equal(materialImage.currentKey, 'material', '提示词与图片都属于「素材」这一步');
+  assert.equal(materialImage.currentKey, 'material', '提示词与图片都属于「装修与视觉」这一步');
   assert.equal(materialImage.back.phase, PHASES.TEMPLATE_PICK);
 
   const deploy = describeFlow(PHASES.DEPLOY);
@@ -83,12 +84,10 @@ test('L1 主线固定四步，当前步/可返回/下一步都说清楚', async 
   assert.equal(deploy.next, null, '导出是最后一步');
   assert.equal(deploy.back.phase, PHASES.IMAGE_REVIEW);
 
-  // 构建中不给返回入口，避免半途打断既有并发门禁。
   const building = describeFlow(PHASES.BUILDING, { busy: true });
   assert.equal(building.back, null);
-  assert.equal(building.currentKey, 'store');
+  assert.equal(building.currentKey, 'template');
 
-  // 首页在流程开始之前，不显示步骤条。
   assert.equal(describeFlow(PHASES.HOME).visible, false);
   assert.equal(describeFlow(PHASES.STORE_INFO).visible, true);
 });
@@ -259,27 +258,20 @@ test('L6 布局不变量：关键容器不横向溢出，长文本换行不撑�
   assert.match(app, /<FlowStepper[\s\S]{0,400}renderStage\(\)/, '步骤条与阶段内容同屏，先看进度再看内容');
 });
 
-test('L7 附加材料折叠：两块上传面板合成一个入口，功能一条不少', () => {
-  const group = readSource('src/components/flow/AttachGroup.jsx');
+test('L7 门店资料固定四分区，菜单图、环境图与参考图入口都直接可见', () => {
+  const sections = readSource('src/components/flow/StoreInfoSections.jsx');
   const app = readSource('src/App.jsx');
-  const flowCss = readSource('src/styles/flow.css');
+  const css = readSource('src/styles/store-info-sections.css');
 
-  // 一个有名字、可展开/收起的入口，而不是两个并列卡片
-  assert.match(group, /aria-label="附加材料"/);
-  assert.match(group, /aria-expanded=\{open\}/);
-  assert.match(group, /attach-group-title">附加材料：参考截图 \/ 图片识别/);
-  assert.match(group, /export default function AttachGroup/);
-  assert.match(group, /defaultOpen/);
-
-  // 两个面板仍然是子节点：折叠只是视觉收起，没有删功能
-  assert.match(app, /<AttachGroup[\s\S]{0,200}\{screenRefPanel\}[\s\S]{0,80}\{visionUploader\}/);
-
-  // 资料确认后默认折叠；有候选/图片时自动展开，避免把正在用的入口藏起来
-  assert.match(app, /const attachOpen = Boolean\(/);
-  assert.match(app, /defaultOpen=\{attachOpen\}/);
-  assert.match(app, /<AttachGroup defaultOpen>/);
-
-  // 折叠区自身也要能收缩换行，不撑出横向滚动
-  assert.match(flowCss, /\.attach-group\s*\{[\s\S]{0,200}min-width:\s*0/);
-  assert.match(flowCss, /\.attach-group-title\s*\{[\s\S]{0,80}overflow-wrap:\s*anywhere/);
+  ['门店基本资料', '菜品资料与菜单图片', '门店环境图片', '参考小程序截图'].forEach((label) => {
+    assert.ok(sections.includes(label), `缺少固定分区：${label}`);
+  });
+  assert.match(sections, /aria-label="门店资料四分区"/);
+  assert.match(app, /<StoreInfoSections[\s\S]*?basic=\{basicSection\}[\s\S]*?dishes=\{dishesSection\}[\s\S]*?environment=\{environmentSection\}[\s\S]*?reference=\{referenceSection\}/);
+  assert.match(app, /kinds=\{\['menu'\]\}/);
+  assert.match(app, /onRecognize=\{handleRecognizeMenuImages\}/);
+  assert.match(app, /onAnalyzeImage=\{handleAnalyzeStoreImage\}/);
+  assert.match(app, /frontendPanel=\{frontendCandidatePanel\}/);
+  assert.doesNotMatch(app, /<AttachGroup/);
+  assert.match(css, /\.store-info-zone\s*\{[\s\S]{0,200}display:\s*flex/);
 });

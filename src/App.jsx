@@ -56,6 +56,7 @@ import { createAppidService } from './services/appidService.js';
 import { createDevtoolsService } from './services/devtoolsService.js';
 import { requestAgentTurn, describeAgentTransport, configureAgentRuntime, getAgentTransportConfig } from './services/agentTurn/agentTurnService.js';
 import { requestAgentRun, isAgentRunRoute, resolveAgentRequestRoute } from './services/agentTurn/agentRunService.js';
+import { prepareImageFile } from './services/agentTurn/agentImageUpload.js';
 import { requestScreenReference, createScreenReferenceRequestId } from './services/agentTurn/screenReferenceService.js';
 import { validateReferenceImage, candidateToSessionPatch } from './domain/screenReference.mjs';
 // P4：图片驱动前端重构（受控候选前端）——状态机在 domain，服务调用在 services。
@@ -99,6 +100,7 @@ import {
 
 import AppShell from './components/layout/AppShell.jsx';
 import ConfirmDialog from './components/common/ConfirmDialog.jsx';
+import EnvGuideDialog from './components/onboarding/EnvGuideDialog.jsx';
 import Sidebar from './components/layout/Sidebar.jsx';
 import TitleBar from './components/layout/TitleBar.jsx';
 import RightPanel from './components/layout/RightPanel.jsx';
@@ -110,7 +112,7 @@ import FeaturePicker from './components/flow/FeaturePicker.jsx';
 import BuildLoading from './components/flow/BuildLoading.jsx';
 import TemplateGallery from './components/flow/TemplateGallery.jsx';
 import FlowStepper from './components/flow/FlowStepper.jsx';
-import AttachGroup from './components/flow/AttachGroup.jsx';
+import StoreInfoSections from './components/flow/StoreInfoSections.jsx';
 import RealPreviewPanel from './components/preview/RealPreviewPanel.jsx';
 import StoreInfoStep from './components/build/StoreInfoStep.jsx';
 import PromptStudio from './components/build/PromptStudio.jsx';
@@ -212,27 +214,21 @@ function collectRevisePlanFeatures(plan) {
   return result.slice(0, 3);
 }
 
-/**
- * `AgentImageDraft` → 现有 `state.assets.images` 条目形状。
- *
- * 只保留 `projectSnapshot.pickImages` 认识的白名单字段，不把 base64 写进持久化文档。
- */
-function toVisionAsset(draft) {
-  return {
-    assetId: draft.id,
-    fileName: draft.name,
-    originalName: draft.name,
-    mime: draft.mediaType,
-    bytes: draft.bytes,
-    createdAt: new Date().toISOString(),
-  };
-}
 
 /** 导出完成后可回传真实截图的工程目录（Composer 的 `outputPath`）。 */
 function readExportedProjectPath(result) {
   if (!result || typeof result !== 'object') return null;
   const value = result.outputPath;
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function dataUrlToBlob(dataUrl) {
+  const match = /^data:([^;]+);base64,(.+)$/.exec(String(dataUrl || ''));
+  if (!match) throw new Error('图片数据无法解析，请重新选择。');
+  const binary = globalThis.atob(match[2]);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new Blob([bytes], { type: match[1] });
 }
 
 function buildPanelCards(state, tips, imageBusy, previewViewModel) {
@@ -267,7 +263,7 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
           type: 'steps',
           icon: 'list',
           title: '接下来的流程',
-          items: ['了解项目能力', '选择门店功能', '匹配页面骨架', '店铺装修与视觉', '部署小程序'],
+          items: ['填写门店资料', '选择门店功能与定制', '生成并匹配页面骨架', '装修与视觉预览', '部署小程序'],
         });
       }
       break;
@@ -285,7 +281,7 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
         type: 'guidance',
         icon: 'sparkles',
         title: '没有想要的功能？',
-        body: '可以在下方输入框直接描述，我会把它加入定制方案。',
+        body: '可以在下方输入框直接描述，我会把它加入定制方案；如果当前能力已经够用，也可以直接跳过定制。',
       });
       break;
     case PHASES.BUILDING:
@@ -502,10 +498,20 @@ export default function App() {
   const [draftEditorOpen, setDraftEditorOpen] = useState(false);
   const [thumbnails, setThumbnails] = useState({});
   const [storeImageBusy, setStoreImageBusy] = useState(false);
+  const [storeImagePreviews, setStoreImagePreviews] = useState({});
+  const [selectedStoreImageId, setSelectedStoreImageId] = useState(null);
+  const [storeImageAnalysis, setStoreImageAnalysis] = useState({ status: 'idle', assetId: null, message: '' });
+  const [menuImageRecognition, setMenuImageRecognition] = useState({ status: 'idle', message: '' });
   // P5c：默认导出位置（主进程给路径，界面负责显示；点按钮才真正写盘）。
   const [defaultTarget, setDefaultTarget] = useState({ status: 'loading', path: '', token: '', message: '' });
   const [onboardingConfirmOpen, setOnboardingConfirmOpen] = useState(false);
   const [onboardingCreating, setOnboardingCreating] = useState(false);
+  const [envGuideOpen, setEnvGuideOpen] = useState(false);
+  const [envGuideMode, setEnvGuideMode] = useState('first-run');
+  const [envGuideDeploymentMode, setEnvGuideDeploymentMode] = useState('local');
+  const [envGuideChecks, setEnvGuideChecks] = useState([]);
+  const [envGuideBusy, setEnvGuideBusy] = useState(false);
+  const envGuideNextRef = useRef(null);
   const [templateRefineText, setTemplateRefineText] = useState('');
   // 模板并排对比：只在模板页有效，最多 2 个模板 id。
   const [compareIds, setCompareIds] = useState(null);
@@ -515,6 +521,7 @@ export default function App() {
   // P3：参考截图流程的即时错误与「是否已落盘」提示（都不进持久化文档）。
   const [screenRefError, setScreenRefError] = useState(null);
   const [screenRefPersisted, setScreenRefPersisted] = useState(true);
+  const [screenRefImageStatus, setScreenRefImageStatus] = useState('idle');
   // P4：候选前端链路的即时错误（同样只存在内存里，不写项目快照）。
   const [frontendLocalError, setFrontendLocalError] = useState(null);
   // P5：已采用候选前端的项目快照记录。它跟随 project.json 生命周期，
@@ -876,8 +883,17 @@ export default function App() {
     if (phase !== PHASES.ONBOARDING) return;
     setAgentImages({ menu: [], store: [] });
     setAgentImageError(null);
+    setMenuImageRecognition({ status: 'idle', message: '' });
     setRealPreview({ screenshot: null, busy: false, error: null });
   }, [phase, state.project.activeId]);
+
+  useEffect(() => {
+    setStoreImagePreviews({});
+    setSelectedStoreImageId(null);
+    setStoreImageAnalysis({ status: 'idle', assetId: null, message: '' });
+    setMenuImageRecognition({ status: 'idle', message: '' });
+    setScreenRefImageStatus('idle');
+  }, [state.project.activeId]);
 
   useEffect(() => {
     if (phase !== PHASES.STORE_INFO) {
@@ -1103,6 +1119,23 @@ export default function App() {
       setNotice('项目文件损坏，已从最近一次备份恢复。原文件已保留在项目目录内。');
     } else if (result.corrupt) {
       setNotice('项目文件已损坏且没有可用备份，已以空白项目打开；损坏文件保留在项目目录内。');
+    }
+
+    const screenRefImage = hydrated.screenRef?.image;
+    if (screenRefImage?.assetId && service.mode === 'desktop') {
+      try {
+        const asset = await service.readAsset(projectId, screenRefImage.assetId, 1280);
+        const dataUrl = asset?.status === 'ok' ? asset.asset?.dataUrl || '' : '';
+        const image = await createReferenceImageFromDataUrl(
+          dataUrl,
+          screenRefImage.name || '参考截图',
+          screenRefImage.assetId,
+        );
+        dispatch({ type: 'SCREEN_REF_IMAGE_HYDRATE', image });
+        setScreenRefPersisted(true);
+      } catch (error) {
+        setScreenRefError('已保存的参考截图读取失败，请换一张后重新识别。');
+      }
     }
 
     const posterAssetId = result.doc && result.doc.visual && result.doc.visual.imageAssetId;
@@ -1337,12 +1370,132 @@ export default function App() {
     }
   };
 
+  const detectDeploymentMode = useCallback(() => {
+    const config = getAgentTransportConfig();
+    const base = String((config && config.baseUrl) || '');
+    let host = '';
+    try {
+      host = base ? new URL(base).hostname : '';
+    } catch (error) {
+      host = '';
+    }
+    if (!host && typeof window !== 'undefined') host = window.location.hostname;
+    const localHosts = new Set(['', '127.0.0.1', 'localhost', '::1']);
+    return host && !localHosts.has(host) ? 'cloud' : 'local';
+  }, []);
+
+  const runEnvChecks = useCallback(async () => {
+    setEnvGuideBusy(true);
+    const deploymentMode = detectDeploymentMode();
+    setEnvGuideDeploymentMode(deploymentMode);
+    const isCloud = deploymentMode === 'cloud';
+
+    const checks = [
+      {
+        id: 'runtime',
+        group: 'server',
+        title: '运行环境',
+        status: 'pass',
+        detail: isCloud
+          ? '应用已在运行；服务端检查以云端 API 为准。'
+          : '应用已在运行，前端依赖已就绪。',
+      },
+    ];
+
+    try {
+      const response = await globalThis.fetch('/api/v1/readyz', { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      const databaseOk = Boolean(payload && payload.database === 'ok');
+      checks.push({
+        id: 'backend',
+        group: 'server',
+        title: '后端与数据库',
+        status: databaseOk ? 'pass' : 'fail',
+        detail: databaseOk
+          ? (isCloud ? '云端后端与数据库已就绪。' : '后端 3000 与 MySQL 3306 已就绪。')
+          : (isCloud
+            ? '云端后端不可达：请检查云端服务状态或联系部署方；本地无需启动 MySQL。'
+            : '后端或数据库未就绪：请先以管理员启动 SmartStoreMySQL，再运行 npm start。'),
+      });
+    } catch (error) {
+      checks.push({
+        id: 'backend',
+        group: 'server',
+        title: '后端与数据库',
+        status: 'fail',
+        detail: isCloud
+          ? '无法连接云端 API，请检查云端服务状态或网络。'
+          : '无法连接 127.0.0.1:3000，请先运行 npm start（后端 + MySQL）。',
+      });
+    }
+
+    const probe = await devtoolsService.probe();
+    checks.push({
+      id: 'devtools',
+      group: 'local',
+      title: '微信开发者工具',
+      status: probe.found ? 'pass' : 'warn',
+      detail: probe.found
+        ? `已检测到：${probe.path || 'CLI'}`
+        : '本机未检测到，请安装官方开发者工具（见下方详细步骤）。',
+    });
+    checks.push({
+      id: 'devtools-login',
+      group: 'local',
+      title: '微信登录与服务端口',
+      status: 'manual',
+      detail: '需要扫码登录，并在「设置 → 安全设置」开启服务端口。',
+    });
+    checks.push({
+      id: 'preview-settings',
+      group: 'local',
+      title: '预览设置',
+      status: 'manual',
+      detail: '代理设置选「不使用代理」；本地设置勾选「不校验合法域名、TLS 与 HTTPS 证书」。',
+    });
+
+    setEnvGuideChecks(checks);
+    setEnvGuideBusy(false);
+  }, [detectDeploymentMode, devtoolsService]);
+
+  const openEnvGuide = useCallback((mode, next) => {
+    setEnvGuideMode(mode);
+    setEnvGuideDeploymentMode(detectDeploymentMode());
+    envGuideNextRef.current = typeof next === 'function' ? next : null;
+    setEnvGuideChecks([]);
+    setEnvGuideOpen(true);
+    // 预览前使用逐项勾选清单，不再自动检测；首次环境准备仍自动检测。
+    if (mode !== 'preview') void runEnvChecks();
+  }, [detectDeploymentMode, runEnvChecks]);
+
+  const closeEnvGuideAndContinue = useCallback(() => {
+    setEnvGuideOpen(false);
+    const next = envGuideNextRef.current;
+    envGuideNextRef.current = null;
+    if (typeof next === 'function') next();
+  }, []);
+
+  const closeEnvGuide = useCallback(() => {
+    setEnvGuideOpen(false);
+    envGuideNextRef.current = null;
+  }, []);
+
+  const handleEnvGuideSkip = useCallback(() => {
+    // 预览前检查：跳过只关闭，不继续打开工具；
+    // 首次环境准备：跳过仍继续创建项目，避免卡在入口。
+    if (envGuideMode === 'preview') {
+      closeEnvGuide();
+      return;
+    }
+    closeEnvGuideAndContinue();
+  }, [envGuideMode, closeEnvGuide, closeEnvGuideAndContinue]);
+
   const startOnboarding = () => {
     if (selectOnboardingStart(state) === 'confirm-create') {
       setOnboardingConfirmOpen(true);
       return;
     }
-    dispatch({ type: 'START_ONBOARDING' });
+    openEnvGuide('first-run', () => dispatch({ type: 'START_ONBOARDING' }));
   };
 
   const confirmStartOnboarding = async () => {
@@ -1352,7 +1505,7 @@ export default function App() {
       const created = await handleProjectCreate();
       if (!created) return;
       setOnboardingConfirmOpen(false);
-      dispatch({ type: 'START_ONBOARDING' });
+      openEnvGuide('first-run', () => dispatch({ type: 'START_ONBOARDING' }));
     } finally {
       setOnboardingCreating(false);
     }
@@ -1453,13 +1606,18 @@ export default function App() {
     }
   };
 
-  /** VisionImageUploader 已压缩完成，这里只负责写入本地状态（plan.md 2.2.6 行为 5）。 */
   const handleVisionImagesAdd = (kind, drafts) => {
     const incoming = Array.isArray(drafts)
       ? drafts.filter((item) => item && typeof item.id === 'string' && item.id)
       : [];
     if (!incoming.length) return;
     setAgentImageError(null);
+    if (kind === 'menu') {
+      setMenuImageRecognition({
+        status: agentImages.menu.length > 0 || menuImageRecognition.status !== 'idle' ? 'replaced' : 'idle',
+        message: '',
+      });
+    }
     setAgentImages((prev) => {
       const current = Array.isArray(prev[kind]) ? prev[kind] : [];
       const limit = kind === 'store' ? 1 : 2;
@@ -1472,14 +1630,14 @@ export default function App() {
       });
       return { ...prev, [kind]: merged.slice(0, limit) };
     });
-    // 门店环境照同时进入现有 assets 写入通道；只保存白名单字段，不持久化 base64。
-    if (kind === 'store') {
-      dispatch({ type: 'ADD_PROJECT_IMAGES', images: incoming.slice(0, 1).map(toVisionAsset) });
-    }
   };
 
   const handleVisionImageRemove = (kind, id) => {
     setAgentImageError(null);
+    if (kind === 'menu') {
+      const remaining = agentImages.menu.filter((item) => item.id !== id).length;
+      setMenuImageRecognition({ status: remaining > 0 ? 'replaced' : 'idle', message: '' });
+    }
     setAgentImages((prev) => ({
       ...prev,
       [kind]: (Array.isArray(prev[kind]) ? prev[kind] : []).filter((item) => item.id !== id),
@@ -1530,19 +1688,9 @@ export default function App() {
     }
   };
 
-  /**
-   * 模板页「预览新模块」：把当前定制需求（presentation patch）导出成真实工程，
-   * 再交给微信开发者工具打开。只在桌面端可用。
-   */
-  const handlePreparePreviewProject = useCallback(async () => {
-    const api = typeof window !== 'undefined' ? window.smartStore : null;
-    if (!api || api.isDesktop !== true || typeof api.composerExport !== 'function') {
-      return { ok: false, message: '需要在桌面应用中生成并预览工程。' };
-    }
-
+  const runPreviewExport = useCallback(async () => {
     const previewPlan = buildExportPlanFromSession(frontendStateWithCandidate);
     if (!previewPlan.ok) {
-      // P5：已采用候选但 overlay 缺失/漂移/未校验 → 预览也阻断，不静默用 Base 顶替。
       return { ok: false, message: previewPlan.message || '候选前端 overlay 未确认，已阻止生成预览工程。' };
     }
     const { plan, warnings } = previewPlan;
@@ -1565,12 +1713,76 @@ export default function App() {
     }
 
     const payload = result.result || {};
+    const outputPath = payload.outputPath || '';
+    if (!outputPath) {
+      return { ok: false, message: '预览工程已生成，但没有返回工程路径。' };
+    }
+
+    // W1 起 AppID 只能通过 appid-postprocess 事务写入；预览工程同样要写正式 AppID，
+    // 否则 devtools-launch 会以“仍是测试号 touristappid”拒绝打开。
+    const appid = String((state.project && state.project.appid) || '').trim() || 'wx3b1c04f63cf6cfd0';
+    const applied = await appidService.apply(outputPath, appid);
+    if (applied.status !== 'ok') {
+      return {
+        ok: false,
+        message: applied.message || 'AppID 写入失败，预览工程仍是测试号，无法用微信开发者工具打开。',
+      };
+    }
+
     return {
       ok: true,
-      path: payload.outputPath || '',
+      path: outputPath,
       warnings: [...(warnings || []), ...(payload.warnings || [])],
     };
-  }, [state, frontendStateWithCandidate, frontendCandidateOverlay]);
+  }, [state, frontendStateWithCandidate, frontendCandidateOverlay, appidService]);
+
+  const continuePreviewExport = useCallback(async () => {
+    const result = await runPreviewExport();
+    if (!result.ok) {
+      setNotice(result.message || '生成预览工程失败。');
+      return;
+    }
+    const api = typeof window !== 'undefined' ? window.smartStore : null;
+    if (!api || typeof api.openPreviewDevtools !== 'function') {
+      setNotice('桌面端未提供预览桥接，无法打开微信开发者工具。');
+      return;
+    }
+    try {
+      const opened = await api.openPreviewDevtools({ projectPath: result.path });
+      if (opened && opened.ok) setNotice(opened.message || '已请求微信开发者工具打开工程。');
+      else setNotice((opened && opened.message) || '未能调起微信开发者工具。');
+    } catch (error) {
+      setNotice((error && error.message) || '调起微信开发者工具失败。');
+    }
+  }, [runPreviewExport]);
+
+  /**
+   * 模板页「预览新模块」：先弹出环境检查（始终可见），
+   * 用户确认「已准备就绪」后再按当前需求导出并打开微信开发者工具。
+   */
+  const handlePreparePreviewProject = useCallback(async () => {
+    const api = typeof window !== 'undefined' ? window.smartStore : null;
+    if (!api || api.isDesktop !== true || typeof api.composerExport !== 'function') {
+      return { ok: false, message: '需要在桌面应用中生成并预览工程。' };
+    }
+
+    // 只在工具尚未启动、或工具已启动但还没有打开小程序页面时弹清单；
+// 已经展示了小程序页面就直接按当前需求导出。
+    const probe = await devtoolsService.probe();
+    if (!probe.found || probe.running === false || probe.projectOpen === false) {
+      openEnvGuide('preview', () => { void continuePreviewExport(); });
+      return {
+        ok: false,
+        message: !probe.found
+          ? '未检测到微信开发者工具，已打开检查清单。'
+          : (probe.projectOpen === false
+            ? '微信开发者工具已启动，但还没有打开小程序页面，已打开检查清单。'
+            : '微信开发者工具尚未启动，已打开检查清单。'),
+      };
+    }
+
+    return runPreviewExport();
+  }, [devtoolsService, openEnvGuide, continuePreviewExport, runPreviewExport]);
 
   const handlePickPreviewScreenshot = async () => {
     const api = typeof window !== 'undefined' ? window.smartStore : null;
@@ -1625,16 +1837,16 @@ export default function App() {
     setRealPreview({ screenshots: [], busy: false, error: null });
   };
 
-  const handleAgentTurn = async (utterance, { retry = false } = {}) => {
-    if (agentBusy.current) return;
-    if (phase !== PHASES.STORE_INFO) return;
+  const handleAgentTurn = async (utterance, { retry = false, imageKinds = null, requireVision = false } = {}) => {
+    if (agentBusy.current) return null;
+    if (phase !== PHASES.STORE_INFO) return null;
     const text = String(utterance ?? '').trim();
-    if (!text) return;
+    if (!text) return null;
     agentBusy.current = true;
     const requestId = createAgentRequestId();
-    // 空数组不传，保持 v1 请求形状；有图片时服务层自动升级到 agent-turn.v2。
-    const images = [...agentImages.menu, ...agentImages.store];
-    // 冻结发送时刻的草稿与版本号：回复到达时两项都匹配才允许整份应用。
+    const images = Array.isArray(imageKinds)
+      ? imageKinds.flatMap((kind) => (Array.isArray(agentImages[kind]) ? agentImages[kind] : []))
+      : [...agentImages.menu, ...agentImages.store];
     const frozenDraft = state.agentDraft;
     const frozenRevision = state.agent.draftRevision;
     const frozenImageCount = images.length;
@@ -1655,6 +1867,15 @@ export default function App() {
           ...(images.length ? { images } : {}),
           simulateFailureOnce: state.agent.simulateFailure,
         });
+      if (requireVision && result.vision?.analyzed !== true) {
+        const error = {
+          code: 'AGENT_VISION_UNAVAILABLE',
+          message: '当前图片识别服务没有真正读取菜单图片，未回写识别结果。请检查模型配置后重试。',
+          retryable: true,
+        };
+        dispatch({ type: 'AGENT_TURN_FAILURE', requestId, error });
+        return result;
+      }
       const imagesAddedDuringRequest = agentImagesRef.current > frozenImageCount;
       dispatch({
         type: 'AGENT_TURN_SUCCESS',
@@ -1665,13 +1886,34 @@ export default function App() {
       });
       setDraft('');
       setAgentImageError(null);
+      return result;
     } catch (error) {
       if (error && typeof error.code === 'string' && error.code.startsWith('AGENT_IMAGE')) {
         setAgentImageError({ code: error.code, message: error.message || '图片不可用，请重新选择。' });
       }
       dispatch({ type: 'AGENT_TURN_FAILURE', requestId, error });
+      return null;
     } finally {
       agentBusy.current = false;
+    }
+  };
+
+  const handleRecognizeMenuImages = async () => {
+    if (!agentImages.menu.length) {
+      setMenuImageRecognition({ status: 'needs_input', message: '请先上传菜单图片。' });
+      return;
+    }
+    setMenuImageRecognition({ status: 'recognizing', message: '' });
+    const result = await handleAgentTurn(
+      '请只识别已上传的菜单图片，把菜名、价格和描述回写到菜品资料；不要参考门店环境图，不要修改页面布局。',
+      { imageKinds: ['menu'], requireVision: true },
+    );
+    if (!result) {
+      setMenuImageRecognition({ status: 'failed', message: '识别没有完成，图片已保留，可以直接重试。' });
+    } else if (result.vision?.analyzed !== true) {
+      setMenuImageRecognition({ status: 'failed', message: '当前图片识别服务没有真正读取菜单图片，未回写识别结果。请检查模型配置后重试。' });
+    } else {
+      setMenuImageRecognition({ status: 'written_back', message: '菜单识别结果已回写，请逐项核对。' });
     }
   };
 
@@ -1691,14 +1933,45 @@ export default function App() {
 
   // ---- P3：参考截图 → 识别 → 确认 → 候选模板 ----
 
-  const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-    reader.onerror = () => reject(new Error('SCREEN_REF_READ_FAILED'));
-    reader.readAsDataURL(file);
-  });
+  const createReferenceImage = async (file, assetId = null) => {
+    const draft = await prepareImageFile(file, { kind: 'menu', name: file.name || '参考截图' });
+    const image = {
+      assetId,
+      name: draft.name,
+      mediaType: draft.mediaType,
+      bytes: draft.bytes,
+      dataBase64: draft.dataBase64,
+      previewUrl: draft.previewDataUrl,
+    };
+    const check = validateReferenceImage(image);
+    if (!check.ok) throw new Error(check.message);
+    return image;
+  };
 
-  /** 上传入口：桌面模式走主进程选图并落盘；浏览器模式回落到 file input。 */
+  const createReferenceImageFromDataUrl = async (dataUrl, name, assetId) => {
+    if (!dataUrl) throw new Error('截图预览读取失败，请重新选择。');
+    const blob = dataUrlToBlob(dataUrl);
+    const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
+    return createReferenceImage(file, assetId);
+  };
+
+  const commitScreenRefImage = async (image) => {
+    const previousAssetId = state.screenRef.image?.assetId || null;
+    setScreenRefImageStatus(state.screenRef.image ? 'replaced' : 'idle');
+    setScreenRefPersisted(Boolean(image.assetId));
+    dispatch({ type: 'SCREEN_REF_IMAGE_SET', image });
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    if (previousAssetId && previousAssetId !== image.assetId && projectId && service.mode === 'desktop') {
+      try {
+        const removed = await service.removeAsset(projectId, previousAssetId);
+        if (removed.status !== 'ok') setNotice('新截图已保存，但旧截图资产未能删除，可在项目目录中检查。');
+      } catch (error) {
+        setNotice('新截图已保存，但旧截图资产未能删除，可在项目目录中检查。');
+      }
+    }
+  };
+
   const handleScreenRefPick = async (openFileInput) => {
     setScreenRefError(null);
     const service = projectServiceRef.current;
@@ -1707,6 +1980,7 @@ export default function App() {
       if (typeof openFileInput === 'function') openFileInput();
       return;
     }
+    const projectId = state.project.activeId;
     if (!projectId) {
       setScreenRefError('请先在工作台新建或打开一个项目，再上传参考截图。');
       return;
@@ -1718,7 +1992,6 @@ export default function App() {
         return;
       }
       const item = Array.isArray(picked.items) ? picked.items[0] : null;
-      // 用户取消选图：保持现状。
       if (!item) return;
       const attached = await service.attachImages(projectId, [item.token]);
       if (attached.status !== 'ok') {
@@ -1732,50 +2005,25 @@ export default function App() {
       }
       const read = await service.readAsset(projectId, asset.assetId, 1280);
       const dataUrl = read && read.status === 'ok' && read.asset ? read.asset.dataUrl : '';
-      const dataBase64 = typeof dataUrl === 'string' && dataUrl.includes(',') ? dataUrl.split(',')[1] : '';
-      const image = {
-        assetId: asset.assetId,
-        name: asset.originalName || item.name || '参考截图',
-        mediaType: asset.mime || item.mime,
-        bytes: Number.isFinite(asset.bytes) ? asset.bytes : item.bytes,
-        dataBase64,
-        previewUrl: dataUrl,
-      };
-      const check = validateReferenceImage(image);
-      if (!check.ok) {
-        setScreenRefError(check.message);
-        return;
-      }
-      setScreenRefPersisted(true);
-      dispatch({ type: 'SCREEN_REF_IMAGE_SET', image });
+      const image = await createReferenceImageFromDataUrl(
+        dataUrl,
+        asset.originalName || item.name || '参考截图',
+        asset.assetId,
+      );
+      await commitScreenRefImage(image);
     } catch (error) {
-      setScreenRefError('上传截图失败，请重试。');
+      setScreenRefError(error?.message || '上传或压缩截图失败，请重试。');
     }
   };
 
-  /** 浏览器模式：直接从 file input 读成 dataURL（只在内存里，不落盘）。 */
   const handleScreenRefFile = async (file) => {
     setScreenRefError(null);
     if (!file) return;
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const dataBase64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : '';
-      const image = {
-        assetId: null,
-        name: file.name || '参考截图',
-        mediaType: file.type,
-        bytes: file.size,
-        dataBase64,
-        previewUrl: dataUrl,
-      };
-      const check = validateReferenceImage(image);
-      if (!check.ok) {
-        setScreenRefError(check.message);
-        return;
-      }
-      dispatch({ type: 'SCREEN_REF_IMAGE_SET', image });
+      const image = await createReferenceImage(file);
+      await commitScreenRefImage(image);
     } catch (error) {
-      setScreenRefError('读取截图失败，请重新选择。');
+      setScreenRefError(error?.message || '读取或压缩截图失败，请重新选择。');
     }
   };
 
@@ -1836,8 +2084,26 @@ export default function App() {
   const handleScreenRefAdopt = () => dispatch({ type: 'SCREEN_REF_ADOPT' });
   const handleScreenRefDiscard = () => dispatch({ type: 'SCREEN_REF_DISCARD' });
   const handleScreenRefRetry = () => handleScreenRefRecognize();
-  const handleScreenRefReset = () => {
+  const handleScreenRefReset = async () => {
     setScreenRefError(null);
+    const image = state.screenRef.image;
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    if (image?.assetId && projectId && service.mode === 'desktop') {
+      try {
+        const removed = await service.removeAsset(projectId, image.assetId);
+        if (removed.status !== 'ok') {
+          setScreenRefError(removed.message || '截图资产删除失败，请重试。');
+          return;
+        }
+      } catch (error) {
+        setScreenRefError('截图资产删除失败，请重试。');
+        return;
+      }
+    }
+    frontendDispatch({ type: 'FRONTEND_RESET', keepImage: false });
+    setFrontendLocalError(null);
+    setScreenRefImageStatus('idle');
     dispatch({ type: 'SCREEN_REF_RESET' });
   };
 
@@ -2118,8 +2384,9 @@ export default function App() {
   // 参考截图只有一份：旧识别区选了图，候选前端主链立刻能看到同一张图。
   // reducer 对同一张图是 no-op，不会引起重复渲染或额外 revision。
   useEffect(() => {
-    if (!state.screenRef.image) return;
-    frontendDispatch({ type: 'FRONTEND_INPUT_SET', image: state.screenRef.image });
+    const image = state.screenRef.image;
+    if (image?.assetId && !image.dataBase64) return;
+    frontendDispatch({ type: 'FRONTEND_INPUT_SET', image });
   }, [state.screenRef.image]);
 
   const handleComposerSubmit = (value) => {
@@ -2245,6 +2512,116 @@ export default function App() {
     dispatch({ type: 'SET_STORE_FIELD', field: field === 'intro' ? 'notes' : field, value });
   };
 
+  useEffect(() => {
+    const assets = Array.isArray(state.assets?.images) ? state.assets.images : [];
+    setSelectedStoreImageId((previous) => (
+      assets.some((item) => item.assetId === previous) ? previous : (assets[0]?.assetId || null)
+    ));
+    setStoreImageAnalysis((previous) => (
+      assets.some((item) => item.assetId === previous.assetId)
+        ? previous
+        : { status: 'idle', assetId: null, message: '' }
+    ));
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    if (!projectId || service.mode !== 'desktop' || assets.length === 0) {
+      setStoreImagePreviews({});
+      return undefined;
+    }
+    let alive = true;
+    Promise.all(assets.map(async (asset) => {
+      const result = await service.readAsset(projectId, asset.assetId, 480).catch(() => null);
+      const previewUrl = result?.status === 'ok' ? result.asset?.dataUrl || '' : '';
+      return [asset.assetId, previewUrl];
+    })).then((entries) => {
+      if (alive) setStoreImagePreviews(Object.fromEntries(entries));
+    });
+    return () => { alive = false; };
+  }, [state.project.activeId, state.assets.images]);
+
+  const handleSelectStoreImage = (assetId) => {
+    setSelectedStoreImageId(assetId);
+    setStoreImageAnalysis((previous) => (
+      previous.assetId === assetId ? previous : { status: 'idle', assetId, message: '' }
+    ));
+  };
+
+  const handleRemoveStoreImage = async (assetId) => {
+    if (storeImageBusy || !assetId) return;
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    if (!projectId || service.mode !== 'desktop') return;
+    setStoreImageBusy(true);
+    try {
+      const removed = await service.removeAsset(projectId, assetId);
+      if (removed.status !== 'ok') {
+        setNotice(removed.message || '删除环境图片失败');
+        return;
+      }
+      dispatch({ type: 'REMOVE_PROJECT_IMAGE', assetId });
+      setStoreImagePreviews((previous) => {
+        const next = { ...previous };
+        delete next[assetId];
+        return next;
+      });
+      setStoreImageAnalysis((previous) => (
+        previous.assetId === assetId
+          ? { status: 'idle', assetId: null, message: '' }
+          : previous
+      ));
+      setNotice('已删除环境图片');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '删除环境图片失败');
+    } finally {
+      setStoreImageBusy(false);
+    }
+  };
+
+  const handleAnalyzeStoreImage = async (assetId) => {
+    if (storeImageBusy || !assetId) return;
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    const asset = state.assets.images.find((item) => item.assetId === assetId);
+    if (!asset || !projectId || service.mode !== 'desktop') return;
+    setStoreImageBusy(true);
+    setStoreImageAnalysis({ status: 'analyzing', assetId, message: '正在分析选中图片的门店氛围，不会回写菜品或布局。' });
+    try {
+      const read = await service.readAsset(projectId, assetId, 1280);
+      const dataUrl = read?.status === 'ok' ? read.asset?.dataUrl || '' : '';
+      if (!dataUrl) throw new Error('环境图片读取失败，请重新选择。');
+      const blob = dataUrlToBlob(dataUrl);
+      const name = asset.originalName || asset.fileName || '门店环境图片';
+      const file = new File([blob], name, { type: blob.type || asset.mime || 'image/jpeg' });
+      const draft = await prepareImageFile(file, { kind: 'store', id: assetId, name });
+      const result = await requestAgentTurn({
+        utterance: '只分析这张门店环境图呈现的装修、光线与氛围，用简短中文说明；不要识别菜品，不要修改菜名、价格、描述或页面布局。',
+        draft: state.agentDraft,
+        images: [draft],
+      });
+      if (result.vision?.analyzed !== true) {
+        setStoreImageAnalysis({
+          status: 'failed',
+          assetId,
+          message: '当前图片识别服务没有真正读取环境图片，未生成氛围分析。请检查模型配置后重试。',
+        });
+      } else {
+        setStoreImageAnalysis({
+          status: 'analyzed',
+          assetId,
+          message: result.reply || '氛围分析完成；未回写菜品资料，也未修改页面布局。',
+        });
+      }
+    } catch (error) {
+      setStoreImageAnalysis({
+        status: 'failed',
+        assetId,
+        message: error instanceof Error ? error.message : '氛围分析失败，图片已保留，可以重试。',
+      });
+    } finally {
+      setStoreImageBusy(false);
+    }
+  };
+
   const handlePickStoreImages = async () => {
     if (storeImageBusy) return;
     const service = projectServiceRef.current;
@@ -2258,27 +2635,37 @@ export default function App() {
       return;
     }
     const current = Array.isArray(state.assets && state.assets.images) ? state.assets.images : [];
-    if (current.length >= 6) {
+    const room = Math.max(0, 6 - current.length);
+    if (room === 0) {
       setNotice('最多保留 6 张门店图片');
       return;
     }
     setStoreImageBusy(true);
     try {
-      const picked = await service.pickImages(6);
+      const picked = await service.pickImages(room);
       if (picked.status !== 'ok') {
         setNotice(picked.message || '选择图片失败');
         return;
       }
-      if (!Array.isArray(picked.items) || picked.items.length === 0) return;
-      const attached = await service.attachImages(projectId, picked.items.map((item) => item.token));
+      const items = Array.isArray(picked.items) ? picked.items.slice(0, room) : [];
+      if (items.length === 0) return;
+      const attached = await service.attachImages(projectId, items.map((item) => item.token));
       if (attached.status !== 'ok') {
         setNotice(attached.message || '导入图片失败');
         return;
       }
-      dispatch({ type: 'ADD_PROJECT_IMAGES', images: attached.assets });
+      const assets = attached.assets.slice(0, room);
+      dispatch({ type: 'ADD_PROJECT_IMAGES', images: assets });
       const known = new Set(current.map((item) => item.assetId));
-      const added = attached.assets.filter((item) => !known.has(item.assetId)).length;
-      setNotice(added > 0 ? `已添加 ${added} 张门店图片` : '所选图片已在项目中');
+      const added = assets.filter((item) => !known.has(item.assetId));
+      const nextSelectedId = selectedStoreImageId || added[0]?.assetId || null;
+      setSelectedStoreImageId(nextSelectedId);
+      setStoreImageAnalysis((previous) => (
+        previous.assetId === nextSelectedId
+          ? previous
+          : { status: 'idle', assetId: nextSelectedId, message: '' }
+      ));
+      setNotice(added.length > 0 ? `已添加 ${added.length} 张门店图片，请选择一张用于氛围分析` : '所选图片已在项目中');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '导入图片失败');
     } finally {
@@ -2772,6 +3159,7 @@ export default function App() {
               custom={state.features.custom}
               onCustomChange={(value) => dispatch({ type: 'SET_FEATURES_CUSTOM', value })}
               onCustomize={(value) => dispatch({ type: 'SUBMIT_CUSTOMIZE', value })}
+              onSkip={() => dispatch({ type: 'SUBMIT_CUSTOMIZE', value: '' })}
             />
           </>
         );
@@ -2814,34 +3202,109 @@ export default function App() {
         const canConfirm = agent.status === 'reviewing'
           && agent.missingFields.length === 0
           && agent.errors.length === 0;
-        const storeForm = (
+        const confirmed = agent.status === 'confirmed';
+        const validation = {
+          missingFields: agent.missingFields,
+          errors: agent.errors,
+          readyForReview: canConfirm,
+        };
+        const draftDisabled = agent.status === 'requesting' || confirmed;
+        const environmentStatusLabels = {
+          idle: '待识别',
+          analyzing: '识别中',
+          analyzed: '已分析',
+          failed: '识别失败',
+        };
+        const basicSection = (
+          <>
+            <DraftEditor
+              draft={state.agentDraft}
+              validation={validation}
+              disabled={draftDisabled}
+              maxDishes={5}
+              minDishes={3}
+              open={draftEditorOpen}
+              mode="store"
+              collapsible={false}
+              embedded
+              onToggleOpen={() => setDraftEditorOpen((value) => !value)}
+              onChangeField={handleAgentFieldChange}
+              onToggleFulfillment={handleAgentFulfillment}
+              onChangeDish={handleAgentDishChange}
+              onAddDish={handleAgentAddDish}
+              onRemoveDish={handleAgentRemoveDish}
+            />
+            <StoreInfoStep
+              store={{ ...state.store, intro: state.store.notes }}
+              storeTypes={storeTypesForForm}
+              styles={STYLE_PRESETS}
+              styleId={state.visual.styleId}
+              embedded
+              showHeader={false}
+              showIdentity={false}
+              showImages={false}
+              showSubmit={false}
+              onFieldChange={handleFieldChange}
+              onStyleChange={(id) => dispatch({ type: 'SET_STYLE', id })}
+            />
+          </>
+        );
+        const dishesSection = (
+          <>
+            <DraftEditor
+              draft={state.agentDraft}
+              validation={validation}
+              disabled={draftDisabled}
+              maxDishes={5}
+              minDishes={3}
+              open={draftEditorOpen}
+              mode="dishes"
+              collapsible={false}
+              embedded
+              onToggleOpen={() => setDraftEditorOpen((value) => !value)}
+              onChangeField={handleAgentFieldChange}
+              onToggleFulfillment={handleAgentFulfillment}
+              onChangeDish={handleAgentDishChange}
+              onAddDish={handleAgentAddDish}
+              onRemoveDish={handleAgentRemoveDish}
+            />
+            <VisionImageUploader
+              images={agentImages}
+              kinds={['menu']}
+              busy={agent.status === 'requesting'}
+              disabled={confirmed}
+              error={agentImageError}
+              recognition={menuImageRecognition}
+              onAdd={handleVisionImagesAdd}
+              onRemove={handleVisionImageRemove}
+              onRecognize={handleRecognizeMenuImages}
+            />
+          </>
+        );
+        const environmentSection = (
           <StoreInfoStep
-            store={{ ...state.store, intro: state.store.notes }}
-            storeTypes={storeTypesForForm}
-            styles={STYLE_PRESETS}
-            styleId={state.visual.styleId}
-            images={state.assets.images}
+            embedded
+            showHeader={false}
+            showIdentity={false}
+            showContact={false}
+            showStyle={false}
+            showSubmit={false}
+            images={state.assets.images.map((item) => ({
+              ...item,
+              previewUrl: storeImagePreviews[item.assetId] || '',
+              statusLabel: storeImageAnalysis.assetId === item.assetId
+                ? environmentStatusLabels[storeImageAnalysis.status] || '待识别'
+                : '待识别',
+            }))}
             imageBusy={storeImageBusy}
-            onFieldChange={handleFieldChange}
-            onStyleChange={(id) => dispatch({ type: 'SET_STYLE', id })}
+            selectedImageId={selectedStoreImageId}
+            imageAnalysis={storeImageAnalysis}
             onPickImages={handlePickStoreImages}
-            onSubmit={handleStoreSubmit}
+            onSelectImage={handleSelectStoreImage}
+            onRemoveImage={handleRemoveStoreImage}
+            onAnalyzeImage={handleAnalyzeStoreImage}
           />
         );
-        // 图片识别入口（C-VISION-UPLOADER@1）：菜单照 / 门店环境照分开上传，
-        // 组件内部已完成压缩，这里只保存 AgentImageDraft 并在下一次对话时透传。
-        const visionUploader = (
-          <VisionImageUploader
-            images={agentImages}
-            busy={agent.status === 'requesting'}
-            disabled={agent.status === 'confirmed'}
-            error={agentImageError}
-            onAdd={handleVisionImagesAdd}
-            onRemove={handleVisionImageRemove}
-          />
-        );
-        // P3：参考截图 → 候选模板。识别/确认/候选都在这一步完成，不覆盖当前版本。
-        // P4：同屏再挂「生成候选前端」主链（截图共享，状态各管各的）。
         const frontendCandidatePanel = (
           <FrontendCandidatePanel
             view={frontendView}
@@ -2861,13 +3324,15 @@ export default function App() {
             onReset={handleFrontendReset}
           />
         );
-        const screenRefPanel = (
+        const referenceSection = (
           <ScreenReferencePanel
             view={state.screenRef.view}
             busy={state.screenRef.status === 'recognizing'}
             localError={screenRefError}
             persisted={screenRefPersisted}
             frontendPanel={frontendCandidatePanel}
+            frontendView={frontendView}
+            imageStatus={screenRefImageStatus}
             onPick={handleScreenRefPick}
             onPickFile={handleScreenRefFile}
             onRecognize={handleScreenRefRecognize}
@@ -2879,15 +3344,9 @@ export default function App() {
             onReset={handleScreenRefReset}
           />
         );
-        if (agent.status === 'confirmed') {
-          // 资料已确认：附加材料默认折叠，避免「摘要卡 + 上传卡 + 表单卡」三层堆叠。
-          const attachOpen = Boolean(
-            state.screenRef.candidate
-            || state.screenRef.image
-            || agentImages.length > 0,
-          );
-          return (
-            <>
+        return (
+          <>
+            {confirmed ? (
               <AgentDraftSummary
                 storeName={state.agentDraft.storeName}
                 category={state.agentDraft.category}
@@ -2901,58 +3360,37 @@ export default function App() {
                 }))}
                 onReopen={handleAgentReopen}
               />
-              <AttachGroup
-                defaultOpen={attachOpen}
-                hint="资料已确认。需要换骨架或补充图片时再展开，不会自动改动当前版本。"
-              >
-                {screenRefPanel}
-                {visionUploader}
-              </AttachGroup>
-              {storeForm}
-            </>
-          );
-        }
-        return (
-          <>
-            <AgentIntakePanel
-              status={agent.status}
-              transportLabel={transport.label}
-              transportMode={transport.mode}
-              reply={agent.reply}
-              missingFields={agent.missingFields}
-              errors={agent.errors}
-              nextQuestion={agent.nextQuestion}
-              lastError={agent.lastError}
-              attempts={agent.attempts}
-              simulateFailure={agent.simulateFailure}
-              process={agent.process}
-              processHistory={agent.processHistory}
-              staleDraftNotice={agent.staleDraftNotice}
-              hint={agent.hint}
-              onRetry={handleAgentRetry}
-              onToggleSimulateFailure={handleSimulateFailure}
+            ) : (
+              <AgentIntakePanel
+                status={agent.status}
+                transportLabel={transport.label}
+                transportMode={transport.mode}
+                reply={agent.reply}
+                missingFields={agent.missingFields}
+                errors={agent.errors}
+                nextQuestion={agent.nextQuestion}
+                lastError={agent.lastError}
+                attempts={agent.attempts}
+                simulateFailure={agent.simulateFailure}
+                process={agent.process}
+                processHistory={agent.processHistory}
+                staleDraftNotice={agent.staleDraftNotice}
+                hint={agent.hint}
+                onRetry={handleAgentRetry}
+                onToggleSimulateFailure={handleSimulateFailure}
+              />
+            )}
+            <StoreInfoSections
+              basic={basicSection}
+              dishes={dishesSection}
+              environment={environmentSection}
+              reference={referenceSection}
             />
-            <AttachGroup defaultOpen>
-              {screenRefPanel}
-              {visionUploader}
-            </AttachGroup>
-            <DraftEditor
-              draft={state.agentDraft}
-              validation={{
-                missingFields: agent.missingFields,
-                errors: agent.errors,
-                readyForReview: canConfirm,
-              }}
-              disabled={agent.status === 'requesting'}
-              maxDishes={5}
-              minDishes={3}
-              open={draftEditorOpen}
-              onToggleOpen={() => setDraftEditorOpen((value) => !value)}
-              onChangeField={handleAgentFieldChange}
-              onToggleFulfillment={handleAgentFulfillment}
-              onChangeDish={handleAgentDishChange}
-              onRemoveDish={handleAgentRemoveDish}
-            />
+            {confirmed ? (
+              <div className="store-step-foot">
+                <button type="button" className="store-submit" onClick={handleStoreSubmit}>确认店铺信息</button>
+              </div>
+            ) : null}
           </>
         );
       }
@@ -3235,8 +3673,7 @@ case PHASES.DEPLOY: {
                       maxDishes={5}
                       missingCount={state.agent.missingFields.length}
                       errorCount={state.agent.errors.length}
-                      editorOpen={draftEditorOpen}
-                      onAddDish={handleAgentAddDish}
+
                       onConfirm={handleAgentConfirm}
                     />
                   </div>
@@ -3303,6 +3740,17 @@ case PHASES.DEPLOY: {
         busy={onboardingCreating}
         onConfirm={confirmStartOnboarding}
         onCancel={() => setOnboardingConfirmOpen(false)}
+      />
+      <EnvGuideDialog
+        open={envGuideOpen}
+        mode={envGuideMode}
+        deploymentMode={envGuideDeploymentMode}
+        checks={envGuideChecks}
+        busy={envGuideBusy}
+        onRefresh={runEnvChecks}
+        onStart={closeEnvGuideAndContinue}
+        onSkip={handleEnvGuideSkip}
+        onCopyGuide={handleCopyDevtoolsGuide}
       />
     </>
   );

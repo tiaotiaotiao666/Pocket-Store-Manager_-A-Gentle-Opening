@@ -1,4 +1,4 @@
-import { CheckCircle2, Plus } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 function summaryText(status, pendingCount, canConfirm) {
   if (status === 'requesting') return '正在整理资料，请稍候';
@@ -14,12 +14,8 @@ export default function StoreInfoActionBar({
   maxDishes = 5,
   missingCount = 0,
   errorCount = 0,
-  editorOpen = true,
-  onAddDish,
   onConfirm,
 }) {
-  const requestPending = status === 'requesting';
-  const canAddDish = !requestPending && dishCount < maxDishes;
   const canConfirm = status === 'reviewing' && missingCount === 0 && errorCount === 0;
   const pendingCount = missingCount + errorCount;
 
@@ -31,17 +27,6 @@ export default function StoreInfoActionBar({
         <span className="agent-action-count">{dishCount}/{maxDishes} 道菜</span>
       </div>
       <div className="agent-action-buttons">
-        {editorOpen ? (
-          <button
-            type="button"
-            className="agent-btn agent-btn-ghost"
-            disabled={!canAddDish}
-            onClick={() => onAddDish?.()}
-          >
-            <Plus size={14} />
-            添加菜品（{dishCount}/{maxDishes}）
-          </button>
-        ) : null}
         <button
           type="button"
           className="agent-btn agent-btn-confirm"

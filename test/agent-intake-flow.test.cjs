@@ -17,12 +17,7 @@ async function seededStoreInfo() {
   state = machine.reducer(state, { type: 'START_ONBOARDING' });
   state = machine.reducer(state, { type: 'SUBMIT_NAME', name: '松月食堂' });
   state = machine.reducer(state, { type: 'SKIP_INTRO' });
-  state = machine.reducer(state, { type: 'SUBMIT_CUSTOMIZE', value: '' });
-  state = machine.reducer(state, {
-    type: 'BUILD_READY',
-    candidates: [{ id: 'warm-bistro', name: '街巷食集', score: 88 }],
-  });
-  state = machine.reducer(state, { type: 'CONFIRM_TEMPLATE' });
+  // 新流程：命名后直接进入门店资料；能力、生成骨架与视觉都排在资料之后。
   return { machine, state };
 }
 
@@ -247,13 +242,13 @@ test('F8 collecting 下 SUBMIT_STORE_INFO 被拒绝，不进入下一阶段', as
   assert.equal(next, state);
 });
 
-test('F9 idle 路径兼容：直接提交店铺信息仍进入 PROMPT_STUDIO', async () => {
+test('F9 idle 路径兼容：直接提交店铺信息进入 FEATURES', async () => {
   const machine = await loadMachine();
   const { PHASES } = await import('../src/state/constants.mjs');
   const initial = machine.createInitialState();
   assert.equal(initial.agent.status, 'idle');
   const next = machine.reducer(initial, { type: 'SUBMIT_STORE_INFO', summary: '店铺资料', styleId: 'warm' });
-  assert.equal(next.phase, PHASES.PROMPT_STUDIO);
+  assert.equal(next.phase, PHASES.FEATURES);
 });
 
 test('F10 CONFIRM_TEMPLATE 用已命名店名预填草稿', async () => {
@@ -295,7 +290,14 @@ test('F12 确认映射 store，保留营业时间/履约/菜品，交接 payload
     summary: '店铺资料',
     styleId: 'fresh',
   });
-  const visual = submitted.sessions.find((session) => session.id === 'session-visual');
+  assert.equal(submitted.phase, 'features');
+  let withFrame = machine.reducer(submitted, { type: 'SUBMIT_CUSTOMIZE', value: '' });
+  withFrame = machine.reducer(withFrame, {
+    type: 'BUILD_READY',
+    candidates: [{ id: 'warm-bistro', name: '街巷食集', score: 88 }],
+  });
+  withFrame = machine.reducer(withFrame, { type: 'CONFIRM_TEMPLATE' });
+  const visual = withFrame.sessions.find((session) => session.id === 'session-visual');
   assert.equal(typeof visual.handoff, 'string');
   assert.ok(visual.handoff.includes('"agentDraft"'));
   assert.ok(visual.handoff.includes('"priceCents"'));

@@ -17,13 +17,21 @@ export function createDevtoolsService() {
   async function probe() {
     const api = bridge();
     if (mode !== 'desktop' || !api || typeof api.probeDevtools !== 'function') {
-      return { status: 'desktop-required', found: false, via: 'none', message: '需在桌面应用中探测开发者工具' };
+      return { status: 'desktop-required', found: false, running: false, via: 'none', message: '需在桌面应用中探测开发者工具' };
     }
     const result = await api.probeDevtools();
     if (!result || result.ok !== true) {
-      return { status: 'failed', found: false, via: 'none', message: result?.message || '探测失败' };
+      return { status: 'failed', found: false, running: false, via: 'none', message: result?.message || '探测失败' };
     }
-    return { status: 'ok', found: Boolean(result.data?.found), path: result.data?.path || null, via: result.data?.via || 'none' };
+    return {
+      status: 'ok',
+      found: Boolean(result.data?.found),
+      running: Boolean(result.data?.found) && result.data?.running !== false,
+      projectOpen: Boolean(result.data?.found) && result.data?.projectOpen === true,
+      windowTitle: result.data?.windowTitle || '',
+      path: result.data?.path || null,
+      via: result.data?.via || 'none',
+    };
   }
 
   function installGuide() {

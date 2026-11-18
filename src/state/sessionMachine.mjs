@@ -623,6 +623,13 @@ function baseReducer(state, action) {
       return { ...state, assets: { ...(state.assets || {}), images: merged } };
     }
 
+    case 'REMOVE_PROJECT_IMAGE': {
+      const current = state.assets && Array.isArray(state.assets.images) ? state.assets.images : [];
+      const images = current.filter((item) => item && item.assetId !== action.assetId);
+      if (images.length === current.length) return state;
+      return { ...state, assets: { ...(state.assets || {}), images } };
+    }
+
     case 'PROJECT_NEW_SUCCESS': {
       const blank = createInitialState();
       return {
@@ -994,7 +1001,9 @@ function baseReducer(state, action) {
             : session
         )),
       };
-      return enterFeatures(flushed);
+      // 顺序调整：命名之后先填写门店资料，再进入能力与定制。
+      // 店名已在命名阶段确定，这里预填进资料草稿，避免重复询问。
+      return withAgentStoreName({ ...flushed, view: 'flow', phase: PHASES.STORE_INFO }, state.store.name);
     }
 
     case 'ENTER_FEATURES':
@@ -1264,20 +1273,25 @@ function baseReducer(state, action) {
 
     case 'CONFIRM_TEMPLATE': {
       const chosen = state.build.candidates.find((item) => item.id === state.build.selectedId) ?? state.build.candidates[0];
+      const style = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
+      // 顺序调整：生成框架、选完骨架后进入装修与视觉，而不是回头补门店资料。
       const entered = createStepSession(state, {
-        phase: PHASES.STORE_INFO,
-        id: 'session-store',
-        title: '店铺装修',
+        phase: PHASES.PROMPT_STUDIO,
+        id: 'session-visual',
+        title: '视觉生成',
+        intro: PROMPT_INTRO,
+        followUp: '确认提示词后，可以上传一张海报素材，也可以直接跳过。',
         summary: [
           `店铺名称：${state.store.name || NEW_PROJECT_LABEL}`,
           `页面骨架：${chosen?.name ?? '默认骨架'}`,
           `功能能力：共 ${state.features.selected.length} 项`,
           state.features.custom ? `定制要求：${state.features.custom}` : '未提出额外定制要求',
+          `装修风格：${style.name}`,
         ],
-        payload: { template: chosen?.id ?? null, features: state.features.selected, custom: state.features.custom || null },
+        payload: { template: chosen?.id ?? null, styleId: style.id, store: state.store, agentDraft: toContractDraft(state.agentDraft) },
         fields: [
           { label: '店铺名', value: state.store.name || NEW_PROJECT_LABEL },
-          { label: '页面风格', value: chosen?.name ?? '默认骨架', note: '已确认的页面骨架' },
+          { label: '装修风格', value: style.name, note: style.caption },
         ],
       });
       return withAgentStoreName(entered, entered.store.name);
@@ -1322,6 +1336,17 @@ function baseReducer(state, action) {
         adopted: false,
         error: null,
         meta: null,
+      };
+      return { ...state, screenRef: withScreenRefView(next) };
+    }
+
+    case 'SCREEN_REF_IMAGE_HYDRATE': {
+      const current = state.screenRef.image;
+      const image = action.image && typeof action.image === 'object' ? action.image : null;
+      if (!current?.assetId || !image || current.assetId !== image.assetId) return state;
+      const next = {
+        ...state.screenRef,
+        image: { ...current, ...image, assetId: current.assetId },
       };
       return { ...state, screenRef: withScreenRefView(next) };
     }
@@ -1785,24 +1810,9 @@ function baseReducer(state, action) {
       }
       const style = STYLE_PRESETS.find((item) => item.id === (action.styleId ?? state.visual.styleId)) ?? STYLE_PRESETS[0];
       const withConfirmation = appendMessages(state, state.activeSessionId, [{ role: ROLES.USER, text: action.summary, instant: true }]);
+      // 顺序调整：门店资料确认后进入能力选择，而不是直接跳到视觉。
       const base = { ...withConfirmation, visual: { ...withConfirmation.visual, styleId: style.id } };
-      return createStepSession(base, {
-        phase: PHASES.PROMPT_STUDIO,
-        id: 'session-visual',
-        title: '视觉生成',
-        intro: PROMPT_INTRO,
-        followUp: '确认提示词后，可以上传一张海报素材，也可以直接跳过。',
-        summary: [
-          `店铺名称：${state.store.name || NEW_PROJECT_LABEL}`,
-          action.summary || '店铺资料已确认',
-          `装修风格：${style.name}`,
-        ],
-        payload: { styleId: style.id, store: state.store, agentDraft: toContractDraft(state.agentDraft) },
-        fields: [
-          { label: '店铺名', value: state.store.name || NEW_PROJECT_LABEL },
-          { label: '装修风格', value: style.name, note: style.caption },
-        ],
-      });
+      return enterFeatures(base);
     }
 
     case 'SET_PROMPT':

@@ -328,7 +328,7 @@ test('P9 面板达标：关键容器有 role/aria-label，按钮可读，无同�
   );
   // 关键容器与稳定锚点
   assert.match(source, /role="group"/);
-  assert.match(source, /aria-label="参考截图生成候选模板"/);
+  assert.match(source, /aria-label="参考小程序截图"/);
   assert.match(source, /id="screen-ref-panel"/);
   // 上传控件有可读名称与类型限制
   assert.match(source, /type="file"/);
@@ -336,7 +336,7 @@ test('P9 面板达标：关键容器有 role/aria-label，按钮可读，无同�
   assert.match(source, /aria-label="选择参考截图"/);
 
   // 可见按钮文案齐全且互不同名
-  const labels = ['上传截图', '换一张截图', '开始识别', '重新识别', '放弃这条参考', '确认识别结果', '生成候选模板', '采用这个候选', '放弃候选'];
+  const labels = ['上传截图', '换一张', '删除截图', '历史参考候选', '重新识别历史截图', '确认识别结果', '生成候选模板', '采用这个候选', '放弃候选'];
   labels.forEach((label) => {
     assert.ok(source.includes(label), `缺少按钮文案：${label}`);
   });

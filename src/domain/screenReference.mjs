@@ -428,7 +428,13 @@ export function buildScreenRefView(slice) {
     body,
     disclaimer: SCREEN_REF_DISCLAIMER,
     image: source.image
-      ? { name: source.image.name || '参考截图', mediaType: source.image.mediaType || '', previewUrl: source.image.previewUrl || '' }
+      ? {
+        assetId: source.image.assetId || null,
+        name: source.image.name || '参考截图',
+        mediaType: source.image.mediaType || '',
+        bytes: Number.isFinite(source.image.bytes) ? source.image.bytes : 0,
+        previewUrl: source.image.previewUrl || '',
+      }
       : null,
     recognition: recognitionView,
     confirmed: Boolean(source.confirmedAt),

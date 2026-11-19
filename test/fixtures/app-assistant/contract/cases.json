@@ -1,0 +1,424 @@
+{
+  "contractVersion": "app-assistant.v1",
+  "catalogVersion": "app-capabilities.v1",
+  "cases": [
+    {
+      "id": "request-text-legal",
+      "kind": "request",
+      "expect": "accept",
+      "covers": "合法文字",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_legal_1",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 3,
+        "utterance": "店名改为松月食堂，10点到21点营业，支持堂食和自取，加牛肉面28元",
+        "history": [{ "role": "user", "text": "上一条" }],
+        "client": { "surface": "desktop", "phase": "template-pick" },
+        "project": {
+          "projectId": "p_demo",
+          "context": { "projectId": "p_demo", "contentRevision": 3, "phase": "template-pick" }
+        },
+        "attachments": []
+      }
+    },
+    {
+      "id": "request-attachment-only",
+      "kind": "request",
+      "expect": "accept",
+      "covers": "附件-only",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_attachment_only",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 4,
+        "utterance": "",
+        "history": [],
+        "client": { "surface": "desktop", "phase": "store-info" },
+        "project": {
+          "projectId": "p_demo",
+          "context": { "projectId": "p_demo", "contentRevision": 4, "phase": "store-info" }
+        },
+        "attachments": [
+          {
+            "id": "att_1",
+            "kind": "auto",
+            "mediaType": "image/jpeg",
+            "dataBase64": "AAAA",
+            "name": "shot.jpg",
+            "bytes": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "request-unknown-key",
+      "kind": "request",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_REQUEST_INVALID",
+      "covers": "未知键",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_unknown_key",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "utterance": "改店名",
+        "history": [],
+        "client": { "surface": "desktop", "phase": "store-info" },
+        "project": { "projectId": "p_demo", "context": {} },
+        "attachments": [],
+        "settings": { "apiKey": "sk-should-never-be-here" }
+      }
+    },
+    {
+      "id": "request-contract-mismatch",
+      "kind": "request",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_CONTRACT_MISMATCH",
+      "covers": "错误 contractVersion",
+      "payload": {
+        "contractVersion": "app-assistant.v0",
+        "requestId": "chat_req_contract",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "utterance": "改店名",
+        "history": [],
+        "client": { "surface": "desktop", "phase": "store-info" },
+        "project": { "projectId": "p_demo", "context": {} },
+        "attachments": []
+      }
+    },
+    {
+      "id": "request-catalog-mismatch",
+      "kind": "request",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_CATALOG_MISMATCH",
+      "covers": "错误 catalogVersion",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_catalog",
+        "catalogVersion": "app-capabilities.v0",
+        "contextRevision": 1,
+        "utterance": "改店名",
+        "history": [],
+        "client": { "surface": "desktop", "phase": "store-info" },
+        "project": { "projectId": "p_demo", "context": {} },
+        "attachments": []
+      }
+    },
+    {
+      "id": "request-history-too-long",
+      "kind": "request",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_REQUEST_INVALID",
+      "covers": "history 超限",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_history",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "utterance": "改店名",
+        "history": [
+          { "role": "user", "text": "1" },
+          { "role": "assistant", "text": "2" },
+          { "role": "user", "text": "3" },
+          { "role": "assistant", "text": "4" },
+          { "role": "user", "text": "5" },
+          { "role": "assistant", "text": "6" },
+          { "role": "user", "text": "7" },
+          { "role": "assistant", "text": "8" },
+          { "role": "user", "text": "9" },
+          { "role": "assistant", "text": "10" },
+          { "role": "user", "text": "11" },
+          { "role": "assistant", "text": "12" },
+          { "role": "user", "text": "13" }
+        ],
+        "client": { "surface": "desktop", "phase": "store-info" },
+        "project": { "projectId": "p_demo", "context": {} },
+        "attachments": []
+      }
+    },
+    {
+      "id": "response-unknown-field",
+      "kind": "response",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_FIELD_UNKNOWN",
+      "covers": "未知 field",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_f1",
+        "runId": "run_1",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "status": "proposal",
+        "reply": "ok",
+        "proposalId": "proposal_1",
+        "changes": [
+          {
+            "opId": "op_1",
+            "op": "field.set",
+            "fieldId": "store.unknownField",
+            "value": "x",
+            "evidence": { "source": "utterance", "excerpt": "x" }
+          }
+        ],
+        "questions": [],
+        "actionRequests": [],
+        "trace": { "modelCalls": 1, "toolCalls": [], "stopReason": "final_answer", "degraded": false }
+      }
+    },
+    {
+      "id": "response-read-only-field",
+      "kind": "response",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_FIELD_READ_ONLY",
+      "covers": "只读 field",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_f2",
+        "runId": "run_2",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "status": "proposal",
+        "reply": "ok",
+        "proposalId": "proposal_2",
+        "changes": [
+          {
+            "opId": "op_1",
+            "op": "field.set",
+            "fieldId": "settings.apiKey",
+            "value": "sk-x",
+            "evidence": { "source": "utterance", "excerpt": "x" }
+          }
+        ],
+        "questions": [],
+        "actionRequests": [],
+        "trace": { "modelCalls": 1, "toolCalls": [], "stopReason": "final_answer", "degraded": false }
+      }
+    },
+    {
+      "id": "response-wrong-value-type",
+      "kind": "response",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_VALUE_INVALID",
+      "covers": "错误值类型",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_f3",
+        "runId": "run_3",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "status": "proposal",
+        "reply": "ok",
+        "proposalId": "proposal_3",
+        "changes": [
+          {
+            "opId": "op_1",
+            "op": "field.set",
+            "fieldId": "store.name",
+            "value": { "text": "松月食堂" },
+            "evidence": { "source": "utterance", "excerpt": "松月食堂" }
+          }
+        ],
+        "questions": [],
+        "actionRequests": [],
+        "trace": { "modelCalls": 1, "toolCalls": [], "stopReason": "final_answer", "degraded": false }
+      }
+    },
+    {
+      "id": "response-dish-bad-price",
+      "kind": "response",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_VALUE_INVALID",
+      "covers": "菜品非法价格",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_f4",
+        "runId": "run_4",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "status": "proposal",
+        "reply": "ok",
+        "proposalId": "proposal_4",
+        "changes": [
+          {
+            "opId": "op_1",
+            "op": "dish.upsert",
+            "name": "牛肉面",
+            "priceCents": "28元",
+            "evidence": { "source": "utterance", "excerpt": "牛肉面28元" }
+          }
+        ],
+        "questions": [],
+        "actionRequests": [],
+        "trace": { "modelCalls": 1, "toolCalls": [], "stopReason": "final_answer", "degraded": false }
+      }
+    },
+    {
+      "id": "response-missing-evidence",
+      "kind": "response",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_RESPONSE_INVALID",
+      "covers": "缺失证据",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_f5",
+        "runId": "run_5",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "status": "proposal",
+        "reply": "ok",
+        "proposalId": "proposal_5",
+        "changes": [
+          { "opId": "op_1", "op": "field.set", "fieldId": "store.name", "value": "松月食堂" }
+        ],
+        "questions": [],
+        "actionRequests": [],
+        "trace": { "modelCalls": 1, "toolCalls": [], "stopReason": "final_answer", "degraded": false }
+      }
+    },
+    {
+      "id": "response-dangerous-action",
+      "kind": "response",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_OPERATION_DENIED",
+      "covers": "危险 action",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_f6",
+        "runId": "run_6",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "status": "proposal",
+        "reply": "ok",
+        "proposalId": "proposal_6",
+        "changes": [],
+        "questions": [],
+        "actionRequests": [
+          {
+            "opId": "op_1",
+            "op": "action.request",
+            "actionId": "fs.write",
+            "params": { "path": "C:\\Windows\\evil.txt" },
+            "evidence": { "source": "utterance", "excerpt": "写文件" }
+          }
+        ],
+        "trace": { "modelCalls": 1, "toolCalls": [], "stopReason": "final_answer", "degraded": false }
+      }
+    },
+    {
+      "id": "response-path-injection",
+      "kind": "response",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_OPERATION_DENIED",
+      "covers": "path 注入",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_f7",
+        "runId": "run_7",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "status": "proposal",
+        "reply": "ok",
+        "proposalId": "proposal_7",
+        "changes": [
+          {
+            "opId": "op_1",
+            "op": "field.set",
+            "fieldId": "store.name",
+            "value": "../../app.json",
+            "evidence": { "source": "utterance", "excerpt": "../../app.json" }
+          }
+        ],
+        "questions": [],
+        "actionRequests": [],
+        "trace": { "modelCalls": 1, "toolCalls": [], "stopReason": "final_answer", "degraded": false }
+      }
+    },
+    {
+      "id": "response-data-url-abuse",
+      "kind": "response",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_OPERATION_DENIED",
+      "covers": "data URL 滥用",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_f8",
+        "runId": "run_8",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "status": "proposal",
+        "reply": "ok",
+        "proposalId": "proposal_8",
+        "changes": [
+          {
+            "opId": "op_1",
+            "op": "field.set",
+            "fieldId": "visual.prompt",
+            "value": "data:image/png;base64,iVBORw0KGgo=",
+            "evidence": { "source": "utterance", "excerpt": "图片" }
+          }
+        ],
+        "questions": [],
+        "actionRequests": [],
+        "trace": { "modelCalls": 1, "toolCalls": [], "stopReason": "final_answer", "degraded": false }
+      }
+    },
+    {
+      "id": "response-duplicate-op-id",
+      "kind": "response",
+      "expect": "reject",
+      "code": "APP_ASSISTANT_PROPOSAL_DUPLICATE",
+      "covers": "重复 opId",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_f9",
+        "runId": "run_9",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 1,
+        "status": "proposal",
+        "reply": "ok",
+        "proposalId": "proposal_9",
+        "changes": [
+          {
+            "opId": "op_1",
+            "op": "field.set",
+            "fieldId": "store.name",
+            "value": "松月食堂",
+            "evidence": { "source": "utterance", "excerpt": "松月食堂" }
+          },
+          {
+            "opId": "op_1",
+            "op": "field.set",
+            "fieldId": "store.category",
+            "value": "社区餐馆",
+            "evidence": { "source": "utterance", "excerpt": "社区餐馆" }
+          }
+        ],
+        "questions": [],
+        "actionRequests": [],
+        "trace": { "modelCalls": 1, "toolCalls": [], "stopReason": "final_answer", "degraded": false }
+      }
+    },
+    {
+      "id": "response-needs-input-legal",
+      "kind": "response",
+      "expect": "accept",
+      "covers": "合法追问",
+      "payload": {
+        "contractVersion": "app-assistant.v1",
+        "requestId": "chat_req_ok_1",
+        "runId": "run_ok_1",
+        "catalogVersion": "app-capabilities.v1",
+        "contextRevision": 2,
+        "status": "needs-input",
+        "reply": "这张图可以当菜单，也可以当门店氛围照，你想怎么用？",
+        "proposalId": "proposal_ok_1",
+        "changes": [],
+        "questions": [{ "id": "q_1", "text": "识别菜单、提取门店氛围，还是参考界面重构？" }],
+        "actionRequests": [],
+        "trace": { "modelCalls": 1, "toolCalls": [], "stopReason": "final_answer", "degraded": false }
+      }
+    }
+  ]
+}

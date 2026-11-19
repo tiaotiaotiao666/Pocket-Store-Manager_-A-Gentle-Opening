@@ -54,6 +54,7 @@ test('空会话工厂字段完整且与契约一致', async () => {
     revision: 0,
     requestDraftRevision: null,
     requestPhase: null,
+    requestContextRevision: null,
   });
   // 每次都是新对象，不复用同一份引用。
   assert.notEqual(createEmptyAgentChat(), empty);
@@ -177,47 +178,25 @@ test('isValidChatDraft：空白与超限不可发送', async () => {
   assert.equal(isValidChatDraft('好'.repeat(501)), false);
 });
 
-test('阶段路由表逐条断言：只有门店资料与模板两个阶段真的调用模型', async () => {
+test('统一入口：有项目时任意阶段都进入 app-assistant，阶段不再决定能否发送', async () => {
   const { buildAgentChatSubmitPlan } = await loadSidebar();
   const { PHASES } = await loadConstants();
   const projectId = 'p_route0001';
 
-  const storeInfo = buildAgentChatSubmitPlan({ projectId, phase: PHASES.STORE_INFO, hasProject: true });
-  assert.deepEqual(storeInfo, {
-    allowed: true,
-    actionKind: 'store-info',
-    label: '补充/修改门店资料',
-    notice: '本轮将补充/修改门店资料：模型会整理这句话并写入门店草稿。',
-  });
-
-  const templatePick = buildAgentChatSubmitPlan({ projectId, phase: PHASES.TEMPLATE_PICK, hasProject: true });
-  assert.deepEqual(templatePick, {
-    allowed: true,
-    actionKind: 'template-revise',
-    label: '修改当前模板展示',
-    notice: '本轮将修改当前模板展示：只改展示内容，不动门店资料与价格。',
-  });
-
-  const guidePhases = [
-    PHASES.HOME,
-    PHASES.ONBOARDING,
-    PHASES.FEATURES,
-    PHASES.BUILDING,
-    PHASES.PROMPT_STUDIO,
-    PHASES.IMAGE_REVIEW,
-    PHASES.DEPLOY,
-  ];
-  for (const phase of guidePhases) {
+  for (const phase of Object.values(PHASES)) {
     const plan = buildAgentChatSubmitPlan({ projectId, phase, hasProject: true });
     assert.equal(plan.allowed, true, `${phase} 有项目时允许发送`);
-    assert.equal(plan.actionKind, 'guide', `${phase} 走本地指引`);
-    assert.equal(plan.notice, '本轮不调用模型，仅给出入口指引，不会修改项目内容。');
+    assert.equal(plan.actionKind, 'app-assistant', `${phase} 走统一入口`);
+    assert.equal(plan.label, '项目 Agent');
+    assert.ok(plan.notice.includes('桌面再次校验'));
+
+    const same = buildAgentChatSubmitPlan({ projectId, phase });
+    assert.deepEqual(same, plan, `${phase} 缺省 hasProject 时口径一致`);
   }
 
   // 文案如实：不暗示「任何话都能改任意内容」。
-  const notices = [storeInfo, templatePick, ...guidePhases.map((phase) => buildAgentChatSubmitPlan({ projectId, phase }))]
-    .map((plan) => `${plan.label}${plan.notice}`);
-  assert.ok(notices.every((text) => !/任何|任意|什么都能|全能/.test(text)));
+  const plan = buildAgentChatSubmitPlan({ projectId, phase: PHASES.DEPLOY });
+  assert.ok(!/任何|任意|什么都能|全能/.test(`${plan.label}${plan.notice}`));
 
   // 无活动项目：禁止发送并提示先打开项目。
   const none = buildAgentChatSubmitPlan({ projectId: null, phase: PHASES.STORE_INFO, hasProject: false });
@@ -232,26 +211,28 @@ test('阶段路由表逐条断言：只有门店资料与模板两个阶段真�
   }
 });
 
-test('isChatResponseAcceptable 冻结 projectId + requestId + draftRevision + phase 四元组', async () => {
-  const { isChatResponseAcceptable } = await loadSidebar();
+test('isChatResponseAcceptable 冻结 projectId + requestId + contextRevision；phase 不参与', async () => {
+  const { isChatResponseAcceptable, createEmptyAgentChat } = await loadSidebar();
   const chat = {
-    ...(await loadSidebar()).createEmptyAgentChat(),
+    ...createEmptyAgentChat(),
     status: 'requesting',
     activeProjectId: 'p_a',
     activeRequestId: 'req-1',
-    requestDraftRevision: 3,
+    requestContextRevision: 3,
     requestPhase: 'store-info',
   };
-  const ok = { chat, projectId: 'p_a', requestId: 'req-1', draftRevision: 3, phase: 'store-info' };
+  const ok = { chat, projectId: 'p_a', requestId: 'req-1', contextRevision: 3 };
   assert.equal(isChatResponseAcceptable(ok), true);
   assert.equal(isChatResponseAcceptable({ ...ok, projectId: 'p_b' }), false);
   assert.equal(isChatResponseAcceptable({ ...ok, requestId: 'req-2' }), false);
-  assert.equal(isChatResponseAcceptable({ ...ok, draftRevision: 4 }), false);
-  assert.equal(isChatResponseAcceptable({ ...ok, draftRevision: null }), false);
-  assert.equal(isChatResponseAcceptable({ ...ok, phase: 'template-pick' }), false);
+  assert.equal(isChatResponseAcceptable({ ...ok, contextRevision: 4 }), false);
+  assert.equal(isChatResponseAcceptable({ ...ok, contextRevision: null }), false);
+  // 跨阶段是核心场景：阶段变化不影响接收。
+  assert.equal(isChatResponseAcceptable({ ...ok, phase: 'template-pick' }), true);
+  assert.equal(isChatResponseAcceptable({ ...ok, phase: 'deploy' }), true);
   assert.equal(isChatResponseAcceptable({ ...ok, projectId: undefined }), false);
   assert.equal(isChatResponseAcceptable({ ...ok, chat: { ...chat, status: 'idle' } }), false);
-  assert.equal(isChatResponseAcceptable({ ...ok, chat: { ...chat, requestDraftRevision: null } }), false);
+  assert.equal(isChatResponseAcceptable({ ...ok, chat: { ...chat, requestContextRevision: null } }), false);
   assert.equal(isChatResponseAcceptable({}), false);
 });
 
@@ -271,7 +252,7 @@ test('reducer：REQUEST_START 写入一条用户消息，SUCCESS 只追加一条
   assert.equal(started.agentChat.lastUtterance, '补充营业时间 10:00-21:00');
   assert.equal(started.agentChat.messages.length, 1);
   assert.deepEqual(started.agentChat.messages[0].context, { phase: 'store-info', sessionId: started.activeSessionId });
-  assert.equal(started.agentChat.messages[0].actionKind, 'store-info');
+  assert.equal(started.agentChat.messages[0].actionKind, 'app-assistant');
 
   const done = machine.reducer(started, {
     type: 'AGENT_CHAT_SUCCESS',
@@ -295,7 +276,7 @@ test('reducer：REQUEST_START 写入一条用户消息，SUCCESS 只追加一条
   assert.equal(done.agentChat.messages.length, 2);
   assert.equal(done.agentChat.messages[1].role, 'assistant');
   assert.equal(done.agentChat.messages[1].text, '已按你的说法更新门店资料。');
-  assert.equal(done.agentChat.messages[1].actionKind, 'store-info');
+  assert.equal(done.agentChat.messages[1].actionKind, 'app-assistant');
   assert.deepEqual(done.agentChat.lastRun.toolLabels, ['读取门店资料', '更新门店资料']);
   assert.equal(done.agentChat.lastRun.trace, undefined);
   assert.equal(done.agentChat.lastRun.runId, 'run-9');
@@ -551,22 +532,24 @@ test('请求防串：项目切换后旧 requestId 的成功/失败都被拒收�
   });
   assert.equal(crossedFailure, newStarted);
 
-  // 四元组其它位不匹配同样拒收。
-  const wrongPhase = machine.reducer(newStarted, {
+  // 阶段不再参与拒收：跨阶段到达的合法响应可以落地（这是本功能的核心场景）。
+  const crossPhaseAccepted = machine.reducer(newStarted, {
     type: 'AGENT_CHAT_SUCCESS',
     projectId: 'p_new',
     requestId: 'req-new',
-    draftRevision: 0,
+    contextRevision: newStarted.project.contentRevision,
     phase: 'template-pick',
-    reply: '阶段不匹配',
+    reply: '阶段变化后仍然合法',
   });
-  assert.equal(wrongPhase, newStarted);
+  assert.equal(crossPhaseAccepted.agentChat.status, 'idle');
+  assert.equal(crossPhaseAccepted.agentChat.messages.length, 2);
 
+  // 项目业务内容版本不匹配同样拒收（请求期间手改业务字段）。
   const wrongRevision = machine.reducer(newStarted, {
     type: 'AGENT_CHAT_SUCCESS',
     projectId: 'p_new',
     requestId: 'req-new',
-    draftRevision: 7,
+    contextRevision: newStarted.project.contentRevision + 7,
     phase: 'store-info',
     reply: '版本不匹配',
   });
@@ -653,7 +636,7 @@ test('selectAgentChatState 暴露侧栏视图模型且不外泄请求身份', as
   assert.equal(idleView.projectId, projectId);
   assert.equal(idleView.phase, 'store-info');
   assert.equal(idleView.busy, false);
-  assert.equal(idleView.plan.actionKind, 'store-info');
+  assert.equal(idleView.plan.actionKind, 'app-assistant');
   assert.equal(idleView.activeRequestId, undefined);
   assert.equal(idleView.requestDraftRevision, undefined);
 

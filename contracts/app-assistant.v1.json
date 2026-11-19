@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "app-assistant.v1",
+  "catalogVersion": "app-capabilities.v1",
+  "endpoint": "/api/v1/agent/app-assistant",
+  "headers": {
+    "requestId": "X-Agent-Request-Id",
+    "contract": "X-Agent-Contract"
+  },
+  "statuses": ["proposal", "needs-input", "rejected"],
+  "applyStatuses": ["applied", "awaiting-confirmation", "stale", "rejected", "failed"],
+  "request": {
+    "allowedKeys": [
+      "contractVersion",
+      "requestId",
+      "catalogVersion",
+      "contextRevision",
+      "utterance",
+      "history",
+      "client",
+      "project",
+      "attachments"
+    ],
+    "maxUtteranceChars": 500,
+    "maxHistoryMessages": 12,
+    "maxHistoryChars": 6000,
+    "maxContextBytes": 65536,
+    "maxAttachments": 3,
+    "clientSurfaces": ["desktop"],
+    "attachmentPurposes": ["auto", "menu", "store", "reference"]
+  },
+  "response": {
+    "allowedKeys": [
+      "contractVersion",
+      "requestId",
+      "runId",
+      "catalogVersion",
+      "contextRevision",
+      "status",
+      "reply",
+      "proposalId",
+      "changes",
+      "questions",
+      "actionRequests",
+      "trace",
+      "meta"
+    ],
+    "maxReplyChars": 500,
+    "maxChanges": 24,
+    "maxQuestions": 3,
+    "maxActionRequests": 2,
+    "maxEvidenceExcerptChars": 120,
+    "traceKeys": ["modelCalls", "toolCalls", "stopReason", "degraded"],
+    "toolCallKeys": ["name", "ok", "latencyMs"]
+  },
+  "operations": {
+    "field.set": {
+      "requiredKeys": ["opId", "op", "fieldId", "value", "evidence"],
+      "optionalKeys": ["reason"],
+      "forbiddenKeys": ["path", "url", "script", "actionType"]
+    },
+    "dish.upsert": {
+      "requiredKeys": ["opId", "op", "name", "evidence"],
+      "optionalKeys": ["dishId", "priceCents", "description", "reason"],
+      "forbiddenKeys": ["path", "url", "script", "actionType"]
+    },
+    "dish.remove": {
+      "requiredKeys": ["opId", "op", "dishId", "evidence"],
+      "optionalKeys": ["reason"],
+      "forbiddenKeys": ["path", "url", "script", "actionType"]
+    },
+    "action.request": {
+      "requiredKeys": ["opId", "op", "actionId", "evidence"],
+      "optionalKeys": ["params", "attachmentIds", "reason"],
+      "forbiddenKeys": ["actionType", "reducer", "ipc", "path", "url", "script"]
+    }
+  },
+  "risk": {
+    "levels": ["auto", "confirm"],
+    "confirmationIsDecidedBy": "desktop-catalog",
+    "note": "模型传 requiresApproval=false 无效；确认级别只能由桌面端能力目录决定。"
+  },
+  "denied": {
+    "readOnlyFieldIds": [
+      "build.candidates",
+      "build.screenRef",
+      "build.frontendCandidate",
+      "deploy.result",
+      "settings.*",
+      "agentChat.*"
+    ],
+    "forbiddenFieldIdPrefixes": ["settings.", "agentChat.", "deploy.directory", "unmappedFields", "secret."],
+    "forbiddenRequestKeys": [
+      "settings",
+      "apiKey",
+      "authorization",
+      "systemPrompt",
+      "prompt",
+      "trace",
+      "dataUrl",
+      "absolutePath",
+      "cwd",
+      "reducer",
+      "ipc",
+      "command",
+      "script"
+    ],
+    "forbiddenValuePatterns": [
+      "data:",
+      "file://",
+      "http://",
+      "https://",
+      "..\\",
+      "../",
+      "\\\\"
+    ],
+    "forbiddenActionIds": ["dispatch", "ipc.invoke", "fs.write", "shell.run", "reducer.raw"]
+  },
+  "limits": {
+    "maxProjectContextBytes": 65536,
+    "maxAttachmentsTotalBytes": 1048576,
+    "maxAttachmentBytes": 409600,
+    "serverMaxModelCalls": 6,
+    "serverMaxToolCalls": 12,
+    "serverTimeoutMs": 60000
+  },
+  "errorCodes": [
+    "APP_ASSISTANT_REQUEST_INVALID",
+    "APP_ASSISTANT_CONTRACT_MISMATCH",
+    "APP_ASSISTANT_CATALOG_MISMATCH",
+    "APP_ASSISTANT_CONTEXT_INVALID",
+    "APP_ASSISTANT_CONTEXT_STALE",
+    "APP_ASSISTANT_RESPONSE_INVALID",
+    "APP_ASSISTANT_FIELD_UNKNOWN",
+    "APP_ASSISTANT_FIELD_READ_ONLY",
+    "APP_ASSISTANT_VALUE_INVALID",
+    "APP_ASSISTANT_OPERATION_DENIED",
+    "APP_ASSISTANT_CONFIRMATION_REQUIRED",
+    "APP_ASSISTANT_ACTION_UNAVAILABLE",
+    "APP_ASSISTANT_ATTACHMENT_PURPOSE_UNKNOWN",
+    "APP_ASSISTANT_PROPOSAL_DUPLICATE"
+  ]
+}

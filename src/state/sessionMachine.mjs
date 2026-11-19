@@ -58,6 +58,8 @@ import {
   fromDocument,
 } from '../domain/projectSnapshot.mjs';
 import { MAX_DISHES } from '../domain/storeLimits.mjs';
+import { describeAppliedChanges } from '../domain/appAssistantProposal.mjs';
+import { buildProjectContextSnapshot } from '../domain/projectAgentContext.mjs';
 import {
   CHAT_ACTION_KINDS,
   CHAT_MESSAGE_MAX_CHARS,
@@ -334,6 +336,7 @@ function abandonAgentChatRequest(chat) {
     activeRequestId: null,
     requestDraftRevision: null,
     requestPhase: null,
+    requestContextRevision: null,
     revision: nextChatRevision(slice),
   };
 }
@@ -373,7 +376,9 @@ function resolveAgentChatIdentity(state, action) {
     projectId: chatIdText(action?.projectId) || chat.activeProjectId,
     requestId: chatIdText(action?.requestId) || chat.activeRequestId,
     draftRevision: Number.isInteger(action?.draftRevision) ? action.draftRevision : chat.requestDraftRevision,
+    // phase 只作上下文展示，不参与接收判断。
     phase: chatIdText(action?.phase) || chat.requestPhase,
+    contextRevision: Number.isInteger(action?.contextRevision) ? action.contextRevision : chat.requestContextRevision,
   };
 }
 
@@ -449,6 +454,8 @@ function createInitialProjectSlice() {
     openError: null,
     deleteTarget: null,
     search: '',
+    // 项目业务内容版本：只由 reducer 包装层在业务快照真实变化时递增，不落盘。
+    contentRevision: 0,
   };
 }
 
@@ -1056,6 +1063,7 @@ function baseReducer(state, action) {
           nextQuestion: buildNextQuestion(validation),
         },
         presentation: restorePresentation(snapshot, state),
+        assets: snapshot.assets ? cloneJson(snapshot.assets) : state.assets,
         project: {
           ...state.project,
           appid: typeof snapshot.appid === 'string' ? snapshot.appid : state.project.appid,
@@ -1420,6 +1428,145 @@ function baseReducer(state, action) {
         ],
       });
       return withAgentStoreName(entered, entered.store.name);
+    }
+
+    /**
+     * 统一会话 Agent 的字段修改批次（`app-assistant.v1`）。
+     *
+     * 只接受领域层已规范化的提案；reducer 内再校验一次 contextRevision。
+     * 整批原子：任一字段/菜品校验失败则不写任何东西，也不触碰 undo 元数据。
+     */
+    case 'APP_ASSISTANT_CHANGES_APPLY': {
+      const currentRevision = Number.isInteger(state.project?.contentRevision) ? state.project.contentRevision : 0;
+      if (!Number.isInteger(action.baseContextRevision) || action.baseContextRevision !== currentRevision) {
+        return state;
+      }
+      const proposalId = chatIdText(action.proposalId);
+      if (!proposalId) return state;
+      const already = state.agentChat?.lastApplied;
+      if (already && already.proposalId === proposalId) return state;
+      const changes = Array.isArray(action.changes) ? action.changes : [];
+      const fieldChanges = changes.filter((item) => item && item.op === 'field.set');
+      const dishChanges = changes.filter((item) => item && (item.op === 'dish.upsert' || item.op === 'dish.remove'));
+      if (!fieldChanges.length && !dishChanges.length) return state;
+
+      const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+      const draftPatch = {};
+      let store = { ...state.store };
+      let visual = { ...state.visual };
+      let features = { ...state.features };
+      let project = { ...state.project };
+      let presentation = state.presentation;
+      let styleChanged = false;
+
+      for (const change of fieldChanges) {
+        switch (change.fieldId) {
+          case 'store.name':
+            draftPatch.storeName = change.value;
+            break;
+          case 'store.category':
+            draftPatch.category = change.value;
+            break;
+          case 'store.businessHours':
+            draftPatch.businessHours = change.value;
+            break;
+          case 'store.fulfillment':
+            draftPatch.fulfillment = { ...state.agentDraft.fulfillment, ...change.value };
+            break;
+          case 'store.address':
+            store = { ...store, address: change.value };
+            break;
+          case 'store.phone':
+            store = { ...store, phone: change.value };
+            break;
+          case 'store.notes':
+            store = { ...store, notes: change.value };
+            break;
+          case 'visual.styleId':
+            visual = { ...visual, styleId: change.value };
+            styleChanged = true;
+            break;
+          case 'visual.prompt':
+            visual = { ...visual, prompt: change.value };
+            break;
+          case 'features.selected':
+            features = { ...features, selected: [...change.value] };
+            break;
+          case 'features.custom':
+            features = { ...features, custom: change.value };
+            break;
+          case 'project.appid':
+            project = { ...project, appid: change.value };
+            break;
+          default:
+            // 未知字段绝不静默跳过：整批拒绝，避免出现「改了一半」。
+            return state;
+        }
+      }
+
+      let draft = applyDraftPatch(state.agentDraft, draftPatch);
+      const upserts = dishChanges
+        .filter((item) => item.op === 'dish.upsert')
+        .map((item) => ({
+          ...(item.dishId ? { id: item.dishId } : {}),
+          name: item.name,
+          ...(hasOwn(item, 'priceCents') ? { priceCents: item.priceCents } : {}),
+          ...(hasOwn(item, 'description') ? { description: item.description } : {}),
+        }));
+      if (upserts.length) draft = applyDraftPatch(draft, { dishes: upserts });
+      const removes = dishChanges.filter((item) => item.op === 'dish.remove').map((item) => item.dishId);
+      if (removes.length) {
+        draft = normalizeAgentDraft({
+          ...draft,
+          dishes: draft.dishes.filter((dish) => !removes.includes(dish.id)),
+        });
+      }
+
+      // 店名/品类双写：草稿是权威值，store 切片跟随，两个表单一起更新。
+      if (hasOwn(draftPatch, 'storeName')) store = { ...store, name: draft.storeName };
+      if (hasOwn(draftPatch, 'category')) store = { ...store, type: draft.category };
+
+      const validation = validateAgentDraft(draft);
+      if (validation.errors.length) return state;
+
+      if (styleChanged && presentation?.patch?.theme) {
+        const nextPatch = { ...presentation.patch };
+        delete nextPatch.theme;
+        const nextChanges = (Array.isArray(presentation.changes) ? presentation.changes : [])
+          .filter((item) => !String(item?.path ?? '').startsWith('theme.'));
+        presentation = { ...presentation, patch: nextPatch, changes: nextChanges };
+      }
+
+      const previewState = { ...state, store, agentDraft: draft, visual, features, project, presentation };
+      const entries = describeAppliedChanges(
+        { changes: [...fieldChanges, ...dishChanges] },
+        state,
+        previewState,
+      );
+
+      return {
+        ...state,
+        store,
+        agentDraft: draft,
+        visual,
+        features,
+        project,
+        presentation,
+        agent: {
+          ...state.agent,
+          missingFields: validation.missingFields,
+          errors: validation.errors,
+          nextQuestion: buildNextQuestion(validation),
+        },
+        agentChat: {
+          ...state.agentChat,
+          lastApplied: {
+            proposalId,
+            appliedRevision: currentRevision + 1,
+            entries,
+          },
+        },
+      };
     }
 
     case 'SET_STORE_FIELD': {
@@ -1869,6 +2016,10 @@ function baseReducer(state, action) {
           activeRequestId: requestId,
           requestDraftRevision: Number.isInteger(action.draftRevision) ? action.draftRevision : chatRevision(chat),
           requestPhase: state.phase,
+          // 统一会话的身份：冻结业务内容版本，阶段不参与拒收。
+          requestContextRevision: Number.isInteger(action.contextRevision)
+            ? action.contextRevision
+            : (Number.isInteger(state.project?.contentRevision) ? state.project.contentRevision : 0),
           lastUtterance: userMessage ? userMessage.text : utterance,
           lastError: null,
           revision: nextChatRevision(chat),
@@ -1904,6 +2055,12 @@ function baseReducer(state, action) {
           createdAt: action.createdAt,
         })
         : null;
+      const requestContextRevision = Number.isInteger(chat.requestContextRevision) ? chat.requestContextRevision : null;
+      const currentContentRevision = Number.isInteger(state.project?.contentRevision) ? state.project.contentRevision : 0;
+      // 请求期间手改业务数据：消息照常落地并如实说明「结果未写入」，不静默成功。
+      const stale = requestContextRevision !== null && currentContentRevision !== requestContextRevision
+        ? { requestId: identity.requestId, expectedRevision: requestContextRevision, actualRevision: currentContentRevision }
+        : null;
       return {
         ...state,
         agentChat: {
@@ -1913,7 +2070,16 @@ function baseReducer(state, action) {
           activeRequestId: null,
           requestDraftRevision: null,
           requestPhase: null,
+          requestContextRevision: null,
           lastError: null,
+          lastStale: stale,
+          // 待确认项只登记摘要（字段/动作），绝不自动写入。
+          lastPending: action.pending && typeof action.pending === 'object'
+            ? {
+              fields: Array.isArray(action.pending.fields) ? action.pending.fields.slice(0, 24) : [],
+              actions: Array.isArray(action.pending.actions) ? action.pending.actions.slice(0, 2) : [],
+            }
+            : null,
           // 过程卡只留状态/耗时/工具标签（normalizeChatRun 已经按白名单裁剪过）。
           lastRun: normalizeChatRun({
             ...(action.run && typeof action.run === 'object' ? action.run : {}),
@@ -1938,6 +2104,7 @@ function baseReducer(state, action) {
           activeRequestId: null,
           requestDraftRevision: null,
           requestPhase: null,
+          requestContextRevision: null,
           lastError: normalizeChatError(action.error),
           revision: nextChatRevision(chat),
         },
@@ -1966,6 +2133,10 @@ function baseReducer(state, action) {
           activeRequestId: requestId,
           requestDraftRevision: Number.isInteger(action.draftRevision) ? action.draftRevision : chatRevision(chat),
           requestPhase: state.phase,
+          // 统一会话的身份：冻结业务内容版本，阶段不参与拒收。
+          requestContextRevision: Number.isInteger(action.contextRevision)
+            ? action.contextRevision
+            : (Number.isInteger(state.project?.contentRevision) ? state.project.contentRevision : 0),
           lastError: null,
           revision: nextChatRevision(chat),
         },
@@ -2552,6 +2723,11 @@ const UNDOABLE_ACTIONS = new Set([
   'CONFIRM_PROMPT',
   'APPROVE_IMAGE',
   'PROJECT_SET_APPID',
+  // T7：素材与其引用同批撤销（物理文件可保留用于 redo，状态里不出现幽灵素材）。
+  'ADD_PROJECT_IMAGES',
+  'REMOVE_PROJECT_IMAGE',
+  // 统一会话 Agent：一批字段修改只占一格撤销；proposalId 作为合并键。
+  'APP_ASSISTANT_CHANGES_APPLY',
   // C-SESSION-PRESENTATION@1：只有成功的展示修改可撤销；请求/失败/清错不压栈。
   'TEMPLATE_REVISE_SUCCESS',
 ]);
@@ -2583,6 +2759,8 @@ function undoSnapshot(state) {
       imageRounds: cloneJson(visual.imageRounds || []),
     },
     agentDraft: cloneJson(state.agentDraft || {}),
+    // T7：素材与其引用同批撤销；物理文件保留（见文档），状态里绝不出现幽灵素材。
+    assets: cloneJson(state.assets || { images: [] }),
     // 展示切片必须进快照，否则展示修改无法撤销/重做。
     presentation: cloneJson(state.presentation || createInitialPresentationSlice()),
     appid: (state.project && state.project.appid) || '',
@@ -2656,7 +2834,31 @@ function forgetDirectoryOnFailure(deploy, error) {
   return DIRECTORY_FORGOTTEN_CODES.has(code);
 }
 
+/**
+ * 项目业务内容版本：只在业务上下文快照真实变化时递增。
+ *
+ * phase / 视图 / 会话 / 输入草稿 / 请求态 / 设置 / 绝对路径都不算；
+ * 手改项目字段、撤销/重做、素材引用变化都算。旧请求按 projectId+requestId
+ * 失效，重开项目从 0 重新开始即可。
+ */
+function advanceContentRevision(previous, next) {
+  if (previous === next) return next;
+  if (buildProjectContextSnapshot(previous) === buildProjectContextSnapshot(next)) return next;
+  const base = Number.isInteger(previous.project?.contentRevision) ? previous.project.contentRevision : 0;
+  const revision = base + 1;
+  const project = { ...(next.project || {}), contentRevision: revision };
+  const chat = next.agentChat;
+  const agentChat = chat && chat.lastApplied
+    ? { ...chat, lastApplied: { ...chat.lastApplied, appliedRevision: revision } }
+    : chat;
+  return { ...next, project, ...(agentChat === chat ? {} : { agentChat }) };
+}
+
 export function reducer(state, action) {
+  return advanceContentRevision(state, reduceWithUndo(state, action));
+}
+
+function reduceWithUndo(state, action) {
   // 晚响应必须连 undo 元数据也不触碰，严格保持原 state 引用。
   if ((action.type === 'AGENT_TURN_SUCCESS' || action.type === 'AGENT_TURN_FAILURE')
     && !isCurrentAgentTurnCompletion(state, action)) {
@@ -2818,6 +3020,11 @@ export function selectAgentChatState(state) {
     plan,
     canSend: plan.allowed && status !== CHAT_STATUS.REQUESTING && isValidChatDraft(chat.draft),
     canRetry: status === CHAT_STATUS.FAILED && isValidChatDraft(chat.lastUtterance, { maxChars: CHAT_MESSAGE_MAX_CHARS }),
+    // 最近一次字段批次的应用事实（只存在内存，不落盘）。
+    lastApplied: chat.lastApplied ?? null,
+    lastPending: chat.lastPending ?? null,
+    lastStale: chat.lastStale ?? null,
+    contentRevision: Number.isInteger(state?.project?.contentRevision) ? state.project.contentRevision : 0,
   };
 }
 

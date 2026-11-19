@@ -14,6 +14,16 @@ import { prepareImageFile } from '../../services/agentTurn/agentImageUpload.js';
  */
 
 const KIND_CONFIG = Object.freeze({
+  auto: {
+    label: '自动判断',
+    hint: '由项目 Agent 判断用途；不确定时会先追问（识别菜单 / 提取门店氛围 / 参考界面重构）。',
+    limit: AGENT_IMAGE_LIMITS.maxTotalImages,
+  },
+  reference: {
+    label: '参考界面',
+    hint: '只进入「参考图重构」候选链，不会直接改动模板或采用候选。',
+    limit: 1,
+  },
   menu: {
     label: '菜单照',
     hint: `最多 ${AGENT_IMAGE_LIMITS.maxMenuImages} 张，用于识别菜名、价格与描述。`,

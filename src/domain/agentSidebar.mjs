@@ -30,12 +30,13 @@ export const CHAT_MESSAGE_STATUSES = Object.freeze(['done', 'failed']);
 /**
  * 消息动作类型：这条消息对应的动作口径。
  *
- * - `store-info`：补充/修改门店资料（复用 handleAgentTurn）；
- * - `template-revise`：修改当前模板展示（复用 handleTemplateReviseSubmit）；
+ * - `app-assistant`：统一会话 Agent（`app-assistant.v1`），任意项目阶段可用；
+ * - `store-info`：历史消息的补充/修改门店资料口径（旧项目兼容，不再新路由）；
+ * - `template-revise`：历史消息的模板展示修改口径（旧项目兼容）；
  * - `frontend-reconstruct`：图片驱动前端重构（侧栏只给摘要与跳转入口）；
  * - `guide`：本地指引，不调用模型。
  */
-export const CHAT_ACTION_KINDS = Object.freeze(['store-info', 'template-revise', 'frontend-reconstruct', 'guide']);
+export const CHAT_ACTION_KINDS = Object.freeze(['app-assistant', 'store-info', 'template-revise', 'frontend-reconstruct', 'guide']);
 
 /** 会话消息条数上限（保留最新）。 */
 export const CHAT_MESSAGE_LIMIT = 100;
@@ -125,6 +126,8 @@ export function createEmptyAgentChat() {
     revision: 0,
     requestDraftRevision: null,
     requestPhase: null,
+    // 统一会话（app-assistant.v1）冻结的项目业务内容版本。
+    requestContextRevision: null,
   };
 }
 
@@ -271,27 +274,16 @@ export function isValidChatDraft(text, options = {}) {
 }
 
 /**
- * 阶段 → 动作的显式路由表（唯一口径）。
+ * 统一会话 Agent 的提交口径（唯一）。
  *
- * 只有这两个阶段会真正调用模型；其余阶段一律是本地指引，不假装「什么都能改」。
+ * 有项目就允许发送，任意阶段都进入 `app-assistant.v1`：
+ * 模型只提出字段修改/追问/动作请求，桌面端再次校验后写回。
+ * 阶段只作为上下文传给模型，不再决定「能不能问、能改什么」。
  */
-const PHASE_ROUTES = Object.freeze({
-  [PHASES.STORE_INFO]: Object.freeze({
-    actionKind: 'store-info',
-    label: '补充/修改门店资料',
-    notice: '本轮将补充/修改门店资料：模型会整理这句话并写入门店草稿。',
-  }),
-  [PHASES.TEMPLATE_PICK]: Object.freeze({
-    actionKind: 'template-revise',
-    label: '修改当前模板展示',
-    notice: '本轮将修改当前模板展示：只改展示内容，不动门店资料与价格。',
-  }),
-});
-
-const GUIDE_ROUTE = Object.freeze({
-  actionKind: 'guide',
-  label: '本地指引',
-  notice: '本轮不调用模型，仅给出入口指引，不会修改项目内容。',
+const APP_ASSISTANT_ROUTE = Object.freeze({
+  actionKind: 'app-assistant',
+  label: '项目 Agent',
+  notice: '每个阶段都可以直接说要改什么：模型只提出字段修改，写入前由桌面再次校验，并显示变更卡与撤销。',
 });
 
 const NO_PROJECT_ROUTE = Object.freeze({
@@ -301,7 +293,7 @@ const NO_PROJECT_ROUTE = Object.freeze({
 });
 
 /**
- * 侧栏提交的纯函数口径：按当前阶段显式路由，回答「能不能发、这轮做什么」。
+ * 侧栏提交的纯函数口径：回答「能不能发、这一轮走哪个统一入口」。
  *
  * @param {{projectId?: string|null, phase?: string|null, hasProject?: boolean}} input
  * @returns {{allowed: boolean, actionKind: string, label: string, notice: string}}
@@ -310,18 +302,18 @@ export function buildAgentChatSubmitPlan(input = {}) {
   const source = isPlainObject(input) ? input : {};
   const hasProject = typeof source.hasProject === 'boolean' ? source.hasProject : Boolean(trimText(source.projectId, ID_MAX_CHARS));
   if (!hasProject) return { allowed: false, ...NO_PROJECT_ROUTE };
-  const route = PHASE_ROUTES[source.phase] ?? GUIDE_ROUTE;
-  return { allowed: true, actionKind: route.actionKind, label: route.label, notice: route.notice };
+  return { allowed: true, ...APP_ASSISTANT_ROUTE };
 }
 
 /**
  * 迟到响应是否属于当前挂起请求（请求防串的唯一判断）。
  *
- * 四元组 `projectId + requestId + draftRevision + phase` 全部匹配才接受；
- * 任一不匹配（包括空值）即拒收——切换项目、重置、删除项目后的旧响应都走这条路。
+ * 三元组 `projectId + requestId + contextRevision` 全部匹配才接受；
+ * `phase` 只作上下文，不再参与拒收——跨阶段是本功能的核心场景。
+ * 切换项目、重置、删除项目、请求期间手改业务数据后的旧响应都在这里被拒收。
  *
  * @param {{chat: object, projectId?: string|null, requestId?: string|null,
- *   draftRevision?: number|null, phase?: string|null}} input
+ *   contextRevision?: number|null}} input
  * @returns {boolean}
  */
 export function isChatResponseAcceptable(input = {}) {
@@ -338,13 +330,9 @@ export function isChatResponseAcceptable(input = {}) {
   const requestId = trimText(source.requestId, ID_MAX_CHARS);
   if (!activeRequestId || !requestId || activeRequestId !== requestId) return false;
 
-  const frozenRevision = Number.isInteger(chat.requestDraftRevision) ? chat.requestDraftRevision : null;
+  const frozenRevision = Number.isInteger(chat.requestContextRevision) ? chat.requestContextRevision : null;
   if (frozenRevision === null) return false;
-  if (!Number.isInteger(source.draftRevision) || source.draftRevision !== frozenRevision) return false;
-
-  const frozenPhase = trimText(chat.requestPhase, PHASE_MAX_CHARS);
-  const phase = trimText(source.phase, PHASE_MAX_CHARS);
-  if (!frozenPhase || !phase || frozenPhase !== phase) return false;
+  if (!Number.isInteger(source.contextRevision) || source.contextRevision !== frozenRevision) return false;
 
   return true;
 }

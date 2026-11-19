@@ -18,7 +18,22 @@ npm run frontend:capabilities:check  # 校验图片驱动重构的能力快照�
 npm run frontend:verify -- --attempt <attemptDir> [--runtime]  # 候选 dry-run（可选真实微信验证）
 node scripts/frontend-verify.cjs --attempt <attemptDir> [--runtime]  # 同上，直接入口
 node scripts/frontend-contract.cjs --check   # 前端重构契约漂移检查（改 contracts/ 后必须 --write 再生成）
+npm run app:capabilities:check    # 校验服务端 app-assistant 能力快照与 src/domain/appCapabilities.mjs 同源
+npm run app:assistant:smoke       # 统一会话 UIA 走查（需先 npm run agent:app）
 ```
+
+## 全应用统一会话 Agent（`app-assistant.v1`）
+
+右侧栏在任意项目阶段都走同一个入口；契约源 [`contracts/app-assistant.v1.json`](contracts/app-assistant.v1.json)，
+说明见 [`docs/app-assistant-contract.md`](docs/app-assistant-contract.md)，验收证据见
+[`docs/evidence/app-assistant/README.md`](docs/evidence/app-assistant/README.md)。
+
+- 服务端只返回 `proposal / needs-input / rejected`，**绝不返回 `applied`**；写入只发生在桌面 reducer。
+- 字段目录唯一事实源是 `src/domain/appCapabilities.mjs`；服务端快照由 `npm run app:capabilities` 生成，
+  不要手改 `server/src/agent/app-assistant/capabilities.snapshot.json`，也不要另写第二份字段限制。
+- 字段批次原子应用；高风险项（清空、删菜、素材、AppID、模板、导出、候选采用）只登记为待确认，仍走原业务入口。
+- 菜单图仍走 `agent-turn.v2`（只有 `vision.analyzed=true` 才写）；参考图只进既有候选链；
+  服务端 proposal、自动测试全绿都不等于真实模型/微信运行时已验收。
 
 ## 图片驱动前端重构：用户私有候选链
 

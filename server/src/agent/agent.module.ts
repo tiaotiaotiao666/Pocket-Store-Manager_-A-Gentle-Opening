@@ -4,6 +4,8 @@ import { SessionAuthGuard } from '../common/auth/session-auth.guard';
 import { AgentAuthGuard } from './agent-auth.guard';
 import { AgentController } from './agent.controller';
 import { AgentService } from './agent.service';
+import { AppAssistantController } from './app-assistant/controller';
+import { AppAssistantService } from './app-assistant/service';
 import { createAgentLogSink } from './agent-runtime.logger';
 import { AGENT_CHAT_MODEL, AGENT_FETCH, AGENT_PROVIDER } from './agent.types';
 import { FrontendReconstructController } from './frontend-reconstruct/controller';
@@ -28,6 +30,7 @@ const agentModelLogger = new Logger('AgentModel');
   controllers: [
     AgentController,
     StoreSetupAgentController,
+    AppAssistantController,
     TemplateReviseController,
     TemplateCandidatesController,
     FrontendReconstructController,
@@ -35,6 +38,7 @@ const agentModelLogger = new Logger('AgentModel');
   providers: [
     AgentService,
     StoreSetupAgentService,
+    AppAssistantService,
     TemplateReviseService,
     TemplateCandidatesService,
     FrontendReconstructService,
@@ -58,6 +62,7 @@ const agentModelLogger = new Logger('AgentModel');
   exports: [
     AgentService,
     StoreSetupAgentService,
+    AppAssistantService,
     DeepseekAgentProvider,
     DeepseekPresentationProvider,
   ],

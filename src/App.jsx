@@ -58,6 +58,9 @@ import {
   normalizeChatRun,
 } from './domain/agentSidebar.mjs';
 import { toDocument, fromDocument } from './domain/projectSnapshot.mjs';
+import { buildProposalApplyPlan } from './domain/appAssistantProposal.mjs';
+import { requestAppAssistant } from './services/appAssistant/appAssistantService.js';
+import { executeAppAssistantActions, selectUnexecutedActions } from './services/appAssistant/actionExecutor.js';
 import { evaluateLocal, mergeComposerResult, mergeTargetPreflight } from './domain/preflightRules.mjs';
 import { createProjectService } from './services/projectService.js';
 import { createProjectThumbnailLoader } from './services/projectThumbnailLoader.js';
@@ -2242,10 +2245,12 @@ export default function App() {
     images: explicitImages = null,
     requireVision = false,
     origin = AGENT_CHAT_ORIGINS.MAIN,
+    // 统一会话的菜单识别在任意阶段都可用；主输入框仍只在资料阶段可用。
+    allowAnyPhase = false,
   } = {}) => {
     const fromSidebar = origin === AGENT_CHAT_ORIGINS.SIDEBAR;
     if (agentBusy.current) return null;
-    if (phase !== PHASES.STORE_INFO) return null;
+    if (!allowAnyPhase && phase !== PHASES.STORE_INFO) return null;
     if (fromSidebar && (agentChatBusy.current || agentChatState.status === CHAT_STATUS.REQUESTING)) return null;
     const text = String(utterance ?? '').trim();
     if (!text) return null;
@@ -2450,29 +2455,15 @@ export default function App() {
   })();
 
   /**
-   * 侧栏「这一轮能不能真的发出去」的原因（唯一口径）。
-   *
-   * 与底层 handler 的可执行条件对齐：模板阶段的修订只有候选就绪、且没有在途修订时
-   * 才能发。不可执行时这里给出可读原因，面板据此禁用发送并显示原因，submit 时再
-   * 同一条原因写成 notice —— 不再出现「点了发送毫无反应」的静默路径。
-   *
-   * 只读既有选择器（`presentationState`），不新增业务判断，也不调用任何服务。
+   * 统一会话没有「当前阶段前置条件」：只要项目打开就能发。
+   * 需要确认的动作由结果里的 actionRequest 走各自原入口，不在发送前拦截。
    */
-  const agentChatSendBlockedReason = (() => {
-    // 没有活动项目由 plan.allowed 负责提示；其它阶段没有额外前置条件。
-    if (!state.project.activeId) return null;
-    if (phase !== PHASES.TEMPLATE_PICK) return null;
-    // 与 handleTemplateReviseSubmit 共用同一份可执行判断（单一真相源）。
-    return resolveTemplateReviseContext().blockedReason;
-  })();
+  const agentChatSendBlockedReason = null;
 
-  // 侧栏本轮能带哪几种图片：门店资料可带菜单照/环境照，模板展示只带 1 张环境照。
-  // 其它阶段不调用模型，不显示上传入口，避免让用户误以为图片会被处理。
+  // 统一会话在每个项目阶段都可以带图片；具体用途由附件用途与 Agent 判断。
   const agentChatImageKinds = (() => {
     if (!state.project.activeId) return [];
-    if (phase === PHASES.STORE_INFO) return ['menu', 'store'];
-    if (phase === PHASES.TEMPLATE_PICK) return ['store'];
-    return [];
+    return ['auto', 'menu', 'store', 'reference'];
   })();
 
   /**
@@ -2493,7 +2484,9 @@ export default function App() {
       for (const draft of incoming) {
         if (next.length >= AGENT_IMAGE_LIMITS.maxTotalImages) break;
         const sameKind = next.filter((item) => item.kind === kind).length;
-        const limit = kind === 'menu' ? AGENT_IMAGE_LIMITS.maxMenuImages : AGENT_IMAGE_LIMITS.maxStoreImages;
+        const limit = kind === 'menu'
+          ? AGENT_IMAGE_LIMITS.maxMenuImages
+          : (kind === 'store' ? AGENT_IMAGE_LIMITS.maxStoreImages : (kind === 'reference' ? 1 : AGENT_IMAGE_LIMITS.maxTotalImages));
         if (sameKind >= limit) continue;
         next.push({ ...draft, kind });
       }
@@ -2555,50 +2548,171 @@ export default function App() {
   };
 
   /**
-   * 侧栏发送入口：按当前阶段路由，只有门店资料/模板展示两句会真的调用模型。
+   * 统一会话（`app-assistant.v1`）的一轮：任意阶段同一个入口。
    *
-   * 所有判断都复用 `buildAgentChatSubmitPlan`（domain 唯一口径），这里只做派发；
-   * 在途时直接忽略，避免连点/连按 Enter 重复发送与重复追加消息。
+   * - 冻结 projectId / requestId / contextRevision；阶段只作上下文，不参与拒收；
+   * - 服务端/direct 只给提案，这里用桌面校验器再验一次，再按能力目录拆批；
+   * - 字段批次原子写入；高风险项只登记为「待确认」，不与低风险字段混成半批。
+   */
+  const runAppAssistantTurn = async ({ text, images = [], retry = false }) => {
+    const projectId = state.project.activeId || null;
+    if (!projectId) return null;
+    const attachedImages = Array.isArray(images) ? images : [];
+    const utterance = text || (attachedImages.length ? '请判断图片用途；不确定时先追问。' : '');
+    if (!utterance) return null;
+    if (agentChatBusy.current || agentChatState.status === CHAT_STATUS.REQUESTING) return null;
+
+    const requestId = createAgentChatRequestId();
+    const frozenState = state;
+    const frozenRevision = Number.isInteger(state.project.contentRevision) ? state.project.contentRevision : 0;
+    const history = (Array.isArray(state.agentChat?.messages) ? state.agentChat.messages : [])
+      .filter((message) => message
+        && (message.role === 'user' || message.role === 'assistant')
+        && typeof message.text === 'string'
+        && message.text.trim())
+      .slice(-12)
+      .map((message) => ({ role: message.role, text: message.text }));
+    const startedAt = Date.now();
+    agentChatBusy.current = true;
+    dispatch(retry
+      ? { type: 'AGENT_CHAT_RETRY_PREPARE', projectId, requestId, contextRevision: frozenRevision, phase }
+      : {
+        type: 'AGENT_CHAT_REQUEST_START',
+        projectId,
+        requestId,
+        utterance,
+        actionKind: 'app-assistant',
+        contextRevision: frozenRevision,
+        phase,
+      });
+    try {
+      const result = await requestAppAssistant({
+        utterance,
+        attachments: attachedImages.map((item) => ({
+          id: item.id,
+          kind: item.kind,
+          mediaType: item.mediaType,
+          dataBase64: item.dataBase64,
+          name: item.name,
+          bytes: item.bytes,
+        })),
+        history,
+        state: frozenState,
+        requestId,
+        contextRevision: frozenRevision,
+        phase,
+      });
+      const proposal = result.proposal;
+      const applyPlan = buildProposalApplyPlan(proposal, frozenState);
+      if (applyPlan.autoChanges.length) {
+        dispatch({
+          type: 'APP_ASSISTANT_CHANGES_APPLY',
+          proposalId: proposal.proposalId,
+          baseContextRevision: frozenRevision,
+          changes: applyPlan.autoChanges,
+        });
+      }
+      dispatch({
+        type: 'AGENT_CHAT_SUCCESS',
+        projectId,
+        requestId,
+        contextRevision: frozenRevision,
+        phase,
+        actionKind: 'app-assistant',
+        reply: proposal.reply,
+        // 待确认项只登记摘要，绝不自动写入。
+        // 动作请求里只有 navigate.phase 可自动执行；其余一律留给原业务面板确认。
+        pending: {
+          fields: applyPlan.pendingConfirmations.map((item) => ({ opId: item.opId, fieldId: item.fieldId ?? null })),
+          actions: selectUnexecutedActions(executeAppAssistantActions(proposal.actionRequests, {
+            state: frozenState,
+            navigate: (nextPhase) => dispatch({ type: 'PHASE_GOTO', phase: nextPhase }),
+          })),
+        },
+        run: normalizeChatRun({
+          requestId,
+          actionKind: 'app-assistant',
+          status: proposal.trace?.degraded ? 'partial' : 'done',
+          durationMs: Math.max(0, Date.now() - startedAt),
+          toolLabels: [],
+          degraded: proposal.trace?.degraded === true,
+          runId: proposal.runId ?? null,
+          note: proposal.trace?.degraded ? '这一轮有步骤没有正常完成，结果可能不完整。' : null,
+        }),
+      });
+      dispatch({ type: 'AGENT_CHAT_DRAFT_SET', value: '' });
+      setAgentChatImages([]);
+      setAgentChatImageError(null);
+      setAgentChatImageBusy(false);
+      return result;
+    } catch (error) {
+      dispatch({
+        type: 'AGENT_CHAT_FAILURE',
+        projectId,
+        requestId,
+        contextRevision: frozenRevision,
+        phase,
+        error,
+      });
+      return null;
+    } finally {
+      agentChatBusy.current = false;
+    }
+  };
+
+  /**
+   * 附件分流（T7）：不重复实现专用链。
+   *
+   * - `menu`：走 `agent-turn.v2`，只有真实 `vision.analyzed=true` 才回写；
+   * - `reference`：只进「参考图重构」候选链，侧栏不直接生成/采用；
+   * - `auto` / `store`：走 app-assistant 视觉判断（不确定先追问）。
+   */
+  const dispatchAgentChatTurn = (text, images = []) => {
+    const list = Array.isArray(images) ? images : [];
+    const menuImages = list.filter((item) => item && item.kind === 'menu');
+    const referenceImages = list.filter((item) => item && item.kind === 'reference');
+    if (referenceImages.length) {
+      setAgentChatImageError({
+        code: 'APP_ASSISTANT_ATTACHMENT_PURPOSE_UNKNOWN',
+        message: '参考图只进入「参考图重构」候选链：请在该面板上传并生成候选；侧栏不直接生成或采用。',
+      });
+      setNotice('参考图已保留在本轮附件里；请到「参考图重构」面板完成候选生成与采用。');
+      handleAgentChatOpenCandidates();
+      return;
+    }
+    if (menuImages.length) {
+      handleAgentTurn(text || '请只识别这张菜单图片，把菜名、价格与描述回写到菜品资料；不要修改页面布局。', {
+        origin: AGENT_CHAT_ORIGINS.SIDEBAR,
+        images: menuImages,
+        requireVision: true,
+        allowAnyPhase: true,
+      });
+      return;
+    }
+    runAppAssistantTurn({ text, images: list });
+  };
+
+  /**
+   * 侧栏发送入口：任意阶段都进入同一个统一会话。
+   *
+   * 能否发送的判断只来自 `buildAgentChatSubmitPlan`（domain 唯一口径）；
+   * 允许只发图片——用途由 Agent 判断，不确定时先追问。
    */
   const handleAgentChatSubmit = (value) => {
     const text = String(value ?? '').trim();
     const images = agentChatImagesRef.current;
-    // 空白与超 500 字不发送：同一份规则在 domain 里，App 只引用。
-    // 只带图片、没有一句话时也不发：模型契约要求 utterance 非空，图片是补充材料。
-    if (!isValidChatDraft(text)) {
-      if (images.length) setNotice('请补一句这一轮要改什么；图片会作为补充材料随本轮一起发送。');
-      return;
-    }
     const projectId = state.project.activeId || null;
     const plan = buildAgentChatSubmitPlan({ projectId, phase, hasProject: Boolean(projectId) });
     if (!plan.allowed) {
-      // 没有打开项目：本地拦截并提示先打开项目，不发任何请求。
       setNotice(plan.notice);
       return;
     }
     if (agentChatBusy.current || agentChatState.status === CHAT_STATUS.REQUESTING) return;
-    if (agentChatSendBlockedReason) {
-      // 阶段动作不可执行：如实说明原因，不吞掉用户输入、也不调用任何服务。
-      setNotice(agentChatSendBlockedReason);
-      return;
+    if (!isValidChatDraft(text) && !images.length) return;
+    if (!isValidChatDraft(text) && images.length) {
+      setNotice('已发送图片：用途交给项目 Agent 判断，不确定时会先追问。');
     }
-
-    if (plan.actionKind === 'store-info') {
-      handleAgentTurn(text, { origin: AGENT_CHAT_ORIGINS.SIDEBAR, images });
-      return;
-    }
-    if (plan.actionKind === 'template-revise') {
-      handleTemplateReviseSubmit(text, {
-        origin: AGENT_CHAT_ORIGINS.SIDEBAR,
-        images: toAgentTurnImages(images),
-      });
-      return;
-    }
-    // 其它阶段（含参考图/重构意图）：只给本地指引 + 候选面板入口，不调用模型。
-    if (images.length) {
-      setNotice('当前阶段不处理图片：图片只在「门店资料」和「模板展示」阶段随对话发送。');
-    }
-    appendAgentChatGuide(text);
+    dispatchAgentChatTurn(text, images);
   };
 
   /** 侧栏「重试上一轮」：重放上一轮原话，不重复追加用户消息。 */
@@ -2608,21 +2722,23 @@ export default function App() {
     if (agentChatBusy.current) return;
     const text = String(agentChatState.lastUtterance ?? '').trim();
     if (!text) return;
-    const images = agentChatImagesRef.current;
-    if (phase === PHASES.STORE_INFO) {
-      handleAgentTurn(text, { retry: true, origin: AGENT_CHAT_ORIGINS.SIDEBAR, images });
+    runAppAssistantTurn({ text, images: agentChatImagesRef.current, retry: true });
+  };
+
+  /**
+   * 「撤销本轮」：只有项目仍停在这次字段批次应用后的版本时才可用。
+   *
+   * 用户在应用后又手改了业务内容，就改为提示使用全局撤销，避免把后续修改一起退掉。
+   */
+  const handleAgentChatUndoApplied = () => {
+    const applied = agentChatState.lastApplied;
+    if (!applied) return;
+    const current = Number.isInteger(state.project.contentRevision) ? state.project.contentRevision : 0;
+    if (current !== applied.appliedRevision) {
+      setNotice('项目在这之后又有变化，不能只撤销这一轮；请使用全局撤销。');
       return;
     }
-    if (phase === PHASES.TEMPLATE_PICK) {
-      handleTemplateReviseSubmit(text, {
-        origin: AGENT_CHAT_ORIGINS.SIDEBAR,
-        retry: true,
-        images: toAgentTurnImages(images),
-      });
-      return;
-    }
-    // 当前阶段本来就不调用模型：重试只是再给一次本地指引。
-    appendAgentChatGuide(text, { retry: true });
+    dispatch({ type: 'UNDO_APPLY' });
   };
 
   /** 侧栏「查看候选」：只跳到既有的参考图重构面板，不在侧栏生成或采用候选。 */
@@ -4601,6 +4717,7 @@ case PHASES.DEPLOY: {
     onSubmit: handleAgentChatSubmit,
     onRetry: handleAgentChatRetry,
     onOpenCandidates: handleAgentChatOpenCandidates,
+    onUndoApplied: handleAgentChatUndoApplied,
   };
   // UX0a-3：海报素材（可选）阶段没有真实生图服务，不再提供"重新生成"输入区。
   const composerVisible = phase === PHASES.STORE_INFO

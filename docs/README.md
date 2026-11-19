@@ -26,7 +26,15 @@
 | `M5-M7-本地Composer与模板资产扩展-编码任务清单.md` | 76 项任务与门禁 | M5/M6/M7 已完成；收尾 T-CL 未做 |
 | `待完成目标.md` | 当前里程碑、验收和差距 | 持续更新 |
 | `bugs/README.md` | 待修复与已修复 bug 名录，详情在 `bugs/open/` 与 `bugs/fixed/` | 持续更新 |
-| `后端待实现接口清单.md` | 桌面云协作、模板平台及 B2 发现的点餐接口缺口建议 | `agent-turn.v1/v2`、`template-revise`、`template-candidates` 已实现；第 17 节为建议，第 20 节为本轮新增待实现 |
+| `后端待实现接口清单.md` | 桌面云协作、模板平台及 B2 发现的点餐接口缺口建议 | `agent-turn.v1/v2`、`template-revise`、`template-candidates`、`app-assistant.v1` 已实现；第 17 节为建议，第 20 节为本轮新增待实现 |
+
+### 全应用统一会话 Agent（2026-11-20）
+
+| 文档 | 职责 | 状态 |
+| --- | --- | --- |
+| `app-assistant-contract.md` | `app-assistant.v1` 请求/响应/操作/确认/错误码说明；服务端 proposal ≠ 桌面 applied | 契约已冻结（机器可读源 `contracts/app-assistant.v1.json`） |
+| `handoff/全应用统一会话Agent-Flash实施计划.md` | T1–T9 任务书与验收矩阵 | T1–T8 已实现；T9 自动化门禁 PASS，真实模型/GUI/微信 NOT_RUN 或 BLOCKED |
+| `evidence/app-assistant/README.md` | 本轮改动、命令退出码、契约偏差与复验步骤 | 当前证据入口 |
 
 ### 冻结或稳定契约
 
@@ -36,6 +44,7 @@
 | `order-state.md` | 六态订单、权限和 S1–S12 |
 | `backend-data-model.md` | MySQL 表、事务、并发和种子契约 |
 | `agent-turn-contract.md` | 已实现的 `agent-turn.v1` 资料收集契约 |
+| `app-assistant-contract.md` | 已实现的 `app-assistant.v1` 统一会话契约（提案 ≠ 已写入） |
 | `component-contract.md` | 小程序组件通信及未来可插拔约束 |
 | `template-schema.md` | 当前门店配置与未来组合规格的职责边界 |
 

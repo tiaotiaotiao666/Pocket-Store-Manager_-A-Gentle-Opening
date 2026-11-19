@@ -393,3 +393,12 @@ npx tsc -p tsconfig.json --noEmit --incremental false
 - 无图片：`agent-run.v1` 不接受图片；视觉图片抽取仍属于 `agent-turn.v2`，参考图重构走 `frontend-reconstruct.v1`（§11）。
 - HTTP 断开未接入取消：`runAgent` 支持 `AbortSignal`，但 controller 尚未把客户端断开映射为 signal。
 - 工具结果超限会截断：需要完整大对象时应分页或让工具返回摘要，不要依赖模型看完整结果。
+
+## 12. 全应用统一会话 Agent（`app-assistant.v1`，2026-11-20）
+
+- 端点：`POST /api/v1/agent/app-assistant`；代码：`server/src/agent/app-assistant/`。
+- 复用同一个 Runtime（工具注册/schema/超时/重试/并发/循环检测/上限），上限 6 模型调用 / 12 工具 / 60s。
+- 五个工具：`get_project_capabilities`（读只读快照）、`get_project_context`（读客户端安全上下文）、`propose_project_changes`（写内存提案）、`request_business_action`（登记动作）、`ask_follow_up`（有界追问）。写工具没有数据库、文件或桌面 IPC 副作用。
+- 能力目录唯一事实源是 `src/domain/appCapabilities.mjs`；服务端只读 `capabilities.snapshot.json`（`npm run app:capabilities` 生成，`app:capabilities:check` 逐字节校验）。
+- 响应只允许 `proposal | needs-input | rejected`；`contextRevision` 与请求不一致时桌面按 `APP_ASSISTANT_CONTEXT_STALE` 整批拒写。
+- 直连路径由 `src/services/appAssistant/directAppAssistantTransport.js` 实现同一工具白名单与响应契约；带图时明确报错（不静默丢图）。

@@ -701,3 +701,16 @@
 - 候选只写应用私有 `<userData>/projects/<projectId>/frontend-runs/<runId>/attempts/attempt-<n>/` 与私有 Registry overlay；不写正式 `templates/**`、不重冻结全局 Registry、不改 `miniprogram/`。
 - 固定验证入口为 `npm run frontend:verify -- --attempt <attemptDir> [--runtime]`（脚本 `scripts/frontend-verify.cjs`，退出码 0/1/2/3），内部只调用 `scripts/wechat-devtools-run.cjs`，不执行模型提供的命令。
 - 本 API 不返回图片 base64、完整 prompt、原始模型响应或本机路径；日志只保留 runId/requestId/步骤/计数/错误码/耗时。
+## 12. 全应用统一会话 Agent（`app-assistant.v1`）
+
+`POST /api/v1/agent/app-assistant`。桌面右侧栏在任意项目阶段发送文字或图片。
+
+- 请求头：`Authorization: Bearer <token>`、`X-Agent-Contract: app-assistant.v1`、`X-Agent-Request-Id: <requestId>`（与请求体一致）。
+- 请求体：`{contractVersion, requestId, catalogVersion, contextRevision, utterance, history, client, project, attachments}`；未知键一律 400 `APP_ASSISTANT_REQUEST_INVALID`。
+- `catalogVersion` 必须为 `app-capabilities.v1`，与生成快照不一致时 400 `APP_ASSISTANT_CATALOG_MISMATCH`。
+- 响应：`status` 只有 `proposal | needs-input | rejected`；**服务端不返回 `applied`**，写入只发生在桌面。
+- 单轮上限：24 changes / 3 questions / 2 actionRequests，reply ≤ 500 字；trace 只含 `modelCalls / toolCalls / stopReason / degraded`。
+- 稳定错误码见 `docs/app-assistant-contract.md` §5；上游模型/网络错误沿用 `DEEPSEEK_*` / `AGENT_*`。
+- 服务端工具只有五个：`get_project_capabilities`、`get_project_context`、`propose_project_changes`、`request_business_action`、`ask_follow_up`；写工具只改单次请求内存，不写库/文件/桌面 IPC。
+
+桌面本地 `applyStatus`（`applied | awaiting-confirmation | stale | rejected | failed`）不属于本 API。

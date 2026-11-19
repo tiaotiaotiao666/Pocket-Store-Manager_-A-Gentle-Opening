@@ -19,6 +19,7 @@
     "agent:type": "node scripts/agent-debug.cjs type",
     "agent:verify": "node scripts/agent-debug.cjs verify",
     "agent:smoke": "node scripts/agent-smoke.cjs",
+    "app:assistant:smoke": "node scripts/app-assistant-smoke.cjs",
     "agent:run:smoke": "node scripts/agent-run-smoke.cjs",
     "build": "vite build",
     "build:win": "npm run build && electron-builder --win nsis --x64",
@@ -44,6 +45,8 @@
     "check:packaging": "node scripts/check-packaging.cjs",
     "frontend:capabilities": "node scripts/frontend-capabilities.cjs",
     "frontend:capabilities:check": "node scripts/frontend-capabilities.cjs --check",
+    "app:capabilities": "node scripts/app-capabilities.cjs --write",
+    "app:capabilities:check": "node scripts/app-capabilities.cjs --check",
     "frontend:verify": "node scripts/frontend-verify.cjs"
   },
   "dependencies": {

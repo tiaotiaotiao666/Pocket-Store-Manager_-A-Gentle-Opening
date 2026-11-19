@@ -104,36 +104,36 @@ test('侧栏一轮只追加一次用户消息：REQUEST_START 在各自函数体
   });
 });
 
-test('侧栏入口按阶段路由，其余阶段只给本地指引', () => {
+test('侧栏入口统一走 app-assistant，任意阶段同一路径', () => {
   const source = readApp();
   const submit = sliceBlock(source, 'const handleAgentChatSubmit = (value) => {');
   assert.match(
     submit,
     /buildAgentChatSubmitPlan\(\{\s*projectId,\s*phase,\s*hasProject:\s*Boolean\(projectId\)\s*\}\)/,
-    '能否发送/本轮做什么必须复用 domain 的唯一口径',
+    '能否发送必须复用 domain 的唯一口径',
   );
   assert.match(
     submit,
     /if \(!plan\.allowed\) \{[\s\S]{0,160}setNotice\(plan\.notice\);[\s\S]{0,40}return;/,
     '没有活动项目时本地拦截并提示，不发任何请求',
   );
-  assert.match(
-    submit,
-    /plan\.actionKind === 'store-info'[\s\S]{0,120}handleAgentTurn\(text, \{ origin: AGENT_CHAT_ORIGINS\.SIDEBAR, images \}\)/,
-    '门店资料阶段走既有 handleAgentTurn，并带上侧栏本轮附件',
-  );
-  assert.match(
-    submit,
-    /plan\.actionKind === 'template-revise'[\s\S]{0,200}handleTemplateReviseSubmit\(text, \{[\s\S]{0,120}origin: AGENT_CHAT_ORIGINS\.SIDEBAR[\s\S]{0,120}images: toAgentTurnImages\(images\)/,
-    '模板展示阶段走既有 handleTemplateReviseSubmit，并把附件转成线上格式',
-  );
-  assert.match(submit, /appendAgentChatGuide\(text\);/, '其余阶段落成本地指引');
-  // 侧栏发送入口只派发，不直接碰服务层。
+  assert.match(submit, /dispatchAgentChatTurn\(text, images\);/, '统一入口先按附件用途分流');
+  // 阶段不再决定路由：不允许残留按阶段分叉到旧入口。
   assert.doesNotMatch(
     submit,
-    /fetch\(|requestAgentTurn\(|requestAgentRun\(|requestTemplateRevise\(|requestScreenReference\(/,
-    '侧栏入口不能自己发请求：必须复用既有分派函数',
+    /plan\.actionKind === 'store-info'|plan\.actionKind === 'template-revise'|appendAgentChatGuide\(text\)/,
+    '统一入口不得再按阶段分叉到旧 handler 或本地指引',
   );
+
+  const turn = sliceBlock(source, 'const runAppAssistantTurn = async ({');
+  assert.match(turn, /requestAppAssistant\(\{/, '统一入口必须调用 appAssistantService');
+  assert.match(turn, /actionKind: 'app-assistant'/, '请求/消息口径必须是 app-assistant');
+  assert.match(turn, /buildProposalApplyPlan\(proposal, frozenState\)/, '按桌面能力目录拆批');
+  assert.match(turn, /type: 'APP_ASSISTANT_CHANGES_APPLY'/, '字段批次必须走统一 reducer');
+  assert.match(turn, /pending: \{/, '高风险项必须登记为待确认，不自动写入');
+  assert.match(turn, /contextRevision: frozenRevision/, '请求身份必须冻结内容版本');
+  // 侧栏轮次仍只由 App 协调，不直接 fetch。
+  assert.doesNotMatch(turn, /fetch\(/, '侧栏入口不能自己发 HTTP 请求');
 });
 
 test('本地指引不调用模型，也不伪造工具步骤', () => {
@@ -166,8 +166,8 @@ test('防重：在途时忽略重复提交（状态 + 同步守卫）', () => {
   assert.match(source, /const agentChatBusy = useRef\(false\);/, '必须有同步 ref 守卫（state 更新晚一帧）');
   assert.match(
     source,
-    /if \(!isValidChatDraft\(text\)\) \{[\s\S]{0,160}return;/,
-    '空白与超 500 字必须在 App 层也被拦住（规则来自 domain）',
+    /if \(!isValidChatDraft\(text\) && !images\.length\)\s*return;/,
+    '空白且无附件必须被 App 层拦住；只发图片是允许的',
   );
   const retry = sliceBlock(source, 'const handleAgentChatRetry = () => {');
   assert.match(retry, /CHAT_STATUS\.FAILED/, '只有失败态才允许重试');
@@ -246,39 +246,15 @@ test('项目级会话按项目持久化：整片交给 toDocument，消息变化
   assert.match(source, /fromDocument\(result\.doc/, '打开项目必须走 fromDocument 恢复会话');
 });
 
-test('侧栏发送口径与底层 handler 一致：不可执行时禁用 + 提示，不存在静默 no-op', () => {
+test('统一入口没有阶段前置条件，图片入口全阶段开放', () => {
   const source = readApp();
+  assert.match(source, /const agentChatSendBlockedReason = null;/, '统一入口不被模板阶段前置条件拦住');
   const submit = sliceBlock(source, 'const handleAgentChatSubmit = (value) => {');
-  // 单一真相源：可执行条件只在 resolveTemplateReviseContext 里判断一次。
-  const context = sliceBlock(source, 'const resolveTemplateReviseContext = () => {');
-  assert.match(context, /if \(!presentationState\.canRevise\)/, '必须覆盖「候选未就绪」这一条');
-  assert.match(context, /presentationState\.status === 'revising'/, '必须覆盖「上一轮修订在途」这一条');
-  assert.match(context, /else if \(!templateId \|\| !candidate\)/, '必须覆盖「没有选中候选」这一条');
-  assert.match(context, /blockedReason = '候选模板还没准备好/, '原因文案必须如实说明候选未就绪');
-  assert.match(context, /blockedReason = '上一轮模板修订还在进行中/, '原因文案必须如实说明「进行中」');
-  assert.doesNotMatch(context, /全部成功|已完成/, '原因文案不得使用误导性措辞');
-  assert.doesNotMatch(context, /requestAgentTurn\(|requestTemplateRevise\(|fetch\(/, '判断不可执行时不得调用任何服务');
-
-  // App 用同一份判断算出侧栏提示原因，并写进视图模型（面板据此禁用发送）。
-  assert.match(
-    source,
-    /const agentChatSendBlockedReason = \(\(\) => \{[\s\S]{0,400}resolveTemplateReviseContext\(\)\.blockedReason/,
-    '侧栏可发送口径必须复用同一份判断',
-  );
-  assert.match(submit, /if \(agentChatSendBlockedReason\) \{[\s\S]{0,120}setNotice\(agentChatSendBlockedReason\);/, '提交时必须有明确提示');
-  assert.match(
-    source,
-    /sendBlockedReason: agentChatSendBlockedReason/,
-    '视图模型必须把原因传给 RightPanel→AgentSidebarPanel',
-  );
-  // handler 侧同样不再静默：旧的「canRevise 直接 return」已被原因判断取代。
+  assert.doesNotMatch(submit, /if (agentChatSendBlockedReason)/, '提交路径不再有阶段前置拦截');
+  assert.match(source, /const agentChatImageKinds = \(\(\) => \{[\s\S]{0,200}return \['auto', 'menu', 'store', 'reference'\]/, '有项目即可带图片');
+  // 旧 handler 的兜底守卫仍保留（只影响主输入框）。
   const revise = sliceBlock(source, 'const handleTemplateReviseSubmit = async (utterance, {');
-  assert.doesNotMatch(revise, /if \(!presentationState\.canRevise\) return;/, '不得保留静默 return 路径');
-  assert.match(
-    revise,
-    /if \(reviseContext\.blockedReason\) \{[\s\S]{0,80}if \(fromSidebar\) setNotice\(reviseContext\.blockedReason\);[\s\S]{0,20}return;/,
-    'handler 的兜底守卫也必须给侧栏反馈，不静默吞输入',
-  );
+  assert.match(revise, /if \(reviseContext\.blockedReason\) \{[\s\S]{0,80}if \(fromSidebar\) setNotice\(reviseContext\.blockedReason\);/, '旧 handler 兜底仍如实反馈');
 });
 
 test('侧栏代码块内不出现第二套服务/存储调用', () => {

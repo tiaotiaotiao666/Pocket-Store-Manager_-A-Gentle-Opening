@@ -3,6 +3,7 @@ import { ChevronRight, MessageSquareText, RefreshCw, ShieldCheck } from 'lucide-
 import Composer from '../chat/Composer.jsx';
 import { ProcessSummary } from '../chat/ChatStream.jsx';
 import AgentChatAttachments from './AgentChatAttachments.jsx';
+import AppAssistantChangeCard from './AppAssistantChangeCard.jsx';
 import {
   CHAT_DRAFT_MAX_CHARS,
   CHAT_STATUS,
@@ -121,6 +122,7 @@ export default function AgentSidebarPanel({
   onSubmit,
   onRetry,
   onOpenCandidates,
+  onUndoApplied,
 }) {
   const view = chat && typeof chat === 'object' ? chat : {};
   const messages = Array.isArray(view.messages) ? view.messages : [];
@@ -157,6 +159,15 @@ export default function AgentSidebarPanel({
   const canRetry = typeof view.canRetry === 'boolean'
     ? view.canRetry
     : Boolean(lastError && lastError.retryable !== false);
+  // 本轮字段批次的真实应用结果（运行态，不落盘）：
+  // - applied：桌面 before/after + 「撤销本轮」；
+  // - pending：需要用户确认、尚未写入；
+  // - stale：请求期间项目已变化，结果未写入。
+  const applied = view.lastApplied && typeof view.lastApplied === 'object' ? view.lastApplied : null;
+  const pending = view.lastPending && typeof view.lastPending === 'object' ? view.lastPending : null;
+  const stale = view.lastStale && typeof view.lastStale === 'object' ? view.lastStale : null;
+  const contentRevision = Number.isInteger(view.contentRevision) ? view.contentRevision : null;
+  const canUndoApplied = Boolean(applied && contentRevision !== null && contentRevision === applied.appliedRevision);
 
   const logRef = useRef(null);
   useEffect(() => {
@@ -207,8 +218,8 @@ export default function AgentSidebarPanel({
             <span className="agent-sidebar-empty-icon" aria-hidden="true">
               <MessageSquareText size={16} />
             </span>
-            <p>还没有对话。这里只处理「项目这一轮要改什么」，每次都按当前阶段路由。</p>
-            <p>「补充/修改门店资料」「修改当前模板展示」会调用模型；其他阶段只给本地入口指引，不调用模型。</p>
+            <p>还没有对话。这里可以随时说要改什么，不必先切到对应阶段。</p>
+            <p>模型只提出字段修改或追问；写入前由桌面再次校验，改完会出现变更卡与「撤销本轮」。</p>
           </div>
         ) : null}
 
@@ -225,6 +236,14 @@ export default function AgentSidebarPanel({
           </article>
         ))}
       </div>
+
+      <AppAssistantChangeCard
+        applied={applied}
+        pending={pending}
+        stale={stale}
+        canUndo={canUndoApplied}
+        onUndo={onUndoApplied}
+      />
 
       {reconstruct ? (
         <section className="agent-sidebar-candidate" aria-label="参考图重构摘要">

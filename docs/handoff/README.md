@@ -34,3 +34,5 @@
 6. 历史摘要文件名使用 `YYYY-MM-DD-主题.md`，注明“历史”及当前替代入口。
 7. 不在交接中保存密钥、Token、完整敏感日志或大段可从代码重建的文件清单。
 8. 工作区存在未提交改动时，明确哪些是用户资产；禁止用 reset/checkout/clean 等操作回滚。
+
+> 2026-11-20 追加活动交接：`全应用统一会话Agent-Flash实施计划.md`（右侧栏统一会话 `app-assistant.v1`，T1–T8 已实现，T9 自动化门禁 PASS、真实模型/GUI/微信 NOT_RUN 或 BLOCKED；证据 `docs/evidence/app-assistant/README.md`）。

@@ -1,0 +1,371 @@
+{
+  "contractVersion": "app-capabilities-snapshot.v1",
+  "catalogVersion": "app-capabilities.v1",
+  "digest": "c6df6763",
+  "catalog": {
+    "catalogVersion": "app-capabilities.v1",
+    "fields": [
+      {
+        "fieldId": "store.name",
+        "label": "店名",
+        "type": "string",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "confirmWhenEmpty": true,
+        "limits": {
+          "minChars": 0,
+          "maxChars": 48
+        },
+        "writeback": {
+          "agentDraft": "storeName",
+          "store": "name"
+        }
+      },
+      {
+        "fieldId": "store.category",
+        "label": "品类",
+        "type": "string",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "confirmWhenEmpty": true,
+        "limits": {
+          "minChars": 0,
+          "maxChars": 24
+        },
+        "writeback": {
+          "agentDraft": "category",
+          "store": "type"
+        }
+      },
+      {
+        "fieldId": "store.businessHours",
+        "label": "营业时间",
+        "type": "hours",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "confirmWhenEmpty": true,
+        "limits": {
+          "maxChars": 120,
+          "maxSegments": 3,
+          "format": "HH:MM-HH:MM，多段用英文逗号；结束早于开始表示营业到次日"
+        },
+        "writeback": {
+          "agentDraft": "businessHours"
+        }
+      },
+      {
+        "fieldId": "store.fulfillment",
+        "label": "取餐方式",
+        "type": "fulfillment",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "limits": {
+          "keys": [
+            "dineIn",
+            "takeaway"
+          ],
+          "atLeastOneForReview": true
+        },
+        "writeback": {
+          "agentDraft": "fulfillment"
+        }
+      },
+      {
+        "fieldId": "store.dishes",
+        "label": "菜品",
+        "type": "dish.list",
+        "writeMode": "ops",
+        "writable": false,
+        "risk": "auto",
+        "limits": {
+          "minDishes": 1,
+          "maxDishes": 8,
+          "maxNameChars": 24,
+          "maxDescriptionChars": 60,
+          "minPriceCents": 1,
+          "maxPriceCents": 999999
+        },
+        "ops": [
+          "dish.upsert",
+          "dish.remove"
+        ],
+        "writeback": {
+          "agentDraft": "dishes"
+        },
+        "note": "新增/更新走 dish.upsert，删除走 dish.remove（需确认）；不能对菜品使用 field.set。"
+      },
+      {
+        "fieldId": "store.address",
+        "label": "门店地址",
+        "type": "string",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "limits": {
+          "maxChars": 120
+        },
+        "writeback": {
+          "store": "address"
+        }
+      },
+      {
+        "fieldId": "store.phone",
+        "label": "联系电话",
+        "type": "string",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "limits": {
+          "maxChars": 32
+        },
+        "writeback": {
+          "store": "phone"
+        },
+        "note": "只做长度/字符合法性校验，不猜测真实号码。"
+      },
+      {
+        "fieldId": "store.notes",
+        "label": "门店说明",
+        "type": "string",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "limits": {
+          "maxChars": 200
+        },
+        "writeback": {
+          "store": "notes"
+        },
+        "note": "只记录用户提供或明确要求代拟的文案，不新写旧版 intro。"
+      },
+      {
+        "fieldId": "visual.styleId",
+        "label": "装修风格",
+        "type": "enum",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "options": [
+          "warm",
+          "minimal",
+          "fresh",
+          "night"
+        ],
+        "writeback": {
+          "visual": "styleId"
+        },
+        "note": "切换风格会清空展示补丁里的 theme，与 SET_STYLE 语义一致。"
+      },
+      {
+        "fieldId": "visual.prompt",
+        "label": "视觉偏好说明",
+        "type": "string",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "limits": {
+          "maxChars": 2000
+        },
+        "writeback": {
+          "visual": "prompt"
+        },
+        "note": "只写用户偏好或图片可观察事实，不写入 base64、URL 或绝对路径。"
+      },
+      {
+        "fieldId": "store.imageAssetIds",
+        "label": "门店环境图引用",
+        "type": "assetId.list",
+        "writeMode": "action",
+        "writable": false,
+        "risk": "confirm",
+        "limits": {
+          "maxItems": 6
+        },
+        "actions": [
+          "asset.attach-store-image"
+        ],
+        "writeback": {
+          "store": "imageAssetIds"
+        }
+      },
+      {
+        "fieldId": "visual.imageAssetId",
+        "label": "海报素材引用",
+        "type": "assetId",
+        "writeMode": "action",
+        "writable": false,
+        "risk": "confirm",
+        "actions": [
+          "asset.attach-store-image"
+        ],
+        "writeback": {
+          "visual": "imageAssetId"
+        }
+      },
+      {
+        "fieldId": "features.selected",
+        "label": "启用功能",
+        "type": "featureId.list",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "options": [
+          "scan-order",
+          "product-catalog",
+          "cart-checkout",
+          "order-tracking",
+          "table-dining",
+          "takeaway",
+          "merchant-orders",
+          "product-availability",
+          "store-profile",
+          "store-gallery",
+          "loyalty-membership"
+        ],
+        "required": [
+          "scan-order",
+          "product-catalog",
+          "cart-checkout",
+          "order-tracking"
+        ],
+        "writeback": {
+          "features": "selected"
+        },
+        "note": "只影响模板推荐，不会从 Base 工程移除未勾选的内置能力；required 功能不可移除。"
+      },
+      {
+        "fieldId": "features.custom",
+        "label": "定制要求",
+        "type": "string",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "auto",
+        "limits": {
+          "maxChars": 500
+        },
+        "writeback": {
+          "features": "custom"
+        }
+      },
+      {
+        "fieldId": "project.appid",
+        "label": "小程序 AppID",
+        "type": "appid",
+        "writeMode": "field.set",
+        "writable": true,
+        "risk": "confirm",
+        "limits": {
+          "pattern": "^wx[0-9a-fA-F]{16}$"
+        },
+        "writeback": {
+          "project": "appid"
+        }
+      }
+    ],
+    "actions": [
+      {
+        "actionId": "navigate.phase",
+        "label": "切换阶段",
+        "risk": "auto",
+        "params": {
+          "phase": "string"
+        }
+      },
+      {
+        "actionId": "template.select",
+        "label": "选择模板",
+        "risk": "confirm",
+        "params": {
+          "templateId": "string"
+        }
+      },
+      {
+        "actionId": "template.revise",
+        "label": "对话修改当前模板",
+        "risk": "auto",
+        "params": {
+          "utterance": "string"
+        }
+      },
+      {
+        "actionId": "frontend.reconstruct",
+        "label": "生成参考图候选",
+        "risk": "confirm",
+        "params": {
+          "targetPage": "home|menu|profile"
+        }
+      },
+      {
+        "actionId": "frontend.adopt",
+        "label": "采用前端候选",
+        "risk": "confirm",
+        "params": {
+          "templateId": "string"
+        }
+      },
+      {
+        "actionId": "frontend.discard",
+        "label": "放弃前端候选",
+        "risk": "confirm",
+        "params": {}
+      },
+      {
+        "actionId": "agentDraft.confirm",
+        "label": "确认门店资料",
+        "risk": "confirm",
+        "params": {}
+      },
+      {
+        "actionId": "export.preflight",
+        "label": "导出前体检",
+        "risk": "auto",
+        "params": {}
+      },
+      {
+        "actionId": "export.choose-directory",
+        "label": "选择导出目录",
+        "risk": "confirm",
+        "params": {}
+      },
+      {
+        "actionId": "export.run",
+        "label": "导出小程序工程",
+        "risk": "confirm",
+        "params": {}
+      },
+      {
+        "actionId": "asset.attach-store-image",
+        "label": "保存门店图片素材",
+        "risk": "confirm",
+        "params": {
+          "attachmentId": "string",
+          "target": "store|visual"
+        }
+      }
+    ],
+    "attachmentPurposes": [
+      "auto",
+      "menu",
+      "store",
+      "reference"
+    ],
+    "deniedFieldIdPrefixes": [
+      "settings.",
+      "agentChat.",
+      "deploy.directory",
+      "unmappedFields",
+      "secret."
+    ],
+    "readOnlyFieldIds": [
+      "build.candidates",
+      "build.screenRef",
+      "build.frontendCandidate",
+      "deploy.result"
+    ],
+    "riskPolicy": "桌面 catalog 决定确认级别；模型传 requiresApproval=false 无效。"
+  }
+}

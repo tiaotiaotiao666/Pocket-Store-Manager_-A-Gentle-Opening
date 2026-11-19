@@ -611,3 +611,125 @@
 @keyframes agent-chat-attachments-spin {
   to { transform: rotate(360deg); }
 }
+
+/* 统一会话：本轮变更卡 / 待确认 / stale 提示 */
+.agent-chat-changes {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.agent-chat-changes-applied {
+  border: 1px solid #dfd3c6;
+  background: #fbf6f0;
+  border-radius: 12px;
+  padding: 10px 11px;
+}
+
+.agent-chat-changes-title {
+  margin: 0 0 7px;
+  color: #4b3c31;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.agent-chat-changes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.agent-chat-changes-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.agent-chat-changes-field {
+  color: #8a6a55;
+  flex: 0 0 auto;
+}
+
+.agent-chat-changes-values {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  color: #5a4a3e;
+  word-break: break-all;
+}
+
+.agent-chat-changes-before {
+  color: #9a8d82;
+  text-decoration: line-through;
+}
+
+.agent-chat-changes-after {
+  color: #2f5d4a;
+  font-weight: 600;
+}
+
+.agent-chat-changes-undo {
+  margin-top: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d8c8b8;
+  background: #fffdfa;
+  color: #6b5748;
+  font-size: 11px;
+  padding: 5px 9px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.agent-chat-changes-undo:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.agent-chat-changes-note {
+  margin: 6px 0 0;
+  color: #927e71;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.agent-chat-pending {
+  border: 1px dashed #d9b98c;
+  background: #fdf7ec;
+  border-radius: 12px;
+  padding: 9px 11px;
+}
+
+.agent-chat-pending-title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #7a5c33;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.agent-chat-pending-note {
+  margin: 5px 0 0;
+  color: #8a7762;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.agent-chat-stale {
+  margin: 0;
+  border: 1px solid #dfc4c0;
+  background: #fdf3f1;
+  color: #96544d;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+}

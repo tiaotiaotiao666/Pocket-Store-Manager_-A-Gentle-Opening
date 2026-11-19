@@ -20,7 +20,13 @@ const SENSITIVE_KEY_RE = /(api[-_]?key|secret|token|password|authorization|openi
 const DEFAULT_CONFIG = Object.freeze({
   schemaVersion: SCHEMA_VERSION,
   apiBaseUrl: 'http://127.0.0.1:3000/api/v1',
-  agentTransport: 'mock',
+  // 模型通道由用户选择：deepseek = 直连 DeepSeek 官方 API（用自己的 Key）；
+  // server = 使用本机已部署的模型服务。agentTransport 只是派生的内部值，不再暴露给用户。
+  modelChannel: 'deepseek',
+  modelApiBaseUrl: 'https://api.deepseek.com',
+  modelName: 'deepseek-chat',
+  modelTimeoutMs: 60000,
+  agentTransport: 'direct',
   agentEndpoint: '/api/v1/agent/turn',
   agentTimeoutMs: 30000,
   defaultAppid: '',
@@ -30,6 +36,16 @@ const DEFAULT_CONFIG = Object.freeze({
   lastProjectId: '',
   uiScale: 'default',
 });
+
+/** 用户可选的模型通道 → 内部 transport。只支持 DeepSeek 协议。 */
+const MODEL_CHANNELS = Object.freeze(['deepseek', 'server']);
+const MODEL_CHANNEL_TRANSPORT = Object.freeze({ deepseek: 'direct', server: 'http' });
+const MODEL_API_BASE_RE = /^https?:\/\/[^\s]+$/i;
+const MODEL_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+
+function transportForChannel(channel) {
+  return MODEL_CHANNEL_TRANSPORT[channel] || MODEL_CHANNEL_TRANSPORT.deepseek;
+}
 
 const ALLOWED_KEYS = Object.freeze(Object.keys(DEFAULT_CONFIG));
 const APPID_RE = /^wx[0-9a-f]{16}$/;
@@ -56,8 +72,24 @@ function validateConfig(input) {
   if (typeof source.apiBaseUrl !== 'string' || !/^https?:\/\//.test(source.apiBaseUrl) || source.apiBaseUrl.length > 200) {
     errors.push({ field: 'apiBaseUrl', message: '接口地址必须以 http:// 或 https:// 开头且不超过 200 字符' });
   }
-  if (!['mock', 'http'].includes(source.agentTransport)) {
-    errors.push({ field: 'agentTransport', message: '模型通道只能是 mock 或 http' });
+  if (!['mock', 'http', 'direct'].includes(source.agentTransport)) {
+    errors.push({ field: 'agentTransport', message: '模型通道取值不受支持' });
+  }
+  if (!MODEL_CHANNELS.includes(source.modelChannel)) {
+    errors.push({ field: 'modelChannel', message: '模型通道只能是直连 DeepSeek 或本机服务' });
+  }
+  if (
+    typeof source.modelApiBaseUrl !== 'string'
+    || source.modelApiBaseUrl.length > 200
+    || !MODEL_API_BASE_RE.test(source.modelApiBaseUrl)
+  ) {
+    errors.push({ field: 'modelApiBaseUrl', message: '模型 API 地址必须以 http:// 或 https:// 开头且不超过 200 字符' });
+  }
+  if (typeof source.modelName !== 'string' || !MODEL_NAME_RE.test(source.modelName)) {
+    errors.push({ field: 'modelName', message: '模型名称不合法' });
+  }
+  if (!Number.isInteger(source.modelTimeoutMs) || source.modelTimeoutMs < 5000 || source.modelTimeoutMs > 120000) {
+    errors.push({ field: 'modelTimeoutMs', message: '模型超时必须是 5000–120000 的整数毫秒' });
   }
   if (typeof source.agentEndpoint !== 'string' || source.agentEndpoint.length > 200 || !source.agentEndpoint.startsWith('/')) {
     errors.push({ field: 'agentEndpoint', message: 'Agent 端点必须以 / 开头且不超过 200 字符' });
@@ -96,6 +128,12 @@ function normalizeConfig(input) {
   if (sensitive.length > 0) {
     throw new ProjectStoreError('SETTINGS_INVALID', '设置中包含不允许保存的敏感字段', { keys: sensitive });
   }
+  // agentTransport 是派生值：外部传了未知取值说明文件被改坏或来自不认识的版本，直接拒绝。
+  if (input.agentTransport !== undefined && !['mock', 'http', 'direct'].includes(input.agentTransport)) {
+    throw new ProjectStoreError('SETTINGS_INVALID', '设置有未通过的项', {
+      errors: [{ field: 'agentTransport', message: '模型通道取值不受支持' }],
+    });
+  }
 
   const merged = defaultConfig();
   const unknown = isPlainObject(input.unmappedFields) ? { ...input.unmappedFields } : {};
@@ -108,6 +146,13 @@ function normalizeConfig(input) {
     merged[key] = input[key];
   }
   merged.schemaVersion = SCHEMA_VERSION;
+
+  // 旧配置只有 agentTransport：据此推断模型通道，避免升级后把「本机服务」悄悄改成直连。
+  if (input.modelChannel === undefined) {
+    merged.modelChannel = input.agentTransport === 'http' ? 'server' : 'deepseek';
+  }
+  // agentTransport 永远是派生值，不信任外部传入，避免通道与 transport 互相矛盾。
+  merged.agentTransport = transportForChannel(merged.modelChannel);
 
   const errors = validateConfig(merged);
   if (errors.length > 0) {
@@ -285,4 +330,6 @@ module.exports = {
   ALLOWED_KEYS,
   MAX_CONFIG_BYTES,
   SENSITIVE_KEY_RE,
+  MODEL_CHANNELS,
+  transportForChannel,
 };

@@ -15,8 +15,8 @@ const STATUS_TITLES = {
 const STATUS_NOTES = {
   idle: '生成的是本地工程目录，不会上传或发布，也不会产生真实交易。',
   choosing: '请选择一个空目录位置；同名目录不会被覆盖。',
-  validating: '检查 Plan、模板版本、依赖与主题对比度。',
-  generating: '按 Plan 确定性写入小程序工程文件。',
+  validating: '检查方案、模板版本、依赖与配色对比度。',
+  generating: '按方案写入小程序工程文件。',
   verifying: '静态校验、敏感信息扫描与可复现性检查。',
   done: '可以用微信开发者工具导入这个目录继续调试。',
   failed: '没有生成任何可用产物，修正后可以重试。',
@@ -177,8 +177,9 @@ export default function DeployStep({
         <div className="deploy-failure">
           <div className="deploy-failure-body">
             <strong>{error && error.message ? error.message : STATUS_NOTES[status]}</strong>
-            {error && error.code ? <span className="deploy-failure-code">错误码：{error.code}</span> : null}
-            {error && error.suggestedName ? <span className="deploy-failure-code">建议项目名：{error.suggestedName}</span> : null}
+            {error && error.suggestedName ? (
+              <span className="deploy-failure-code">可以改用项目名：{error.suggestedName}</span>
+            ) : null}
           </div>
           <div className="deploy-actions">
             <button type="button" className="primary-button deploy-action" onClick={onRetry} disabled={busy}>
@@ -222,16 +223,10 @@ export default function DeployStep({
               <dt>海报素材</dt>
               <dd>
                 {result && result.poster && result.poster.included
-                  ? '已包含你上传的首页背景图（assets/media/home-background.png）'
+                  ? '已包含你上传的首页背景图'
                   : '未添加海报素材，不影响基础小程序页面'}
               </dd>
             </div>
-            {result?.lockDigest ? (
-              <div className="deploy-summary-row">
-                <dt>Lock 摘要</dt>
-                <dd className="deploy-path">{result.lockDigest}</dd>
-              </div>
-            ) : null}
           </dl>
 
           <div className="deploy-actions">

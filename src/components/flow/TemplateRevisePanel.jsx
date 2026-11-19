@@ -195,9 +195,9 @@ export default function TemplateRevisePanel({
         </div>
         <div className="template-revise-tools">
           {isMock ? (
-            <span className="template-revise-mock" title="当前没有真实模型，补丁由本地规则生成">
+            <span className="template-revise-mock" title="当前没有连接模型，改动由本地规则生成">
               <FlaskConical size={12} />
-              本地 Mock 演示
+              本地演示
             </span>
           ) : null}
           {typeof onClose === 'function' ? (

@@ -49,24 +49,20 @@ test('P6-1 前端过程卡只翻译真实 trace 里的四个工具，并展示 r
   assert.equal(view.tone, 'partial');
   assert.equal(view.title, '部分完成');
   assert.deepEqual(view.steps.map((step) => step.label), [
-    '读取前端能力',
+    '读取页面能力',
     '检查能力覆盖',
-    '生成候选 DSL',
-    '修复候选 DSL',
-    '可观察项对照',
+    '生成候选页面',
+    '调整候选页面',
+    '核对页面细节',
   ]);
   assert.deepEqual(view.steps.map((step) => step.state), ['done', 'done', 'done', 'failed', 'partial']);
   assert.equal(view.meta.runId, 'frun-abc123');
   assert.equal(view.meta.attempt, 2);
   assert.equal(view.meta.status, 'partial');
   assert.equal(view.meta.durationLabel, '12.3s');
-  assert.deepEqual(view.metaLines, [
-    '运行 frun-abc123',
-    '第 2 次尝试',
-    '状态：部分完成',
-    '耗时 12.3s',
-  ]);
-  assert.match(view.headline, /4 次真实工具调用/);
+  // 界面只展示人话「用时」；runId/attempt/状态留在 meta 里供排查，不上屏。
+  assert.deepEqual(view.metaLines, ['用时 12.3s']);
+  assert.match(view.headline, /4 项处理/);
   assert.match(view.notice, /采用前需要单独确认/);
 });
 
@@ -76,7 +72,7 @@ test('P6-2 没有真实 trace/进度不编造步骤；未知工具只显示辅�
   const idle = buildFrontendProcessView();
   assert.deepEqual(idle.steps, [], '没有真实输入时不得点亮任何步骤');
   assert.equal(idle.title, '等待输入');
-  assert.equal(idle.metaLines.length, 1);
+  assert.equal(idle.metaLines.length, 0, '没有真实耗时不显示任何元信息');
 
   const unknown = buildFrontendProcessView({
     status: 'generating',
@@ -91,7 +87,7 @@ test('P6-2 没有真实 trace/进度不编造步骤；未知工具只显示辅�
   const onlyOne = buildFrontendProcessView({
     trace: { modelCalls: 1, toolCalls: [{ name: 'propose_frontend_draft', ok: true }], stopReason: 'final_answer' },
   });
-  assert.deepEqual(onlyOne.steps.map((step) => step.label), ['生成候选 DSL'], '没发生的工具不得补步骤');
+  assert.deepEqual(onlyOne.steps.map((step) => step.label), ['生成候选页面'], '没发生的工具不得补步骤');
 });
 
 test('P6-3 耗时只在真实数据存在时展示，绝不用 0 或估算伪造', async () => {
@@ -100,7 +96,7 @@ test('P6-3 耗时只在真实数据存在时展示，绝不用 0 或估算伪造
   const fromRange = buildFrontendProcessView({ startedAt: 1000, endedAt: 3500 });
   assert.equal(fromRange.meta.durationMs, 2500);
   assert.equal(fromRange.meta.durationLabel, '2.5s');
-  assert.ok(fromRange.metaLines.includes('耗时 2.5s'));
+  assert.ok(fromRange.metaLines.includes('用时 2.5s'));
 
   const missing = buildFrontendProcessView({ runId: 'frun-x', attempt: 1 });
   assert.equal(missing.meta.durationMs, null);
@@ -161,15 +157,15 @@ test('P6-5 受控阶段文案覆盖 frontend 进度，且绝不读取系统消�
     STAGE_NOTICE_LABELS,
   } = await loadStageNotice();
 
-  assert.equal(frontendStageNotice('compose').label, 'Composer 校验');
+  assert.equal(frontendStageNotice('compose').label, '检查页面结构');
   assert.equal(frontendStageNotice('unknown-stage').known, false);
   assert.equal(
     stageNoticeFor({ role: 'system', meta: { stage: 'frontend:mini-check' } }).label,
-    '小程序静态校验',
+    '检查小程序结构',
   );
   assert.equal(
     stageNoticeFor({ role: 'system', meta: { frontendStage: 'verify' } }).label,
-    '微信真实编译与截图',
+    '在微信开发者工具里试跑',
   );
   // 原有交接阶段不回归。
   assert.equal(STAGE_NOTICE_LABELS['部署小程序'], '导出小程序');
@@ -196,7 +192,7 @@ test('P6-6 ChatStream 只渲染安全过程卡，不序列化 trace、不读消�
   const noticeSource = fs.readFileSync(path.join(ROOT, 'src/components/chat/stageNotice.mjs'), 'utf8');
   const css = fs.readFileSync(path.join(ROOT, 'src/styles/chat.css'), 'utf8');
 
-  for (const token of ['process.metaLines', 'process.steps', 'process.title', '本轮处理过程', '运行标识与耗时', '处理步骤']) {
+  for (const token of ['process.metaLines', 'process.steps', 'process.title', '本轮处理过程', '用时', '处理步骤']) {
     assert.ok(chatSource.includes(token), 'ChatStream 缺少安全过程卡字段：' + token);
   }
   assert.ok(chatSource.includes('ProcessSummary'));
@@ -220,7 +216,7 @@ test('P6-7 既有 agent-run 过程卡标签与语义保持不变', async () => {
     update_store_draft: '更新门店资料',
   });
   assert.equal(translateToolName('get_store_draft'), '读取门店资料');
-  assert.equal(translateToolName('propose_frontend_draft'), '生成候选 DSL');
+  assert.equal(translateToolName('propose_frontend_draft'), '生成候选页面');
   assert.equal(translateToolName('run_sql'), '辅助步骤');
 
   const view = buildProcessView({

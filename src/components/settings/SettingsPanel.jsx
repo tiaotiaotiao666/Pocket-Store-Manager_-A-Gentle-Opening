@@ -1,10 +1,24 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Cpu, Monitor, Save, Server } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Cpu,
+  KeyRound,
+  Monitor,
+  Save,
+  Server,
+  ShieldCheck,
+} from 'lucide-react';
 
 import DiagnosticsList from './DiagnosticsList.jsx';
 import StorageSection from './StorageSection.jsx';
 
 const APPID_RE = /^wx[0-9a-f]{16}$/;
+
+const MODEL_OPTIONS = [
+  { value: 'deepseek-chat', label: 'deepseek-chat（通用对话，推荐）' },
+  { value: 'deepseek-reasoner', label: 'deepseek-reasoner（深度推理，更慢）' },
+];
 
 function Field({ label, hint, error, children, wide = false }) {
   return (
@@ -14,6 +28,14 @@ function Field({ label, hint, error, children, wide = false }) {
       {error ? <span className="settings-field-error">{error}</span> : hint ? <span className="settings-field-hint">{hint}</span> : null}
     </label>
   );
+}
+
+function formatSavedAt(value) {
+  if (typeof value !== 'string' || !value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (input) => String(input).padStart(2, '0');
+  return `${date.getMonth() + 1} 月 ${date.getDate()} 日 ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export default function SettingsPanel({
@@ -27,8 +49,16 @@ export default function SettingsPanel({
   saveError = null,
   projectCount = 0,
   activeProjectId = null,
+  modelKey = null,
+  modelKeySaving = false,
+  modelKeyError = null,
+  modelKeyNotice = null,
+  modelTest = null,
   onPatch,
   onSave,
+  onSaveModelKey,
+  onClearModelKey,
+  onTestModel,
   onRunDiagnostics,
   onCopyDiagnostics,
   onSaveSnapshot,
@@ -38,6 +68,7 @@ export default function SettingsPanel({
 }) {
   const [draft, setDraft] = useState(config);
   const [appidError, setAppidError] = useState('');
+  const [apiKeyInput, setApiKeyInput] = useState('');
 
   useEffect(() => {
     setDraft(config);
@@ -66,6 +97,11 @@ export default function SettingsPanel({
 
   const isBrowser = mode === 'browser';
   const dirty = config && JSON.stringify(config) !== JSON.stringify(draft);
+  const keyConfigured = modelKey?.configured === true;
+  const keySupported = modelKey?.supported !== false;
+  const savedAt = formatSavedAt(modelKey?.updatedAt);
+  const channel = draft.modelChannel === 'server' ? 'server' : 'deepseek';
+  const testBusy = modelTest?.status === 'testing';
 
   const handleSave = () => {
     if (draft.defaultAppid && !APPID_RE.test(draft.defaultAppid)) {
@@ -74,6 +110,12 @@ export default function SettingsPanel({
     }
     setAppidError('');
     onSave?.(draft);
+  };
+
+  const handleSaveKey = () => {
+    const value = apiKeyInput.trim();
+    if (!value) return;
+    onSaveModelKey?.(value, () => setApiKeyInput(''));
   };
 
   return (
@@ -85,38 +127,188 @@ export default function SettingsPanel({
         </button>
         <div className="settings-heading">
           <span className="settings-eyebrow">设置</span>
-          <h1>运行环境与自检</h1>
-          <p>确认本机存储、模板资源与后端服务是否可用，并调整自动保存与 Agent 通道。</p>
+          <h1>模型、存储与自检</h1>
+          <p>在这里填自己的 DeepSeek API Key、调整自动保存，并检查本机环境是否就绪。</p>
         </div>
-        <span className={`settings-mode${isBrowser ? ' is-browser' : ''}`}>
-          {isBrowser ? <Monitor size={14} /> : <Cpu size={14} />}
-          {isBrowser ? '浏览器预览' : '桌面模式'}
-        </span>
+        <div className="settings-top-actions">
+          <span className={`settings-mode${isBrowser ? ' is-browser' : ''}`}>
+            {isBrowser ? <Monitor size={14} /> : <Cpu size={14} />}
+            {isBrowser ? '浏览器预览' : '桌面版'}
+          </span>
+          <button type="button" className="primary-button settings-save" onClick={handleSave} disabled={saving || !dirty}>
+            <Save size={14} />
+            {saving ? '保存中…' : '保存设置'}
+          </button>
+        </div>
       </header>
 
       <div className="settings-body">
-        <section className="settings-section">
+        <section className="settings-section" aria-label="模型与 API">
           <header className="settings-section-head">
             <div>
-              <h2>运行环境</h2>
-              <p>桌面模式拥有完整的项目落盘、图片资产与导出能力；浏览器预览只用于查看界面。</p>
+              <h2>模型与 API</h2>
+              <p>填写你自己的 DeepSeek API Key 就能直接用。Key 加密保存在这台电脑上，只由应用主程序读取，不会出现在页面、日志或导出的工程里。</p>
             </div>
           </header>
-          <div className="settings-facts">
-            <div className="settings-fact">
-              <span className="settings-fact-icon"><Monitor size={15} /></span>
-              <div>
-                <strong>当前模式</strong>
-                <span>{isBrowser ? '浏览器预览 · 项目存 localStorage' : '桌面应用 · Electron + 本机文件系统'}</span>
-              </div>
-            </div>
-            <div className="settings-fact">
-              <span className="settings-fact-icon"><Server size={15} /></span>
-              <div>
-                <strong>当前项目</strong>
-                <span>{activeProjectId ? `已打开 ${activeProjectId}` : '未打开项目'}</span>
-              </div>
-            </div>
+
+          {saveError ? <div className="settings-error">{saveError.message}</div> : null}
+
+          <div className="settings-form">
+            <Field label="使用方式" hint="目前只支持 DeepSeek 官方 API；其他厂商协议不同，暂未接入。" wide>
+              <select value={channel} onChange={(event) => update('modelChannel', event.target.value)}>
+                <option value="deepseek">直连 DeepSeek（填自己的 API Key，推荐）</option>
+                <option value="server">本机服务（由本机部署的模型服务提供）</option>
+              </select>
+            </Field>
+
+            {channel === 'deepseek' ? (
+              <>
+                <Field label="API 地址" hint="默认 https://api.deepseek.com ，一般不用改">
+                  <input
+                    type="text"
+                    value={draft.modelApiBaseUrl}
+                    onChange={(event) => update('modelApiBaseUrl', event.target.value.trim())}
+                    placeholder="https://api.deepseek.com"
+                  />
+                </Field>
+
+                <Field label="模型">
+                  <select value={draft.modelName} onChange={(event) => update('modelName', event.target.value)}>
+                    {MODEL_OPTIONS.map((item) => (
+                      <option key={item.value} value={item.value}>{item.label}</option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="超时（毫秒）" hint="8000–120000，网络慢可以调大">
+                  <input
+                    type="number"
+                    min={5000}
+                    max={120000}
+                    step={1000}
+                    value={draft.modelTimeoutMs}
+                    onChange={(event) => update('modelTimeoutMs', Number(event.target.value))}
+                  />
+                </Field>
+
+                <div className="settings-key-block is-wide">
+                  <div className="settings-key-head">
+                    <span className="settings-key-icon" aria-hidden="true"><KeyRound size={14} /></span>
+                    <div className="settings-key-text">
+                      <strong>API Key</strong>
+                      <small>
+                        {keyConfigured
+                          ? `已保存${savedAt ? ` · ${savedAt}` : ''}，只会显示这行状态`
+                          : '还没有保存。在 DeepSeek 开放平台创建后粘贴到这里。'}
+                      </small>
+                    </div>
+                    {keyConfigured ? (
+                      <span className="settings-key-badge">
+                        <ShieldCheck size={13} aria-hidden="true" />
+                        已加密保存
+                      </span>
+                    ) : null}
+                  </div>
+                  {keySupported ? (
+                    <div className="settings-key-row">
+                      <label className="settings-field settings-key-field">
+                        <span className="settings-field-label">
+                          {keyConfigured ? '替换为新的 Key' : '填写 API Key'}
+                        </span>
+                        <input
+                          type="password"
+                          autoComplete="off"
+                          spellCheck={false}
+                          value={apiKeyInput}
+                          onChange={(event) => setApiKeyInput(event.target.value)}
+                          placeholder="sk-..."
+                          aria-label="DeepSeek API Key"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="primary-button"
+                        onClick={handleSaveKey}
+                        disabled={modelKeySaving || !apiKeyInput.trim()}
+                      >
+                        {modelKeySaving ? '保存中…' : '保存密钥'}
+                      </button>
+                      {keyConfigured ? (
+                        <button
+                          type="button"
+                          className="ghost-button"
+                          onClick={() => onClearModelKey?.()}
+                          disabled={modelKeySaving}
+                        >
+                          清除
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="settings-key-hint">浏览器预览里不能保存 API Key；请在桌面应用里填写。</p>
+                  )}
+                  {modelKeyError ? <p className="settings-field-error">{modelKeyError}</p> : null}
+                  {modelKeyNotice ? (
+                    <p className="settings-inline-ok">
+                      <CheckCircle2 size={13} aria-hidden="true" />
+                      {modelKeyNotice}
+                    </p>
+                  ) : null}
+                  <div className="settings-key-actions">
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => onTestModel?.(draft)}
+                      disabled={testBusy || !keyConfigured}
+                    >
+                      {testBusy ? '正在连接…' : '测试连接'}
+                    </button>
+                    {modelTest?.status === 'ok' ? (
+                      <span className="settings-inline-ok">
+                        <CheckCircle2 size={13} aria-hidden="true" />
+                        连接正常 · {modelTest.model || draft.modelName}
+                        {Number.isFinite(modelTest.latencyMs) ? ` · ${(modelTest.latencyMs / 1000).toFixed(1)} 秒` : ''}
+                      </span>
+                    ) : null}
+                    {modelTest?.status === 'failed' ? (
+                      <span className="settings-field-error">{modelTest.message}</span>
+                    ) : null}
+                  </div>
+                  <p className="settings-key-hint">
+                    这一栏只接管「开店资料」对话。图片识别、模板修改与参考截图仍由本机模型服务处理。
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Field label="本机服务地址" hint="默认 http://127.0.0.1:3000/api/v1" wide>
+                  <input
+                    type="text"
+                    value={draft.apiBaseUrl}
+                    onChange={(event) => update('apiBaseUrl', event.target.value)}
+                    placeholder="http://127.0.0.1:3000/api/v1"
+                  />
+                </Field>
+                <Field label="对话端点" hint="一般不用改">
+                  <input
+                    type="text"
+                    value={draft.agentEndpoint}
+                    onChange={(event) => update('agentEndpoint', event.target.value)}
+                    placeholder="/api/v1/agent/turn"
+                  />
+                </Field>
+                <Field label="超时（毫秒）" hint="对话与模板修改用；截图识别单独最长等 120 秒，不受这里影响">
+                  <input
+                    type="number"
+                    min={1000}
+                    max={120000}
+                    step={1000}
+                    value={draft.agentTimeoutMs}
+                    onChange={(event) => update('agentTimeoutMs', Number(event.target.value))}
+                  />
+                </Field>
+              </>
+            )}
           </div>
         </section>
 
@@ -133,54 +325,11 @@ export default function SettingsPanel({
         <section className="settings-section">
           <header className="settings-section-head">
             <div>
-              <h2>后端与模型</h2>
-              <p>这些设置只保存在本机，不包含任何密钥；真实模型 Key 始终只存在服务端。</p>
+              <h2>其他</h2>
+              <p>这些设置只影响本机。</p>
             </div>
-            <button type="button" className="primary-button settings-save" onClick={handleSave} disabled={saving || !dirty}>
-              <Save size={14} />
-              {saving ? '保存中…' : '保存设置'}
-            </button>
           </header>
-
-          {saveError ? <div className="settings-error">{saveError.message}</div> : null}
-
           <div className="settings-form">
-            <Field label="后端接口地址" hint="默认 http://127.0.0.1:3000/api/v1" wide>
-              <input
-                type="text"
-                value={draft.apiBaseUrl}
-                onChange={(event) => update('apiBaseUrl', event.target.value)}
-                placeholder="http://127.0.0.1:3000/api/v1"
-              />
-            </Field>
-
-            <Field label="模型通道">
-              <select value={draft.agentTransport} onChange={(event) => update('agentTransport', event.target.value)}>
-                <option value="mock">本地 Mock（未接入真实模型）</option>
-                <option value="http">DeepSeek 后端（真实模型）</option>
-              </select>
-            </Field>
-
-            <Field label="Agent 端点" hint="必须以 / 开头">
-              <input
-                type="text"
-                value={draft.agentEndpoint}
-                onChange={(event) => update('agentEndpoint', event.target.value)}
-                placeholder="/api/v1/agent/turn"
-              />
-            </Field>
-
-            <Field label="Agent 超时（毫秒）">
-              <input
-                type="number"
-                min={1000}
-                max={120000}
-                step={1000}
-                value={draft.agentTimeoutMs}
-                onChange={(event) => update('agentTimeoutMs', Number(event.target.value))}
-              />
-            </Field>
-
             <Field label="默认 AppID" hint="新建项目时继承，可留空" error={appidError}>
               <input
                 type="text"
@@ -239,6 +388,11 @@ export default function SettingsPanel({
           onCopy={onCopyDiagnostics}
           onSaveSnapshot={onSaveSnapshot}
         />
+
+        <p className="settings-foot-note">
+          <Server size={13} aria-hidden="true" />
+          设置保存在本机应用数据目录；API Key 单独加密存放，导出工程与日志都不包含它。
+        </p>
       </div>
     </div>
   );

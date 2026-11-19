@@ -219,8 +219,8 @@ test('UX0a-5 config.json 损坏：先备份原文件，再用默认设置继续�
   assert.equal(fs.readFileSync(path.join(dir, backups[0]), 'utf8'), broken, '备份必须是原始内容');
   assert.equal(fs.readFileSync(path.join(dir, 'config.json'), 'utf8'), broken, '原配置文件不得被删除或改写');
 
-  // 默认配置可以继续保存使用。
-  const saved = await store.saveConfig({ ...loaded.config, agentTransport: 'http' });
+  // 默认配置可以继续保存使用（换成本机服务通道）。
+  const saved = await store.saveConfig({ ...loaded.config, modelChannel: 'server' });
   assert.equal(saved.config.agentTransport, 'http');
   assert.equal((await store.loadConfig()).config.agentTransport, 'http');
 

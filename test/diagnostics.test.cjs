@@ -52,18 +52,17 @@ test('复制文本包含结论且不包含绝对路径', async () => {
   assert.ok(!text.includes('D:\\secret'));
 });
 
-test('模型通道判定：mock 通过、http 端点非法失败、后端不可达失败', async () => {
+test('模型与 API 判定：直连缺 Key 给提醒、本机服务不可达失败、可用通过', async () => {
   const { service, format } = await load();
-  const mock = service.agentLine({ agentTransport: 'mock', agentEndpoint: '/api/v1/agent/turn' }, { reachable: false });
-  assert.strictEqual(mock.result, 'pass');
+  // 浏览器环境没有主进程桥：直连通道如实提示「还没有保存 API Key」。
+  const direct = await service.agentLine({ modelChannel: 'deepseek', modelName: 'deepseek-chat' }, { reachable: false });
+  assert.strictEqual(direct.result, 'warn');
+  assert.match(direct.message, /API Key/);
 
-  const badEndpoint = service.agentLine({ agentTransport: 'http', agentEndpoint: 'api/v1/agent/turn' }, { reachable: true });
-  assert.strictEqual(badEndpoint.result, 'fail');
-
-  const unreachable = service.agentLine({ agentTransport: 'http', agentEndpoint: '/api/v1/agent/turn' }, { reachable: false });
+  const unreachable = await service.agentLine({ modelChannel: 'server', modelName: 'deepseek-chat' }, { reachable: false });
   assert.strictEqual(unreachable.result, 'fail');
 
-  const ok = service.agentLine({ agentTransport: 'http', agentEndpoint: '/api/v1/agent/turn' }, { reachable: true });
+  const ok = await service.agentLine({ modelChannel: 'server', modelName: 'deepseek-chat' }, { reachable: true });
   assert.strictEqual(ok.result, 'pass');
   assert.strictEqual(format.createDiagnosticLine(ok).id, 'agent');
 });

@@ -114,7 +114,8 @@ function resolveFetchImpl() {
 /**
  * transport 选择：
  * - 显式注入优先（测试、或 App 想复用同一个 transport）；
- * - 否则按 `getTemplateReviseConfig().mode`：http → 真实后端，mock → 本地确定性演示。
+ * - 否则按 `getTemplateReviseConfig().mode`：http/direct → 本机模型服务，mock → 本地确定性演示。
+ *   （直连 DeepSeek 只接管资料整理对话，模板修改仍需要本机服务。）
  */
 function resolveTransport(explicitTransport, options) {
   if (explicitTransport) {
@@ -127,7 +128,7 @@ function resolveTransport(explicitTransport, options) {
   }
 
   const config = getTemplateReviseConfig();
-  if (config.mode === 'http') {
+  if (config.mode !== 'mock') {
     return createTemplateReviseHttpTransport({
       fetchImpl: options.fetchImpl ?? resolveFetchImpl(),
       getAuthorization: options.getAuthorization,
@@ -219,14 +220,12 @@ export async function requestTemplateRevise(input = {}, options = {}) {
   }
 }
 
-/** 给 UI 用：当前模板修改通道是否处于 Mock 演示模式。 */
+/** 给 UI 用：当前模板修改通道是否处于本地演示（未接入真实模型）模式。 */
 export function describeTemplateReviseTransport() {
   const config = getTemplateReviseConfig();
   return {
     mode: config.mode,
-    mock: config.mode !== 'http',
-    label: config.mode === 'http'
-      ? 'DeepSeek 后端（真实模型）'
-      : '本地 Mock 演示（未接入真实模型）',
+    mock: config.mode === 'mock',
+    label: config.mode === 'mock' ? '本地演示' : '模型服务',
   };
 }

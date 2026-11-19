@@ -229,7 +229,7 @@ function buildSidecarRecord(outputPath, payload) {
     lockDigestBefore: payload.lockDigestBefore,
     lockDigestAfter: payload.lockDigestAfter,
     scope: 'composer-outputDigest-files',
-    note: 'AppID 由智能开店宿主写入；本文件不属于 Composer 产物，不参与摘要。',
+    note: 'AppID 由口袋店长·轻启写入；本文件不属于 Composer 产物，不参与摘要。',
     revisions: Array.isArray(previous && previous.revisions) ? previous.revisions.slice(-9) : [],
   };
   if (previous) {

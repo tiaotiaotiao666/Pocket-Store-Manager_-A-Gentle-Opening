@@ -360,7 +360,7 @@ test('RealPreviewPanel 文案明确“截图回传 ≠ 实时渲染”并含代�
   const jsx = fs.readFileSync(path.join(REPO, 'src', 'components', 'preview', 'RealPreviewPanel.jsx'), 'utf8');
   assert.match(jsx, /不是应用内实时渲染/);
   assert.match(jsx, /AppID/);
-  assert.match(jsx, /proxyType/);
+  assert.match(jsx, /代理设置/);
   assert.match(jsx, /选择截图/);
   assert.match(jsx, /不上传网络/);
   assert.match(jsx, /不写入导出工程/);

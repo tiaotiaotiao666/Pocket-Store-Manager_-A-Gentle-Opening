@@ -315,6 +315,111 @@ function createAssetStore(options) {
     return { assets };
   }
 
+  /**
+   * 拖拽落图：渲染进程只能交「文件名 + MIME + base64」，不交本机路径。
+   *
+   * 主进程重新检测真实类型、单张/合计体积与数量，按摘要去重后落盘；
+   * 与 `attachImages` 共用同一份资产元数据形状，UI 不需要第二套读取逻辑。
+   */
+  async function attachImageData(projectId, items) {
+    assertProjectId(projectId);
+    const list = Array.isArray(items) ? items : [];
+    if (list.length === 0) return { assets: [] };
+    if (list.length > MAX_ASSETS_PER_ATTACH) {
+      throw new ProjectStoreError('ASSET_COUNT_EXCEEDED', '最多保留 6 张门店图片');
+    }
+
+    const doc = await readProjectDocument(projectId);
+    const known = Array.isArray(doc.assets && doc.assets.images) ? doc.assets.images : [];
+    const directory = assetsDirectory(projectId);
+    await fsp.mkdir(directory, { recursive: true });
+
+    const assets = [];
+    let totalBytes = 0;
+    const nowIso = new Date(now()).toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+    for (const item of list) {
+      const dataBase64 = item && typeof item.dataBase64 === 'string' ? item.dataBase64.trim() : '';
+      if (!dataBase64) {
+        throw new ProjectStoreError('ASSET_DATA_INVALID', '拖入的图片数据为空');
+      }
+      let buffer;
+      try {
+        buffer = Buffer.from(dataBase64, 'base64');
+      } catch (error) {
+        throw new ProjectStoreError('ASSET_DATA_INVALID', '拖入的图片数据无法解析');
+      }
+      if (buffer.length === 0) {
+        throw new ProjectStoreError('ASSET_DATA_INVALID', '拖入的图片数据为空');
+      }
+      if (buffer.length > MAX_ASSET_BYTES) {
+        throw new ProjectStoreError('ASSET_TOO_LARGE', '单张图片不能超过 10 MB');
+      }
+      totalBytes += buffer.length;
+      if (totalBytes > MAX_ASSET_TOTAL_BYTES) {
+        throw new ProjectStoreError('ASSET_TOO_LARGE', '一次最多导入 40 MB 图片');
+      }
+
+      const mime = detectMime(buffer);
+      if (!mime) {
+        throw new ProjectStoreError('ASSET_UNSUPPORTED_TYPE', '仅支持 PNG / JPG / WebP');
+      }
+      const declared = item && typeof item.mime === 'string' ? item.mime.toLowerCase() : '';
+      if (declared && declared !== mime) {
+        throw new ProjectStoreError('ASSET_TYPE_MISMATCH', '图片类型与内容不一致');
+      }
+
+      const extension = extensionFromMime(mime);
+      const digest = sha256Prefix(buffer);
+      const assetId = `a_${digest.slice(0, 16)}`;
+      const fileName = `${digest.slice(0, 16)}${extension}`;
+      const existing = known.find((entry) => entry.assetId === assetId);
+      const size = readImageSize(buffer) || {};
+
+      if (!existing) {
+        const target = path.join(directory, fileName);
+        let alreadyOnDisk = false;
+        try {
+          const stat = await fsp.stat(target);
+          alreadyOnDisk = stat.size === buffer.length;
+        } catch (error) {
+          alreadyOnDisk = false;
+        }
+        if (!alreadyOnDisk) {
+          try {
+            await fsp.writeFile(target, buffer, { flag: 'wx' });
+          } catch (error) {
+            if (error.code !== 'EEXIST') {
+              throw new ProjectStoreError('ASSET_WRITE_FAILED', '保存拖入的图片失败', { cause: error.code });
+            }
+          }
+        }
+        const originalName = String(item && item.name ? item.name : `dropped-image${extension}`)
+          .replace(/[\\/:*?"<>|]/g, '-')
+          .slice(0, 120);
+        const meta = {
+          assetId,
+          fileName,
+          originalName,
+          mime,
+          bytes: buffer.length,
+          width: size.width,
+          height: size.height,
+          sha256: `sha256:${digest}`,
+          createdAt: nowIso,
+        };
+        known.push(meta);
+        assets.push(meta);
+      } else {
+        assets.push(existing);
+      }
+    }
+
+    doc.assets = { ...(doc.assets || {}), images: known };
+    await writeProjectDocument(projectId, doc);
+    return { assets };
+  }
+
   async function readAsset(projectId, assetId, payload) {
     assertProjectId(projectId);
     if (typeof assetId !== 'string' || !ASSET_ID_RE.test(assetId)) {
@@ -506,6 +611,7 @@ function createAssetStore(options) {
   return {
     pickImages,
     attachImages,
+    attachImageData,
     readAsset,
     readAssetBytes,
     saveGeneratedImage,

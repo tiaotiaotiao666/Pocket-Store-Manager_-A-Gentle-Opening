@@ -16,6 +16,12 @@ import { normalizeAgentDraft, validateAgentDraft, buildNextQuestion } from './ag
 import { validatePresentationPatch } from './presentationPatch.mjs';
 import { resolveRecipe } from './recipeCatalog.mjs';
 import { buildScreenRefView } from './screenReference.mjs';
+import {
+  CHAT_MESSAGE_LIMIT,
+  CHAT_MESSAGE_MAX_CHARS,
+  createEmptyAgentChat,
+  normalizeChatMessages,
+} from './agentSidebar.mjs';
 
 export const SNAPSHOT_SCHEMA_VERSION = 1;
 export const MAX_SESSIONS = 20;
@@ -39,6 +45,7 @@ export const KNOWN_TOP_KEYS = Object.freeze([
   'agentDraft',
   'screenRef',
   'frontendCandidate',
+  'agentChat',
   'agentConfirmedSeq',
   'assets',
   'sessions',
@@ -918,6 +925,69 @@ export function describeFrontendCandidate(record) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// P6：右侧栏「Agent 对话」的项目级会话持久化（加法，不改既有切片）
+// ---------------------------------------------------------------------------
+
+/**
+ * `agentChat` 进 project.json 的白名单键：只存消息列表。
+ *
+ * `draft` / `status` / `activeRequestId` / `activeProjectId` / `lastError` / `lastRun`
+ * / `requestDraftRevision` / `requestPhase` 全部是请求期运行态，一律不落盘。
+ */
+export const AGENT_CHAT_SNAPSHOT_KEYS = Object.freeze(['messages']);
+
+/**
+ * 快照层上限口径——只引用 `domain/agentSidebar.mjs` 的同一份常量，不另定义同义数值。
+ *
+ * 条数与单条字数的裁剪本身由 `normalizeChatMessages` 完成；这里导出仅为可读的契约说明。
+ */
+export const AGENT_CHAT_SNAPSHOT_LIMITS = Object.freeze({
+  maxMessages: CHAT_MESSAGE_LIMIT,
+  maxMessageChars: CHAT_MESSAGE_MAX_CHARS,
+});
+
+/** 图片正文（data URL / 纯 base64 长串）与提示词、密钥一样，永远不进项目文件。 */
+const DATA_URL_PATTERN = /data:[a-z0-9.+-]+\/[a-z0-9.+-]+;base64,/i;
+const LONG_BASE64_PATTERN = /[A-Za-z0-9+/]{200,}={0,2}/;
+/** 本机绝对路径（盘符、UNC、常见用户目录前缀）也不落盘。 */
+const LOCAL_PATH_PATTERN = /(?:^|[\s"'(\[=：:])(?:[A-Za-z]:[\\/]|\\\\[^\s"']+|\/(?:Users|home|root|mnt|Volumes|private)\/)/;
+
+/**
+ * 这条气泡正文是否可以进快照。
+ *
+ * 只在快照层做「敏感/大体积正文」闸门；长度与条数的裁剪仍然只有 `normalizeChatMessages` 一份。
+ */
+export function isChatMessageSafeForSnapshot(value) {
+  if (typeof value !== 'string' || !value) return false;
+  if (DATA_URL_PATTERN.test(value)) return false;
+  if (LONG_BASE64_PATTERN.test(value)) return false;
+  if (LOCAL_PATH_PATTERN.test(value)) return false;
+  return true;
+}
+
+/** 保存与读取共用的唯一入口：先走领域层规范化（过滤/裁剪），再丢掉敏感正文的气泡。 */
+function safeChatMessages(messages) {
+  return normalizeChatMessages(messages).filter((message) => isChatMessageSafeForSnapshot(message.text));
+}
+
+/** 内存切片 → project.json 的 `agentChat`（只有 messages）。 */
+export function pickAgentChat(agentChat) {
+  const source = isPlainObject(agentChat) ? agentChat : {};
+  return { messages: safeChatMessages(source.messages) };
+}
+
+/**
+ * project.json 的 `agentChat` → 内存切片。
+ *
+ * 老项目没有这个字段（或字段损坏）：返回 `createEmptyAgentChat()` 的空会话，不报错、
+ * 不阻塞打开；遗留的 requesting 由 sessionMachine 归一为 idle。
+ */
+export function restoreAgentChatSlice(saved) {
+  const source = isPlainObject(saved) ? saved : {};
+  return { ...createEmptyAgentChat(), messages: safeChatMessages(source.messages) };
+}
+
 /**
  * 内存 state → project.json 文档。
  * meta: { projectId, createdAt, updatedAt, appid }
@@ -953,6 +1023,8 @@ export function toDocument(state, meta) {  const input = isPlainObject(state) ? 
     agentDraft,
     screenRef: pickScreenRef(input.screenRef),
     frontendCandidate: pickFrontendCandidate(input.frontendCandidate),
+    // 加法：项目级 Agent 会话只落「可读消息」；运行态与会话切片的其余字段不落盘。
+    agentChat: pickAgentChat(input.agentChat),
     agentConfirmedSeq: agent.status === 'confirmed' ? integerOrNull(agent.confirmedAtSeq) : null,
     assets: { images: pickImages(input.assets?.images ?? input.assetImages) },
     sessions: sessions.length > 0
@@ -1102,6 +1174,12 @@ export function fromDocument(doc, options = {}) {
     agentDraft: draft,
     agent,
     screenRef: restoreScreenRef(source.screenRef),
+    // 老项目没有顶层 agentChat：先尝试从旧版误存进 unmappedFields 的快照迁移，
+    // 再退化为空会话——不报错、不阻塞打开。
+    agentChat: restoreAgentChatSlice(
+      source.agentChat
+        ?? (isPlainObject(source.unmappedFields) ? source.unmappedFields.agentChat : undefined),
+    ),
     frontendCandidate,
     frontendCandidateNotice,
     deploy,

@@ -26,7 +26,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const LAUNCHER = path.join(ROOT, 'node_modules', 'agent-desktop', 'bin', 'agent-desktop');
-const WINDOW_TITLE_HINT = process.env.AGENT_DESKTOP_WINDOW_TITLE || '智能开店';
+const WINDOW_TITLE_HINT = process.env.AGENT_DESKTOP_WINDOW_TITLE || '口袋店长';
 const DEFAULT_SNAPSHOT_TIMEOUT_MS = Number(process.env.AGENT_DESKTOP_TIMEOUT_MS || 25000);
 const ACTION_TIMEOUT_MS = Number(process.env.AGENT_DESKTOP_ACTION_TIMEOUT_MS || 8000);
 const MAX_TREE_NODES = 4000;

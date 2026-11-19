@@ -61,7 +61,7 @@ test('P2 步骤只来自真实 trace：真实两工具 → 四步齐全且全绿
 
   assert.deepEqual(steps.map((step) => step.label), ['理解需求', '读取门店资料', '更新门店资料', '校验信息']);
   assert.deepEqual(steps.map((step) => step.state), ['done', 'done', 'done', 'done']);
-  assert.equal(steps[0].detail, '调用模型 3 次');
+  assert.equal(steps[0].detail, '分 3 步理解');
 
   // 模型没有调用读取工具：不得凭空补「读取门店资料」这一步。
   const updateOnly = buildProcessSteps({
@@ -113,7 +113,7 @@ test('P4 降级不得显示全绿成功，工具失败不能说资料完整', as
   assert.match(updateStep.detail, /未成功/);
   const validateStep = view.steps.find((step) => step.id === 'validate');
   assert.equal(validateStep.state, 'partial');
-  assert.match(view.headline, /未成功/);
+  assert.match(view.headline, /没有完成/);
   assert.match(view.headline, /时间上限/);
   assert.match(view.notice, /可能还不完整/);
   assert.equal(view.tools.failed, 1);
@@ -151,7 +151,7 @@ test('P5 四种状态：处理中 / 部分完成 / 完成 / 失败可重试', as
     [running.title, partial.title, done.title, failedRetryable.title, failedFatal.title],
     ['处理中', '部分完成', '完成', '失败', '失败'],
   );
-  assert.equal(done.headline, '本轮共 2 次工具调用，全部成功。');
+  assert.equal(done.headline, '这一轮完成了 2 项处理。');
   assert.equal(done.roundId, 'run_ok');
   assert.equal(failedRetryable.retryable, true);
   assert.equal(failedFatal.retryable, false, '401/403 不给重试按钮');
@@ -237,7 +237,7 @@ test('P8 历史轮次只留摘要，默认折叠且有条数上限', async () =>
   const view = {
     tone: 'done',
     title: '完成',
-    headline: '本轮共 2 次工具调用，全部成功。',
+    headline: '这一轮完成了 2 项处理。',
     steps: [
       { id: 'understand', label: '理解需求', state: 'done', detail: '' },
       { id: 'read', label: '读取门店资料', state: 'done', detail: '' },

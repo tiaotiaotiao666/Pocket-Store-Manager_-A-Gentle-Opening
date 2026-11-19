@@ -135,21 +135,17 @@ function ProcessCard({ process, processHistory = [], attempts = 0, onRetry }) {
 
 export default function AgentIntakePanel({
   status = 'idle',
-  transportLabel = '本地 Mock（未接入真实模型）',
-  transportMode = 'mock',
   reply = '',
   missingFields = [],
   errors = [],
   nextQuestion = null,
   lastError = null,
   attempts = 0,
-  simulateFailure = false,
   process = null,
   processHistory = [],
   staleDraftNotice = null,
   hint = null,
   onRetry,
-  onToggleSimulateFailure,
 }) {
   const fieldErrors = uniqueFieldErrors(errors);
   const shownErrors = fieldErrors.slice(0, 3);
@@ -163,14 +159,6 @@ export default function AgentIntakePanel({
           <span className="agent-status-dot" aria-hidden="true" />
           <span>{statusLabel(status, missingFields.length)}</span>
         </div>
-        <span
-          className="agent-transport-badge"
-          data-transport={transportMode}
-          title="当前为本地规则解析，未调用任何真实模型"
-        >
-          <Sparkles size={13} />
-          {transportLabel}
-        </span>
       </header>
 
       {message ? (
@@ -236,21 +224,6 @@ export default function AgentIntakePanel({
           <Sparkles size={14} aria-hidden="true" />
           <span>{hint.message}</span>
         </div>
-      ) : null}
-
-      {transportMode === 'mock' ? (
-        <label className="agent-simulate-switch">
-          <input
-            type="checkbox"
-            checked={Boolean(simulateFailure)}
-            onChange={(event) => onToggleSimulateFailure?.(event.target.checked)}
-          />
-          <span className="agent-simulate-track" aria-hidden="true"><span /></span>
-          <span className="agent-simulate-text">
-            下一次请求模拟失败
-            {simulateFailure ? <em className="agent-armed">已武装</em> : null}
-          </span>
-        </label>
       ) : null}
 
     </section>

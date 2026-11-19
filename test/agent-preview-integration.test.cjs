@@ -354,7 +354,7 @@ test('T3-I8 App 为新 turn/retry 生成进程内单调 ID，并关联四类 act
   assert.match(appSource, /return `agent-request-\$\{agentRequestSequence\}`;/);
   // W2 起四个 action 同时带 requestId 与冻结的草稿版本（手改保护），断言只管 requestId 关联。
   assert.match(appSource, /type: 'AGENT_TURN_RETRY', requestId, draftRevision: frozenRevision/);
-  assert.match(appSource, /type: 'AGENT_TURN_REQUEST', utterance: text, requestId, draftRevision: frozenRevision/);
+  assert.match(appSource, /type: 'AGENT_TURN_REQUEST',\s*utterance: text,\s*requestId,\s*draftRevision: frozenRevision/);
   assert.match(appSource, /type: 'AGENT_TURN_SUCCESS',[\s\S]{0,80}requestId,[\s\S]{0,80}draftRevision: frozenRevision/);
   assert.ok(appSource.includes("{ type: 'AGENT_TURN_FAILURE', requestId, error }"));
 });

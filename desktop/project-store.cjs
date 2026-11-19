@@ -50,6 +50,9 @@ const KNOWN_TOP_KEYS = Object.freeze([
   'presentation',
   'agentDraft',
   'agentConfirmedSeq',
+  // 右侧栏「Agent 对话」的项目会话必须留在顶层：否则会被搬进 unmappedFields，
+  // 重开项目时 fromDocument 读不到，用户会以为聊天记录没有持久化。
+  'agentChat',
   'assets',
   'sessions',
   'seq',
@@ -187,7 +190,14 @@ function normalizeDocumentForSave(doc, projectId) {
     if (KNOWN_TOP_KEYS.includes(key)) known[key] = doc[key];
     else unknown[key] = doc[key];
   });
-  if (isPlainObject(doc.unmappedFields)) Object.assign(unknown, doc.unmappedFields);
+  if (isPlainObject(doc.unmappedFields)) {
+    Object.keys(doc.unmappedFields).forEach((key) => {
+      if (KNOWN_TOP_KEYS.includes(key) || key === 'unmappedFields') return;
+      // 顶层本轮给的值优先：不能让上次残留在 unmappedFields 里的旧快照覆盖新消息。
+      if (Object.prototype.hasOwnProperty.call(unknown, key)) return;
+      unknown[key] = doc.unmappedFields[key];
+    });
+  }
 
   const next = {
     ...createBlankDocument({ projectId, name: doc.name, createdAt: doc.createdAt, appid: doc.appid }),

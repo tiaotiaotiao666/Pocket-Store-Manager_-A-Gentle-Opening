@@ -42,7 +42,7 @@ export function toCopyText(lines, json) {
     .map((line) => `[${RESULT_LABELS[line.result]}] ${line.title}：${line.message}${line.action ? `（建议：${line.action}）` : ''}`)
     .join('\n');
   return [
-    '# 智能开店诊断',
+    '# 口袋店长·轻启 诊断',
     '',
     header || '（没有检查结果）',
     '',

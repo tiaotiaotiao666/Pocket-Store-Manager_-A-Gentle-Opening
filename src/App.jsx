@@ -45,10 +45,18 @@ import {
   selectHandoffProgress,
   selectUndoState,
   selectPresentationState,
+  selectAgentChatState,
 } from './state/sessionMachine.mjs';
 import { formatCents } from './domain/agentDraft.mjs';
-import { DEV_STORE_FIXTURES } from './domain/devStoreFixtures.mjs';
 import { analyzeComposerInput, createSubmitGuard } from './domain/composerInput.mjs';
+// 项目级 Agent 对话（右侧栏）的纯函数口径：能否发送、本轮路由、安全过程视图。
+// App 只做接线与派发，判断与文案全部来自 domain/agentSidebar.mjs，不在这里另写一套。
+import {
+  CHAT_STATUS,
+  buildAgentChatSubmitPlan,
+  isValidChatDraft,
+  normalizeChatRun,
+} from './domain/agentSidebar.mjs';
 import { toDocument, fromDocument } from './domain/projectSnapshot.mjs';
 import { evaluateLocal, mergeComposerResult, mergeTargetPreflight } from './domain/preflightRules.mjs';
 import { createProjectService } from './services/projectService.js';
@@ -57,9 +65,10 @@ import { createSettingsService } from './services/settingsService.js';
 import { createDiagnosticsService } from './services/diagnosticsService.js';
 import { createAppidService } from './services/appidService.js';
 import { createDevtoolsService } from './services/devtoolsService.js';
-import { requestAgentTurn, describeAgentTransport, configureAgentRuntime, getAgentTransportConfig } from './services/agentTurn/agentTurnService.js';
+import { requestAgentTurn, describeAgentTransport, configureAgentRuntime, getAgentTransportConfig, getModelConfig } from './services/agentTurn/agentTurnService.js';
 import { requestAgentRun, isAgentRunRoute, resolveAgentRequestRoute } from './services/agentTurn/agentRunService.js';
-import { prepareImageFile } from './services/agentTurn/agentImageUpload.js';
+import { prepareImageFile, toAgentTurnImages } from './services/agentTurn/agentImageUpload.js';
+import { AGENT_IMAGE_LIMITS } from './domain/agentImageInput.mjs';
 import { requestScreenReference, createScreenReferenceRequestId } from './services/agentTurn/screenReferenceService.js';
 import { validateReferenceImage, candidateToSessionPatch } from './domain/screenReference.mjs';
 // P4：图片驱动前端重构（受控候选前端）——状态机在 domain，服务调用在 services。
@@ -72,6 +81,8 @@ import {
   isFrontendBusy,
 } from './domain/frontendReconstruct.mjs';
 import { buildFrontendProcessView } from './domain/agentRunProcess.mjs';
+// 右侧栏「Agent 对话」的过程卡同样复用既有安全过程视图（工具标签白名单），不另写一份。
+import { buildProcessView } from './domain/agentRunProcess.mjs';
 import { createFrontendReconstructService } from './services/frontendReconstruct/frontendReconstructService.js';
 import {
   adoptionNotice,
@@ -116,7 +127,6 @@ import TitleBar from './components/layout/TitleBar.jsx';
 import RightPanel from './components/layout/RightPanel.jsx';
 import ChatStream from './components/chat/ChatStream.jsx';
 import Composer from './components/chat/Composer.jsx';
-import DevFixtureBar from './components/chat/DevFixtureBar.jsx';
 import SkipNotice from './components/chat/SkipNotice.jsx';
 import HomeStage from './components/flow/HomeStage.jsx';
 import FeaturePicker from './components/flow/FeaturePicker.jsx';
@@ -158,19 +168,6 @@ const INTRO_AUTO_ADVANCE_MS = 5200;
 // UX0a-3：海报素材上传的 UI 侧上限；不替代导出链路的媒体校验，只是先挡住明显过大的文件。
 const MAX_POSTER_UPLOAD_BYTES = 2 * 1024 * 1024;
 const COMPOSER_PHASES = [PHASES.ONBOARDING, PHASES.STORE_INFO, PHASES.TEMPLATE_PICK, PHASES.PROMPT_STUDIO, PHASES.IMAGE_REVIEW];
-
-/**
- * 开发者测试夹具的开关。
- *
- * 必须是**可静态折叠**的写法：`vite build` 会把 `import.meta.env.DEV` 替换成字面量
- * `false`，于是下面这行等价于 `const DEV_FIXTURES_ENABLED = false;`，
- * 打包时 JSX 分支与夹具语料会被整段摇掉——测试数据不会进正式包。
- *
- * 不要改成 `isDevFixtureEnabled(import.meta.env)` 那样把整个 env 对象传进函数：
- * Vite 折叠不了函数调用，代码只会「运行时关闭」，语料照样留在产物里。
- * 也刻意不读取 query string / localStorage / 暗号，避免退化成能进生产的旁路。
- */
-const DEV_FIXTURES_ENABLED = import.meta.env.DEV;
 
 
 /**
@@ -264,6 +261,54 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([bytes], { type: match[1] });
 }
 
+/**
+ * 侧栏 Agent 对话的请求来源。
+ *
+ * `main` 是原有主输入框（行为完全不变）；`sidebar` 表示这一轮由右侧栏发起：
+ * 请求前在会话切片里追加一条用户消息（只追加一次），成功/失败再同步写一条助手消息。
+ */
+const AGENT_CHAT_ORIGINS = Object.freeze({ MAIN: 'main', SIDEBAR: 'sidebar' });
+
+/** 侧栏请求 id：与主会话的 requestId 各自独立，供四元组守卫比对。 */
+function createAgentChatRequestId() {
+  return `chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * 把一轮真实结果压成侧栏的安全过程视图（`normalizeChatRun` 白名单产物）。
+ *
+ * 只喂工具标签与耗时：`trace` 本身不进状态、也不进消息正文；没有真实 trace 时不补假步骤。
+ *
+ * @param {{requestId: string, actionKind: string, startedAt?: number|null, result?: object|null,
+ *   failed?: boolean, note?: string|null}} input
+ */
+function buildAgentChatRunSummary({ requestId, actionKind, startedAt = null, result = null, failed = false, note = null }) {
+  const source = result && typeof result === 'object' ? result : {};
+  const trace = source.trace ?? null;
+  const degradation = source.degradation ?? null;
+  const runId = typeof source.runId === 'string' && source.runId ? source.runId : null;
+  const view = trace || degradation
+    ? buildProcessView({ trace, degradation, changeSummary: [], runId })
+    : null;
+  const toolLabels = Array.isArray(view?.steps)
+    ? view.steps
+      .filter((step) => step && typeof step.label === 'string' && step.state !== 'pending')
+      .map((step) => step.label)
+    : [];
+  const durationMs = Number.isFinite(startedAt) ? Math.max(0, Date.now() - startedAt) : 0;
+  const degraded = source.degraded === true || (trace?.degraded === true);
+  return normalizeChatRun({
+    requestId,
+    actionKind,
+    runId,
+    durationMs,
+    toolLabels,
+    degraded,
+    status: failed ? 'failed' : (degraded ? 'partial' : 'done'),
+    note: note ?? (view?.notice ? view.notice : null),
+  });
+}
+
 function buildPanelCards(state, tips, imageBusy, previewViewModel) {
   const cards = [];
   const style = STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0];
@@ -355,7 +400,6 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
         body: `背景 ${style.colors[0]} · 主色 ${style.colors[1]}`,
       });
       {
-        const transport = describeAgentTransport();
         const agent = state.agent;
         const filled = [
           state.agentDraft.storeName,
@@ -369,7 +413,7 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
           type: 'status',
           icon: 'sparkles',
           tone: agent.status === 'confirmed' ? 'success' : (agent.status === 'failed' ? 'warn' : 'accent'),
-          title: `开店资料 · ${transport.label}`,
+          title: '开店资料',
           body: agent.status === 'confirmed'
             ? '资料已在本地确认，等待补充风格与地址；尚未保存或发布。'
             : `已完成 ${filled}/5 类资料，还差 ${agent.missingFields.length} 项。${agent.nextQuestion?.text ?? '可以直接描述，也可以手动编辑草稿。'}`,
@@ -463,17 +507,46 @@ function sanitizeProjectName(value) {
   return cleaned || 'smart-store';
 }
 
-// 设置文件不存在时，用当前实际生效的 transport 回填表单，避免显示值与真实请求不一致。
+// 设置文件不存在时，用当前实际生效的配置回填表单，避免显示值与真实请求不一致。
 function withRuntimeAgentConfig(config) {
   if (!config || typeof config !== 'object') return config;
   const current = getAgentTransportConfig();
+  const model = getModelConfig();
   return {
     ...config,
-    apiBaseUrl: current.baseUrl,
-    agentTransport: current.mode,
-    agentEndpoint: current.endpoint,
-    agentTimeoutMs: current.timeoutMs,
+    apiBaseUrl: config.apiBaseUrl || current.baseUrl,
+    agentEndpoint: config.agentEndpoint || current.endpoint,
+    agentTimeoutMs: Number.isInteger(config.agentTimeoutMs) ? config.agentTimeoutMs : current.timeoutMs,
+    modelChannel: config.modelChannel || (current.mode === 'http' ? 'server' : 'deepseek'),
+    modelApiBaseUrl: config.modelApiBaseUrl || model.baseUrl,
+    modelName: config.modelName || model.model,
+    modelTimeoutMs: Number.isInteger(config.modelTimeoutMs) ? config.modelTimeoutMs : model.timeoutMs,
   };
+}
+
+/** 侧栏底部只展示「用的是什么模型」，不展示后端/通道/Mock 这类内部术语。 */
+function selectModelLabel(state) {
+  const config = state.settings.config || {};
+  if (config.modelChannel === 'server') return '模型：本机服务';
+  const name = String(config.modelName || 'deepseek-chat');
+  return `模型：DeepSeek · ${name}`;
+}
+
+/**
+ * 拖拽落图：只读取文件内容，不向主进程暴露本机路径。
+ * 返回纯 base64（不含 `data:` 前缀），交给主进程重新检测类型与体积。
+ */
+function readImageFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error('读取图片失败'));
+    reader.readAsDataURL(file);
+  });
 }
 
 export default function App() {
@@ -520,6 +593,12 @@ export default function App() {
   const [handoffError, setHandoffError] = useState(null);
   const [devtoolsState, setDevtoolsState] = useState({ status: 'idle', found: false, via: 'none', path: null });
   const [settingsError, setSettingsError] = useState(null);
+  // 模型与 API：渲染层只保存「是否已保存」等状态，Key 明文只在主进程加密存放。
+  const [modelKey, setModelKey] = useState({ status: 'idle', configured: false, updatedAt: null, supported: true });
+  const [modelKeySaving, setModelKeySaving] = useState(false);
+  const [modelKeyError, setModelKeyError] = useState(null);
+  const [modelKeyNotice, setModelKeyNotice] = useState(null);
+  const [modelTest, setModelTest] = useState({ status: 'idle', message: '', latencyMs: null, model: '' });
   const [diagnosticsCopyStatus, setDiagnosticsCopyStatus] = useState(null);
   const [diagnosticsSnapshotPath, setDiagnosticsSnapshotPath] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -566,6 +645,11 @@ export default function App() {
   // 多模态上传的本地状态：只存在于内存，随请求透传给 agent turn。
   const [agentImages, setAgentImages] = useState({ menu: [], store: [] });
   const [agentImageError, setAgentImageError] = useState(null);
+  // 右侧「Agent 对话」的本轮附件：同样只存在内存，随这一轮请求发送；
+  // 图片 base64 绝不写进 project.json，也不写进消息正文。
+  const [agentChatImages, setAgentChatImages] = useState([]);
+  const [agentChatImageError, setAgentChatImageError] = useState(null);
+  const [agentChatImageBusy, setAgentChatImageBusy] = useState(false);
   // P3：参考截图流程的即时错误与「是否已落盘」提示（都不进持久化文档）。
   const [screenRefError, setScreenRefError] = useState(null);
   const [screenRefPersisted, setScreenRefPersisted] = useState(true);
@@ -592,6 +676,9 @@ export default function App() {
   const preflightStarted = useRef(false);
   const deployBusy = useRef(false);
   const agentBusy = useRef(false);
+  // 侧栏对话的同步防重：同一帧内连点/连按 Enter 时 state 还没更新，
+  // 因此除了 `status === 'requesting'` 之外再加一道 ref 守卫，保证只发一次。
+  const agentChatBusy = useRef(false);
   // P3：识别请求的并发门禁，避免同一时刻发两次识别。
   const screenRefBusy = useRef(false);
   // W4：连续点击/连按回车只放行一次同一段文字，避免重复请求与重复消息。
@@ -599,6 +686,9 @@ export default function App() {
   // 在途请求期间用户可能新增图片：用 ref 记录最新数量，避免闭包读到旧 state。
   const agentImagesRef = useRef(0);
   agentImagesRef.current = agentImages.menu.length + agentImages.store.length;
+  // 侧栏附件同理：重试与连续提交都读最新值，不依赖闭包里的旧数组。
+  const agentChatImagesRef = useRef([]);
+  agentChatImagesRef.current = agentChatImages;
   const previousPhase = useRef(state.phase);
   const previousAgentStatus = useRef(state.agent.status);
 
@@ -622,6 +712,8 @@ export default function App() {
     ...selectPresentationState(state),
     lastUtterance: state.presentation?.lastUtterance ?? '',
   };
+  // 项目级 Agent 会话视图模型（唯一真相源在 state.agentChat）：侧栏只能读它，组件里没有自己的会话状态。
+  const agentChatState = selectAgentChatState(state);
   const templateReviseTransport = describeTemplateReviseTransport();
   const exportedProjectPath = readExportedProjectPath(state.deploy?.result);
   const previewViewModels = useMemo(() => buildSessionPreviewViewModels(state), [state]);
@@ -980,6 +1072,9 @@ export default function App() {
     state.deploy.handoff,
     state.project.appid,
     state.project.status,
+    // 项目级 Agent 会话：只把消息列进依赖（草稿/在途状态是 transient，不该每次输入都落盘）。
+    // 消息变化（发起一轮、成功/失败各一条）就会触发一次保存，重开项目后历史还能回来。
+    state.agentChat?.messages,
     frontendCandidateRecord,
     state.settings.config?.autoSaveEnabled,
     state.settings.config?.autoSaveDebounceMs,
@@ -1006,6 +1101,13 @@ export default function App() {
     setMenuImageRecognition({ status: 'idle', message: '' });
     setScreenRefImageStatus('idle');
   }, [state.project.activeId]);
+
+  // 侧栏附件只属于当前阶段/当前项目：切阶段或切项目就丢弃，避免把上一轮的图误发出去。
+  useEffect(() => {
+    setAgentChatImages([]);
+    setAgentChatImageError(null);
+    setAgentChatImageBusy(false);
+  }, [phase, state.project.activeId]);
 
   useEffect(() => {
     if (phase !== PHASES.STORE_INFO) {
@@ -1442,6 +1544,74 @@ export default function App() {
     setSettingsError({ code: result.code, message: result.message });
   };
 
+  const refreshModelKeyStatus = useCallback(async () => {
+    const result = await settingsServiceRef.current.model.status().catch(() => null);
+    setModelKey({
+      status: 'ok',
+      configured: Boolean(result && result.configured === true),
+      updatedAt: result?.updatedAt || null,
+      supported: result?.supported !== false,
+    });
+  }, []);
+
+  useEffect(() => {
+    void refreshModelKeyStatus();
+  }, [refreshModelKeyStatus]);
+
+  const handleSaveModelKey = async (key, done) => {
+    if (modelKeySaving) return;
+    setModelKeySaving(true);
+    setModelKeyError(null);
+    setModelKeyNotice(null);
+    const result = await settingsServiceRef.current.model.saveKey(key).catch((error) => ({
+      status: 'failed',
+      message: error instanceof Error ? error.message : 'API Key 保存失败',
+    }));
+    setModelKeySaving(false);
+    if (result.status === 'ok') {
+      setModelKey({ status: 'ok', configured: true, updatedAt: result.updatedAt || null, supported: true });
+      setModelKeyNotice('API Key 已加密保存到这台电脑');
+      setModelTest({ status: 'idle', message: '', latencyMs: null, model: '' });
+      if (typeof done === 'function') done();
+      return;
+    }
+    setModelKeyError(result.message || 'API Key 保存失败');
+  };
+
+  const handleClearModelKey = async () => {
+    if (modelKeySaving) return;
+    setModelKeySaving(true);
+    setModelKeyError(null);
+    setModelKeyNotice(null);
+    const result = await settingsServiceRef.current.model.clearKey().catch(() => ({ status: 'failed', message: '清除失败' }));
+    setModelKeySaving(false);
+    if (result.status === 'ok') {
+      setModelKey({ status: 'ok', configured: false, updatedAt: null, supported: true });
+      setModelKeyNotice('已清除本机保存的 API Key');
+      setModelTest({ status: 'idle', message: '', latencyMs: null, model: '' });
+      return;
+    }
+    setModelKeyError(result.message || '清除失败');
+  };
+
+  const handleTestModel = async (config) => {
+    setModelTest({ status: 'testing', message: '', latencyMs: null, model: '' });
+    const result = await settingsServiceRef.current.model.test(config || {}).catch(() => ({
+      status: 'failed',
+      message: '连接失败，请检查网络与 API 地址。',
+    }));
+    if (result.status === 'ok') {
+      setModelTest({
+        status: 'ok',
+        message: '',
+        latencyMs: Number.isFinite(result.latencyMs) ? result.latencyMs : null,
+        model: result.model || '',
+      });
+      return;
+    }
+    setModelTest({ status: 'failed', message: result.message || '连接失败，请检查网络与 API 地址。', latencyMs: null, model: '' });
+  };
+
   const handleRunDiagnostics = async () => {
     dispatch({ type: 'DIAGNOSTICS_START' });
     setDiagnosticsSnapshotPath(null);
@@ -1524,10 +1694,10 @@ export default function App() {
         title: '后端与数据库',
         status: databaseOk ? 'pass' : 'fail',
         detail: databaseOk
-          ? (isCloud ? '云端后端与数据库已就绪。' : '后端 3000 与 MySQL 3306 已就绪。')
+          ? (isCloud ? '云端后端与数据库已就绪。' : '本机模型服务与数据库已就绪。')
           : (isCloud
-            ? '云端后端不可达：请检查云端服务状态或联系部署方；本地无需启动 MySQL。'
-            : '后端或数据库未就绪：请先以管理员启动 SmartStoreMySQL，再运行 npm start。'),
+            ? '云端后端不可达：请检查云端服务状态或联系部署方；本地无需启动数据库。'
+            : '本机模型服务或数据库还没就绪：请先启动本机的数据库与应用服务。只用直连 DeepSeek 的话可以跳过这一项。'),
       });
     } catch (error) {
       checks.push({
@@ -1537,7 +1707,7 @@ export default function App() {
         status: 'fail',
         detail: isCloud
           ? '无法连接云端 API，请检查云端服务状态或网络。'
-          : '无法连接 127.0.0.1:3000，请先运行 npm start（后端 + MySQL）。',
+          : '连不上本机的模型服务（127.0.0.1:3000）。请先启动本机服务；只用直连 DeepSeek 的话可以跳过这一项。',
       });
     }
 
@@ -1548,7 +1718,7 @@ export default function App() {
       title: '微信开发者工具',
       status: probe.found ? 'pass' : 'warn',
       detail: probe.found
-        ? `已检测到：${probe.path || 'CLI'}`
+        ? '已检测到微信开发者工具。'
         : '本机未检测到，请安装官方开发者工具（见下方详细步骤）。',
     });
     checks.push({
@@ -1669,24 +1839,87 @@ export default function App() {
   };
 
   /**
+   * 「这一轮模板修订现在能不能真的跑起来」——可执行条件只有这一份。
+   *
+   * 主输入框（按钮禁用）、侧栏（禁用 + 提示原因）与真正发请求前的守卫都读它，
+   * 避免出现「按钮可点、handler 静默 return」的两套口径。
+   *
+   * @returns {{templateId: string|null, candidate: object|null, blockedReason: string|null}}
+   */
+  const resolveTemplateReviseContext = () => {
+    const templateId = state.build.selectedId || null;
+    const candidate = state.build.candidates.find((item) => item.id === templateId) || null;
+    let blockedReason = null;
+    if (!presentationState.canRevise) {
+      blockedReason = '候选模板还没准备好：等这一轮候选生成完成后，才能在这里对话修改模板。';
+    } else if (presentationState.status === 'revising') {
+      blockedReason = '上一轮模板修订还在进行中，等它结束再发送。';
+    } else if (!templateId || !candidate) {
+      blockedReason = '还没有选中候选模板：先在下面选一个模板，再回来对话修改。';
+    }
+    return { templateId, candidate, blockedReason };
+  };
+
+  /**
    * 模板页「对话修改当前模板」。
    *
    * 单飞 + 晚响应丢弃：`requestId` 先写入状态机，结果必须带同一个 id 回来；
    * 用户切模板或发起第二轮后，旧响应会被 reducer 整包忽略（plan.md 2.2.3）。
+   *
+   * `origin === 'sidebar'` 时额外把这一轮记进项目级 Agent 会话（state.agentChat）：
+   * 请求前由这里追加唯一一条侧栏用户消息，成功/失败再写一条助手消息，
+   * 外层不再重复追加；主会话（origin='main'）行为完全不变。
    */
-  const handleTemplateReviseSubmit = async (utterance) => {
+  const handleTemplateReviseSubmit = async (utterance, {
+    origin = AGENT_CHAT_ORIGINS.MAIN,
+    retry = false,
+    images = null,
+  } = {}) => {
+    const fromSidebar = origin === AGENT_CHAT_ORIGINS.SIDEBAR;
     const text = String(utterance ?? '').trim();
     if (!text) return;
     if (phase !== PHASES.TEMPLATE_PICK) return;
     if (templateReviseBusy.current) return;
-    if (!presentationState.canRevise) return;
-    const templateId = state.build.selectedId;
-    const candidate = state.build.candidates.find((item) => item?.id === templateId);
-    if (!templateId || !candidate) return;
+    // 侧栏请求在途时忽略重复提交。用户可见的「为什么发不出去」由
+    // `agentChatSendBlockedReason`（App → 面板禁用 + 提示）负责，这里只是兜底。
+    if (fromSidebar && (agentChatBusy.current || agentChatState.status === CHAT_STATUS.REQUESTING)) return;
+    // 可执行条件与侧栏禁用/提示共用同一份判断；侧栏来源在这里也要给反馈，不静默吞输入。
+    const reviseContext = resolveTemplateReviseContext();
+    if (reviseContext.blockedReason) {
+      if (fromSidebar) setNotice(reviseContext.blockedReason);
+      return;
+    }
+    const { templateId, candidate } = reviseContext;
 
     const requestId = createReviseRequestId();
+    // 侧栏请求身份：项目与阶段在此刻冻结，迟到响应不能串到别的项目/阶段。
+    const chatRequestId = createAgentChatRequestId();
+    const chatProjectId = state.project.activeId || null;
+    const chatPhase = phase;
+    const startedAt = Date.now();
     templateReviseBusy.current = true;
-    dispatch({ type: 'TEMPLATE_REVISE_REQUEST', utterance: text, requestId });
+    // 只由侧栏请求自己持有/释放这道同步守卫，主输入框（origin='main'）不受影响。
+    if (fromSidebar) agentChatBusy.current = true;
+    if (fromSidebar) {
+      dispatch(retry
+        ? { type: 'AGENT_CHAT_RETRY_PREPARE', projectId: chatProjectId, requestId: chatRequestId, phase: chatPhase }
+        : {
+          type: 'AGENT_CHAT_REQUEST_START',
+          projectId: chatProjectId,
+          requestId: chatRequestId,
+          utterance: text,
+          actionKind: 'template-revise',
+          phase: chatPhase,
+        });
+    }
+    // origin 让状态层知道这一轮来自右侧会话：中间主会话只保留阶段切换提示，
+    // 不再重复显示侧栏发出的用户原话与助手回复。
+    dispatch({
+      type: 'TEMPLATE_REVISE_REQUEST',
+      utterance: text,
+      requestId,
+      origin: fromSidebar ? AGENT_CHAT_ORIGINS.SIDEBAR : AGENT_CHAT_ORIGINS.MAIN,
+    });
     try {
       let planFeatures = [];
       try {
@@ -1702,6 +1935,8 @@ export default function App() {
         planFeatures,
         basePatch: presentationState.patch,
         baseDraft: state.agentDraft,
+        // 模板修订后端只接受 1 张门店环境照（kind=store）；没有图片就不传该字段。
+        ...(Array.isArray(images) && images.length ? { images } : {}),
       });
       dispatch({
         type: 'TEMPLATE_REVISE_SUCCESS',
@@ -1710,11 +1945,38 @@ export default function App() {
         patch: result.patch,
         changes: result.changes,
         reply: result.reply,
+        origin: fromSidebar ? AGENT_CHAT_ORIGINS.SIDEBAR : AGENT_CHAT_ORIGINS.MAIN,
       });
+      if (fromSidebar) {
+        const changes = Array.isArray(result.changes) ? result.changes : [];
+        dispatch({
+          type: 'AGENT_CHAT_SUCCESS',
+          projectId: chatProjectId,
+          requestId: chatRequestId,
+          phase: chatPhase,
+          actionKind: 'template-revise',
+          reply: String(result.reply ?? '').trim() || `已更新 ${changes.length} 项展示`,
+          run: buildAgentChatRunSummary({ requestId: chatRequestId, actionKind: 'template-revise', startedAt }),
+        });
+        dispatch({ type: 'AGENT_CHAT_DRAFT_SET', value: '' });
+        setAgentChatImages([]);
+        setAgentChatImageError(null);
+        setAgentChatImageBusy(false);
+      }
     } catch (error) {
       dispatch({ type: 'TEMPLATE_REVISE_FAILURE', requestId, error });
+      if (fromSidebar) {
+        dispatch({
+          type: 'AGENT_CHAT_FAILURE',
+          projectId: chatProjectId,
+          requestId: chatRequestId,
+          phase: chatPhase,
+          error,
+        });
+      }
     } finally {
       templateReviseBusy.current = false;
+      if (fromSidebar) agentChatBusy.current = false;
     }
   };
 
@@ -1949,16 +2211,41 @@ export default function App() {
     setRealPreview({ screenshots: [], busy: false, error: null });
   };
 
-  const handleAgentTurn = async (utterance, { retry = false, imageKinds = null, requireVision = false } = {}) => {
+  /**
+   * 门店资料阶段的一轮 Agent 对话。
+   *
+   * `origin === 'sidebar'` 时额外记进项目级 Agent 会话（state.agentChat）：
+   * 请求前在这里追加唯一一条侧栏用户消息（actionKind 由阶段路由决定），
+   * 成功/失败再写一条助手消息；外层不再包一层重复追加，主会话行为保持原样。
+   */
+  const handleAgentTurn = async (utterance, {
+    retry = false,
+    imageKinds = null,
+    // 侧栏本轮附件：显式传入时只发这些图片，不与中间上传区的图片混在一起。
+    images: explicitImages = null,
+    requireVision = false,
+    origin = AGENT_CHAT_ORIGINS.MAIN,
+  } = {}) => {
+    const fromSidebar = origin === AGENT_CHAT_ORIGINS.SIDEBAR;
     if (agentBusy.current) return null;
     if (phase !== PHASES.STORE_INFO) return null;
+    if (fromSidebar && (agentChatBusy.current || agentChatState.status === CHAT_STATUS.REQUESTING)) return null;
     const text = String(utterance ?? '').trim();
     if (!text) return null;
     agentBusy.current = true;
+    // 只由侧栏请求自己持有/释放这道同步守卫，主输入框（origin='main'）不受影响。
+    if (fromSidebar) agentChatBusy.current = true;
     const requestId = createAgentRequestId();
-    const images = Array.isArray(imageKinds)
-      ? imageKinds.flatMap((kind) => (Array.isArray(agentImages[kind]) ? agentImages[kind] : []))
-      : [...agentImages.menu, ...agentImages.store];
+    // 侧栏请求身份：项目与阶段在此刻冻结，迟到响应不能串到别的项目/阶段。
+    const chatRequestId = createAgentChatRequestId();
+    const chatProjectId = state.project.activeId || null;
+    const chatPhase = phase;
+    const chatStartedAt = Date.now();
+    const images = Array.isArray(explicitImages)
+      ? explicitImages
+      : (Array.isArray(imageKinds)
+        ? imageKinds.flatMap((kind) => (Array.isArray(agentImages[kind]) ? agentImages[kind] : []))
+        : [...agentImages.menu, ...agentImages.store]);
     const frozenDraft = state.agentDraft;
     const frozenRevision = state.agent.draftRevision;
     const frozenImageCount = images.length;
@@ -1967,9 +2254,49 @@ export default function App() {
       imageCount: frozenImageCount,
       transportMode: describeAgentTransport().mode,
     });
+    // 直连 DeepSeek 只接管纯文字的资料整理；带图片的单轮识别要由本机模型服务处理。
+    if (frozenImageCount > 0 && describeAgentTransport().mode === 'direct') {
+      const error = {
+        code: 'AGENT_VISION_UNAVAILABLE',
+        message: '当前是直连 DeepSeek 模式，图片识别需要「本机服务」通道。可以到「设置与模型」切换通道，或先去掉图片、用文字描述菜品。',
+        retryable: false,
+      };
+      dispatch({ type: 'AGENT_TURN_FAILURE', requestId, error });
+      if (fromSidebar) {
+        dispatch({
+          type: 'AGENT_CHAT_FAILURE',
+          projectId: chatProjectId,
+          requestId: chatRequestId,
+          phase: chatPhase,
+          error,
+        });
+      }
+      agentBusy.current = false;
+      if (fromSidebar) agentChatBusy.current = false;
+      return null;
+    }
+    if (fromSidebar) {
+      dispatch(retry
+        // 重试只重放上一轮原话，不重复追加用户消息。
+        ? { type: 'AGENT_CHAT_RETRY_PREPARE', projectId: chatProjectId, requestId: chatRequestId, phase: chatPhase }
+        : {
+          type: 'AGENT_CHAT_REQUEST_START',
+          projectId: chatProjectId,
+          requestId: chatRequestId,
+          utterance: text,
+          actionKind: 'store-info',
+          phase: chatPhase,
+        });
+    }
     dispatch(retry
       ? { type: 'AGENT_TURN_RETRY', requestId, draftRevision: frozenRevision }
-      : { type: 'AGENT_TURN_REQUEST', utterance: text, requestId, draftRevision: frozenRevision });
+      : {
+        type: 'AGENT_TURN_REQUEST',
+        utterance: text,
+        requestId,
+        draftRevision: frozenRevision,
+        origin: fromSidebar ? AGENT_CHAT_ORIGINS.SIDEBAR : AGENT_CHAT_ORIGINS.MAIN,
+      });
     try {
       const result = isAgentRunRoute(route)
         ? await requestAgentRun({ utterance: text, draft: frozenDraft, requestId })
@@ -1977,7 +2304,6 @@ export default function App() {
           utterance: text,
           draft: frozenDraft,
           ...(images.length ? { images } : {}),
-          simulateFailureOnce: state.agent.simulateFailure,
         });
       if (requireVision && result.vision?.analyzed !== true) {
         const error = {
@@ -1986,16 +2312,48 @@ export default function App() {
           retryable: true,
         };
         dispatch({ type: 'AGENT_TURN_FAILURE', requestId, error });
+        if (fromSidebar) {
+          dispatch({
+            type: 'AGENT_CHAT_FAILURE',
+            projectId: chatProjectId,
+            requestId: chatRequestId,
+            phase: chatPhase,
+            error,
+          });
+        }
         return result;
       }
-      const imagesAddedDuringRequest = agentImagesRef.current > frozenImageCount;
+      const imagesAddedDuringRequest = Array.isArray(explicitImages)
+        ? false
+        : agentImagesRef.current > frozenImageCount;
       dispatch({
         type: 'AGENT_TURN_SUCCESS',
         ...result,
         requestId,
         draftRevision: frozenRevision,
         imagesAddedDuringRequest,
+        origin: fromSidebar ? AGENT_CHAT_ORIGINS.SIDEBAR : AGENT_CHAT_ORIGINS.MAIN,
       });
+      if (fromSidebar) {
+        dispatch({
+          type: 'AGENT_CHAT_SUCCESS',
+          projectId: chatProjectId,
+          requestId: chatRequestId,
+          phase: chatPhase,
+          actionKind: 'store-info',
+          reply: String(result?.reply ?? '').trim() || '这一轮已经处理完，请看草稿是否与你说的一致。',
+          run: buildAgentChatRunSummary({
+            requestId: chatRequestId,
+            actionKind: 'store-info',
+            startedAt: chatStartedAt,
+            result,
+          }),
+        });
+        dispatch({ type: 'AGENT_CHAT_DRAFT_SET', value: '' });
+        setAgentChatImages([]);
+        setAgentChatImageError(null);
+        setAgentChatImageBusy(false);
+      }
       setDraft('');
       setAgentImageError(null);
       return result;
@@ -2004,9 +2362,19 @@ export default function App() {
         setAgentImageError({ code: error.code, message: error.message || '图片不可用，请重新选择。' });
       }
       dispatch({ type: 'AGENT_TURN_FAILURE', requestId, error });
+      if (fromSidebar) {
+        dispatch({
+          type: 'AGENT_CHAT_FAILURE',
+          projectId: chatProjectId,
+          requestId: chatRequestId,
+          phase: chatPhase,
+          error,
+        });
+      }
       return null;
     } finally {
       agentBusy.current = false;
+      if (fromSidebar) agentChatBusy.current = false;
     }
   };
 
@@ -2041,7 +2409,216 @@ export default function App() {
   const handleAgentDishChange = (id, field, value) => dispatch({ type: 'EDIT_AGENT_DISH', id, field, value });
   const handleAgentAddDish = () => dispatch({ type: 'ADD_AGENT_DISH' });
   const handleAgentRemoveDish = (id) => dispatch({ type: 'REMOVE_AGENT_DISH', id });
-  const handleSimulateFailure = (value) => dispatch({ type: 'AGENT_SIMULATE_FAILURE', value });
+
+  // ---- 右侧栏「Agent 对话」：全项目唯一的侧栏入口（路由 + 防重 + 本地指引） ----
+
+  /**
+   * 侧栏的「参考图重构」摘要。
+   *
+   * 只有项目里真的存在参考图/重构材料时才给摘要与「查看候选」入口；摘要取
+   * `frontendView` 已有的安全文案，不复述截图内容、不假装侧栏能生成候选。
+   */
+  const agentChatCandidate = (() => {
+    const hasReferenceImage = Boolean(state.screenRef && state.screenRef.image);
+    const hasFrontendMaterial = frontendState.status !== FRONTEND_STATUS.IDLE
+      || Boolean(frontendState.candidate)
+      || Boolean(frontendState.request && frontendState.request.image);
+    if (!hasReferenceImage && !hasFrontendMaterial) return null;
+    const title = String(frontendView.title ?? '').trim();
+    const body = String(frontendView.body ?? '').trim();
+    const summary = [title, body].filter(Boolean).join('：');
+    return {
+      summary: summary || '这个项目已有参考图重构材料；候选只能在「参考图重构」面板里生成、校验并采用。',
+    };
+  })();
+
+  /**
+   * 侧栏「这一轮能不能真的发出去」的原因（唯一口径）。
+   *
+   * 与底层 handler 的可执行条件对齐：模板阶段的修订只有候选就绪、且没有在途修订时
+   * 才能发。不可执行时这里给出可读原因，面板据此禁用发送并显示原因，submit 时再
+   * 同一条原因写成 notice —— 不再出现「点了发送毫无反应」的静默路径。
+   *
+   * 只读既有选择器（`presentationState`），不新增业务判断，也不调用任何服务。
+   */
+  const agentChatSendBlockedReason = (() => {
+    // 没有活动项目由 plan.allowed 负责提示；其它阶段没有额外前置条件。
+    if (!state.project.activeId) return null;
+    if (phase !== PHASES.TEMPLATE_PICK) return null;
+    // 与 handleTemplateReviseSubmit 共用同一份可执行判断（单一真相源）。
+    return resolveTemplateReviseContext().blockedReason;
+  })();
+
+  // 侧栏本轮能带哪几种图片：门店资料可带菜单照/环境照，模板展示只带 1 张环境照。
+  // 其它阶段不调用模型，不显示上传入口，避免让用户误以为图片会被处理。
+  const agentChatImageKinds = (() => {
+    if (!state.project.activeId) return [];
+    if (phase === PHASES.STORE_INFO) return ['menu', 'store'];
+    if (phase === PHASES.TEMPLATE_PICK) return ['store'];
+    return [];
+  })();
+
+  /**
+   * 侧栏附件增删：只动内存里的本轮附件，不碰消息正文与持久化文档。
+   *
+   * 数量上限复用 `AGENT_IMAGE_LIMITS`；组件已经先拦一次，这里再兜一层，
+   * 避免拖拽/连续添加绕过限制。
+   */
+  const handleAgentChatImagesAdd = (kind, drafts) => {
+    const incoming = Array.isArray(drafts)
+      ? drafts.filter((item) => item && typeof item.id === 'string' && item.id)
+      : [];
+    if (!incoming.length) return;
+    setAgentChatImageError(null);
+    setAgentChatImages((previous) => {
+      const current = Array.isArray(previous) ? previous : [];
+      const next = [...current];
+      for (const draft of incoming) {
+        if (next.length >= AGENT_IMAGE_LIMITS.maxTotalImages) break;
+        const sameKind = next.filter((item) => item.kind === kind).length;
+        const limit = kind === 'menu' ? AGENT_IMAGE_LIMITS.maxMenuImages : AGENT_IMAGE_LIMITS.maxStoreImages;
+        if (sameKind >= limit) continue;
+        next.push({ ...draft, kind });
+      }
+      return next;
+    });
+  };
+
+  const handleAgentChatImageRemove = (id) => {
+    setAgentChatImages((previous) => (
+      Array.isArray(previous) ? previous.filter((item) => item && item.id !== id) : []
+    ));
+  };
+
+  /**
+   * 本地指引：不调用模型、不发请求，但仍走同一条会话记账路径
+   * （REQUEST_START → SUCCESS），保证用户消息只追加一次、状态归一为 idle。
+   *
+   * @param {string} text 用户原话
+   * @param {{retry?: boolean}} options 重试只重放，不重复追加用户消息
+   */
+  const appendAgentChatGuide = (text, { retry = false } = {}) => {
+    const projectId = state.project.activeId || null;
+    if (!projectId) return;
+    const requestId = createAgentChatRequestId();
+    const reply = agentChatCandidate
+      ? '本轮不调用模型：参考图重构与候选生成只在「参考图重构」面板里进行，点下面的「查看候选」可以过去。'
+      : '本轮不调用模型：只在本地说明这一轮该去哪里做，不会修改项目内容。';
+    dispatch(retry
+      ? { type: 'AGENT_CHAT_RETRY_PREPARE', projectId, requestId, phase }
+      : {
+        type: 'AGENT_CHAT_REQUEST_START',
+        projectId,
+        requestId,
+        utterance: text,
+        actionKind: 'guide',
+        phase,
+      });
+    dispatch({
+      type: 'AGENT_CHAT_SUCCESS',
+      projectId,
+      requestId,
+      phase,
+      actionKind: 'guide',
+      reply,
+      // 本地指引没有真实运行：过程卡只写「没有调用模型」，不编造任何工具步骤。
+      run: normalizeChatRun({
+        requestId,
+        actionKind: 'guide',
+        status: 'done',
+        durationMs: 0,
+        toolLabels: [],
+        note: '本轮没有调用模型，也没有运行任何工具，只给出本地入口指引。',
+      }),
+    });
+    dispatch({ type: 'AGENT_CHAT_DRAFT_SET', value: '' });
+    setAgentChatImages([]);
+    setAgentChatImageError(null);
+    setAgentChatImageBusy(false);
+  };
+
+  /**
+   * 侧栏发送入口：按当前阶段路由，只有门店资料/模板展示两句会真的调用模型。
+   *
+   * 所有判断都复用 `buildAgentChatSubmitPlan`（domain 唯一口径），这里只做派发；
+   * 在途时直接忽略，避免连点/连按 Enter 重复发送与重复追加消息。
+   */
+  const handleAgentChatSubmit = (value) => {
+    const text = String(value ?? '').trim();
+    const images = agentChatImagesRef.current;
+    // 空白与超 500 字不发送：同一份规则在 domain 里，App 只引用。
+    // 只带图片、没有一句话时也不发：模型契约要求 utterance 非空，图片是补充材料。
+    if (!isValidChatDraft(text)) {
+      if (images.length) setNotice('请补一句这一轮要改什么；图片会作为补充材料随本轮一起发送。');
+      return;
+    }
+    const projectId = state.project.activeId || null;
+    const plan = buildAgentChatSubmitPlan({ projectId, phase, hasProject: Boolean(projectId) });
+    if (!plan.allowed) {
+      // 没有打开项目：本地拦截并提示先打开项目，不发任何请求。
+      setNotice(plan.notice);
+      return;
+    }
+    if (agentChatBusy.current || agentChatState.status === CHAT_STATUS.REQUESTING) return;
+    if (agentChatSendBlockedReason) {
+      // 阶段动作不可执行：如实说明原因，不吞掉用户输入、也不调用任何服务。
+      setNotice(agentChatSendBlockedReason);
+      return;
+    }
+
+    if (plan.actionKind === 'store-info') {
+      handleAgentTurn(text, { origin: AGENT_CHAT_ORIGINS.SIDEBAR, images });
+      return;
+    }
+    if (plan.actionKind === 'template-revise') {
+      handleTemplateReviseSubmit(text, {
+        origin: AGENT_CHAT_ORIGINS.SIDEBAR,
+        images: toAgentTurnImages(images),
+      });
+      return;
+    }
+    // 其它阶段（含参考图/重构意图）：只给本地指引 + 候选面板入口，不调用模型。
+    if (images.length) {
+      setNotice('当前阶段不处理图片：图片只在「门店资料」和「模板展示」阶段随对话发送。');
+    }
+    appendAgentChatGuide(text);
+  };
+
+  /** 侧栏「重试上一轮」：重放上一轮原话，不重复追加用户消息。 */
+  const handleAgentChatRetry = () => {
+    if (!state.project.activeId) return;
+    if (agentChatState.status !== CHAT_STATUS.FAILED) return;
+    if (agentChatBusy.current) return;
+    const text = String(agentChatState.lastUtterance ?? '').trim();
+    if (!text) return;
+    const images = agentChatImagesRef.current;
+    if (phase === PHASES.STORE_INFO) {
+      handleAgentTurn(text, { retry: true, origin: AGENT_CHAT_ORIGINS.SIDEBAR, images });
+      return;
+    }
+    if (phase === PHASES.TEMPLATE_PICK) {
+      handleTemplateReviseSubmit(text, {
+        origin: AGENT_CHAT_ORIGINS.SIDEBAR,
+        retry: true,
+        images: toAgentTurnImages(images),
+      });
+      return;
+    }
+    // 当前阶段本来就不调用模型：重试只是再给一次本地指引。
+    appendAgentChatGuide(text, { retry: true });
+  };
+
+  /** 侧栏「查看候选」：只跳到既有的参考图重构面板，不在侧栏生成或采用候选。 */
+  const handleAgentChatOpenCandidates = () => {
+    if (typeof document === 'undefined') return;
+    const node = document.getElementById('frontend-reconstruct-panel');
+    if (!node) {
+      setNotice('还没有候选方案：先在「参考截图」区上传截图并生成候选；侧栏不会直接生成候选。');
+      return;
+    }
+    if (typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'center' });
+    setNotice('已定位到「参考图重构」候选面板。');
+  };
 
   // ---- P3：参考截图 → 识别 → 确认 → 候选模板 ----
 
@@ -2661,6 +3238,81 @@ export default function App() {
     }
   };
 
+  /**
+   * 拖拽海报素材：只支持 PNG、≤2 MB；与「上传图片（PNG）」同一条资产落盘链路。
+   * 拖入后回读预览并写进视觉切片，未保存成功前不允许「使用此图」。
+   */
+  const handleDropPoster = async (file) => {
+    if (posterBusy || !file) return;
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    if (service.mode !== 'desktop') {
+      setNotice('浏览器模式不会把图片写进项目，请在桌面应用中上传海报素材');
+      return;
+    }
+    if (!projectId) {
+      setNotice('请先在工作台新建或打开项目，再上传海报素材');
+      return;
+    }
+    const type = String(file.type || '').toLowerCase();
+    if (type !== 'image/png') {
+      setNotice('海报素材目前只支持 PNG 图片，请重新选择');
+      return;
+    }
+    if (Number(file.size) > MAX_POSTER_UPLOAD_BYTES) {
+      setNotice('图片超过 2 MB，请压缩后再上传');
+      return;
+    }
+
+    setPosterBusy(true);
+    try {
+      const dataBase64 = await readImageFileAsBase64(file);
+      if (!dataBase64) {
+        setNotice('读取图片失败，请重新选择');
+        return;
+      }
+      const attached = await service.attachImageData(projectId, [{
+        name: String(file.name || 'poster.png'),
+        mime: type,
+        dataBase64,
+      }]);
+      if (attached.status !== 'ok') {
+        setNotice(attached.message || '保存图片失败，请重试');
+        return;
+      }
+      const asset = Array.isArray(attached.assets) ? attached.assets[0] : null;
+      if (!asset || !asset.assetId) {
+        setNotice('保存图片失败，请重试');
+        return;
+      }
+      if (Number.isFinite(asset.bytes) && asset.bytes > MAX_POSTER_UPLOAD_BYTES) {
+        setNotice('图片超过 2 MB，请压缩后再上传');
+        return;
+      }
+      const preview = await service.readAsset(projectId, asset.assetId, 720);
+      if (preview.status !== 'ok' || !preview.asset || !preview.asset.dataUrl) {
+        setNotice('图片已保存，但预览读取失败，请重新选择图片');
+        return;
+      }
+      dispatch({
+        type: 'SET_POSTER_ASSET',
+        assetId: asset.assetId,
+        meta: {
+          provider: 'user-upload',
+          width: asset.width,
+          height: asset.height,
+          note: '你拖入的图片，不是模型生成结果',
+        },
+        preview: preview.asset.dataUrl,
+      });
+      setNotice('海报素材已保存到项目');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '保存图片失败，请重试');
+    } finally {
+      setPosterBusy(false);
+    }
+  };
+
   // G1：海报阶段的真实生图提示词与能力探测。
   // 只读服务端状态，不触发任何上游调用；提示词由服务端按已确认资料生成一次，用户可改。
   useEffect(() => {
@@ -2917,6 +3569,76 @@ export default function App() {
         assetId,
         message: error instanceof Error ? error.message : '氛围分析失败，图片已保留，可以重试。',
       });
+    } finally {
+      setStoreImageBusy(false);
+    }
+  };
+
+  /**
+   * 拖拽门店环境图：与「添加环境图片」走同一条资产落盘链路。
+   * 渲染进程只把文件内容转成 base64，类型/体积由主进程重新校验。
+   */
+  const handleDropStoreImages = async (files) => {
+    if (storeImageBusy) return;
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    if (service.mode !== 'desktop') {
+      setNotice('浏览器模式不支持图片落盘，请在桌面应用中拖入门店图片');
+      return;
+    }
+    if (!projectId) {
+      setNotice('请先在工作台新建项目，再添加门店图片');
+      return;
+    }
+    const incoming = Array.from(files ?? []);
+    if (incoming.length === 0) return;
+    const current = Array.isArray(state.assets && state.assets.images) ? state.assets.images : [];
+    const room = Math.max(0, 6 - current.length);
+    if (room === 0) {
+      setNotice('最多保留 6 张门店图片');
+      return;
+    }
+
+    setStoreImageBusy(true);
+    try {
+      const items = [];
+      for (const file of incoming.slice(0, room)) {
+        const type = String(file?.type ?? '').toLowerCase();
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(type)) {
+          setNotice('仅支持 PNG / JPG / WebP 图片');
+          continue;
+        }
+        if (Number(file?.size) > 10 * 1024 * 1024) {
+          setNotice('单张图片不能超过 10 MB');
+          continue;
+        }
+        const dataBase64 = await readImageFileAsBase64(file);
+        if (!dataBase64) continue;
+        items.push({ name: String(file.name || 'dropped-image'), mime: type, dataBase64 });
+      }
+      if (items.length === 0) return;
+
+      const attached = await service.attachImageData(projectId, items);
+      if (attached.status !== 'ok') {
+        setNotice(attached.message || '导入拖入的图片失败');
+        return;
+      }
+      const assets = Array.isArray(attached.assets) ? attached.assets.slice(0, room) : [];
+      dispatch({ type: 'ADD_PROJECT_IMAGES', images: assets });
+      const known = new Set(current.map((item) => item.assetId));
+      const added = assets.filter((item) => !known.has(item.assetId));
+      const nextSelectedId = selectedStoreImageId || added[0]?.assetId || null;
+      setSelectedStoreImageId(nextSelectedId);
+      setStoreImageAnalysis((previous) => (
+        previous.assetId === nextSelectedId
+          ? previous
+          : { status: 'idle', assetId: nextSelectedId, message: '' }
+      ));
+      setNotice(added.length > 0
+        ? `已拖入 ${added.length} 张门店图片，请选择一张用于氛围分析`
+        : '拖入的图片已在项目中');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '导入拖入的图片失败');
     } finally {
       setStoreImageBusy(false);
     }
@@ -3511,7 +4233,6 @@ export default function App() {
         );
       case PHASES.STORE_INFO: {
         const agent = state.agent;
-        const transport = describeAgentTransport();
         const canConfirm = agent.status === 'reviewing'
           && agent.missingFields.length === 0
           && agent.errors.length === 0;
@@ -3609,6 +4330,7 @@ export default function App() {
             selectedImageId={selectedStoreImageId}
             imageAnalysis={storeImageAnalysis}
             onPickImages={handlePickStoreImages}
+            onDropImages={handleDropStoreImages}
             onSelectImage={handleSelectStoreImage}
             onRemoveImage={handleRemoveStoreImage}
             onAnalyzeImage={handleAnalyzeStoreImage}
@@ -3678,21 +4400,17 @@ export default function App() {
             ) : (
               <AgentIntakePanel
                 status={agent.status}
-                transportLabel={transport.label}
-                transportMode={transport.mode}
                 reply={agent.reply}
                 missingFields={agent.missingFields}
                 errors={agent.errors}
                 nextQuestion={agent.nextQuestion}
                 lastError={agent.lastError}
                 attempts={agent.attempts}
-                simulateFailure={agent.simulateFailure}
                 process={agent.process}
                 processHistory={agent.processHistory}
                 staleDraftNotice={agent.staleDraftNotice}
                 hint={agent.hint}
                 onRetry={handleAgentRetry}
-                onToggleSimulateFailure={handleSimulateFailure}
               />
             )}
             <StoreInfoSections
@@ -3728,6 +4446,7 @@ export default function App() {
             assetId={state.visual.imageAssetId ?? null}
             busy={posterBusy}
             onPick={handlePickPoster}
+            onDropFile={handleDropPoster}
             onUse={() => {
               if (!state.visual.imageAssetId) {
                 setNotice('图片还没有保存到项目，请重新选择图片');
@@ -3767,8 +4486,6 @@ case PHASES.DEPLOY: {
               warns={state.deploy.preflight.warns}
               infos={state.deploy.preflight.infos}
               acknowledged={state.deploy.preflight.acknowledged}
-              planDigest={state.deploy.preflight.planDigest}
-              signature={preflightSignatureText}
               checkedAt={state.deploy.preflight.checkedAt}
               canExport={exportGate}
               stale={preflightStale}
@@ -3845,6 +4562,29 @@ case PHASES.DEPLOY: {
 
   const agentComposer = selectAgentComposerState(state);
   const undoState = selectUndoState(state);
+  // 右侧栏「Agent 对话」视图模型：安全字段 + 回调，组件不持有会话状态、也不自己发请求。
+  // 过程卡只给 lastRun（`normalizeChatRun` 白名单产物），trace 不进消息正文。
+  const agentChatViewModel = {
+    projectId: state.project.activeId || null,
+    projectName: String(state.store.name || state.agentDraft.storeName || '').trim(),
+    phase,
+    phaseLabel: meta?.label ?? '',
+    chat: agentChatState,
+    candidate: agentChatCandidate,
+    // 与 handleAgentChatSubmit 共用同一条原因：面板禁用发送 + 显示原因。
+    sendBlockedReason: agentChatSendBlockedReason,
+    images: agentChatImages,
+    imageKinds: agentChatImageKinds,
+    imageError: agentChatImageError,
+    imageBusy: agentChatImageBusy,
+    onAddImages: handleAgentChatImagesAdd,
+    onRemoveImage: handleAgentChatImageRemove,
+    onImageBusyChange: setAgentChatImageBusy,
+    onDraftChange: (value) => dispatch({ type: 'AGENT_CHAT_DRAFT_SET', value }),
+    onSubmit: handleAgentChatSubmit,
+    onRetry: handleAgentChatRetry,
+    onOpenCandidates: handleAgentChatOpenCandidates,
+  };
   // UX0a-3：海报素材（可选）阶段没有真实生图服务，不再提供"重新生成"输入区。
   const composerVisible = phase === PHASES.STORE_INFO
     ? agentComposer.visible
@@ -3915,7 +4655,15 @@ case PHASES.DEPLOY: {
         saveError={settingsError}
         projectCount={state.project.list.length}
         activeProjectId={state.project.activeId}
+        modelKey={modelKey}
+        modelKeySaving={modelKeySaving}
+        modelKeyError={modelKeyError}
+        modelKeyNotice={modelKeyNotice}
+        modelTest={modelTest}
         onSave={handleSettingsSave}
+        onSaveModelKey={handleSaveModelKey}
+        onClearModelKey={handleClearModelKey}
+        onTestModel={handleTestModel}
         onRunDiagnostics={handleRunDiagnostics}
         onCopyDiagnostics={handleCopyDiagnostics}
         onSaveSnapshot={handleSaveDiagnosticsSnapshot}
@@ -3933,13 +4681,13 @@ case PHASES.DEPLOY: {
       <AppShell
       sidebar={(
         <Sidebar
-          appName="智能开店"
+          appName="口袋店长·轻启"
           sessions={state.sessions}
           activeSessionId={state.activeSessionId}
           currentStoreName={state.store.name}
           saveLabel={selectSaveLabel(state)}
           mode={state.project.mode}
-          agentLabel={describeAgentTransport().label}
+          modelLabel={selectModelLabel(state)}
           onStartOnboarding={startOnboarding}
           onSelectSession={selectSession}
           onOpenWorkbench={handleOpenWorkbench}
@@ -3947,7 +4695,7 @@ case PHASES.DEPLOY: {
           onReset={reset}
         />
       )}
-      panel={<RightPanel meta={meta} cards={panelCards} />}
+      panel={<RightPanel meta={meta} cards={panelCards} agentChat={agentChatViewModel} />}
       main={(
         <>
           <TitleBar
@@ -4021,14 +4769,6 @@ case PHASES.DEPLOY: {
                 ) : null}
                 {composerVisible ? (
                   <div className="workspace-composer">
-                    {/* 仅 dev：把「测试用户说出完整资料」的一句话填进输入框，发送仍由开发者自己点。 */}
-                    {DEV_FIXTURES_ENABLED && phase === PHASES.STORE_INFO ? (
-                      <DevFixtureBar
-                        fixtures={DEV_STORE_FIXTURES}
-                        disabled={composerDisabled}
-                        onPick={setDraft}
-                      />
-                    ) : null}
                     <Composer
                       value={draft}
                       placeholder={composerPlaceholder}

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell, nativeImage } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, shell, nativeImage, safeStorage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
@@ -16,6 +16,8 @@ const { createDiagnostics } = require('./diagnostics.cjs');
 const { probeDevtools } = require('./devtools-probe.cjs');
 const { registerPreviewIpc } = require('./preview-channel.cjs');
 const { registerFrontendReconstructIpc } = require('./frontend-reconstruct-ipc.cjs');
+const { createModelCredentials } = require('./model-credentials.cjs');
+const { registerModelIpc } = require('./model-ipc.cjs');
 const { openExternalLink, isAllowedAppUrl } = require('./external-link.cjs');
 
 /**
@@ -200,6 +202,12 @@ const imageAdapter = {
 const projectStore = createProjectStore({ userDataDir });
 const assetStore = createAssetStore({ userDataDir, imageAdapter });
 const settingsStore = createSettingsStore({ userDataDir });
+// 模型 API Key 只存在主进程：落盘前经 safeStorage 加密，渲染进程永远拿不到明文。
+const modelCredentials = createModelCredentials({
+  userDataDir,
+  safeStorage,
+  fetchImpl: (...args) => fetch(...args),
+});
 const diagnostics = createDiagnostics({
   userDataDir,
   runtime: {
@@ -218,7 +226,7 @@ function createWindow() {
     height: 960,
     minWidth: 1120,
     minHeight: 740,
-    title: '智能开店 · 独立小程序生成器',
+    title: '口袋店长·轻启',
     backgroundColor: '#f6f5f1',
     autoHideMenuBar: true,
     webPreferences: {
@@ -267,6 +275,11 @@ registerProjectIpc(ipcMain, {
   probeDevtools,
   dialog,
   shell,
+});
+
+registerModelIpc(ipcMain, {
+  credentials: modelCredentials,
+  settings: settingsStore,
 });
 
 // 真实渲染截图回传（C-REAL-PREVIEW@1）：只打开已导出工程目录 + 读取本地截图，

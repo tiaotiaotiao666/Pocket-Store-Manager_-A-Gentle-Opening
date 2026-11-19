@@ -186,3 +186,10 @@
   font-size: 12px;
   color: #86efac;
 }
+
+/* 海报空状态拖拽反馈：拖进来的图片会走同一条资产落盘链路。 */
+.material-empty.is-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: 3px;
+  background: #fff7f1;
+}

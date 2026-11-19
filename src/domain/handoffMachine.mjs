@@ -9,7 +9,7 @@ export const HANDOFF_STEPS = Object.freeze([
   {
     id: 'prepare',
     title: '确认产物',
-    summary: '核对导出目录、Lock 摘要与检查项',
+    summary: '核对导出目录与检查项',
     completeText: '产物没问题',
     hint: '本应用不会上传或发布，只生成并交付本地目录。',
   },

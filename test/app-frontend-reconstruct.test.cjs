@@ -1186,7 +1186,7 @@ test('P6 接线 App：真实 trace/进度经 buildFrontendProcessView 传 ChatSt
   const chat = read(path.join(REPO, 'src/components/chat/ChatStream.jsx'));
   assert.match(chat, /if \(!process \|\| !process\.title\) return null;/);
   assert.match(chat, /aria-label=\{`本轮处理过程：\$\{process\.title\}`\}/);
-  assert.match(chat, /aria-label="运行标识与耗时"/);
+  assert.match(chat, /aria-label="用时"/);
   assert.match(chat, /aria-label="处理步骤"/);
   // P4 面板自己的进度仍由 frontendView 提供，过程卡不接管它。
   assert.match(source, /<FrontendCandidatePanel[\s\S]{0,300}view=\{frontendView\}/);
@@ -1219,15 +1219,16 @@ test('P6 过程卡安全：只含受控标签/runId/attempt/状态/耗时，不�
   });
 
   // 工具标签受控：四个白名单工具翻译，未知工具折叠成「辅助步骤」且不回显真名。
-  assert.deepEqual(view.steps.map((step) => step.label).slice(0, 3), ['读取前端能力', '生成候选 DSL', '辅助步骤']);
-  assert.equal(view.steps.some((step) => step.label === '可观察项对照'), true, '主进程真实进度也要显示');
+  assert.deepEqual(view.steps.map((step) => step.label).slice(0, 3), ['读取页面能力', '生成候选页面', '辅助步骤']);
+  assert.equal(view.steps.some((step) => step.label === '核对页面细节'), true, '主进程真实进度也要显示');
   assert.equal(view.meta.runId, 'frun-abc123');
   assert.equal(view.meta.attempt, 2);
   assert.equal(view.meta.status, 'partial');
   assert.equal(view.meta.durationLabel, '12.3s');
-  assert.ok(view.metaLines.some((line) => line.includes('frun-abc123')));
-  assert.ok(view.metaLines.some((line) => line.includes('第 2 次尝试')));
-  assert.ok(view.metaLines.some((line) => line.includes('耗时 12.3s')));
+  // 界面只显示「用时」这类人话；运行标识/尝试次数/状态码仍保留在 meta 里供排查，不上屏。
+  assert.ok(view.metaLines.some((line) => line.includes('用时 12.3s')));
+  assert.ok(!view.metaLines.some((line) => line.includes('frun-abc123')), '界面不展示内部运行标识');
+  assert.ok(!view.metaLines.some((line) => line.includes('第 2 次尝试')), '界面不展示内部尝试次数');
 
   const serialized = JSON.stringify(view);
   ['internal_debug_tool', '完整提示词正文', '<view>', 'data:image', 'AAAABBBB', 'sk-abcdefghijklmnop', 'C:\\\\Users', 'secret.png'].forEach((needle) => {

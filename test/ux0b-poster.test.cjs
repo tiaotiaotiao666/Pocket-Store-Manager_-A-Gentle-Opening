@@ -456,7 +456,7 @@ test('UX0b-7 config.json 损坏：默认配置可用，原始内容可从备份�
   assert.equal(fs.readFileSync(backupPath, 'utf8'), broken, '备份必须是原始损坏内容');
 
   // 自动保存默认配置后，原文件变成合法 JSON，但备份里的损坏内容仍可恢复
-  const saved = await store.saveConfig({ ...loaded.config, agentTransport: 'http' });
+  const saved = await store.saveConfig({ ...loaded.config, modelChannel: 'server' });
   assert.equal(saved.config.agentTransport, 'http');
   const afterSave = fs.readFileSync(path.join(userDataDir, 'config.json'), 'utf8');
   JSON.parse(afterSave);

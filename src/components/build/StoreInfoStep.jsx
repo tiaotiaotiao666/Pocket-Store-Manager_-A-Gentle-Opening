@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Check, ImagePlus, Store, Trash2 } from 'lucide-react';
 
 export default function StoreInfoStep({
@@ -19,6 +20,7 @@ export default function StoreInfoStep({
   onFieldChange,
   onStyleChange,
   onPickImages,
+  onDropImages,
   onSelectImage,
   onRemoveImage,
   onAnalyzeImage,
@@ -29,6 +31,8 @@ export default function StoreInfoStep({
   const imageList = Array.isArray(images) ? images : [];
   const data = store || {};
   const analyzing = imageAnalysis?.status === 'analyzing';
+  const [dragging, setDragging] = useState(false);
+  const canAcceptDrop = !imageBusy && imageList.length < 6;
 
   return (
     <section className={`store-step${embedded ? ' is-embedded' : ''}`}>
@@ -117,10 +121,28 @@ export default function StoreInfoStep({
       ) : null}
 
       {showImages ? (
-        <div className="store-images-block">
+        <div
+          className={`store-images-block${dragging ? ' is-drop-target' : ''}`}
+          onDragOver={(event) => {
+            if (!canAcceptDrop) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+            setDragging(true);
+          }}
+          onDragLeave={(event) => {
+            if (event.currentTarget.contains(event.relatedTarget)) return;
+            setDragging(false);
+          }}
+          onDrop={(event) => {
+            if (!canAcceptDrop) return;
+            event.preventDefault();
+            setDragging(false);
+            onDropImages?.(event.dataTransfer?.files);
+          }}
+        >
           <div className="store-images-head">
             <h4>已上传图片</h4>
-            <span className="store-style-hint">真实项目资产，最多 6 张；只保存在本机项目里，不会打进导出工程。</span>
+            <span className="store-style-hint">真实项目资产，最多 6 张；只保存在本机项目里，不会打进导出工程。可以把图片直接拖到这里。</span>
           </div>
 
           {imageList.length > 0 ? (

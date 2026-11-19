@@ -33,24 +33,14 @@ test('dev fixture 模块不读取 query/localStorage/process.env 等旁路开关
   }
 });
 
-test('App.jsx 的夹具开关必须可静态折叠，否则语料会漏进打包产物', async () => {
+test('App.jsx 不再渲染开发者测试夹具（临时界面已移出产品）', async () => {
   const source = readFileSync(join(projectRoot, 'src', 'App.jsx'), 'utf8');
   const code = stripComments(source);
 
-  // 必须是 `const X = import.meta.env.DEV;`：vite build 会把它替换成 false，再摇掉整段 JSX。
-  assert.match(
-    code,
-    /const DEV_FIXTURES_ENABLED = import\.meta\.env\.DEV;/,
-    '夹具开关必须直接取 import.meta.env.DEV，不能用函数包装（Vite 折叠不了函数调用）',
-  );
-  // 回归护栏：曾经写成 isDevFixtureEnabled(import.meta.env)，导致语料留在 dist 里。
-  assert.equal(
-    /isDevFixtureEnabled/.test(code),
-    false,
-    '不要把整个 import.meta.env 传进函数：那样只有运行时关闭，语料仍会进产物',
-  );
-  // 夹具必须同时受 phase 限制，避免在无关阶段把测试语料塞进输入框。
-  assert.match(code, /DEV_FIXTURES_ENABLED && phase === PHASES\.STORE_INFO/);
+  // 夹具条属于只在开发时可见的临时界面：主界面不得再引用它，也不得留开关。
+  assert.equal(/DevFixtureBar/.test(code), false, '产品界面不得再出现开发者测试夹具');
+  assert.equal(/DEV_FIXTURES_ENABLED/.test(code), false, '夹具开关必须一起移除');
+  assert.equal(/DEV_STORE_FIXTURES/.test(code), false, '界面不得直接引用夹具语料');
 });
 
 test('夹具元数据：id 唯一、label 非空、语料不超过输入框上限', async () => {

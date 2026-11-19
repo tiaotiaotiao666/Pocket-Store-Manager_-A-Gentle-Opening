@@ -1083,3 +1083,9 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* 海报素材面板拖拽落图反馈。 */
+.review-panel.is-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: 3px;
+  background: #fff7f1;
+}

@@ -27,7 +27,7 @@ test('环境引导区分本机与云端运行形态', () => {
   const app = read('src/App.jsx');
   assert.match(app, /detectDeploymentMode/);
   assert.match(app, /云端后端不可达/);
-  assert.match(app, /本地无需启动 MySQL/);
+  assert.match(app, /本地无需启动数据库/);
   assert.match(app, /isCloud/);
 
   const component = read('src/components/onboarding/EnvGuideDialog.jsx');

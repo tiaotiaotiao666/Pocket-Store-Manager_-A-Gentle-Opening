@@ -30,7 +30,7 @@ const DEFAULT_MAX_TOKENS = 1200;
 const MAX_REPLY_LENGTH = 200;
 
 export const TEMPLATE_REVISE_SYSTEM_PROMPT = [
-  '你是「智能开店」桌面端的模板展示修改助手，只负责把店主的一句话翻译成一份受控的展示补丁。',
+  '你是「口袋店长·轻启」桌面端的模板展示修改助手，只负责把店主的一句话翻译成一份受控的展示补丁。',
   '',
   '严格约束：',
   '- 不得写数据库、不得发布小程序、不得调用任何工具、不得生成代码、HTML 或 CSS。',
@@ -52,7 +52,7 @@ export const TEMPLATE_REVISE_SYSTEM_PROMPT = [
 ].join('\n');
 
 export const TEMPLATE_CANDIDATES_SYSTEM_PROMPT = [
-  '你是「智能开店」桌面端的模板推荐助手，只负责在 3 套固定模板中排序并给出理由。',
+  '你是「口袋店长·轻启」桌面端的模板推荐助手，只负责在 3 套固定模板中排序并给出理由。',
   '',
   '固定模板（不得新增、不得遗漏）：',
   '- warm-bistro：暖色小馆，适合家常菜、社区餐馆；',

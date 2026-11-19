@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * 智能开店：agent-desktop 无障碍冒烟走查。
+ * 口袋店长·轻启：agent-desktop 无障碍冒烟走查。
  *
  * 真实执行一次「快照 → 点击 → 重新快照验证 → 返回」闭环：
  *   项目工作台 → 设置与自检 → 返回项目工作台
@@ -25,7 +25,7 @@ const {
 } = require('./agent-debug.cjs');
 
 const WORKBENCH_TEXTS = ['我的项目', '新建项目：创建空白门店项目', '搜索项目'];
-const SETTINGS_TEXTS = ['运行环境与自检', '返回项目', '重新自检', '保存设置'];
+const SETTINGS_TEXTS = ['模型与 API', '返回项目', '重新自检', '保存设置'];
 // P4：候选前端主链只在「开店资料」阶段出现；控件必须有唯一可读名称（UIA name）。
 const FRONTEND_PANEL_TEXTS = [
   '门店基本资料',
@@ -53,11 +53,11 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  return `智能开店 · 无障碍调试冒烟走查
+  return `口袋店长·轻启 · 无障碍调试冒烟走查
 
   node scripts/agent-smoke.cjs [--window-id w-xxx] [--timeout-ms 15000]
 
-前置：应用已启动（npm run agent:app），窗口标题包含「智能开店」，且 agent-desktop 已安装。`;
+前置：应用已启动（npm run agent:app），窗口标题包含「口袋店长」，且 agent-desktop 已安装。`;
 }
 
 function record(label) {
@@ -168,7 +168,7 @@ function main(argv) {
   }
   const waitTimeoutMs = flags.timeoutMs || 15000;
 
-  line('== 智能开店 · 无障碍调试冒烟 ==');
+  line('== 口袋店长·轻启 · 无障碍调试冒烟 ==');
 
   record('status');
   const status = getStatus();
@@ -187,7 +187,7 @@ function main(argv) {
   let snap = snapshot({ windowId: win.id, timeoutMs: flags.timeoutMs || undefined });
   line(`[3/7] 初始快照 ${snap.snapshotId} | refs=${snap.refCount} | ${elapsedSinceLast()}ms`);
 
-  if (hasText(snap, '运行环境与自检')) {
+  if (hasText(snap, '模型与 API')) {
     line('  检测到当前停在设置页，先点击「返回项目」。');
     clickByQuery(win.id, '返回项目');
   }
@@ -202,7 +202,7 @@ function main(argv) {
   line(`[4/7] 点击「设置与自检」→ ${target.ref}（语义 Click 已投递）`);
 
   record('settings-verify');
-  const settings = waitForText(win.id, '运行环境与自检', { timeoutMs: waitTimeoutMs });
+  const settings = waitForText(win.id, '模型与 API', { timeoutMs: waitTimeoutMs });
   line(`[5/7] 复查设置页 ${settings.snapshotId} | refs=${settings.refCount} | ${elapsedSinceLast()}ms`);
   assertSnap(settings, SETTINGS_TEXTS, '设置页');
 

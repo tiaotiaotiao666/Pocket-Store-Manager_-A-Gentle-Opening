@@ -371,12 +371,13 @@ test('B4-4 确认卡如实写明回落原因、不生成的能力和候选运行
   assert.match(candidateRow.value, /未执行|NOT_RUN|验证/);
 });
 
-test('B4-7 体检面板默认只显示人话，ruleId/fieldPath 收进「技术详情」', () => {
+test('B4-7 体检面板默认只显示人话，内部标识不出现在界面上', () => {
   const panel = fs.readFileSync(path.join(REPO, 'src', 'components', 'deploy', 'PreflightPanel.jsx'), 'utf8');
-  const techIndex = panel.indexOf('<summary>技术详情</summary>');
-  assert.ok(techIndex > 0, '技术详情入口必须存在');
-  assert.ok(panel.indexOf('<code>Plan 摘要</code>') > techIndex, 'Plan 摘要必须只在技术详情里');
-  assert.doesNotMatch(panel, /\{rule\.ruleId\}<\/span>/, '默认行不再直接摆 ruleId');
+  // 界面上不再有「技术详情」入口，也不摆 ruleId / 字段路径 / 摘要哈希。
+  assert.equal(panel.includes('技术详情'), false, '技术详情入口必须移除，避免露出内部标识');
+  assert.equal(/<code>\{rule\.ruleId\}<\/code>/.test(panel), false, '默认行不得直接摆 ruleId');
+  assert.equal(panel.includes('Plan 摘要'), false, 'Plan 摘要不得出现在界面上');
+  assert.equal(panel.includes('导出签名'), false, '导出签名不得出现在界面上');
   assert.match(panel, /rule\.message/);
   // 默认行先给后果说明、再给动作，不只给规则名。
   assert.match(panel, /rule\.consequence/);

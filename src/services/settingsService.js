@@ -8,7 +8,11 @@ const CONFIG_KEY = 'smartstore.config.v1';
 export const DEFAULT_SETTINGS = Object.freeze({
   schemaVersion: 1,
   apiBaseUrl: 'http://127.0.0.1:3000/api/v1',
-  agentTransport: 'mock',
+  modelChannel: 'deepseek',
+  modelApiBaseUrl: 'https://api.deepseek.com',
+  modelName: 'deepseek-chat',
+  modelTimeoutMs: 60000,
+  agentTransport: 'direct',
   agentEndpoint: '/api/v1/agent/turn',
   agentTimeoutMs: 30000,
   defaultAppid: '',
@@ -18,6 +22,11 @@ export const DEFAULT_SETTINGS = Object.freeze({
   lastProjectId: '',
   uiScale: 'default',
 });
+
+/** 通道 → 内部 transport；只支持 DeepSeek 官方协议。 */
+export function transportForChannel(channel) {
+  return channel === 'server' ? 'http' : 'direct';
+}
 
 function bridge() {
   if (typeof window === 'undefined') return null;
@@ -110,12 +119,17 @@ export function createSettingsService() {
   }
 
   async function save(config) {
+    const next = {
+      ...config,
+      // agentTransport 是派生值，界面上不暴露，避免通道与 transport 互相矛盾。
+      agentTransport: transportForChannel(config?.modelChannel),
+    };
     if (mode === 'desktop') {
       const api = bridge();
       if (!api || typeof api.settingsSave !== 'function') {
         return failure('SETTINGS_INVALID', '当前版本不支持设置保存');
       }
-      const result = await api.settingsSave({ config });
+      const result = await api.settingsSave({ config: next });
       if (!result || result.ok !== true) {
         return failure(result?.code || 'SETTINGS_INVALID', result?.message || '设置保存失败');
       }
@@ -124,14 +138,93 @@ export function createSettingsService() {
     const store = storage();
     if (!store) return failure('SETTINGS_INVALID', '浏览器存储不可用');
     try {
-      store.setItem(CONFIG_KEY, JSON.stringify(config));
-      return { status: 'ok', config };
+      store.setItem(CONFIG_KEY, JSON.stringify(next));
+      return { status: 'ok', config: next };
     } catch (error) {
       return failure('SETTINGS_INVALID', '浏览器存储空间不足');
     }
   }
 
-  return { mode, load, save, defaults: DEFAULT_SETTINGS };
+  return { mode, load, save, defaults: DEFAULT_SETTINGS, model: createModelService(mode) };
+}
+
+/**
+ * 模型与 API（只支持 DeepSeek 官方协议）。
+ *
+ * 桌面端：密钥由主进程 safeStorage 加密保存，渲染进程只能拿到「是否已配置」。
+ * 浏览器端：没有安全存储，直接如实说明不可用，绝不明文存 Key。
+ */
+function createModelService(mode) {
+  const unavailable = (message) => ({ status: 'failed', code: 'MODEL_UNAVAILABLE', message });
+
+  async function status() {
+    if (mode !== 'desktop') {
+      return { status: 'ok', configured: false, updatedAt: null, supported: false };
+    }
+    const api = bridge();
+    if (!api || typeof api.modelKeyStatus !== 'function') {
+      return { status: 'ok', configured: false, updatedAt: null, supported: false };
+    }
+    const result = await withTimeout(api.modelKeyStatus(), 2500, null);
+    if (!result || result.ok !== true) {
+      return { status: 'ok', configured: false, updatedAt: null, supported: true };
+    }
+    const data = result.data || {};
+    return {
+      status: 'ok',
+      configured: data.configured === true,
+      updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : null,
+      supported: true,
+    };
+  }
+
+  async function saveKey(key) {
+    if (mode !== 'desktop') {
+      return unavailable('浏览器预览里不能保存 API Key，请在桌面应用里填写。');
+    }
+    const api = bridge();
+    if (!api || typeof api.modelKeySave !== 'function') {
+      return unavailable('当前版本不支持保存 API Key，请安装最新版本。');
+    }
+    const result = await api.modelKeySave({ key });
+    if (!result || result.ok !== true) {
+      return { status: 'failed', code: result?.code || 'MODEL_KEY_WRITE_FAILED', message: result?.message || 'API Key 保存失败' };
+    }
+    return { status: 'ok', ...(result.data || {}) };
+  }
+
+  async function clearKey() {
+    if (mode !== 'desktop') return unavailable('浏览器预览里没有可清除的 API Key。');
+    const api = bridge();
+    if (!api || typeof api.modelKeyClear !== 'function') return unavailable('当前版本不支持清除 API Key。');
+    const result = await api.modelKeyClear();
+    if (!result || result.ok !== true) {
+      return { status: 'failed', code: result?.code || 'MODEL_KEY_WRITE_FAILED', message: result?.message || 'API Key 清除失败' };
+    }
+    return { status: 'ok', ...(result.data || {}) };
+  }
+
+  async function test(config = {}) {
+    if (mode !== 'desktop') {
+      return unavailable('浏览器预览里无法连接模型服务，请在桌面应用里测试。');
+    }
+    const api = bridge();
+    if (!api || typeof api.modelTest !== 'function') return unavailable('当前版本不支持测试连接。');
+    const result = await api.modelTest({
+      baseUrl: config.modelApiBaseUrl,
+      model: config.modelName,
+    });
+    if (!result || result.ok !== true) {
+      return {
+        status: 'failed',
+        code: result?.code || 'DEEPSEEK_UPSTREAM_ERROR',
+        message: result?.message || '连接失败，请检查网络与 API 地址。',
+      };
+    }
+    return { status: 'ok', ...(result.data || {}) };
+  }
+
+  return { status, saveKey, clearKey, test };
 }
 
 export const settingsService = createSettingsService();

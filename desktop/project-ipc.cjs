@@ -178,6 +178,18 @@ function createProjectIpc(options) {
       }
     },
 
+    // 拖拽落图：渲染进程只交文件名/MIME/base64，主进程重新检测类型与体积后落盘。
+    'project:attach-image-data': async (_event, payload) => {
+      if (payloadBytes(payload) > 42 * 1024 * 1024) return fail('PAYLOAD_TOO_LARGE', '一次拖入的图片总量过大，请分批添加');
+      const projectId = payload && payload.projectId;
+      const items = payload && payload.items;
+      try {
+        return ok(await assets.attachImageData(projectId, items));
+      } catch (error) {
+        return toResult(error, 'ASSET_WRITE_FAILED', '保存拖入的图片失败');
+      }
+    },
+
     'project:attach-images': async (_event, payload) => {
       if (payloadBytes(payload) > 4096) return fail('PAYLOAD_TOO_LARGE', '参数过大');
       const projectId = payload && payload.projectId;

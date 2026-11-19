@@ -363,6 +363,21 @@ export function createProjectService(options) {
   }
 
   /**
+   * 拖拽落图：只交文件名/MIME/base64，不把本机路径暴露给主进程。
+   * 类型与体积仍由主进程重新检测；浏览器模式不支持。
+   */
+  async function attachImageData(projectId, items) {
+    if (mode !== 'desktop') return failure('DESKTOP_REQUIRED', '浏览器模式不支持图片落盘');
+    const api = bridge();
+    if (!api || typeof api.attachImageData !== 'function') {
+      return failure('DESKTOP_REQUIRED', '当前版本不支持拖拽上传图片');
+    }
+    const result = await api.attachImageData({ projectId, items });
+    if (!result || result.ok !== true) return desktopFailure(result, '保存拖入的图片失败');
+    return { status: 'ok', assets: result.data?.assets || [] };
+  }
+
+  /**
    * G1：把真实生图结果落进项目资产目录。
    * 渲染进程只交 PNG data URL 与来源标记；目录、文件名、体积收敛都在主进程完成。
    */
@@ -413,6 +428,7 @@ export function createProjectService(options) {
     reveal,
     pickImages,
     attachImages,
+    attachImageData,
     saveGeneratedImage,
     readAsset,
     removeAsset,

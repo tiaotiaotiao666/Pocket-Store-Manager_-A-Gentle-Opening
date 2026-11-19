@@ -49,7 +49,7 @@ async function loadModule(path) {
   return import(path);
 }
 
-test('T17 传输配置固定为 mock，并给出可辨识的未接入文案', async () => {
+test('T17 传输配置默认本地演示模式，并给出可辨识的未接入文案', async () => {
   const config = await loadModule('../src/services/agentTurn/agentServiceConfig.js');
   assert.equal(config.AGENT_TRANSPORT, 'mock');
   assert.equal(config.AGENT_ENDPOINT, '/api/v1/agent/turn');
@@ -57,7 +57,7 @@ test('T17 传输配置固定为 mock，并给出可辨识的未接入文案', as
   assert.equal(config.AGENT_CONTRACT_VERSION, CONTRACT);
   assert.deepEqual(config.describeAgentTransport(), {
     mode: 'mock',
-    label: '本地 Mock（未接入真实模型）',
+    label: '本地演示模式',
   });
 });
 

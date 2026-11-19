@@ -11,6 +11,7 @@ import {
   applyAgentRuntimeConfig,
   describeAgentTransport as describeTransport,
   getAgentTransportConfig,
+  getModelConfig,
 } from './agentServiceConfig.js';
 import {
   createAgentTurnError,
@@ -22,6 +23,7 @@ import { createHttpTransport } from './httpAgentTransport.js';
 import { createMockTransport } from './mockAgentTransport.js';
 
 export { getAgentTransportConfig };
+export { getModelConfig };
 export { AGENT_TURN_V2_CONTRACT_VERSION } from './httpAgentTransport.js';
 
 /**
@@ -55,8 +57,10 @@ function resolveTransport(transport) {
 
   const config = getAgentTransportConfig();
 
-  if (config.mode === 'http') {
-    // 只携带短期 Token（默认不携带）；DeepSeek API Key 永远留在服务端。
+  // 直连模式只接管「无图片的资料整理对话」（走 agent-run）；带图片的单轮识别、
+  // 截图解析与模板修改仍由本机模型服务完成，因此这里按 http 处理，缺失服务时如实报错。
+  if (config.mode === 'http' || config.mode === 'direct') {
+    // 只携带短期 Token（默认不携带）；DeepSeek API Key 永远留在主进程。
     fallbackTransport = createHttpTransport({
       fetchImpl: resolveFetchImpl(),
       endpoint: config.endpoint,
@@ -201,9 +205,13 @@ export function describeAgentTransport() {
 export function configureAgentRuntime(settings = {}) {
   const resolved = applyAgentRuntimeConfig({
     transport: settings.agentTransport,
+    modelChannel: settings.modelChannel,
     endpoint: settings.agentEndpoint,
     baseUrl: settings.apiBaseUrl,
     timeoutMs: settings.agentTimeoutMs,
+    modelApiBaseUrl: settings.modelApiBaseUrl,
+    modelName: settings.modelName,
+    modelTimeoutMs: settings.modelTimeoutMs,
   });
   defaultService = null;
   fallbackTransport = null;

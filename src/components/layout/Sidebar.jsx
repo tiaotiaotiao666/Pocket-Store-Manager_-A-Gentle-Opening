@@ -1,18 +1,18 @@
 import { FolderKanban, Settings, Sparkles } from 'lucide-react';
 
 const MODE_LABEL = {
-  desktop: '桌面模式 · 本机落盘',
-  browser: '浏览器预览 · 不落盘',
+  desktop: '桌面版 · 数据存在本机',
+  browser: '浏览器预览 · 不保存',
 };
 
 export default function Sidebar({
-  appName = '智能开店',
+  appName = '口袋店长·轻启',
   sessions = [],
   activeSessionId,
   currentStoreName,
   saveLabel = { tone: 'saved', text: '尚未保存' },
   mode = 'desktop',
-  agentLabel = '本地 Mock（未接入真实模型）',
+  modelLabel = '',
   onStartOnboarding,
   onSelectSession,
   onOpenWorkbench,
@@ -27,7 +27,7 @@ export default function Sidebar({
         </span>
         <div className="sidebar-brand-text">
           <span className="sidebar-brand-name">{appName}</span>
-          <span className="sidebar-brand-sub">轻启 · 会话式生成器</span>
+          <span className="sidebar-brand-sub">会说话的店长，帮你把店开起来</span>
         </div>
       </div>
 
@@ -43,8 +43,8 @@ export default function Sidebar({
       </div>
 
       <div className="sidebar-cta">
-        <button type="button" className="sidebar-primary" onClick={onStartOnboarding} aria-label="轻启：开始开店流程">
-          轻启
+        <button type="button" className="sidebar-primary" onClick={onStartOnboarding} aria-label="开始开店：进入开店流程">
+          开始开店
         </button>
         {currentStoreName ? null : (
           <button type="button" className="sidebar-subitem" onClick={onStartOnboarding} aria-label="待命名项目：开始命名">
@@ -83,7 +83,7 @@ export default function Sidebar({
             <i aria-hidden="true" />
             {saveLabel.text}
           </span>
-          <span className="sidebar-status-line is-agent">{agentLabel}</span>
+          {modelLabel ? <span className="sidebar-status-line is-agent">{modelLabel}</span> : null}
         </div>
         <button type="button" className="sidebar-reset" onClick={onReset} aria-label="重置项目：清空当前会话">
           重置项目

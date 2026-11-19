@@ -28,8 +28,9 @@ test('体检勾选是 ARIA 自绘复选框，名称唯一可读（B4：默认不
   assert.doesNotMatch(PANEL, /<input\s+type="checkbox"/, "原生 input 在 Chromium/UIA 下不可见，不要退回");
   // 只有「需要确认后果」的提示才出现勾选框（规则 8）。
   assert.match(PANEL, /requiresAck !== false/);
-  // ruleId / fieldPath / Plan 摘要只出现在「技术详情」里（规则 7）。
-  assert.match(PANEL, /<summary>技术详情<\/summary>/);
+  // ruleId / fieldPath / 摘要一律不进界面（只留在诊断快照里）。
+  assert.doesNotMatch(PANEL, /技术详情/);
+  assert.doesNotMatch(PANEL, /<code>\{rule\.ruleId\}/);
 });
 
 test('E-TARGET-EXISTS 时给出换目录/改名的解释，而不是只说「有 1 项需要先修正」', () => {

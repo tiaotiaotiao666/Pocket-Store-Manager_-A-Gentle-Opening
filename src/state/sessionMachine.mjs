@@ -58,6 +58,22 @@ import {
   fromDocument,
 } from '../domain/projectSnapshot.mjs';
 import { MAX_DISHES } from '../domain/storeLimits.mjs';
+import {
+  CHAT_ACTION_KINDS,
+  CHAT_MESSAGE_MAX_CHARS,
+  CHAT_STATUS,
+  appendChatMessage,
+  buildAgentChatSubmitPlan,
+  chatAssistantMessageId,
+  chatUserMessageId,
+  createChatMessage,
+  createEmptyAgentChat,
+  isChatResponseAcceptable,
+  isValidChatDraft,
+  normalizeChatError,
+  normalizeChatMessages,
+  normalizeChatRun,
+} from '../domain/agentSidebar.mjs';
 
 const REQUIRED_FEATURE_IDS = catalogFeatures.filter((feature) => feature.required).map((feature) => feature.id);
 
@@ -282,6 +298,89 @@ function isCurrentPresentationCompletion(state, action) {
   return true;
 }
 
+/**
+ * 项目级 Agent 会话切片的初始值。
+ *
+ * 口径唯一来自 `domain/agentSidebar.mjs`：状态层不复制消息结构与上限，
+ * 这样快照持久化（T2）与状态层用的是同一份裁剪实现。
+ */
+export function createInitialAgentChatSlice() {
+  return createEmptyAgentChat();
+}
+
+function chatRevision(chat) {
+  return Number.isInteger(chat?.revision) && chat.revision >= 0 ? chat.revision : 0;
+}
+
+function nextChatRevision(chat) {
+  return chatRevision(chat) + 1;
+}
+
+function chatIdText(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : '';
+}
+
+function currentProjectId(state, explicit) {
+  return chatIdText(explicit) || chatIdText(state?.project?.activeId);
+}
+
+/** 在途请求一律放弃：状态归 idle、清空 requestId，迟到响应随后会被四元组守卫拒收。 */
+function abandonAgentChatRequest(chat) {
+  const slice = chat ?? createEmptyAgentChat();
+  if (slice.status !== CHAT_STATUS.REQUESTING && !slice.activeRequestId) return slice;
+  return {
+    ...slice,
+    status: CHAT_STATUS.IDLE,
+    activeRequestId: null,
+    requestDraftRevision: null,
+    requestPhase: null,
+    revision: nextChatRevision(slice),
+  };
+}
+
+/**
+ * 把会话切到某个项目，并归一为「没有在途请求」的空闲态。
+ *
+ * 打开/新建/重置/删除项目都要经过这里：
+ * - 遗留的 `status='requesting'` 与 `activeRequestId` 必须丢弃，否则重开项目会永久转圈；
+ * - 消息只用调用方显式给的那份（打开项目时来自快照恢复），绝不把上一个项目的消息带过来；
+ * - 其他项目的历史仍在各自的 project.json 里，这里不销毁任何持久化口径。
+ */
+function withAgentChatProject(state, projectId, messages) {
+  const chat = state.agentChat ?? createEmptyAgentChat();
+  const nextProjectId = chatIdText(projectId) || null;
+  return {
+    ...state,
+    agentChat: {
+      ...createEmptyAgentChat(),
+      messages: normalizeChatMessages(Array.isArray(messages) ? messages : []),
+      activeProjectId: nextProjectId,
+      revision: nextChatRevision(chat),
+    },
+  };
+}
+
+/**
+ * 迟到响应要校验的四元组：`projectId + requestId + draftRevision + phase`。
+ *
+ * 动作没带的可选位沿用切片里冻结的值（集成层不必重复传参），
+ * 一旦显式携带就必须与冻结值一致——判断本身仍然只在 `isChatResponseAcceptable` 里。
+ */
+function resolveAgentChatIdentity(state, action) {
+  const chat = state.agentChat ?? createEmptyAgentChat();
+  return {
+    chat,
+    projectId: chatIdText(action?.projectId) || chat.activeProjectId,
+    requestId: chatIdText(action?.requestId) || chat.activeRequestId,
+    draftRevision: Number.isInteger(action?.draftRevision) ? action.draftRevision : chat.requestDraftRevision,
+    phase: chatIdText(action?.phase) || chat.requestPhase,
+  };
+}
+
+function isCurrentAgentChatCompletion(state, action) {
+  return isChatResponseAcceptable(resolveAgentChatIdentity(state, action));
+}
+
 function validationStatus(status, validation) {
   if (status === AGENT_STATUS.REQUESTING) return AGENT_STATUS.REQUESTING;
   if (status === AGENT_STATUS.FAILED) return AGENT_STATUS.FAILED;
@@ -393,6 +492,8 @@ export function createInitialState() {
     deploy: createInitialDeploySlice(),
     agentDraft: createEmptyAgentDraft(),
     agent: createInitialAgentSlice(),
+    // 项目级 Agent 会话（右侧栏「Agent 对话」）：一个项目一个长会话，跟项目一起切换。
+    agentChat: createInitialAgentChatSlice(),
     screenRef: createInitialScreenRefSlice(),
     presentation: createInitialPresentationSlice(),
     assets: { images: [] },
@@ -568,11 +669,16 @@ function baseReducer(state, action) {
       };
 
     case 'PROJECT_OPEN_REQUEST':
-      return { ...state, project: { ...state.project, status: 'loading', openError: null } };
+      return {
+        ...state,
+        project: { ...state.project, status: 'loading', openError: null },
+        // 切项目即放弃在途会话请求：加载期间不该继续显示「正在等待」，重开也不会转圈。
+        agentChat: abandonAgentChatRequest(state.agentChat),
+      };
 
     case 'PROJECT_OPEN_SUCCESS': {
       const hydrated = fromDocument(action.doc);
-      return {
+      const opened = {
         ...state,
         ...hydrated,
         view: 'flow',
@@ -591,6 +697,13 @@ function baseReducer(state, action) {
           deleteTarget: null,
         },
       };
+      // 会话切到目标项目：消息优先用快照恢复（T2 口径），没有就是空会话；
+      // 上一个项目的消息不会被带过来，遗留的 requesting 也在这里归一为 idle。
+      const restoredChat = hydrated.agentChat;
+      const restoredMessages = Array.isArray(restoredChat?.messages)
+        ? restoredChat.messages
+        : (Array.isArray(restoredChat) ? restoredChat : []);
+      return withAgentChatProject(opened, action.projectId, restoredMessages);
     }
 
     case 'PROJECT_OPEN_FAILURE':
@@ -632,7 +745,7 @@ function baseReducer(state, action) {
 
     case 'PROJECT_NEW_SUCCESS': {
       const blank = createInitialState();
-      return {
+      const created = {
         ...blank,
         view: 'flow',
         settings: state.settings,
@@ -651,6 +764,8 @@ function baseReducer(state, action) {
           deleteTarget: null,
         },
       };
+      // 新项目：会话换到新项目且没有消息（上一项目的历史留在它自己的 project.json 里）。
+      return withAgentChatProject(created, action.projectId, []);
     }
 
     case 'PROJECT_MARK_DIRTY':
@@ -692,7 +807,7 @@ function baseReducer(state, action) {
       const remaining = state.project.list.filter((item) => item.projectId !== action.projectId);
       if (state.project.activeId === action.projectId) {
         const blank = createInitialState();
-        return {
+        const cleared = {
           ...blank,
           view: 'workbench',
           settings: state.settings,
@@ -705,6 +820,8 @@ function baseReducer(state, action) {
             mode: state.project.mode,
           },
         };
+        // 活动项目被删除：会话跟着清空，任何在途请求都作废（迟到响应会被四元组守卫拒收）。
+        return withAgentChatProject(cleared, null, []);
       }
       return {
         ...state,
@@ -949,7 +1066,7 @@ function baseReducer(state, action) {
 
     case 'RESET_PROJECT': {
       const blank = createInitialState();
-      return {
+      const reset = {
         ...blank,
         view: 'flow',
         project: {
@@ -966,6 +1083,8 @@ function baseReducer(state, action) {
         },
         settings: state.settings,
       };
+      // 重置项目内容：会话也回到空项目会话，作废在途请求（历史仍由快照层按项目保存）。
+      return withAgentChatProject(reset, state.project.activeId, []);
     }
 
     case 'RESET':
@@ -1153,7 +1272,9 @@ function baseReducer(state, action) {
       const utterance = String(action.utterance ?? '').trim();
       const requestId = typeof action.requestId === 'string' ? action.requestId.trim() : '';
       if (!utterance || !requestId) return state;
-      const withMessage = appendMessages(state, state.activeSessionId, [{
+      // 右侧会话发起的修订只在侧栏消息列表里出现；中间主会话不重复渲染。
+      const fromSidebar = action.origin === 'sidebar';
+      const withMessage = fromSidebar ? state : appendMessages(state, state.activeSessionId, [{
         role: ROLES.USER,
         text: utterance,
         instant: true,
@@ -1212,11 +1333,13 @@ function baseReducer(state, action) {
         ?? diffPresentationPatch(presentation.patch ?? {}, nextPatch, context);
       const reply = typeof action.reply === 'string' ? action.reply.trim() : '';
 
-      const withMessage = appendMessages(state, state.activeSessionId, [{
-        text: reply || `已更新 ${changes.length} 项`,
-        staged: true,
-        meta: { kind: 'template-revise' },
-      }]);
+      const withMessage = action.origin === 'sidebar'
+        ? state
+        : appendMessages(state, state.activeSessionId, [{
+          text: reply || `已更新 ${changes.length} 项`,
+          staged: true,
+          meta: { kind: 'template-revise' },
+        }]);
 
       const applied = applyPresentationCopy(withMessage, nextPatch.copy);
       let next = {
@@ -1525,7 +1648,10 @@ function baseReducer(state, action) {
       const utterance = String(action.utterance ?? '').trim();
       if (!utterance) return state;
       if (state.agent.status === AGENT_STATUS.REQUESTING) return state;
-      const withMessage = appendMessages(state, state.activeSessionId, [{
+      // 右侧会话发起的轮次只记进 agentChat；中间主会话只保留阶段切换提示，
+      // 不再把同一句原话重复渲染一次。
+      const fromSidebar = action.origin === 'sidebar';
+      const withMessage = fromSidebar ? state : appendMessages(state, state.activeSessionId, [{
         role: ROLES.USER,
         text: utterance,
         instant: true,
@@ -1618,7 +1744,7 @@ function baseReducer(state, action) {
       const draft = normalizeAgentDraft(action.draft);
       const validation = validateAgentDraft(draft);
       const reply = String(action.reply ?? '').trim();
-      const withMessage = reply
+      const withMessage = reply && action.origin !== 'sidebar'
         ? appendMessages(state, state.activeSessionId, [{
           text: reply,
           staged: true,
@@ -1693,6 +1819,190 @@ function baseReducer(state, action) {
         ...state,
         agent: { ...state.agent, simulateFailure: Boolean(action.value) },
       };
+
+    // ---- 项目级 Agent 会话（右侧栏「Agent 对话」）：一个项目一个长会话 ----
+    // 业务消息只存在 state.agentChat 里，不进任何组件 useState，也不另建 localStorage。
+    case 'AGENT_CHAT_DRAFT_SET': {
+      const chat = state.agentChat ?? createEmptyAgentChat();
+      const raw = typeof action.value === 'string' ? action.value : String(action.value ?? '');
+      // 输入框允许先粘一大段再修剪，但状态里的草稿同样设上限，避免无界增长。
+      const draft = raw.length > CHAT_MESSAGE_MAX_CHARS ? raw.slice(0, CHAT_MESSAGE_MAX_CHARS) : raw;
+      if (draft === chat.draft) return state;
+      return { ...state, agentChat: { ...chat, draft, revision: nextChatRevision(chat) } };
+    }
+
+    /**
+     * 侧栏发出一次请求：记录请求身份并写入一条用户消息。
+     *
+     * 单飞：`status === 'requesting'` 时重复提交（快速双击 / 连按 Enter）直接忽略。
+     * 冻结 `requestDraftRevision` 与 `requestPhase`，与 projectId/requestId 一起构成四元组。
+     */
+    case 'AGENT_CHAT_REQUEST_START': {
+      const chat = state.agentChat ?? createEmptyAgentChat();
+      if (chat.status === CHAT_STATUS.REQUESTING) return state;
+      const utterance = typeof action.utterance === 'string' ? action.utterance.trim() : '';
+      if (!isValidChatDraft(utterance, { maxChars: CHAT_MESSAGE_MAX_CHARS })) return state;
+      const requestId = chatIdText(action.requestId);
+      if (!requestId) return state;
+      const projectId = currentProjectId(state, action.projectId);
+      // 没有活动项目就不发：侧栏这时只给「先打开项目」的本地指引。
+      if (!projectId) return state;
+      const plan = buildAgentChatSubmitPlan({ projectId, phase: state.phase, hasProject: true });
+      const actionKind = CHAT_ACTION_KINDS.includes(action.actionKind) ? action.actionKind : plan.actionKind;
+      const userMessage = createChatMessage({
+        // 同一 requestId 固定同一 id：重试与 StrictMode 双调用都不会产生第二条用户消息。
+        id: chatUserMessageId(requestId),
+        role: 'user',
+        text: utterance,
+        status: 'done',
+        actionKind,
+        context: { phase: state.phase, sessionId: state.activeSessionId },
+        createdAt: action.createdAt,
+      });
+      return {
+        ...state,
+        agentChat: {
+          ...chat,
+          messages: userMessage ? appendChatMessage(chat.messages, userMessage) : chat.messages,
+          status: CHAT_STATUS.REQUESTING,
+          activeProjectId: projectId,
+          activeRequestId: requestId,
+          requestDraftRevision: Number.isInteger(action.draftRevision) ? action.draftRevision : chatRevision(chat),
+          requestPhase: state.phase,
+          lastUtterance: userMessage ? userMessage.text : utterance,
+          lastError: null,
+          revision: nextChatRevision(chat),
+        },
+      };
+    }
+
+    /**
+     * 侧栏请求成功：写一条助手消息 + 一份安全过程卡视图。
+     *
+     * 只有四元组全部匹配（`isChatResponseAcceptable`）才写入；切换项目、重置、删除后的
+     * 迟到响应在这里被整包丢弃，既不碰消息也不碰其它切片的撤销元数据。
+     */
+    case 'AGENT_CHAT_SUCCESS': {
+      const identity = resolveAgentChatIdentity(state, action);
+      const chat = identity.chat;
+      if (!isChatResponseAcceptable(identity)) return state;
+      const reply = typeof action.reply === 'string' ? action.reply.trim() : '';
+      const requestMessage = chat.messages.find((item) => item.id === chatUserMessageId(identity.requestId));
+      const plan = buildAgentChatSubmitPlan({ projectId: identity.projectId, phase: identity.phase, hasProject: true });
+      const actionKind = CHAT_ACTION_KINDS.includes(action.actionKind)
+        ? action.actionKind
+        : (requestMessage?.actionKind ?? plan.actionKind);
+      const assistantMessage = reply
+        ? createChatMessage({
+          // 固定 id：重复/迟到的成功回调不会追加第二条助手消息。
+          id: chatIdText(action.messageId) || chatAssistantMessageId(identity.requestId),
+          role: 'assistant',
+          text: reply,
+          status: 'done',
+          actionKind,
+          context: { phase: identity.phase, sessionId: state.activeSessionId },
+          createdAt: action.createdAt,
+        })
+        : null;
+      return {
+        ...state,
+        agentChat: {
+          ...chat,
+          messages: assistantMessage ? appendChatMessage(chat.messages, assistantMessage) : chat.messages,
+          status: CHAT_STATUS.IDLE,
+          activeRequestId: null,
+          requestDraftRevision: null,
+          requestPhase: null,
+          lastError: null,
+          // 过程卡只留状态/耗时/工具标签（normalizeChatRun 已经按白名单裁剪过）。
+          lastRun: normalizeChatRun({
+            ...(action.run && typeof action.run === 'object' ? action.run : {}),
+            requestId: identity.requestId,
+            actionKind,
+          }),
+          revision: nextChatRevision(chat),
+        },
+      };
+    }
+
+    /** 侧栏请求失败：置失败态并保留草稿与已发消息，重试只需要重放 lastUtterance。 */
+    case 'AGENT_CHAT_FAILURE': {
+      const identity = resolveAgentChatIdentity(state, action);
+      const chat = identity.chat;
+      if (!isChatResponseAcceptable(identity)) return state;
+      return {
+        ...state,
+        agentChat: {
+          ...chat,
+          status: CHAT_STATUS.FAILED,
+          activeRequestId: null,
+          requestDraftRevision: null,
+          requestPhase: null,
+          lastError: normalizeChatError(action.error),
+          revision: nextChatRevision(chat),
+        },
+      };
+    }
+
+    /**
+     * 重试上一轮：只允许从失败态重试，且不重复追加用户消息。
+     *
+     * 新的 requestId 与重新冻结的 draftRevision/phase 让「上一轮的迟到响应」继续被拒收。
+     */
+    case 'AGENT_CHAT_RETRY_PREPARE': {
+      const chat = state.agentChat ?? createEmptyAgentChat();
+      if (chat.status !== CHAT_STATUS.FAILED) return state;
+      if (!isValidChatDraft(chat.lastUtterance, { maxChars: CHAT_MESSAGE_MAX_CHARS })) return state;
+      const requestId = chatIdText(action.requestId);
+      if (!requestId) return state;
+      const projectId = currentProjectId(state, action.projectId) || chatIdText(chat.activeProjectId);
+      if (!projectId) return state;
+      return {
+        ...state,
+        agentChat: {
+          ...chat,
+          status: CHAT_STATUS.REQUESTING,
+          activeProjectId: projectId,
+          activeRequestId: requestId,
+          requestDraftRevision: Number.isInteger(action.draftRevision) ? action.draftRevision : chatRevision(chat),
+          requestPhase: state.phase,
+          lastError: null,
+          revision: nextChatRevision(chat),
+        },
+      };
+    }
+
+    case 'AGENT_CHAT_CLEAR_ERROR': {
+      const chat = state.agentChat ?? createEmptyAgentChat();
+      if (chat.status !== CHAT_STATUS.FAILED && !chat.lastError) return state;
+      return {
+        ...state,
+        agentChat: { ...chat, status: CHAT_STATUS.IDLE, lastError: null, revision: nextChatRevision(chat) },
+      };
+    }
+
+    /**
+     * 从快照恢复会话消息（T2 口径）：恢复后一律 idle。
+     *
+     * 快照里从不保存 activeRequestId / requesting，这里再强制归一一次，
+     * 保证「重开项目不会永久转圈」。用户正在输入的草稿不被覆盖。
+     */
+    case 'AGENT_CHAT_HYDRATE': {
+      const chat = state.agentChat ?? createEmptyAgentChat();
+      const source = action.chat && typeof action.chat === 'object' ? action.chat : {};
+      const messages = normalizeChatMessages(action.messages ?? source.messages);
+      return {
+        ...state,
+        agentChat: {
+          ...createEmptyAgentChat(),
+          messages,
+          draft: chat.draft,
+          activeProjectId: currentProjectId(state, action.projectId) || null,
+          status: CHAT_STATUS.IDLE,
+          revision: nextChatRevision(chat),
+        },
+      };
+    }
 
     case 'EDIT_AGENT_DRAFT_FIELD': {
       if (!['storeName', 'category', 'businessHours'].includes(action.field)) return state;
@@ -2357,6 +2667,11 @@ export function reducer(state, action) {
     && !isCurrentPresentationCompletion(state, action)) {
     return state;
   }
+  // 侧栏会话的迟到响应同理：四元组不匹配就整包忽略（切换/重置/删除项目后的旧回调）。
+  if ((action.type === 'AGENT_CHAT_SUCCESS' || action.type === 'AGENT_CHAT_FAILURE')
+    && !isCurrentAgentChatCompletion(state, action)) {
+    return state;
+  }
   const undo = state.undo || { past: [], future: [], lastKey: null };
 
   if (action.type === 'UNDO_APPLY' || action.type === 'REDO_APPLY') {
@@ -2470,6 +2785,42 @@ export function selectAgentComposerState(state) {
     editable: true,
   };
 }
+
+/**
+ * 侧栏「Agent 对话」的视图模型（供 App 计算 props、T3 渲染复用）。
+ *
+ * 只暴露渲染需要的字段；`activeRequestId` 与 `requestDraftRevision` 不外泄。
+ * 阶段路由、能否发送、能否重试都来自 `domain/agentSidebar.mjs`，不在这里另写一套判断。
+ *
+ * @param {object} state 会话状态
+ * @returns {{projectId: string|null, phase: string|null, messages: Array, draft: string,
+ *   status: string, busy: boolean, lastUtterance: string, lastError: object|null,
+ *   lastRun: object|null, plan: object, canSend: boolean, canRetry: boolean}}
+ */
+export function selectAgentChatState(state) {
+  const chat = state?.agentChat ?? createEmptyAgentChat();
+  const projectId = typeof state?.project?.activeId === 'string' && state.project.activeId
+    ? state.project.activeId
+    : null;
+  const phase = typeof state?.phase === 'string' ? state.phase : null;
+  const status = typeof chat.status === 'string' ? chat.status : CHAT_STATUS.IDLE;
+  const plan = buildAgentChatSubmitPlan({ projectId, phase, hasProject: Boolean(projectId) });
+  return {
+    projectId,
+    phase,
+    messages: normalizeChatMessages(chat.messages),
+    draft: typeof chat.draft === 'string' ? chat.draft : '',
+    status,
+    busy: status === CHAT_STATUS.REQUESTING,
+    lastUtterance: typeof chat.lastUtterance === 'string' ? chat.lastUtterance : '',
+    lastError: chat.lastError ?? null,
+    lastRun: chat.lastRun ?? null,
+    plan,
+    canSend: plan.allowed && status !== CHAT_STATUS.REQUESTING && isValidChatDraft(chat.draft),
+    canRetry: status === CHAT_STATUS.FAILED && isValidChatDraft(chat.lastUtterance, { maxChars: CHAT_MESSAGE_MAX_CHARS }),
+  };
+}
+
 const HANDOFF_STEP_ORDER = Object.freeze(['prepare', 'import', 'appid', 'domain', 'preview', 'next']);
 
 function formatClock(iso) {

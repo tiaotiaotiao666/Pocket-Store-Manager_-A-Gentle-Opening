@@ -125,6 +125,7 @@ import TemplateGallery from './components/flow/TemplateGallery.jsx';
 import FlowStepper from './components/flow/FlowStepper.jsx';
 import StoreInfoSections from './components/flow/StoreInfoSections.jsx';
 import RealPreviewPanel from './components/preview/RealPreviewPanel.jsx';
+import DevtoolsPreviewDock from './components/preview/DevtoolsPreviewDock.jsx';
 import StoreInfoStep from './components/build/StoreInfoStep.jsx';
 import PromptStudio from './components/build/PromptStudio.jsx';
 import ImageReview from './components/build/ImageReview.jsx';
@@ -1602,6 +1603,7 @@ export default function App() {
     closeEnvGuideAndContinue();
   }, [envGuideMode, closeEnvGuide, closeEnvGuideAndContinue]);
 
+
   const startOnboarding = () => {
     if (selectOnboardingStart(state) === 'confirm-create') {
       setOnboardingConfirmOpen(true);
@@ -1851,20 +1853,30 @@ export default function App() {
   const continuePreviewExport = useCallback(async () => {
     const result = await runPreviewExport();
     if (!result.ok) {
-      setNotice(result.message || '生成预览工程失败。');
-      return;
+      const message = result.message || '生成预览工程失败。';
+      setNotice(message);
+      return { ok: false, code: result.code || 'EXPORT_FAILED', message };
     }
     const api = typeof window !== 'undefined' ? window.smartStore : null;
     if (!api || typeof api.openPreviewDevtools !== 'function') {
-      setNotice('桌面端未提供预览桥接，无法打开微信开发者工具。');
-      return;
+      const message = '桌面端未提供预览桥接，无法打开微信开发者工具。';
+      setNotice(message);
+      return { ok: false, code: 'DESKTOP_REQUIRED', message };
     }
     try {
       const opened = await api.openPreviewDevtools({ projectPath: result.path });
-      if (opened && opened.ok) setNotice(opened.message || '已请求微信开发者工具打开工程。');
-      else setNotice((opened && opened.message) || '未能调起微信开发者工具。');
+      if (opened && opened.ok) {
+        const message = opened.message || '已请求微信开发者工具打开工程。';
+        setNotice(message);
+        return { ok: true, path: result.path, opened: true, message };
+      }
+      const message = (opened && opened.message) || '未能调起微信开发者工具。';
+      setNotice(message);
+      return { ok: false, code: (opened && opened.code) || 'LAUNCH_FAILED', message };
     } catch (error) {
-      setNotice((error && error.message) || '调起微信开发者工具失败。');
+      const message = (error && error.message) || '调起微信开发者工具失败。';
+      setNotice(message);
+      return { ok: false, code: 'LAUNCH_FAILED', message };
     }
   }, [runPreviewExport]);
 
@@ -1872,19 +1884,24 @@ export default function App() {
    * 模板页「预览新模块」：先弹出环境检查（始终可见），
    * 用户确认「已准备就绪」后再按当前需求导出并打开微信开发者工具。
    */
-  const handlePreparePreviewProject = useCallback(async () => {
+  const handlePreparePreviewProject = useCallback(async (options = {}) => {
     const api = typeof window !== 'undefined' ? window.smartStore : null;
     if (!api || api.isDesktop !== true || typeof api.composerExport !== 'function') {
-      return { ok: false, message: '需要在桌面应用中生成并预览工程。' };
+      return { ok: false, code: 'DESKTOP_REQUIRED', message: '需要在桌面应用中生成并预览工程。' };
     }
 
     // 只在工具尚未启动、或工具已启动但还没有打开小程序页面时弹清单；
 // 已经展示了小程序页面就直接按当前需求导出。
     const probe = await devtoolsService.probe();
     if (!probe.found || probe.running === false || probe.projectOpen === false) {
-      openEnvGuide('preview', () => { void continuePreviewExport(); });
+      // 底部常驻按钮与模板页共用这条入口：勾选「已准备就绪」后继续导出并打开。
+      openEnvGuide('preview', async () => {
+        const outcome = await continuePreviewExport();
+        if (typeof options.onContinueResult === 'function') options.onContinueResult(outcome);
+      });
       return {
         ok: false,
+        code: 'ENV_GUIDE_OPENED',
         message: !probe.found
           ? '未检测到微信开发者工具，已打开检查清单。'
           : (probe.projectOpen === false
@@ -3928,6 +3945,18 @@ case PHASES.DEPLOY: {
     );
   }
 
+  const previewStoreName = String(
+    (state.store && state.store.name) || (state.agentDraft && state.agentDraft.storeName) || '',
+  ).trim();
+  const previewDockVisible = phase !== PHASES.HOME;
+  const previewDockNode = previewDockVisible ? (
+    <DevtoolsPreviewDock
+      phase={phase}
+      storeName={previewStoreName}
+      onPrepareProject={handlePreparePreviewProject}
+    />
+  ) : null;
+
   return (
     <>
       <AppShell
@@ -4039,7 +4068,11 @@ case PHASES.DEPLOY: {
                       onChange={setDraft}
                       onSubmit={handleComposerSubmit}
                     />
+                    {previewDockNode}
                   </div>
+                ) : null}
+                {!composerVisible && previewDockNode ? (
+                  <div className="workspace-preview-dock">{previewDockNode}</div>
                 ) : null}
                 {skipVisible ? (
                   <div className="workspace-skip">

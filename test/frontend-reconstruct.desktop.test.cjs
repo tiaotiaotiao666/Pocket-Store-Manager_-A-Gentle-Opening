@@ -18,6 +18,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const vm = require('node:vm');
 
 const REPO = path.resolve(__dirname, '..');
@@ -66,19 +67,36 @@ function untrustedEvent() {
   };
 }
 
+/**
+ * B5：截图外发确认（图摘要 + 接收方 + 时间窗）。
+ * 这些用例聚焦主进程代理与写操作边界，所以统一带一份合法确认；
+ * 确认本身的拒绝分支见 test/b5-consent-and-template.test.cjs。
+ */
+function consentFor(dataBase64, overrides) {
+  return {
+    confirmedAt: new Date().toISOString(),
+    imageDigest: 'sha256:' + crypto.createHash('sha256').update(dataBase64, 'utf8').digest('hex'),
+    host: '127.0.0.1:3000',
+    purpose: 'frontend-reconstruct',
+    ...(overrides || {}),
+  };
+}
+
 function analyzePayload(overrides) {
+  const image = { mediaType: 'image/png', dataBase64: 'aGVsbG8td29ybGQ=' };
   return {
     projectId: 'p_abc12345',
     runId: 'frun-ipc-1',
     requestId: 'fr-ipc-1',
     utterance: '按截图重构首页，保留下单',
-    image: { mediaType: 'image/png', dataBase64: 'aGVsbG8td29ybGQ=' },
+    image,
     targetPages: ['home'],
     current: {
       baseTemplate: { id: 'ordering-base', version: '1.0.0' },
       frontendPack: null,
       presentationPatch: {},
     },
+    consent: consentFor(image.dataBase64),
     ...(overrides || {}),
   };
 }

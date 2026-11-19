@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ScreenSendConsent from './ScreenSendConsent.jsx';
 
 /**
  * P4：「生成候选前端」主链面板（只负责展示与回传意图）。
@@ -48,6 +49,10 @@ export default function FrontendCandidatePanel({
   view,
   imageReady = false,
   localError = null,
+  notice = null,
+  consentNotice = null,
+  onConsentConfirm,
+  onConsentCancel,
   desktopMode = false,
   uploadSlot = null,
   onUtteranceChange,
@@ -114,6 +119,11 @@ export default function FrontendCandidatePanel({
 
       {uploadSlot}
 
+      {/* B5：发图前先问一次（哪张图 / 做什么用 / 发给谁），确认后才请求模型。 */}
+      <ScreenSendConsent notice={consentNotice} onConfirm={onConsentConfirm} onCancel={onConsentCancel} />
+
+      {/* B5：取消发送这类「中性结论」不是错误，用 status 而不是 alert 播报。 */}
+      {notice ? <p className="screen-send-notice" role="status">{notice}</p> : null}
       {localError ? <p className="screen-ref-error" role="alert">{localError}</p> : null}
       {safe.error ? (
         <div className="screen-ref-error" role="alert">

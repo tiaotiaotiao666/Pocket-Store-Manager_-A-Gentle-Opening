@@ -19,6 +19,29 @@ import {
   normalizeTargetPages,
   normalizeUtterance,
 } from '../../domain/frontendReconstruct.mjs';
+import {
+  SCREEN_CONSENT_PURPOSE,
+  describeScreenConsentError,
+} from '../../domain/screenConsent.mjs';
+
+const IMAGE_DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
+
+/**
+ * B5：把「本次确认」规范成主进程能校验的形状（不含图片内容）。
+ * 缺字段或格式不对一律返回 null —— 调用方据此拒绝发起请求。
+ */
+export function normalizeScreenConsent(value) {
+  if (!value || typeof value !== 'object') return null;
+  const confirmedAt = typeof value.confirmedAt === 'string' ? value.confirmedAt.slice(0, 40) : '';
+  const imageDigest = typeof value.imageDigest === 'string' && IMAGE_DIGEST_PATTERN.test(value.imageDigest)
+    ? value.imageDigest
+    : '';
+  const host = typeof value.host === 'string' ? value.host.slice(0, 120) : '';
+  const purpose = value.purpose === SCREEN_CONSENT_PURPOSE ? SCREEN_CONSENT_PURPOSE : '';
+  if (!confirmedAt || !imageDigest || !host || !purpose) return null;
+  if (!Number.isFinite(Date.parse(confirmedAt))) return null;
+  return { confirmedAt, imageDigest, host, purpose };
+}
 
 export const FRONTEND_ANALYZE_ENDPOINT = '/api/v1/agent/frontend-reconstruct';
 
@@ -50,6 +73,7 @@ export function buildFrontendAnalyzePayload(input = {}, ids = {}) {
     return { ok: false, code: 'FRONTEND_TARGET_PAGES_INVALID', message: describeFrontendError('FRONTEND_TARGET_PAGES_INVALID') };
   }
   const baseTemplate = input.baseTemplate && typeof input.baseTemplate === 'object' ? input.baseTemplate : {};
+  const consent = normalizeScreenConsent(input.consent);
   return {
     ok: true,
     payload: {
@@ -63,6 +87,7 @@ export function buildFrontendAnalyzePayload(input = {}, ids = {}) {
         bytes: image.image.bytes,
       },
       targetPages,
+      consent,
       current: {
         baseTemplate: {
           id: 'ordering-base',
@@ -125,6 +150,13 @@ export function createFrontendReconstructService(options = {}) {
   async function analyze(input = {}) {
     const api = requireMethod('analyzeFrontend');
     if (!api) return missingApi();
+    // B5 规则 1：没有本次确认就一个请求都不发（主进程还会再校验一次）。
+    if (!normalizeScreenConsent(input.consent)) {
+      return failure(
+        'FRONTEND_CONSENT_REQUIRED',
+        describeScreenConsentError('FRONTEND_CONSENT_REQUIRED') || describeFrontendError('FRONTEND_CONSENT_REQUIRED'),
+      );
+    }
     const runId = cleanString(input.runId, 80) || createFrontendRunId(options.now, options.random);
     const built = buildFrontendAnalyzePayload(input, { runId, requestId: input.requestId });
     if (!built.ok) return failure(built.code, built.message);

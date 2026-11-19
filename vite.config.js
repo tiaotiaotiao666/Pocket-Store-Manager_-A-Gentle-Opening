@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { injectCspMeta } from './scripts/vite-csp-plugin.mjs';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), injectCspMeta()],
   base: './',
   server: {
     host: '127.0.0.1',

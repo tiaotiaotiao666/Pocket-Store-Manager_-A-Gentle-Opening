@@ -14,6 +14,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const test = require('node:test');
 
 const { createFrontendReconstructIpc, CODES } = require('../desktop/frontend-reconstruct-ipc.cjs');
@@ -71,19 +72,35 @@ function sessionOk(token, expiresInSeconds, baseNowMs) {
   });
 }
 
+/**
+ * B5：截图外发确认。桌面上必须先有一次「这张图 + 这个接收方」的确认，
+ * 主进程才肯代发；这里的用例关心会话行为，所以统一带一份合法确认。
+ */
+function consentFor(dataBase64, overrides) {
+  return {
+    confirmedAt: new Date().toISOString(),
+    imageDigest: 'sha256:' + crypto.createHash('sha256').update(dataBase64, 'utf8').digest('hex'),
+    host: '127.0.0.1:3000',
+    purpose: 'frontend-reconstruct',
+    ...(overrides || {}),
+  };
+}
+
 function analyzePayload(overrides) {
+  const image = { mediaType: 'image/png', dataBase64: 'aGVsbG8td29ybGQ=' };
   return {
     projectId: 'p_abc12345',
     runId: 'frun-b2-1',
     requestId: 'fr-b2-1',
     utterance: '按截图重构首页，保留下单',
-    image: { mediaType: 'image/png', dataBase64: 'aGVsbG8td29ybGQ=' },
+    image,
     targetPages: ['home'],
     current: {
       baseTemplate: { id: 'ordering-base', version: '1.0.0' },
       frontendPack: null,
       presentationPatch: {},
     },
+    consent: consentFor(image.dataBase64),
     ...(overrides || {}),
   };
 }

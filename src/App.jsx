@@ -125,6 +125,13 @@ import AgentIntakePanel from './components/agent/AgentIntakePanel.jsx';
 import VisionImageUploader from './components/agent/VisionImageUploader.jsx';
 import ScreenReferencePanel from './components/screenRef/ScreenReferencePanel.jsx';
 import FrontendCandidatePanel from './components/screenRef/FrontendCandidatePanel.jsx';
+import {
+  createScreenConsent,
+  describeScreenSendNotice,
+  endpointHostOf,
+  imageDigestOf,
+  isScreenConsentUsable,
+} from './domain/screenConsent.mjs';
 import DraftEditor from './components/agent/DraftEditor.jsx';
 import StoreInfoActionBar from './components/agent/StoreInfoActionBar.jsx';
 import AgentDraftSummary from './components/agent/AgentDraftSummary.jsx';
@@ -529,6 +536,10 @@ export default function App() {
   const [screenRefImageStatus, setScreenRefImageStatus] = useState('idle');
   // P4：候选前端链路的即时错误（同样只存在内存里，不写项目快照）。
   const [frontendLocalError, setFrontendLocalError] = useState(null);
+  // B5：发图前的告知 / 确认状态。确认只在「这张图 + 这个接收方 + 15 分钟内」有效。
+  const [screenConsentPrompt, setScreenConsentPrompt] = useState(null);
+  const [screenConsentGrant, setScreenConsentGrant] = useState(null);
+  const [screenConsentNotice, setScreenConsentNotice] = useState(null);
   // P5：已采用候选前端的项目快照记录。它跟随 project.json 生命周期，
   // 与 P4 的候选构建状态（frontendState）分开，避免重开项目后把两者混在一起。
   const [frontendCandidateRecord, setFrontendCandidateRecord] = useState(null);
@@ -2184,7 +2195,8 @@ export default function App() {
     frontendDispatch({ type: 'FRONTEND_INPUT_SET', targetPages: pages });
   };
 
-  const handleFrontendAnalyze = async () => {
+  // B5：真正发起识别（只有拿到本次确认才会走到这里）。
+  const runFrontendAnalyze = async ({ consent }) => {
     // 重复点击：忙碌时直接忽略（reducer 也会拒绝第二次 REQUEST）。
     if (isFrontendBusy(frontendState)) return;
     const image = state.screenRef.image;
@@ -2203,11 +2215,16 @@ export default function App() {
       image,
       targetPages: frontendState.request.targetPages,
       baseTemplate: frontendState.request.baseTemplate,
+      consent,
     });
     if (!result.ok) {
       if (result.code === 'FRONTEND_CANCELLED') {
         frontendDispatch({ type: 'FRONTEND_CANCELLED', runId, revision });
       } else {
+        // 确认相关的失败要能让用户直接重新确认，而不是看着一个「失败」发呆。
+        if (typeof result.code === 'string' && result.code.startsWith('FRONTEND_CONSENT_')) {
+          setScreenConsentGrant(null);
+        }
         frontendDispatch({
           type: 'FRONTEND_ANALYZE_FAILURE',
           runId,
@@ -2218,6 +2235,50 @@ export default function App() {
       return;
     }
     frontendDispatch({ type: 'FRONTEND_ANALYZE_SUCCESS', runId, revision, response: result.response });
+  };
+
+  const handleFrontendAnalyze = async () => {
+    // 重复点击：忙碌时直接忽略（reducer 也会拒绝第二次 REQUEST）。
+    if (isFrontendBusy(frontendState)) return;
+    const image = state.screenRef.image;
+    if (!image) {
+      setFrontendLocalError('请先上传一张参考截图，再生成候选前端。');
+      return;
+    }
+    setFrontendLocalError(null);
+    setScreenConsentNotice(null);
+    const host = endpointHostOf(state.settings.config && state.settings.config.apiBaseUrl);
+    const imageDigest = await imageDigestOf(image.dataBase64);
+    const usable = isScreenConsentUsable(screenConsentGrant, { imageDigest, host });
+    if (!usable.ok) {
+      // 没确认过（或换了图 / 换了接收方 / 超时）：只弹告知，不发任何请求。
+      setScreenConsentPrompt({
+        host,
+        imageDigest,
+        notice: describeScreenSendNotice({ image, host }),
+      });
+      return;
+    }
+    await runFrontendAnalyze({ consent: screenConsentGrant });
+  };
+
+  const handleScreenSendConfirm = async () => {
+    const prompt = screenConsentPrompt;
+    if (!prompt) return;
+    const consent = createScreenConsent({ imageDigest: prompt.imageDigest, host: prompt.host });
+    setScreenConsentPrompt(null);
+    if (!consent) {
+      setFrontendLocalError('这张截图的摘要算不出来，请重新上传后再试；这次没有发送。');
+      return;
+    }
+    setScreenConsentGrant(consent);
+    await runFrontendAnalyze({ consent });
+  };
+
+  const handleScreenSendCancel = () => {
+    setScreenConsentPrompt(null);
+    setScreenConsentGrant(null);
+    setScreenConsentNotice('已取消：这张截图没有发出去，当前项目和模板都没有变化。');
   };
 
   const handleFrontendBuild = async () => {
@@ -3379,12 +3440,18 @@ export default function App() {
             onAnalyzeImage={handleAnalyzeStoreImage}
           />
         );
+        // B5：不要在这里包一层 Fragment —— ScreenReferencePanel 会把 uploadSlot
+        // 通过 cloneElement 注入到候选面板里，包 Fragment 会让上传入口整个消失。
         const frontendCandidatePanel = (
           <FrontendCandidatePanel
             view={frontendView}
             imageReady={Boolean(state.screenRef.image)}
             desktopMode={frontendService.mode === 'desktop'}
             localError={frontendLocalError}
+            notice={screenConsentNotice}
+            consentNotice={screenConsentPrompt ? screenConsentPrompt.notice : null}
+            onConsentConfirm={handleScreenSendConfirm}
+            onConsentCancel={handleScreenSendCancel}
             onUtteranceChange={handleFrontendUtterance}
             onTargetPagesChange={handleFrontendTargetPages}
             onAnalyze={handleFrontendAnalyze}

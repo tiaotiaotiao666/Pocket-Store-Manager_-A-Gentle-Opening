@@ -134,6 +134,11 @@ export const FRONTEND_ERROR_TEXT = Object.freeze({
   FRONTEND_IMAGE_INVALID: '截图为空或无法解析，请重新选择一张图片。',
   FRONTEND_IMAGE_TYPE: '只支持 JPG / PNG / WebP 截图。',
   FRONTEND_IMAGE_TOO_LARGE: '截图太大了，请压到 400KB 以内再上传。',
+  // B5：截图外发确认。没确认 / 确认过期 / 图或接收方变了，都要重新问、且不发请求。
+  FRONTEND_CONSENT_REQUIRED: '这次发送还没有得到你的确认，截图没有发出去。',
+  FRONTEND_CONSENT_EXPIRED: '确认已经过期，请重新确认后再发送。',
+  FRONTEND_CONSENT_SCOPE_MISMATCH: '图片或接收方变了，这次发送需要重新确认。',
+  FRONTEND_CONSENT_UNRECORDED: '没能记录这次发送确认，为安全起见没有调用模型。',
   FRONTEND_UTTERANCE_TOO_LONG: '要求文字超过 500 字，请精简后再试。',
   FRONTEND_TARGET_PAGES_INVALID: '目标页面只能是首页或菜单页（首期不支持其它页面）。',
   FRONTEND_BUSY: '已有候选前端任务正在运行，请等它结束或先取消。',

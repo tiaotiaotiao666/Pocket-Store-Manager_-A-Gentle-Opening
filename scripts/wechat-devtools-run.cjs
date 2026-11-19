@@ -64,11 +64,76 @@ function cleanEnv() {
   return env;
 }
 
+/**
+ * B5：证据里的本机绝对路径只保留尾部两段（`…\\out\\project`），
+ * 足够核对是哪个工程，又不把整台机器的目录结构写进对外证据。
+ * 命令重放走固定入口（`npm run frontend:verify`），不依赖这里显示的路径。
+ */
+function maskLocalPath(value) {
+  const text = typeof value === 'string' ? value : '';
+  if (!text || !path.isAbsolute(text)) return text;
+  const base = path.basename(text);
+  const parent = path.basename(path.dirname(text));
+  return parent && parent !== base ? '…' + path.sep + parent + path.sep + base : '…' + path.sep + base;
+}
+
+function displayCommand(cliPath, args) {
+  const head = path.basename(typeof cliPath === 'string' && cliPath ? cliPath : 'cli.bat');
+  const rest = (Array.isArray(args) ? args : []).map((arg) => (path.isAbsolute(String(arg)) ? maskLocalPath(String(arg)) : String(arg)));
+  return [head, ...rest].join(' ');
+}
+
+/**
+ * B5：把「cli.bat + 参数数组」变成一次显式调用，永远不走 shell 字符串。
+ *
+ * - Windows 上 `cli.bat` 只能由 cmd 解释执行，所以显式起 `cmd.exe /d /s /c`，
+ *   但参数仍然以数组传入、逐个加引号，**不把整条命令行交给 shell 拼**；
+ * - 其它平台/可执行文件直接 spawn，`shell: false`；
+ * - 参数里出现双引号或换行一律拒绝（fail closed），避免 cmd 重新解析出别的意思。
+ */
+function buildCliInvocation(cliPath, args) {
+  const list = Array.isArray(args) ? args : [];
+  const tokens = [cliPath, ...list];
+  for (const token of tokens) {
+    if (typeof token !== 'string' || !token) throw new Error('命令参数必须是非空字符串');
+    if (token.includes('"') || /[\r\n]/.test(token)) throw new Error('命令参数里不能包含引号或换行');
+  }
+  if (process.platform === 'win32' && /\.(bat|cmd)$/i.test(cliPath)) {
+    const comspec = process.env.ComSpec || process.env.COMSPEC || 'cmd.exe';
+    const quoted = tokens.map((token) => `"${token}"`).join(' ');
+    // 外层再加一对引号：cmd /s 只在整串被一对引号包住时才正确剥壳，
+    // 否则含空格的路径（C:\Program Files\…）会被 cmd 截断。
+    return { file: comspec, args: ['/d', '/s', '/c', `"${quoted}"`], verbatim: true };
+  }
+  return { file: cliPath, args: list, verbatim: false };
+}
+
 function runCli(cliPath, args, timeoutMs = 180000) {
   return new Promise((resolve) => {
     const startedAt = new Date().toISOString();
     const started = Date.now();
-    const child = spawn(cliPath, args, { env: cleanEnv(), shell: true, windowsHide: true });
+    let invocation;
+    try {
+      invocation = buildCliInvocation(cliPath, args);
+    } catch (error) {
+      resolve({
+        command: displayCommand(cliPath, args),
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        durationMs: 0,
+        exitCode: null,
+        stdout: '',
+        stderr: '',
+        error: error && error.message ? error.message : '命令参数不合法',
+      });
+      return;
+    }
+    const child = spawn(invocation.file, invocation.args, {
+      env: cleanEnv(),
+      shell: false,
+      windowsHide: true,
+      windowsVerbatimArguments: invocation.verbatim,
+    });
     let stdout = '';
     let stderr = '';
     const timer = setTimeout(() => {
@@ -76,10 +141,23 @@ function runCli(cliPath, args, timeoutMs = 180000) {
     }, timeoutMs);
     child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
     child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      resolve({
+        command: displayCommand(cliPath, args),
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        durationMs: Date.now() - started,
+        exitCode: null,
+        stdout: stdout.trim(),
+        stderr: stderr.trim(),
+        error: error && error.message ? error.message : '进程启动失败',
+      });
+    });
     child.on('close', (code) => {
       clearTimeout(timer);
       resolve({
-        command: [cliPath, ...args].join(' '),
+        command: displayCommand(cliPath, args),
         startedAt,
         finishedAt: new Date().toISOString(),
         durationMs: Date.now() - started,
@@ -123,11 +201,13 @@ async function main() {
   const jsonOut = argOf('--json', '');
   const shotsDir = argOf('--shots', '');
 
+  const cliPath = resolveCli();
   const report = {
     schemaVersion: 'wechat-devtools-run.v1',
     generatedAt: new Date().toISOString(),
-    projectRoot,
-    cliPath: resolveCli(),
+    // B5：对外证据只留可核对的位置尾部，不写整条本机绝对路径。
+    projectRootLabel: maskLocalPath(projectRoot) || '(未提供)',
+    cliLabel: cliPath ? maskLocalPath(cliPath) : null,
     status: 'NOT_RUN',
     steps: [],
     blocked: null,
@@ -137,7 +217,7 @@ async function main() {
 
   if (!projectRoot || !fs.existsSync(projectRoot)) {
     report.status = 'BLOCKED';
-    report.blocked = '导出工程目录不存在：' + projectRoot;
+    report.blocked = '导出工程目录不存在：' + report.projectRootLabel;
     finish(report, jsonOut);
     return;
   }
@@ -158,14 +238,14 @@ async function main() {
     return;
   }
 
-  if (!report.cliPath) {
+  if (!cliPath) {
     report.status = 'BLOCKED';
     report.blocked = '本机未找到微信开发者工具 cli.bat（可用 WX_CLI_PATH 指定）。';
     finish(report, jsonOut);
     return;
   }
 
-  const login = await runCli(report.cliPath, ['islogin'], 90000);
+  const login = await runCli(cliPath, ['islogin'], 90000);
   // CLI 把 {"login":true} 写在 stdout 还是 stderr 取决于它是否需要先拉起 IDE server，
   // 两个流都看；拿不到 login:true 一律 BLOCKED，不猜。
   const loggedIn = /"login"\s*:\s*true/.test((login.stdout || '') + '\n' + (login.stderr || ''));
@@ -182,7 +262,7 @@ async function main() {
     return;
   }
 
-  const open = await runCli(report.cliPath, ['open', '--project', projectRoot], 240000);
+  const open = await runCli(cliPath, ['open', '--project', projectRoot], 240000);
   const openBlocked = detectBlockedReason(open);
   const openOk = open.exitCode === 0 && !openBlocked;
   report.steps.push({
@@ -198,7 +278,7 @@ async function main() {
     return;
   }
 
-  const auto = await runCli(report.cliPath, ['auto', '--project', projectRoot, '--auto-port', String(autoPort)], 240000);
+  const auto = await runCli(cliPath, ['auto', '--project', projectRoot, '--auto-port', String(autoPort)], 240000);
   const autoBlocked = detectBlockedReason(auto);
   const autoOk = auto.exitCode === 0 && !autoBlocked;
   report.steps.push({
@@ -898,8 +978,8 @@ async function attempt(label, fn) {
 function finish(report, jsonOut) {
   const lines = [];
   lines.push('微信小程序真实编译/运行验证');
-  lines.push('  工程：' + (report.projectRoot || '(未提供)'));
-  lines.push('  CLI：' + (report.cliPath || '(未找到)'));
+  lines.push('  工程：' + (report.projectRootLabel || '(未提供)'));
+  lines.push('  CLI：' + (report.cliLabel || '(未找到)'));
   for (const step of report.steps) {
     lines.push('  [' + step.status + '] ' + step.id + ' · ' + step.title + ' · exit=' + step.exitCode + ' · ' + step.durationMs + 'ms');
   }
@@ -938,8 +1018,11 @@ if (require.main === module) {
 module.exports = {
   ADVISORY_INTERACTIONS,
   attempt,
+  buildCliInvocation,
   computeVerificationStatus,
   detectBlockedReason,
+  displayCommand,
+  maskLocalPath,
   resolveCli,
   runCli,
 };

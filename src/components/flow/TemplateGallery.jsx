@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Check, GitCompareArrows } from 'lucide-react';
 import SatisfactionPrompt from './SatisfactionPrompt.jsx';
 import TemplateCompare from './TemplateCompare.jsx';
@@ -46,7 +47,12 @@ export default function TemplateGallery({
   statusHint = null,
 }) {
   const list = Array.isArray(candidates) ? candidates : [];
-  const selected = list.find((item) => item.id === selectedId) ?? list[0];
+  // B5 规则 3：点卡片只「预览」，只有点「就用这套」才改变当前使用，
+  // 避免手滑点一下就把已经打磨好的模板覆盖掉。
+  const [previewId, setPreviewId] = useState(null);
+  const previewedId = previewId && list.some((item) => item.id === previewId) ? previewId : selectedId;
+  const selected = list.find((item) => item.id === previewedId) ?? list[0];
+  const isPreviewing = Boolean(selected && selected.id !== selectedId);
   const selectedRecipe = selected && viewModelsByTemplateId[selected.id] && viewModelsByTemplateId[selected.id].recipe
     ? viewModelsByTemplateId[selected.id].recipe.displayName
     : null;
@@ -100,7 +106,7 @@ export default function TemplateGallery({
       <div className="template-intro">
         <div>
           <h3>实时小程序预览</h3>
-          <p>点选骨架会立刻按模板结构与配色重新渲染，下方可以切换首页、菜单和订单。</p>
+          <p>点卡片只是预览：下方会按这套骨架的结构与配色重新渲染，点「就用这套」才会把它换成当前版本。</p>
           {/* B4 规则 1：先讲清真实结构有几套，避免把同一结构的两种配色当成两套骨架。 */}
           <p className="template-structure-hint">{coverage.text}</p>
           {statusHint ? <p className="template-intro-hint">{statusHint}</p> : null}
@@ -120,8 +126,9 @@ export default function TemplateGallery({
       <div className="template-grid">
         {list.map((item) => {
           const isSelected = item.id === selectedId;
+          const isPreviewed = item.id === previewedId && !isSelected;
           const status = statusById[item.id] ?? null;
-          const cardClass = `template-card${isSelected ? ' is-selected' : ''}${status ? ` is-${status.tone}` : ''}`;
+          const cardClass = `template-card${isSelected ? ' is-selected' : ''}${isPreviewed ? ' is-preview' : ''}${status ? ` is-${status.tone}` : ''}`;
           const recipeName = viewModelsByTemplateId[item.id] && viewModelsByTemplateId[item.id].recipe
             ? viewModelsByTemplateId[item.id].recipe.displayName
             : null;
@@ -131,12 +138,15 @@ export default function TemplateGallery({
               type="button"
               key={item.id}
               className={cardClass}
-              onClick={() => onSelect?.(item.id)}
+              onClick={() => setPreviewId(item.id)}
               aria-current={status && status.isCurrent ? 'true' : undefined}
+              aria-label={`预览模板：${item.name}`}
             >
               <div className="template-visual">
                 {item.badge ? <span className="template-badge">{item.badge}</span> : null}
-                {status ? (
+                {isPreviewed ? (
+                  <span className="template-status is-candidate">预览中</span>
+                ) : status ? (
                   <span className={`template-status is-${status.tone}`}>{status.label}</span>
                 ) : null}
                 <MiniProgramPreview
@@ -208,10 +218,16 @@ export default function TemplateGallery({
           )}
           <div className="template-detail-info">
             <span className="template-detail-kicker">
-              {statusById[selected.id] ? statusById[selected.id].label : '当前选中'}
+              {isPreviewing
+                ? '预览中（还没换掉当前版本）'
+                : (statusById[selected.id] ? statusById[selected.id].label : '当前选中')}
             </span>
             <h3>{selected.name}</h3>
-            {statusById[selected.id] ? (
+            {isPreviewing ? (
+              <p className="template-detail-status">
+                这只是预览，当前使用仍是「{list.find((item) => item.id === selectedId)?.name || '原来的模板'}」。
+              </p>
+            ) : statusById[selected.id] ? (
               <p className="template-detail-status">{statusById[selected.id].note}</p>
             ) : (selected.summary ? <p>{selected.summary}</p> : null)}
             <div className="template-detail-meta">
@@ -220,6 +236,30 @@ export default function TemplateGallery({
               {/* 详情区同样不展示裸百分比，改用上面的推荐理由与描述。 */}
             </div>
             <p className="template-detail-hint">预览可点按手机底部标签，切换首页 / 菜单 / 订单。</p>
+
+            {/* B5 规则 3：预览与采用分开，采用要一次明确动作。 */}
+            {isPreviewing ? (
+              <div className="template-apply-row">
+                <button
+                  type="button"
+                  className="primary-button template-apply-button"
+                  onClick={() => {
+                    onSelect?.(selected.id);
+                    setPreviewId(null);
+                  }}
+                  aria-label={`就用这套：${selected.name}`}
+                >
+                  就用这套
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setPreviewId(null)}
+                >
+                  继续看当前的
+                </button>
+              </div>
+            ) : null}
 
             {/* 唯一主输入框：模式开关区分「修改当前页面」与「重新匹配候选」，不再各摆一个输入框。 */}
             {reviseEnabled ? (
@@ -243,7 +283,7 @@ export default function TemplateGallery({
               question={SATISFACTION.question}
               action={SATISFACTION.action}
               onConfirm={onConfirm}
-              disabled={!selectedId || refining}
+              disabled={!selectedId || refining || isPreviewing}
             />
           </div>
         </div>

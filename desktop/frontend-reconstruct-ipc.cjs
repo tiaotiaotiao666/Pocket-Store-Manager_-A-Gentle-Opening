@@ -23,6 +23,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 const { isTrustedSender } = require('./composer-ipc.cjs');
 const { createDesktopCredentialProvider } = require('./desktop-session.cjs');
@@ -58,6 +59,13 @@ const ATTEMPT_SCHEMA_VERSION = 'frontend-attempt.v1';
 const RUN_SCHEMA_VERSION = 'frontend-run.v1';
 const ADOPTION_SCHEMA_VERSION = 'frontend-adoption.v1';
 const DISCARD_SCHEMA_VERSION = 'frontend-discard.v1';
+// B5：截图外发确认。确认只在「这张图 + 这个接收方 + 15 分钟内」有效，
+// 主进程自己再校验一次，不信任渲染进程传来的状态。
+const CONSENT_SCHEMA_VERSION = 'frontend-consent.v1';
+const CONSENT_PURPOSE = 'frontend-reconstruct';
+const CONSENT_MAX_AGE_MS = 15 * 60 * 1000;
+const CONSENT_CLOCK_SKEW_MS = 60 * 1000;
+const IMAGE_DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const DRY_RUN_RESULT_FILE = 'frontend-dry-run.json';
 const RUNTIME_WRAPPER_FILE = 'frontend-runtime.json';
 const DRY_RUN_DIR_PATTERN = /^dry-run(?:-([1-9][0-9]?))?$/;
@@ -100,6 +108,11 @@ const CODES = Object.freeze({
   VERIFY_FAILED: 'FRONTEND_VERIFY_FAILED',
   ADOPT_FAILED: 'FRONTEND_ADOPT_FAILED',
   DISCARD_FAILED: 'FRONTEND_DISCARD_FAILED',
+  // B5：截图外发确认
+  CONSENT_REQUIRED: 'FRONTEND_CONSENT_REQUIRED',
+  CONSENT_EXPIRED: 'FRONTEND_CONSENT_EXPIRED',
+  CONSENT_SCOPE_MISMATCH: 'FRONTEND_CONSENT_SCOPE_MISMATCH',
+  CONSENT_UNRECORDED: 'FRONTEND_CONSENT_UNRECORDED',
 });
 
 const STAGE_LABELS = Object.freeze({
@@ -124,6 +137,7 @@ const RUNTIME_STATUSES = Object.freeze(['PASS', 'FAIL', 'BLOCKED', 'NOT_RUN']);
 const ALLOWED_KEYS = Object.freeze({
   'frontend:analyze': Object.freeze([
     'runId', 'projectId', 'requestId', 'utterance', 'image', 'targetPages', 'current', 'client', 'contractVersion',
+    'consent',
   ]),
   'frontend:build-candidate': Object.freeze(['projectId', 'runId', 'draft']),
   'frontend:validate-candidate': Object.freeze(['projectId', 'runId', 'attempt']),
@@ -518,6 +532,72 @@ function normalizeTargetPages(value) {
   return { ok: true, value: out.slice(0, MAX_TARGET_PAGES) };
 }
 
+/** 图片摘要：对 base64 文本做 SHA-256（与渲染进程同一口径，只用于确认绑定）。 */
+function imageDigestOfBase64(dataBase64) {
+  const text = typeof dataBase64 === 'string' ? dataBase64 : '';
+  if (!text) return '';
+  return 'sha256:' + crypto.createHash('sha256').update(text, 'utf8').digest('hex');
+}
+
+function endpointHostOfBaseUrl(baseUrl) {
+  try {
+    const parsed = new URL(baseUrl);
+    return parsed.host || '';
+  } catch (error) {
+    return '';
+  }
+}
+
+/**
+ * B5：校验本次发送确认。必须存在、在时间窗内，且图片摘要与接收方都匹配；
+ * 任何一项不符就拒绝，且不发起任何网络请求。
+ */
+function validateAnalyzeConsent(consent, image, host, nowMs) {
+  if (!isPlainObject(consent)) {
+    return { error: fail(CODES.CONSENT_REQUIRED, '这次发送还没有得到你的确认，截图没有发出去。') };
+  }
+  const confirmedAt = typeof consent.confirmedAt === 'string' ? Date.parse(consent.confirmedAt) : Number.NaN;
+  if (!Number.isFinite(confirmedAt)) {
+    return { error: fail(CODES.CONSENT_REQUIRED, '这次发送还没有得到你的确认，截图没有发出去。') };
+  }
+  if (consent.purpose !== CONSENT_PURPOSE) {
+    return { error: fail(CODES.CONSENT_SCOPE_MISMATCH, '这次确认不是给截图识别的，请重新确认后再发送。') };
+  }
+  const expectedDigest = imageDigestOfBase64(image && image.dataBase64);
+  const givenDigest = typeof consent.imageDigest === 'string' && IMAGE_DIGEST_PATTERN.test(consent.imageDigest)
+    ? consent.imageDigest
+    : '';
+  if (!expectedDigest || !givenDigest || givenDigest !== expectedDigest) {
+    return { error: fail(CODES.CONSENT_SCOPE_MISMATCH, '图片已经换过了，请重新确认后再发送。') };
+  }
+  if (typeof consent.host !== 'string' || !host || consent.host !== host) {
+    return { error: fail(CODES.CONSENT_SCOPE_MISMATCH, '接收接口变了，请重新确认后再发送。') };
+  }
+  const age = nowMs - confirmedAt;
+  if (age > CONSENT_MAX_AGE_MS || age < -CONSENT_CLOCK_SKEW_MS) {
+    return { error: fail(CODES.CONSENT_EXPIRED, '确认已经过期，请重新确认后再发送。') };
+  }
+  return { ok: true, confirmedAt: new Date(confirmedAt).toISOString(), imageDigest: givenDigest, host };
+}
+
+/** 把确认写进 run 目录（只有时间/摘要/接收方，不含图片内容与凭证）。 */
+function recordAnalyzeConsent(state, projectId, runId, record) {
+  try {
+    const created = state.workspace.createWorkspace({ userDataDir: state.userDataDir, projectId, runId });
+    if (!created || created.ok !== true) {
+      return { ok: false, message: bounded(created && (created.message || created.code), 80) || '工作区不可用' };
+    }
+    const file = path.join(created.runDir, 'consent.json');
+    const written = state.workspace.writeJsonAtomic(file, record);
+    if (!written || written.ok !== true) {
+      return { ok: false, message: bounded(written && (written.message || written.code), 80) || '写入失败' };
+    }
+    return { ok: true, relative: relativeInside(state.userDataDir, file) };
+  } catch (error) {
+    return { ok: false, message: boundedDetail(error) };
+  }
+}
+
 function buildAnalyzeBody(payload) {
   const utterance = typeof payload.utterance === 'string' ? payload.utterance : '';
   if (utterance.length > MAX_UTTERANCE_CHARS) {
@@ -647,6 +727,43 @@ function createFrontendReconstructIpc(options) {
       const configuredTimeout = Number.isFinite(config.agentTimeoutMs) ? config.agentTimeoutMs : 60000;
       const timeoutMs = Math.max(5000, Math.min(configuredTimeout, 120000));
 
+      // B5：先校验本次发送确认（图 + 接收方 + 时间窗），不合格就直接返回，不碰网络。
+      const nowMs = Number(state.now());
+      const consentCheck = validateAnalyzeConsent(
+        payload.consent,
+        built.body.images[0],
+        endpointHostOfBaseUrl(baseUrl),
+        nowMs,
+      );
+      if (consentCheck.error) return consentCheck.error;
+      const consentRecord = {
+        schemaVersion: CONSENT_SCHEMA_VERSION,
+        projectId,
+        runId,
+        purpose: CONSENT_PURPOSE,
+        consentAt: consentCheck.confirmedAt,
+        host: consentCheck.host,
+        imageDigest: consentCheck.imageDigest,
+        imageMediaType: bounded(built.body.images[0] && built.body.images[0].mediaType, 40) || null,
+        scope: {
+          kind: 'one-image-one-recipient',
+          imageDigest: consentCheck.imageDigest,
+          host: consentCheck.host,
+          contractVersion: CONTRACT_VERSION,
+        },
+        recordedAt: new Date(nowMs).toISOString(),
+      };
+      const consentRecorded = recordAnalyzeConsent(state, projectId, runId, consentRecord);
+      if (!consentRecorded.ok) {
+        return fail(CODES.CONSENT_UNRECORDED, '没能记录这次发送确认，为安全起见没有调用模型（' + consentRecorded.message + '）');
+      }
+      const consentEcho = {
+        consentAt: consentCheck.confirmedAt,
+        host: consentCheck.host,
+        imageDigestShort: consentCheck.imageDigest.replace(/^sha256:/, '').slice(0, 12),
+        recordRelative: consentRecorded.relative || null,
+      };
+
       // B2：先取桌面会话凭证（主进程内存持有、短期、可失效）。
       // 拿不到就明确告诉用户「会话失效/需重新连接」，不做匿名回退。
       let authorization = null;
@@ -747,7 +864,7 @@ function createFrontendReconstructIpc(options) {
       if (parsed.contractVersion !== CONTRACT_VERSION) {
         return fail(CODES.CONTRACT_MISMATCH, '服务端返回的契约版本不一致，请升级后再试');
       }
-      return ok({ runId, response: pickAnalyzeResponse(parsed) });
+      return ok({ runId, response: pickAnalyzeResponse(parsed), consent: consentEcho });
     } finally {
       releaseSlot(state, session);
     }

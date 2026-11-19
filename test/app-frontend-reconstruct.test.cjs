@@ -774,11 +774,22 @@ test('P4 服务层：桌面桥接只调用 8 个语义 API，并把失败归一�
     projectId: 'p_abc12345',
     image: referenceImage(),
     targetPages: ['home'],
+    // B5：没有确认不发请求；这里带一份合法确认，验证它被原样带到主进程。
+    consent: {
+      confirmedAt: '2026-11-19T06:00:00.000Z',
+      imageDigest: 'sha256:' + 'a'.repeat(64),
+      host: '127.0.0.1:3000',
+      purpose: 'frontend-reconstruct',
+    },
   });
   assert.equal(analyzed.ok, true);
   assert.equal(analyzed.response.status, 'planned');
   assert.equal(calls[0][1].contractVersion, 'frontend-reconstruct.v1');
   assert.equal(calls[0][1].client.phase, 'frontend-reconstruct');
+  // B5：确认凭据必须原样交给主进程（主进程再按图摘要/接收方/时效复核）。
+  assert.equal(calls[0][1].consent.purpose, 'frontend-reconstruct');
+  assert.equal(calls[0][1].consent.host, '127.0.0.1:3000');
+  assert.equal(calls[0][1].consent.confirmedAt, '2026-11-19T06:00:00.000Z');
 
   const built = await created.buildCandidate({ runId: 'frun-bridge-1', projectId: 'p_abc12345', draft: plannedResponse().draft });
   assert.equal(built.ok, true);

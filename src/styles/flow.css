@@ -1673,6 +1673,24 @@
   overflow: hidden;
 }
 
+/* B5 规则 3：预览中的卡片与「当前使用」必须一眼能分开。 */
+.template-card.is-preview {
+  outline: 2px dashed var(--accent, #5b5bd6);
+  outline-offset: -2px;
+}
+
+.template-apply-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.template-apply-row .template-apply-button {
+  font-weight: 700;
+}
+
 .template-head h3,
 .template-summary,
 .template-note,

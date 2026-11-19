@@ -1,4 +1,4 @@
-import { cloneElement, useRef } from 'react';
+import { cloneElement, useRef, useState } from 'react';
 
 function formatBytes(bytes) {
   const value = Number(bytes);
@@ -37,6 +37,7 @@ export default function ScreenReferencePanel({
   onReset,
 }) {
   const inputRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
   const groups = view?.recognition?.groups ?? null;
   const mainBusy = busy || Boolean(frontendView?.busy);
   const hasLegacy = Boolean(view?.recognition || view?.candidate);
@@ -48,7 +49,26 @@ export default function ScreenReferencePanel({
   };
 
   const uploadSlot = (
-    <div className="screen-ref-upload">
+    <div
+      className={`screen-ref-upload${dragging ? ' is-drop-target' : ''}`}
+      onDragOver={(event) => {
+        if (mainBusy || uploadDisabled) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+        setDragging(true);
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget)) return;
+        setDragging(false);
+      }}
+      onDrop={(event) => {
+        if (mainBusy || uploadDisabled) return;
+        event.preventDefault();
+        setDragging(false);
+        const file = event.dataTransfer?.files && event.dataTransfer.files[0];
+        if (file && typeof onPickFile === 'function') onPickFile(file);
+      }}
+    >
       <div className="screen-ref-upload-layout">
         <header className="screen-ref-head">
           <h3 className="screen-ref-title">上传参考截图</h3>

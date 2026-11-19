@@ -12,12 +12,14 @@ import {
   normalizeAgentTurnError,
 } from './agentTurnError.js';
 import { createAgentRunTransport } from './agentRunTransport.js';
+import { createDirectAgentRunTransport } from './directAgentRunTransport.js';
 
 /**
  * 薄 `agent-run.v1` 服务（W2）。
  *
  * 只负责：路由判定 → 组请求体 → 调 transport → 合并草稿 → 本地校验。
- * 多轮工具循环、草稿会话、缺字段重算全部由服务端 Runtime 负责，这里不重建。
+ * 多轮工具循环：直连模式在渲染层（directAgentRunTransport），本机服务模式在服务端 Runtime。
+ * 两条路径返回同一个契约外壳，因此下游不需要第二套逻辑。
  */
 
 const MAX_UTTERANCE = 500;
@@ -26,6 +28,7 @@ const STORE_INFO_PHASE = 'store-info';
 /** 路由标签：只有 `agent-run.v1` 会打到 POST /api/v1/agent/run。 */
 export const AGENT_ROUTES = Object.freeze({
   RUN: 'agent-run.v1',
+  DIRECT: 'agent-run.direct',
   TURN_V2: 'agent-turn.v2',
   TURN_V1: 'agent-turn.v1',
   OTHER: 'agent-turn',
@@ -36,18 +39,19 @@ export const AGENT_ROUTES = Object.freeze({
  *
  * - 非资料阶段（模板修订等）：不进本服务，返回 `agent-turn` 占位由调用方分流。
  * - 有图片：仍走 `agent-turn.v2`（`agent-run.v1` 不接受图片）。
- * - 无图片 + Mock：走旧 transport（本地规则，零网络请求）。
- * - 无图片 + HTTP：走 `agent-run.v1`。
+ * - 无图片 + 直连 DeepSeek：走本地直连 transport。
+ * - 无图片 + 本机模型服务：走 `agent-run.v1`。
  */
-export function resolveAgentRequestRoute({ phase = STORE_INFO_PHASE, imageCount = 0, transportMode = 'mock' } = {}) {
+export function resolveAgentRequestRoute({ phase = STORE_INFO_PHASE, imageCount = 0, transportMode = 'direct' } = {}) {
   if (phase !== STORE_INFO_PHASE) return AGENT_ROUTES.OTHER;
   const count = Number(imageCount);
   if (Number.isFinite(count) && count > 0) return AGENT_ROUTES.TURN_V2;
+  if (transportMode === 'direct') return AGENT_ROUTES.DIRECT;
   return transportMode === 'http' ? AGENT_ROUTES.RUN : AGENT_ROUTES.TURN_V1;
 }
 
 export function isAgentRunRoute(route) {
-  return route === AGENT_ROUTES.RUN;
+  return route === AGENT_ROUTES.RUN || route === AGENT_ROUTES.DIRECT;
 }
 
 /** 把服务端 trace 收敛成可展示的最小结构（不含任何参数/结果正文）。 */
@@ -74,7 +78,7 @@ const STOP_REASON_HINTS = Object.freeze({
   final_answer: '本轮已完成整理。',
   empty_reply: '模型没有给出有效回复，草稿按已收集到的资料保留。',
   max_model_calls: '本轮达到模型调用上限，草稿可能还不完整。',
-  max_tool_calls: '本轮达到工具调用上限，草稿可能还不完整。',
+  max_tool_calls: '这一轮处理步骤太多，草稿可能还不完整。',
   loop_detected: '检测到重复调用已提前结束本轮，草稿可能还不完整。',
   time_limit: '本轮达到时间上限，草稿可能还不完整。',
   aborted: '本轮被取消，草稿按已收到的内容保留。',
@@ -87,18 +91,19 @@ const STOP_REASON_HINTS = Object.freeze({
 export function describeRunDegradation({ degraded, stopReason, failedTools = [], toolCallCount = 0 } = {}) {
   const reasons = [];
   if (failedTools.length) {
-    reasons.push(`有 ${failedTools.length} 次工具调用未成功（${failedTools.join('、')}）`);
+    reasons.push(`有 ${failedTools.length} 个步骤没有完成`);
   }
   const stopHint = STOP_REASON_HINTS[stopReason] || '';
   if (stopReason && stopReason !== 'final_answer' && stopHint) reasons.push(stopHint);
   const isDegraded = degraded === true || reasons.length > 0;
+  const cleanReasons = reasons.map((reason) => reason.replace(/[。；\s]+$/, ''));
   return {
     degraded: isDegraded,
     stopReason: stopReason ?? null,
     failedTools,
     toolCallCount,
     message: isDegraded
-      ? `本轮为部分完成：${reasons.join('；')}。可以先检查草稿，继续补充或重试。`
+      ? `这一轮为部分完成：${cleanReasons.join('；')}。可以先检查草稿，继续补充或重试。`
       : '',
   };
 }
@@ -118,6 +123,9 @@ function resolveTransport(transport) {
     return transport;
   }
   const config = getAgentRunConfig();
+  if (config.mode === 'direct') {
+    return createDirectAgentRunTransport();
+  }
   return createAgentRunTransport({
     fetchImpl: resolveFetchImpl(),
     endpoint: config.endpoint,

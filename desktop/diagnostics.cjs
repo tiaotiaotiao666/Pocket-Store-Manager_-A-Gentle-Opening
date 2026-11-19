@@ -99,7 +99,7 @@ function createDiagnostics(options) {
     const json = {
       generatedAt: now().toISOString().replace(/\.\d{3}Z$/, 'Z'),
       app: {
-        name: '智能开店',
+        name: '口袋店长·轻启',
         version: runtime.appVersion || '0.0.0',
         mode: 'desktop',
         platform: runtime.platform || process.platform,

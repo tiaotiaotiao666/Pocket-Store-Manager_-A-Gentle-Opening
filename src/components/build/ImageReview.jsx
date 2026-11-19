@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image as ImageIcon, RefreshCw } from 'lucide-react';
 import MaterialEmptyState from './MaterialEmptyState.jsx';
 
@@ -21,12 +22,14 @@ export default function ImageReview({
   assetId = null,
   busy = false,
   onPick,
+  onDropFile,
   onUse,
   onSkip,
   canGenerate = false,
   generateBlockedReason,
   generator = null,
 }) {
+  const [dragging, setDragging] = useState(false);
   const material = resolveMaterial(image);
   const provider = material?.provider || null;
   const isAi = provider === 'ai-generated';
@@ -38,7 +41,26 @@ export default function ImageReview({
       : (material ? (material.note || provider || '已选素材') : ''));
 
   return (
-    <section className="review-panel">
+    <section
+      className={`review-panel${dragging ? ' is-drop-target' : ''}`}
+      onDragOver={(event) => {
+        if (busy) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+        setDragging(true);
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget)) return;
+        setDragging(false);
+      }}
+      onDrop={(event) => {
+        if (busy) return;
+        event.preventDefault();
+        setDragging(false);
+        const file = event.dataTransfer?.files && event.dataTransfer.files[0];
+        if (file && typeof onDropFile === 'function') onDropFile(file);
+      }}
+    >
       <header className="review-head">
         <span className="review-head-icon">
           <ImageIcon size={16} />

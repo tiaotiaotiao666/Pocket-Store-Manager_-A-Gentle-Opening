@@ -27,7 +27,7 @@ export default function PreviewLaunchButton({
   function openBrowserPreview() {
     setNotice({
       tone: 'warn',
-      text: '微信小程序预览需要在桌面应用里进行：请安装微信开发者工具，用 npm run desktop:dev 启动桌面端后再点此按钮。',
+      text: '预览小程序需要在桌面版里进行：先安装微信开发者工具，再用桌面版打开这个项目后点此按钮。',
     });
   }
 

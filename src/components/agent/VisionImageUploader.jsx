@@ -64,6 +64,7 @@ export default function VisionImageUploader({
   const storeInputRef = useRef(null);
   const [workingKind, setWorkingKind] = useState(null);
   const [localError, setLocalError] = useState(null);
+  const [dragKind, setDragKind] = useState(null);
   const visibleKinds = kinds.filter((kind, index) => KIND_CONFIG[kind] && kinds.indexOf(kind) === index);
 
   const menuImages = Array.isArray(images?.menu) ? images.menu : [];
@@ -133,7 +134,26 @@ export default function VisionImageUploader({
     const status = recognition?.status || 'idle';
 
     return (
-      <section className="agent-image-section" aria-label={config.title}>
+      <section
+        className={`agent-image-section${dragKind === kind ? ' is-drop-target' : ''}`}
+        aria-label={config.title}
+        onDragOver={(event) => {
+          if (sectionDisabled || sectionBusy) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'copy';
+          setDragKind(kind);
+        }}
+        onDragLeave={(event) => {
+          if (event.currentTarget.contains(event.relatedTarget)) return;
+          setDragKind(null);
+        }}
+        onDrop={(event) => {
+          if (sectionDisabled || sectionBusy) return;
+          event.preventDefault();
+          setDragKind(null);
+          handleFiles(kind, event.dataTransfer?.files);
+        }}
+      >
         <header className="agent-image-head">
           <span className="agent-image-title"><Icon size={15} aria-hidden="true" />{config.title}</span>
           <span className="agent-image-count">{list.length}/{limits} 张 · {formatBytes(sumBytes(list))}</span>

@@ -1,0 +1,613 @@
+/**
+ * 右栏「Agent 对话」视图（T3）。
+ *
+ * 只跟随既有 CSS 变量与命名风格；不改动 chat.css 里既有的气泡/过程卡样式，
+ * 过程卡复用 `.chat-process*`，这里只负责侧栏容器、消息日志与错误/重试区。
+ */
+
+.agent-sidebar {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agent-sidebar-head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 2px 0;
+}
+
+.agent-sidebar-head-text {
+  min-width: 0;
+}
+
+.agent-sidebar-eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.agent-sidebar-title {
+  margin: 3px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.agent-sidebar-phase {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.agent-sidebar-jump {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--muted);
+  transition: color 0.18s var(--ease-soft), border-color 0.18s var(--ease-soft), background 0.18s var(--ease-soft);
+}
+
+.agent-sidebar-jump:hover {
+  color: var(--accent);
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
+}
+
+.agent-sidebar-jump:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
+
+/* 当前动作说明：本轮会做什么、不会做什么，文案来自 domain 的阶段路由。 */
+.agent-sidebar-plan {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+}
+
+.agent-sidebar-plan-badge {
+  align-self: flex-start;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.agent-sidebar-plan-notice {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+/* 消息日志：侧栏自己滚动，Composer 永远贴在底部。 */
+.agent-sidebar-log {
+  flex: 1;
+  min-height: 96px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 6px 2px 2px;
+  scroll-behavior: smooth;
+}
+
+.agent-sidebar-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--line);
+  background: var(--bg-elev);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.agent-sidebar-empty p {
+  margin: 0;
+}
+
+.agent-sidebar-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--line-soft);
+  background: var(--bg-sunken);
+  color: var(--muted);
+}
+
+.agent-sidebar-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-xs);
+  animation: fade-in 0.24s var(--ease-soft) both;
+}
+
+.agent-sidebar-msg.is-user {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+}
+
+.agent-sidebar-msg.is-failed {
+  border-color: #e8c4be;
+  background: #fdf4f2;
+}
+
+.agent-sidebar-msg-role {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+
+.agent-sidebar-msg-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.agent-sidebar-msg-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #a8514a;
+}
+
+/* 参考图重构意图：只给摘要 + 跳转，绝不说「侧栏已生成候选」。 */
+.agent-sidebar-candidate {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-xs);
+}
+
+.agent-sidebar-candidate-title {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.agent-sidebar-candidate-summary {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.agent-sidebar-candidate-note {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.agent-sidebar-candidate-note svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.agent-sidebar-candidate-open {
+  align-self: flex-start;
+  padding: 6px 13px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent-ring);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.18s var(--ease-soft), color 0.18s var(--ease-soft);
+}
+
+.agent-sidebar-candidate-open:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.agent-sidebar-candidate-open:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
+
+/* 忙碌态：文案固定为「正在等待模型与工具结果」，UIA 只认这一句。 */
+.agent-sidebar-busy {
+  flex: none;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-ring);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.agent-sidebar-busy-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.agent-sidebar-busy-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: dot-pulse 1.2s var(--ease-soft) infinite;
+}
+
+.agent-sidebar-busy-dots i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.agent-sidebar-busy-dots i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+/* 失败与重试：保留原话与草稿，只补一个「重试上一轮」。 */
+.agent-sidebar-error {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px;
+  border-radius: var(--radius);
+  border: 1px solid #e8c4be;
+  background: #fdf4f2;
+}
+
+.agent-sidebar-error-title {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: #a8514a;
+}
+
+.agent-sidebar-error-message {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.agent-sidebar-error-keep {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.agent-sidebar-retry {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 13px;
+  border-radius: var(--radius-pill);
+  border: 1px solid #e8c4be;
+  background: var(--bg-elev);
+  color: #a8514a;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.18s var(--ease-soft), color 0.18s var(--ease-soft);
+}
+
+.agent-sidebar-retry:hover:not(:disabled) {
+  background: #f8e4e1;
+}
+
+.agent-sidebar-retry:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-sidebar-retry:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
+
+/* 底部 Composer：复用 chat.css 的输入框样式，只收紧侧栏尺寸。 */
+.agent-sidebar-composer {
+  flex: none;
+  padding: 8px 0 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, var(--bg-elev) 42%);
+}
+
+.agent-sidebar-composer .composer {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  gap: 6px;
+}
+
+.agent-sidebar-composer .composer-input {
+  font-size: 13px;
+  max-height: 96px;
+}
+
+.agent-sidebar-composer .composer-send {
+  padding: 7px 11px;
+  font-size: 12.5px;
+}
+
+.agent-sidebar-composer .composer-hint,
+.agent-sidebar-composer .composer-notice {
+  font-size: 11px;
+}
+
+/* 过程卡在侧栏里更紧凑；`.chat-process*` 本体沿用 chat.css。 */
+.agent-sidebar .chat-process {
+  flex: none;
+  padding: 10px 11px;
+  gap: 7px;
+}
+
+.agent-sidebar .chat-process-badge,
+.agent-sidebar .chat-process-step {
+  font-size: 11.5px;
+}
+
+.agent-sidebar .chat-process-meta,
+.agent-sidebar .chat-process-notice,
+.agent-sidebar .chat-process-headline {
+  font-size: 11px;
+}
+
+/* 本轮图片附件：只占侧栏宽度，不抢走消息区的滚动空间。 */
+.agent-chat-attachments {
+  flex: none;
+  margin: 0 0 8px;
+  padding: 9px 10px;
+  border: 1px dashed #d9cdc4;
+  border-radius: 10px;
+  background: #fbf7f3;
+  transition: border-color 0.16s var(--ease-soft), background 0.16s var(--ease-soft);
+}
+
+.agent-chat-attachments.is-dragging {
+  border-color: var(--accent);
+  background: #fff3ee;
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+.agent-chat-attachments-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.agent-chat-attachments-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b544a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.agent-chat-attachments-kinds {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: #f1e7df;
+  gap: 2px;
+}
+
+.agent-chat-attachments-kind {
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: #846a5e;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.agent-chat-attachments-kind.is-active {
+  background: var(--bg-elev);
+  color: #5a3d33;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(90, 61, 51, 0.12);
+}
+
+.agent-chat-attachments-kind:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.agent-chat-attachments-kind-label {
+  color: #846a5e;
+  font-size: 11px;
+}
+
+.agent-chat-attachments-hint {
+  margin: 6px 0 8px;
+  color: #8a7467;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.agent-chat-attachments-list {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-chat-attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--bg-elev);
+  border: 1px solid #eee2da;
+}
+
+.agent-chat-attachment img,
+.agent-chat-attachment-placeholder {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 7px;
+  object-fit: cover;
+  background: #f1e7df;
+}
+
+.agent-chat-attachment-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #a08a7d;
+}
+
+.agent-chat-attachment-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.agent-chat-attachment-name {
+  overflow: hidden;
+  color: #4d3a32;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-chat-attachment-meta {
+  color: #927e71;
+  font-size: 10.5px;
+}
+
+.agent-chat-attachment-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #a08a7d;
+  cursor: pointer;
+}
+
+.agent-chat-attachment-remove:hover:not(:disabled) {
+  background: #f8e4e1;
+  color: #a8514a;
+}
+
+.agent-chat-attachments-input {
+  display: none;
+}
+
+.agent-chat-attachments-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.agent-chat-attachments-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid #e6d8ce;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elev);
+  color: #6b544a;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.agent-chat-attachments-add:hover:not(:disabled) {
+  border-color: #d8c3b6;
+  background: #fff7f1;
+}
+
+.agent-chat-attachments-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-chat-attachments-count {
+  color: #927e71;
+  font-size: 10.5px;
+}
+
+.agent-chat-attachments-spinner {
+  animation: agent-chat-attachments-spin 0.9s linear infinite;
+}
+
+.agent-chat-attachments-error {
+  margin: 7px 0 0;
+  color: #a8514a;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+@keyframes agent-chat-attachments-spin {
+  to { transform: rotate(360deg); }
+}

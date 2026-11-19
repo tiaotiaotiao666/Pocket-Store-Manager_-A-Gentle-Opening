@@ -94,8 +94,8 @@ async function probeBackend(config) {
       return {
         line: backendLine({
           result: DIAGNOSTIC_RESULTS.FAIL,
-          message: '服务在运行但被浏览器跨域策略拦截，请检查 DESKTOP_ORIGIN',
-          action: '把 DESKTOP_ORIGIN 调整为应用来源，或留空以反射来源',
+          message: '本机模型服务拒绝了这个请求，可能是来源配置不对',
+          action: '检查服务的来源配置（DESKTOP_ORIGIN）后重试',
         }),
         json: { baseUrl: base, health: { ok: false, status: 0, failure: 'cors' }, readyz: null },
         reachable: false,
@@ -104,8 +104,8 @@ async function probeBackend(config) {
     return {
       line: backendLine({
         result: DIAGNOSTIC_RESULTS.FAIL,
-        message: '服务未启动，请在工作区根目录运行 npm start（或 npm run server:dev）',
-        action: '启动后端后重新自检',
+        message: '本机模型服务未启动',
+        action: '启动本机服务后重新自检；只用直连 DeepSeek 可以忽略这项',
       }),
       json: { baseUrl: base, health: { ok: false, status: 0, failure: 'network' }, readyz: null },
       reachable: false,
@@ -192,41 +192,44 @@ async function probeBackend(config) {
   };
 }
 
-function agentLine(config, backend) {
-  const transport = config.agentTransport === 'http' ? 'http' : 'mock';
-  if (transport === 'mock') {
+async function agentLine(config, backend) {
+  const channel = config.modelChannel === 'server' ? 'server' : 'deepseek';
+  if (channel === 'deepseek') {
+    let configured = false;
+    try {
+      const bridgeApi = bridge();
+      if (bridgeApi && typeof bridgeApi.modelKeyStatus === 'function') {
+        const result = await bridgeApi.modelKeyStatus();
+        configured = Boolean(result && result.ok === true && result.data && result.data.configured === true);
+      }
+    } catch (error) {
+      configured = false;
+    }
     return createDiagnosticLine({
       id: 'agent',
-      title: '模型通道',
-      result: DIAGNOSTIC_RESULTS.PASS,
-      message: '本地 Mock（未接入真实模型）',
+      title: '模型与 API',
+      result: configured ? DIAGNOSTIC_RESULTS.PASS : DIAGNOSTIC_RESULTS.WARN,
+      message: configured
+        ? `直连 DeepSeek · ${config.modelName || 'deepseek-chat'}（已保存 API Key，未发起真实调用）`
+        : '直连 DeepSeek，但还没有保存 API Key',
+      action: configured ? undefined : '在「模型与 API」里粘贴 API Key 并保存',
     });
   }
 
-  const endpoint = String(config.agentEndpoint || '');
-  if (!/^\/[A-Za-z0-9/_-]*$/.test(endpoint)) {
-    return createDiagnosticLine({
-      id: 'agent',
-      title: '模型通道',
-      result: DIAGNOSTIC_RESULTS.FAIL,
-      message: 'Agent 端点配置不正确（应为 /api/v1/agent/turn）',
-      action: '在设置中修正 Agent 端点',
-    });
-  }
   if (!backend.reachable) {
     return createDiagnosticLine({
       id: 'agent',
-      title: '模型通道',
+      title: '模型与 API',
       result: DIAGNOSTIC_RESULTS.FAIL,
-      message: '后端不可用，Agent 无法工作',
-      action: '先修复后端服务',
+      message: '本机模型服务不可用',
+      action: '先启动本机服务，或改用直连 DeepSeek',
     });
   }
   return createDiagnosticLine({
     id: 'agent',
-    title: '模型通道',
+    title: '模型与 API',
     result: DIAGNOSTIC_RESULTS.PASS,
-    message: '后端可用，Agent 通道已配置（未发起真实调用，不消耗额度）',
+    message: '本机模型服务可用（未发起真实调用，不消耗额度）',
   });
 }
 
@@ -278,7 +281,7 @@ export function createDiagnosticsService() {
     }
 
     const backend = await probeBackend(config || {});
-    const agent = agentLine(config || {}, backend);
+    const agent = await agentLine(config || {}, backend);
 
     const byId = new Map(lines.map((line) => [line.id, createDiagnosticLine(line)]));
     byId.set('backend', backend.line);
@@ -291,9 +294,10 @@ export function createDiagnosticsService() {
       ...json,
       backend: backend.json,
       agent: {
-        transport: config.agentTransport === 'http' ? 'http' : 'mock',
-        endpoint: String(config.agentEndpoint || ''),
-        timeoutMs: Number(config.agentTimeoutMs) || 30000,
+        channel: config.modelChannel === 'server' ? 'server' : 'deepseek',
+        model: String(config.modelName || 'deepseek-chat'),
+        baseUrl: String(config.modelApiBaseUrl || 'https://api.deepseek.com'),
+        timeoutMs: Number(config.modelTimeoutMs) || 60000,
         reachable: backend.reachable,
       },
       checks: ordered.map((line) => ({ id: line.id, result: line.result, message: line.message })),

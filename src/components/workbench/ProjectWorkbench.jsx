@@ -64,7 +64,7 @@ export default function ProjectWorkbench({
     <div className="workbench" role="region" aria-label="项目工作台">
       <header className="workbench-top">
         <div className="workbench-heading">
-          <span className="workbench-eyebrow">智能开店</span>
+          <span className="workbench-eyebrow">口袋店长·轻启</span>
           <h1 id="workbench-title">我的项目</h1>
           <p>每个门店一个项目：资料、图片、会话与导出进度都在本机保存。</p>
         </div>

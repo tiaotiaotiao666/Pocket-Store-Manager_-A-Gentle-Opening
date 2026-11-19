@@ -27,7 +27,7 @@ export default function DiagnosticsList({
       <header className="settings-section-head">
         <div>
           <h2>运行自检</h2>
-          <p>五项检查：运行环境、本地数据目录、模板资源、后端服务、模型通道。不会发起真实模型调用。</p>
+          <p>五项检查：运行环境、本地数据目录、模板资源、后端服务、模型与 API。不会发起真实模型调用。</p>
         </div>
         <div className="diagnostics-actions">
           <button type="button" className="ghost-button diagnostics-action" onClick={onRun} disabled={running}>

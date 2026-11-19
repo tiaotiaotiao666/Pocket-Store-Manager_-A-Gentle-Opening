@@ -28,10 +28,10 @@ export const TOOL_STEP_LABELS = Object.freeze({
  * 只有真实 trace 里出现过的调用才生成步骤，未知工具一律折叠为「辅助步骤」。
  */
 export const FRONTEND_TOOL_STEP_LABELS = Object.freeze({
-  get_frontend_capabilities: '读取前端能力',
+  get_frontend_capabilities: '读取页面能力',
   check_frontend_coverage: '检查能力覆盖',
-  propose_frontend_draft: '生成候选 DSL',
-  repair_frontend_draft: '修复候选 DSL',
+  propose_frontend_draft: '生成候选页面',
+  repair_frontend_draft: '调整候选页面',
 });
 
 const FRONTEND_TOOL_STEP_IDS = Object.freeze({
@@ -43,14 +43,14 @@ const FRONTEND_TOOL_STEP_IDS = Object.freeze({
 
 /** 前端重构进度阶段（来自主进程真实 `frontend:progress`，不是模型自述）。 */
 export const FRONTEND_STAGE_STEP_LABELS = Object.freeze({
-  analyze: '识别截图与能力覆盖',
-  materialize: '写入私有候选工作区',
-  compose: 'Composer P0–P6 校验',
-  'mini-check': '小程序静态校验',
-  consistency: '产物一致性检查',
-  observable: '可观察项对照',
-  verify: '微信真实编译与截图',
-  adopt: '写入采用记录',
+  analyze: '识别截图与页面能力',
+  materialize: '准备候选文件',
+  compose: '检查页面结构',
+  'mini-check': '检查小程序结构',
+  consistency: '核对导出内容',
+  observable: '核对页面细节',
+  verify: '在微信开发者工具里试跑',
+  adopt: '记录采用结果',
   done: '完成',
 });
 
@@ -129,7 +129,7 @@ export function buildProcessSteps({ status = 'idle', trace = null, lastError = n
       id: 'understand',
       label: PROCESS_STEP_LABELS.understand,
       state: 'active',
-      detail: '正在等待模型与本轮工具结果',
+      detail: '正在等待模型返回结果',
     }];
   }
 
@@ -144,12 +144,12 @@ export function buildProcessSteps({ status = 'idle', trace = null, lastError = n
   }
 
   if (!trace) {
-    // 没有 trace 也没有错误：本地规则模式（Mock）或非 run 链路，不编造工具步骤。
+    // 没有 trace 也没有错误：非 run 链路，不编造步骤。
     return [{
       id: 'understand',
       label: PROCESS_STEP_LABELS.understand,
       state: 'done',
-      detail: '本地规则模式，本轮没有模型调用记录',
+      detail: '这一轮没有调用模型',
     }];
   }
 
@@ -161,7 +161,7 @@ export function buildProcessSteps({ status = 'idle', trace = null, lastError = n
     id: 'understand',
     label: PROCESS_STEP_LABELS.understand,
     state: modelCalls > 0 ? 'done' : 'pending',
-    detail: modelCalls > 0 ? `调用模型 ${modelCalls} 次` : '等待模型响应',
+    detail: modelCalls > 1 ? `分 ${modelCalls} 步理解` : '',
   });
 
   // 只展示真实发生过的工具步骤：trace 里没有的调用不补假步骤。
@@ -197,7 +197,7 @@ export function buildProcessSteps({ status = 'idle', trace = null, lastError = n
     id: 'validate',
     label: PROCESS_STEP_LABELS.validate,
     state: finishedNormally ? 'done' : 'partial',
-    detail: finishedNormally ? '' : '本轮没有正常收尾，校验结果可能不完整',
+    detail: finishedNormally ? '' : '这一轮没有正常收尾，结果可能不完整',
   });
 
   return steps;
@@ -331,20 +331,20 @@ export function buildProcessView({
   } else if (degraded) {
     tone = 'partial';
     const parts = [];
-    if (failedCount > 0) parts.push(`${failedCount} 次工具调用未成功`);
+    if (failedCount > 0) parts.push(`${failedCount} 个步骤没有完成`);
     if (stopReason && stopReason !== 'final_answer') parts.push(stopReasonHint(stopReason));
-    headline = parts.length ? parts.join('；') : '本轮只完成了部分步骤。';
-    notice = '草稿按已收到的资料更新，可能还不完整；这代表本轮没有全部成功。';
+    headline = parts.length ? parts.join('；') : '这一轮只完成了部分步骤。';
+    notice = '草稿按已收到的资料更新，可能还不完整。';
   } else if (trace) {
     tone = 'done';
     headline = calls.length
-      ? `本轮共 ${calls.length} 次工具调用，全部成功。`
-      : '本轮只完成需求理解，没有调用工具。';
+      ? `这一轮完成了 ${calls.length} 项处理。`
+      : '这一轮只理解了需求，没有改动资料。';
     notice = '';
   } else if (status && status !== 'idle') {
-    // 本地规则模式（Mock）等没有 trace 的成功轮次：不假装有工具过程。
+    // 没有 trace 的成功轮次：不假装有工具过程。
     tone = 'done';
-    headline = '本地规则模式：本轮没有真实模型运行记录。';
+    headline = '这一轮没有调用模型。';
     notice = '';
   }
 
@@ -500,8 +500,8 @@ export function buildFrontendProcessView(options = {}) {
     headline = cleanProcessText(errorText);
   } else if (calls.length > 0) {
     headline = failedCount > 0
-      ? `本轮共 ${calls.length} 次真实工具调用，${failedCount} 次未成功。`
-      : `本轮共 ${calls.length} 次真实工具调用，全部成功。`;
+      ? `这一轮完成了 ${calls.length} 项处理，其中 ${failedCount} 项没有成功。`
+      : `这一轮完成了 ${calls.length} 项处理。`;
   } else if (progress && FRONTEND_STAGE_STEP_LABELS[progress.stage]) {
     headline = `当前阶段：${FRONTEND_STAGE_STEP_LABELS[progress.stage]}`;
   } else if (status !== 'idle') {
@@ -517,10 +517,7 @@ export function buildFrontendProcessView(options = {}) {
 
   const meta = { runId, attempt, status, durationMs, durationLabel };
   const metaLines = [];
-  if (runId) metaLines.push(`运行 ${runId}`);
-  if (attempt) metaLines.push(`第 ${attempt} 次尝试`);
-  metaLines.push(`状态：${FRONTEND_STATUS_LABELS[status]}`);
-  if (durationLabel) metaLines.push(`耗时 ${durationLabel}`);
+  if (durationLabel) metaLines.push(`用时 ${durationLabel}`);
 
   return { tone, title, headline, notice, steps, meta, metaLines };
 }
@@ -529,7 +526,7 @@ function stopReasonHint(stopReason) {
   const hints = {
     empty_reply: '模型没有给出有效回复',
     max_model_calls: '达到模型调用上限',
-    max_tool_calls: '达到工具调用上限',
+    max_tool_calls: '处理步骤太多，已提前结束',
     loop_detected: '检测到重复调用已提前结束',
     time_limit: '达到本轮时间上限',
     aborted: '本轮被取消',

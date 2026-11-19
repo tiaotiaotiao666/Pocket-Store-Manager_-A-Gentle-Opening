@@ -157,3 +157,9 @@
     padding: 14px;
   }
 }
+/* 门店环境图拖拽落图反馈。 */
+.store-images-block.is-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: 3px;
+  background: #fff7f1;
+}

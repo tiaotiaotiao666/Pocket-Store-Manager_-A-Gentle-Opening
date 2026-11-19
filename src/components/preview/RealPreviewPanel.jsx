@@ -28,7 +28,7 @@ const MANUAL_STEPS = [
   {
     key: 'appid',
     title: 'AppID / 代理卡住时改直连',
-    body: '若工具内编译或 CLI 自动化因 AppID 校验、网络代理卡住：到「设置 → 代理设置」改为直连（proxyType 不使用 SYSTEM），或手动登录 / 手动填入 AppID 后重试。',
+    body: '若开发者工具编译或自动打开卡住：到「设置 → 代理设置」改为直连（不走系统代理），或手动登录 / 手动填入 AppID 后重试。',
   },
   {
     key: 'capture',

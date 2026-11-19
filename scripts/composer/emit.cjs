@@ -308,7 +308,7 @@ function buildProjectConfig(graph, options) {
   }
   config.appid = 'touristappid';
   config.projectname = sanitizeProjectName(options.projectName || graph.plan.planId);
-  config.description = '由智能开店生成的餐饮扫码点餐小程序（演示付款）';
+  config.description = '由「口袋店长·轻启」生成的餐饮扫码点餐小程序（演示付款）';
   return json(config);
 }
 

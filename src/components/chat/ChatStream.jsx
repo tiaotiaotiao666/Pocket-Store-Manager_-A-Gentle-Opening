@@ -36,7 +36,7 @@ function ProcessSummary({ process }) {
         {process.headline ? <span className="chat-process-headline">{process.headline}</span> : null}
       </header>
       {metaLines.length ? (
-        <p className="chat-process-meta" aria-label="运行标识与耗时">
+        <p className="chat-process-meta" aria-label="用时">
           {metaLines.join(' · ')}
         </p>
       ) : null}

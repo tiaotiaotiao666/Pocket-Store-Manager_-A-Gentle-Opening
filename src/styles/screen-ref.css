@@ -428,3 +428,10 @@
   font-size: 12.5px;
   line-height: 1.6;
 }
+
+/* 参考截图上传区拖拽反馈。 */
+.screen-ref-upload.is-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: 3px;
+  background: #fff7f1;
+}

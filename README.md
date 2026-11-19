@@ -1,9 +1,10 @@
-# 智能开店 · 独立小程序生成器（smart-store-generator）
+# 口袋店长·轻启（smart-store-generator）
 
 用自然语言开一家餐饮小店：桌面客户端里和 AI 聊几句，填出门店资料、挑一套页面骨架，最后导出一个**可以直接交给微信开发者工具**的小程序工程。全程本地落盘，不上传、不发布、不产生真实交易。
 
 - 桌面端：Electron 33 + React 18 + Vite 6
-- 服务端：NestJS 11 + Prisma + MySQL（`server/`）
+- 模型通道：**设置 → 模型与 API** 里填自己的 DeepSeek API Key 即可直连（Key 由主进程加密保存，不进页面/日志/导出工程）；图片识别、模板修改与参考截图仍走本机模型服务
+- 服务端（可选）：NestJS 11 + Prisma + MySQL（`server/`）
 - 小程序真源：`templates/base/ordering-base/1.0.0/src`（`miniprogram/` 只是只读镜像，不是交付物）
 
 文档入口：[`docs/项目概览.md`](docs/项目概览.md)、索引 [`docs/README.md`](docs/README.md)、交接 [`docs/handoff/README.md`](docs/handoff/README.md)、P5 交付（演示脚本 / 答辩 / 证据索引）见 [`docs/交付/`](docs/交付/)。
@@ -33,6 +34,19 @@ cd ..
 | `ALLOW_DEMO_LOGIN` / `ALLOW_DEMO_PAYMENT` | 演示登录与演示支付（模拟，不真实收款） | 否 |
 
 ## 2. 启动（可复现的一键方式）
+
+只跑桌面端也可以：`npm run desktop:dev`（普通终端）或 `npm run agent:app`（agent shell）。
+直连 DeepSeek 的「开店资料」对话不依赖本机服务；图片识别、模板修改、参考截图仍需要 `server/`。
+
+### 模型与 API（在应用里配，不用改 .env）
+
+1. 打开「设置与自检 → 模型与 API」。
+2. 使用方式选「直连 DeepSeek」，粘贴自己的 API Key（DeepSeek 开放平台创建），点「保存密钥」。
+3. 可点「测试连接」验证地址、模型与 Key 是否可用。
+
+- 只支持 DeepSeek 官方 API（`/chat/completions`）；其他厂商协议不同，暂未接入。
+- Key 由 Electron 主进程用系统加密能力保存，页面只看到「已保存」；日志、诊断快照与导出工程都不包含 Key。
+- 需要图片识别/模板修改时，把使用方式切回「本机服务」并按下面的方式启动后端。
 
 ```powershell
 npm start                                   # MySQL → 后端 → 桌面端

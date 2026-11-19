@@ -195,6 +195,29 @@ test('未知顶层字段保存时归入 unmappedFields', async () => {
   assert.deepStrictEqual(loaded.doc.unmappedFields, { futureThing: { keep: true } });
 });
 
+test('agentChat 是已知顶层字段：消息不会被搬进 unmappedFields，旧残留也不覆盖新消息', async () => {
+  const { store } = makeStore();
+  const { created } = await createAndSave(store);
+  const doc = (await store.loadProject(created.projectId)).doc;
+  const messages = [{
+    id: 'chat-user-1',
+    role: 'user',
+    text: '右侧会话消息应该留在项目文件里',
+    status: 'done',
+    actionKind: 'store-info',
+    context: { phase: 'store-info', sessionId: 'session-main' },
+  }];
+  await store.saveProject(created.projectId, {
+    ...doc,
+    agentChat: { messages },
+    // 模拟旧版本把 agentChat 误存进 unmappedFields 的残留：不得覆盖本轮的新消息。
+    unmappedFields: { agentChat: { messages: [] } },
+  });
+  const loaded = await store.loadProject(created.projectId);
+  assert.deepStrictEqual(loaded.doc.agentChat, { messages });
+  assert.strictEqual(loaded.doc.unmappedFields.agentChat, undefined, '已知字段不得留在 unmappedFields');
+});
+
 test('非法 projectId 一律拒绝', async () => {
   const { store } = makeStore();
   for (const id of ['../../etc/passwd', 'p_../../x', 'p_short', 'x_12345678']) {
@@ -230,6 +253,44 @@ test('图片两段式：pick 只返回元数据，attach 落盘去重', async ()
 
   const asset = await assets.readAsset(created.projectId, attached.assets[0].assetId);
   assert.ok(asset.dataUrl.startsWith('data:image/png;base64,'));
+});
+
+test('拖拽落图：base64 直传按摘要去重，类型与内容必须一致', async () => {
+  const { userDataDir } = makeStore();
+  const store = createProjectStore({ userDataDir });
+  const assets = createAssetStore({ userDataDir });
+  const { created } = await createAndSave(store);
+  const file = path.join(makeTempDir('p0-drop-img-'), '拖入.png');
+  writePng(file);
+  const dataBase64 = fs.readFileSync(file).toString('base64');
+
+  const first = await assets.attachImageData(created.projectId, [{
+    name: '拖入.png',
+    mime: 'image/png',
+    dataBase64,
+  }]);
+  assert.strictEqual(first.assets.length, 1);
+  assert.match(first.assets[0].assetId, /^a_[0-9a-f]{16}$/);
+  assert.strictEqual(first.assets[0].originalName, '拖入.png');
+  assert.ok(fs.existsSync(path.join(userDataDir, 'projects', created.projectId, 'assets', 'images', first.assets[0].fileName)));
+
+  const second = await assets.attachImageData(created.projectId, [{
+    name: '同名副本.png',
+    mime: 'image/png',
+    dataBase64,
+  }]);
+  assert.strictEqual(second.assets[0].assetId, first.assets[0].assetId);
+  const files = fs.readdirSync(path.join(userDataDir, 'projects', created.projectId, 'assets', 'images'));
+  assert.strictEqual(files.length, 1, '同一内容不应重复落盘');
+
+  await assert.rejects(
+    () => assets.attachImageData(created.projectId, [{ name: 'fake.png', mime: 'image/png', dataBase64: Buffer.from('hello').toString('base64') }]),
+    (error) => error.code === 'ASSET_UNSUPPORTED_TYPE',
+  );
+  await assert.rejects(
+    () => assets.attachImageData(created.projectId, [{ name: 'mismatch.png', mime: 'image/jpeg', dataBase64 }]),
+    (error) => error.code === 'ASSET_TYPE_MISMATCH',
+  );
 });
 
 test('未 pick 的 token 与过期 token 被拒绝', async () => {
@@ -289,7 +350,8 @@ test('设置：默认值、键白名单、敏感键拒绝', async () => {
     (error) => error.code === 'SETTINGS_INVALID',
   );
 
-  const saved = await settings.saveConfig({ ...loaded.config, agentTransport: 'http', extraSetting: 1 });
+  // 通道由 modelChannel 决定，agentTransport 是派生值（server → http）。
+  const saved = await settings.saveConfig({ ...loaded.config, modelChannel: 'server', extraSetting: 1 });
   assert.strictEqual(saved.config.agentTransport, 'http');
   assert.deepStrictEqual(saved.config.unmappedFields, { extraSetting: 1 });
 

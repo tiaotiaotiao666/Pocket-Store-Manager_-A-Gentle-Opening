@@ -90,7 +90,7 @@ export default function ImportDiffCard({
         </div>
       </header>
 
-      {error && error.code ? <span className="import-error-code">错误码：{error.code}</span> : null}
+      {error && error.code ? <span className="import-error-code">{error.message || '操作没有完成，请重试。'}</span> : null}
 
       {status === 'idle' || status === 'failed' ? (
         <div className="deploy-actions">

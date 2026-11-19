@@ -2,9 +2,6 @@ import { Check, Copy, FolderOpen } from 'lucide-react';
 
 export default function ExportResultCard({
   outputPath,
-  lockDigest,
-  recipeId,
-  recipeVersion,
   previewOnly = [],
   versionGaps = [],
   onOpenPath,
@@ -21,14 +18,6 @@ export default function ExportResultCard({
       </header>
 
       <dl className="deploy-summary">
-        <div className="deploy-summary-row">
-          <dt>Recipe</dt>
-          <dd>{recipeId ? `${recipeId}@${recipeVersion || '—'}` : '—'}</dd>
-        </div>
-        <div className="deploy-summary-row">
-          <dt>Lock 摘要</dt>
-          <dd className="deploy-path">{lockDigest || '—'}</dd>
-        </div>
         <div className="deploy-summary-row">
           <dt>工程目录</dt>
           <dd className="deploy-path">{outputPath || '—'}</dd>
@@ -55,8 +44,8 @@ export default function ExportResultCard({
 
       {versionGaps.length > 0 ? (
         <p className="deploy-limits">
-          <strong>版本缺口：</strong>
-          {versionGaps.map((gap) => (typeof gap === 'string' ? gap : `${gap.id} ${gap.current} → ${gap.available}`)).join('；')}
+          <strong>有可用更新：</strong>
+          使用的模板或组件出了新版本，重新生成一次就会用上。
         </p>
       ) : null}
     </section>

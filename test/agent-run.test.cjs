@@ -448,7 +448,8 @@ test('W2-6 降级（部分完成）：草稿可用、状态由本地校验决定
 
   assert.equal(result.degraded, true, '存在失败工具调用必须标记降级');
   assert.match(result.degradation.message, /部分完成/);
-  assert.match(result.degradation.message, /update_store_draft/);
+  assert.match(result.degradation.message, /1 个步骤没有完成/);
+  assert.equal(result.degradation.message.includes('update_store_draft'), false, '降级文案不暴露内部工具名');
   assert.equal(result.stopReason, 'time_limit');
   assert.deepEqual(result.degradation.failedTools, ['update_store_draft']);
   // 本地校验通过 → reviewing（不盲信服务端给的 collecting）
@@ -468,7 +469,7 @@ test('W2-6 降级（部分完成）：草稿可用、状态由本地校验决定
   const limitService = runService.createAgentRunService({ transport: runServiceWith(limitResult) });
   const limitApplied = await limitService.requestAgentRun({ utterance: '继续', draft: localDraft() });
   assert.equal(limitApplied.degraded, true);
-  assert.match(limitApplied.degradation.message, /工具调用上限/);
+  assert.match(limitApplied.degradation.message, /处理步骤太多/);
 
   // 正常响应：不误报降级
   const okService = runService.createAgentRunService({ transport: runServiceWith(transportResult()) });

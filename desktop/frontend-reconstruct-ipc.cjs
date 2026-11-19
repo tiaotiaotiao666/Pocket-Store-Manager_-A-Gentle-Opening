@@ -55,6 +55,20 @@ const MAX_ISSUES = 8;
 const MAX_SCREENSHOTS = 24;
 const MAX_MESSAGE_CHARS = 240;
 const MAX_ACTIVE_RUNS = 2;
+// 识别是「视觉模型 → 工具 → 再出结果」的多轮链路，单次视觉调用实测 3–23 秒，
+// 不能再和对话共用 agentTimeoutMs（默认 30 秒，且可被用户调到 12 秒）。
+// 上限对齐服务端 runAgent 的 maxWallClockMs（contracts/frontend-reconstruct.v1.json）。
+const ANALYZE_MIN_TIMEOUT_MS = 15 * 1000;
+const ANALYZE_MAX_TIMEOUT_MS = 120 * 1000;
+const ANALYZE_DEFAULT_TIMEOUT_MS = ANALYZE_MAX_TIMEOUT_MS;
+// 只有「识别链路自身失败」才落盘；参数/图片/会话问题不制造运行记录。
+const ANALYZE_FAILURE_CODES = Object.freeze([
+  'FRONTEND_ANALYZE_TIMEOUT',
+  'FRONTEND_ANALYZE_FAILED',
+  'FRONTEND_ANALYZE_UNAVAILABLE',
+  'FRONTEND_ANALYZE_AUTH_REQUIRED',
+  'FRONTEND_ANALYZE_RATE_LIMITED',
+]);
 // 候选产物的文件数/单文件/总体积上限（防御性边界，正常渲染远小于此）。
 const MAX_CANDIDATE_FILES = 48;
 const MAX_CANDIDATE_FILE_BYTES = 128 * 1024;
@@ -603,6 +617,61 @@ function recordAnalyzeConsent(state, projectId, runId, record) {
   }
 }
 
+/**
+ * 识别超时：优先读独立的 analyzeTimeoutMs，缺省时至少给到 ANALYZE_DEFAULT_TIMEOUT_MS。
+ *
+ * 不再直接复用 agentTimeoutMs 的原因是它同时服务于对话/模板修改，
+ * 用户把它调到 12 秒后会把「需要 30–60 秒」的视觉链路提前掐断。
+ */
+function resolveAnalyzeTimeoutMs(config) {
+  const explicit = Number(config && config.analyzeTimeoutMs);
+  if (Number.isInteger(explicit) && explicit > 0) {
+    return Math.min(ANALYZE_MAX_TIMEOUT_MS, Math.max(ANALYZE_MIN_TIMEOUT_MS, explicit));
+  }
+  const chat = Number(config && config.agentTimeoutMs);
+  const chatTimeout = Number.isInteger(chat) && chat > 0 ? chat : 0;
+  return Math.min(ANALYZE_MAX_TIMEOUT_MS, Math.max(chatTimeout, ANALYZE_DEFAULT_TIMEOUT_MS));
+}
+
+/**
+ * 识别失败后把结论写进 run.json（不含图片、base64、绝对路径与上游正文）。
+ *
+ * 只 append `lastAnalyze`，不登记 attempt，因此不会放宽任何写操作鉴权；
+ * 目的是让「为什么这次没有候选」在本地可复盘，而不是只能翻后端日志。
+ */
+function recordAnalyzeFailure(state, payload, result) {
+  if (!result || result.ok === true) return;
+  if (!ANALYZE_FAILURE_CODES.includes(result.code)) return;
+  const projectId = payload && typeof payload.projectId === 'string' && PROJECT_ID_PATTERN.test(payload.projectId)
+    ? payload.projectId
+    : null;
+  const runId = payload && typeof payload.runId === 'string' && RUN_ID_PATTERN.test(payload.runId)
+    ? payload.runId
+    : null;
+  if (!projectId || !runId) return;
+  try {
+    const created = state.workspace.createWorkspace({ userDataDir: state.userDataDir, projectId, runId });
+    if (!created || created.ok !== true) return;
+    const run = state.workspace.readRun(created) || {
+      schemaVersion: RUN_SCHEMA_VERSION,
+      projectId,
+      runId,
+      createdAt: new Date(Number(state.now())).toISOString(),
+      attempts: [],
+    };
+    if (!Array.isArray(run.attempts)) run.attempts = [];
+    run.lastAnalyze = {
+      ok: false,
+      code: bounded(result.code, 60),
+      message: bounded(result.message, MAX_MESSAGE_CHARS),
+      at: new Date(Number(state.now())).toISOString(),
+    };
+    state.workspace.writeJsonAtomic(created.runFile, run);
+  } catch (error) {
+    /* 复盘记录写失败不影响本次返回 */
+  }
+}
+
 function buildAnalyzeBody(payload) {
   const utterance = typeof payload.utterance === 'string' ? payload.utterance : '';
   if (utterance.length > MAX_UTTERANCE_CHARS) {
@@ -695,7 +764,7 @@ function createFrontendReconstructIpc(options) {
     getActive: () => ({ projects: [...state.activeByProject.keys()], runs: [...state.activeByRun.keys()] }),
   };
 
-  async function analyze(event, payload) {
+  async function analyzeInner(event, payload) {
     const unknown = checkUnknownKeys(payload, ALLOWED_KEYS['frontend:analyze']);
     if (unknown.length) return fail(CODES.PAYLOAD_INVALID, '不认识的参数：' + unknown.join(','));
     const runId = payload && payload.runId;
@@ -729,8 +798,7 @@ function createFrontendReconstructIpc(options) {
         ? config.apiBaseUrl.replace(/\/+$/, '')
         : 'http://127.0.0.1:3000/api/v1';
       const url = baseUrl + '/agent/frontend-reconstruct';
-      const configuredTimeout = Number.isFinite(config.agentTimeoutMs) ? config.agentTimeoutMs : 60000;
-      const timeoutMs = Math.max(5000, Math.min(configuredTimeout, 120000));
+      const timeoutMs = resolveAnalyzeTimeoutMs(config);
 
       // B5：先校验本次发送确认（图 + 接收方 + 时间窗），不合格就直接返回，不碰网络。
       const nowMs = Number(state.now());
@@ -820,7 +888,7 @@ function createFrontendReconstructIpc(options) {
       } catch (error) {
         if (session.signal.cancelled) return fail(CODES.CANCELLED, '识别已取消');
         if (error && (error.name === 'AbortError' || error.code === 'ABORT_ERR')) {
-          return fail(CODES.ANALYZE_TIMEOUT, '识别超时（' + timeoutMs + 'ms），可以稍后重试');
+          return fail(CODES.ANALYZE_TIMEOUT, '识别超时（已等待 ' + Math.round(timeoutMs / 1000) + ' 秒），视觉识别通常需要 30–60 秒，可以稍后重试');
         }
         return fail(CODES.ANALYZE_FAILED, '没能连上识别服务，检查后端是否已启动后重试');
       } finally {
@@ -873,6 +941,16 @@ function createFrontendReconstructIpc(options) {
     } finally {
       releaseSlot(state, session);
     }
+  }
+
+  /**
+   * 识别入口：失败时补一条可复盘的 `run.json.lastAnalyze`，但不改变返回体。
+   * 失败结论只写 code/message/时间，不含图片、base64、绝对路径与上游正文。
+   */
+  async function analyze(event, payload) {
+    const result = await analyzeInner(event, payload);
+    recordAnalyzeFailure(state, payload, result);
+    return result;
   }
 
   function validateAttemptPayload(payload, allowedChannel) {
@@ -1329,6 +1407,9 @@ function registerFrontendReconstructIpc(ipcMain, options) {
 module.exports = {
   createFrontendReconstructIpc,
   registerFrontendReconstructIpc,
+  resolveAnalyzeTimeoutMs,
+  ANALYZE_MIN_TIMEOUT_MS,
+  ANALYZE_MAX_TIMEOUT_MS,
   CODES,
   RUN_ID_PATTERN,
   PROJECT_ID_PATTERN,

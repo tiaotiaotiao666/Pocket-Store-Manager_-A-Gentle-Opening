@@ -19,15 +19,15 @@ const STAGE_NOTICES = Object.freeze({
  * 前缀，或 `meta.frontendStage=<stage>`，避免与既有交接阶段混淆。
  */
 const FRONTEND_STAGE_NOTICES = Object.freeze({
-  analyze: { label: '识别截图与能力覆盖', hint: '正在读取参考截图；识别完成前不会写候选文件。' },
-  materialize: { label: '写入私有候选工作区', hint: '候选只会写进应用私有 attempt 目录。' },
-  compose: { label: 'Composer 校验', hint: '正在用确定性 Composer 与静态门禁校验候选。' },
-  'mini-check': { label: '小程序静态校验', hint: '正在检查页面、组件与镜像结构。' },
-  consistency: { label: '产物一致性检查', hint: '正在核对候选产物与 Lock/报告是否一致。' },
-  observable: { label: '可观察项对照', hint: '只对照分区顺序、主题、组件、按钮与插槽锚点。' },
-  verify: { label: '微信真实编译与截图', hint: '微信验证未完成前，候选不能被当作已验收。' },
-  adopt: { label: '写入采用记录', hint: '只有通过门禁并确认后才写入采用记录。' },
-  done: { label: '完成', hint: '本轮前端重构任务已结束。' },
+  analyze: { label: '识别截图与页面能力', hint: '正在读取参考截图；识别完成前不会写候选文件。' },
+  materialize: { label: '准备候选文件', hint: '候选只会写进应用自己的目录。' },
+  compose: { label: '检查页面结构', hint: '正在按固定规则检查候选页面能否正常生成。' },
+  'mini-check': { label: '检查小程序结构', hint: '正在检查页面、组件与结构是否完整。' },
+  consistency: { label: '核对导出内容', hint: '正在核对候选页面与最终导出是否一致。' },
+  observable: { label: '核对页面细节', hint: '只对照分区顺序、配色、组件、按钮与位置。' },
+  verify: { label: '在微信开发者工具里试跑', hint: '微信里没验证通过前，候选不能当作已验收。' },
+  adopt: { label: '记录采用结果', hint: '只有检查通过并确认后才会采用。' },
+  done: { label: '完成', hint: '本轮页面生成已结束。' },
 });
 
 const FALLBACK_NOTICE = Object.freeze({ label: '进行中', hint: '请按提示继续。' });

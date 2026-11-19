@@ -3,11 +3,8 @@ import { AlertTriangle, CheckCircle2, ChevronDown, Info, RotateCw, ShieldCheck, 
 /**
  * 导出前体检面板。
  *
- * B4 规则 7、8 的界面约定：
- * - 默认只讲人话：一句结论 + 一句「会发生什么」+ 一个可执行动作；
- * - `ruleId`、`fieldPath`、Plan 摘要等技术字段一律收进底部「技术详情」；
- * - 缺 AppID、基础能力说明这类常规信息只做披露，不再要求用户逐条点「我已了解」；
- *   只有「你选了但这次真的不会交付」的能力保留一次明确的后果确认。
+ * 商店主看到的只有人话：一句结论 + 一句「会发生什么」+ 一个可执行动作；
+ * 规则编号、字段路径、摘要哈希这类内部标识一律不出现在界面上（只在诊断快照里留档）。
  */
 
 const TONE = {
@@ -58,41 +55,12 @@ function RuleRow({ rule, acknowledged, onToggleAck, onGoto }) {
   );
 }
 
-function TechnicalDetails({ errors, warns, infos, planDigest, signature }) {
-  const rows = [...errors, ...warns, ...infos];
-  if (rows.length === 0 && !planDigest && !signature) return null;
-  // 与面板上的分组保持一致：error 阻断、需要确认的是 warn、其余都只是披露。
-  const levelLabel = (rule) => {
-    if (rule.level === 'error') return '阻断';
-    if (rule.level === 'warn' && rule.requiresAck !== false) return '需确认';
-    return '披露';
-  };
-  return (
-    <details className="preflight-tech">
-      <summary>技术详情</summary>
-      <div className="preflight-tech-list">
-        {rows.map((rule) => (
-          <div key={`tech-${rule.level}-${rule.ruleId}-${rule.fieldPath || ''}`}>
-            <code>{rule.ruleId}</code>
-            {rule.fieldPath ? <> · <code>{rule.fieldPath}</code></> : null}
-            <span> · {levelLabel(rule)}</span>
-          </div>
-        ))}
-        {planDigest ? <div><code>Plan 摘要</code> <code>{String(planDigest)}</code></div> : null}
-        {signature ? <div><code>导出签名</code> <code>{String(signature)}</code></div> : null}
-      </div>
-    </details>
-  );
-}
-
 export default function PreflightPanel({
   status = 'idle',
   errors = [],
   warns = [],
   infos = [],
   acknowledged = [],
-  planDigest = null,
-  signature = null,
   checkedAt = null,
   canExport = null,
   stale = false,
@@ -219,8 +187,6 @@ export default function PreflightPanel({
           </ul>
         </details>
       ) : null}
-
-      <TechnicalDetails errors={errors} warns={warns} infos={infos} planDigest={planDigest} signature={signature} />
 
       {checkedAt || (canExport && !canExport.can) ? (
         <footer className="preflight-foot">

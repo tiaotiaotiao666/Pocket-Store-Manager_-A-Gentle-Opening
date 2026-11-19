@@ -2,7 +2,7 @@
   "name": "smart-store-generator",
   "version": "0.2.0",
   "private": true,
-  "description": "Windows-first guided generator for individual restaurant WeChat mini-program projects",
+  "description": "口袋店长·轻启：会说话的店长，帮你把餐饮小程序开起来（Windows 桌面版）",
   "main": "desktop/main.cjs",
   "scripts": {
     "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-all.ps1",
@@ -63,7 +63,7 @@
   },
   "build": {
     "appId": "cn.smartstore.generator",
-    "productName": "智能开店",
+    "productName": "口袋店长·轻启",
     "directories": {
       "output": "release"
     },

@@ -84,25 +84,6 @@ export default function ExportReviewCard({
       {disclaimers.length > 0 ? (
         <p className="export-review-scope">{disclaimers.join('；')}</p>
       ) : null}
-
-      {review.ok ? (
-        <details className="export-review-tech">
-          <summary>技术详情</summary>
-          <dl className="export-review-list is-compact">
-            <div className="export-review-row"><dt>Plan</dt><dd>{technical.planId || '—'}@{technical.planVersion || '—'}</dd></div>
-            <div className="export-review-row"><dt>Base 模板</dt><dd>{technical.baseTemplate || '—'}</dd></div>
-            <div className="export-review-row"><dt>注册表版本</dt><dd>{technical.registryVersion || '—'}</dd></div>
-            <div className="export-review-row"><dt>候选前端</dt><dd>{technical.frontendPack || '未使用'}</dd></div>
-            <div className="export-review-row"><dt>页面 / 能力</dt><dd>{technical.pageCount || 0} 个页面 / {Array.isArray(technical.featureIds) ? technical.featureIds.length : 0} 项能力</dd></div>
-            {technical.recipeFallback ? (
-              <div className="export-review-row">
-                <dt>recipeFallback</dt>
-                <dd>{JSON.stringify(technical.recipeFallback)}</dd>
-              </div>
-            ) : null}
-          </dl>
-        </details>
-      ) : null}
     </section>
   );
 }

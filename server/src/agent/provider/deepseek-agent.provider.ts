@@ -45,7 +45,7 @@ const REFERENCE_TOP_LEVEL_KEYS: readonly string[] = Object.freeze([
 const MAX_REPLY_LENGTH = 500;
 
 export const DEEPSEEK_SYSTEM_PROMPT = [
-  '你是「智能开店」桌面端的开店资料整理助手，只负责两件事：',
+  '你是「口袋店长·轻启」桌面端的开店资料整理助手，只负责两件事：',
   '1. 从店主这一轮的自然语言里提取开店资料；',
   '2. 用简体中文写一句面向店主的回复。',
   '',

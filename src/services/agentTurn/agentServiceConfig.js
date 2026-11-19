@@ -1,12 +1,13 @@
 /**
  * Agent 传输配置。
  *
- * 支持两种 transport：
- * - mock：本地规则解析，零网络请求，桌面端默认值（没有后端时页面仍可启动）。
- * - http：POST /api/v1/agent/turn → NestJS → DeepSeek。
+ * 支持三种 transport：
+ * - direct：直连 DeepSeek 官方 API（用户在设置里填自己的 Key，Key 只在主进程加密保存）。
+ * - http：POST 本机部署的模型服务（/api/v1/agent/*）。
+ * - mock：本地规则解析，仅用于测试与离线演示；正式界面不再提供该选项。
  *
  * 环境变量（只读取 VITE_ 前缀，绝不读取或转发 DEEPSEEK_API_KEY）：
- * - VITE_AGENT_TRANSPORT=mock|http
+ * - VITE_AGENT_TRANSPORT=direct|http|mock
  * - VITE_AGENT_ENDPOINT=/api/v1/agent/turn
  * - VITE_AGENT_TIMEOUT_MS=12000（mock）/ 30000（http）
  */
@@ -25,8 +26,17 @@ const DEFAULT_CONTRACT_VERSION = 'agent-turn.v1';
 const DEFAULT_TEMPLATE_REVISE_ENDPOINT = '/api/v1/agent/template-revise';
 export const TEMPLATE_REVISE_CONTRACT_VERSION = 'agent-template-revise.v1';
 
-const MOCK_LABEL = '本地 Mock（未接入真实模型）';
-const HTTP_LABEL = 'DeepSeek 后端（真实模型）';
+const TRANSPORT_LABELS = Object.freeze({
+  direct: 'DeepSeek 直连',
+  http: '本机模型服务',
+  mock: '本地演示模式',
+});
+
+function transportLabel(mode, override) {
+  const custom = typeof override === 'string' ? override.trim() : '';
+  if (custom) return custom;
+  return TRANSPORT_LABELS[mode] || TRANSPORT_LABELS.mock;
+}
 
 function readViteEnv() {
   try {
@@ -62,7 +72,7 @@ export function resolveAgentTransportConfig(overrides = {}) {
     readProcessEnv('VITE_AGENT_TRANSPORT'),
     '',
   )).trim().toLowerCase();
-  const mode = rawMode === 'http' ? 'http' : 'mock';
+  const mode = rawMode === 'http' ? 'http' : (rawMode === 'direct' ? 'direct' : 'mock');
 
   const rawEndpoint = String(firstDefined(
     overrides.endpoint,
@@ -80,7 +90,7 @@ export function resolveAgentTransportConfig(overrides = {}) {
   )).trim();
   const baseUrl = rawBaseUrl || DEFAULT_API_BASE_URL;
 
-  const fallbackTimeout = mode === 'http' ? DEFAULT_HTTP_TIMEOUT_MS : DEFAULT_MOCK_TIMEOUT_MS;
+  const fallbackTimeout = mode === 'http' || mode === 'direct' ? DEFAULT_HTTP_TIMEOUT_MS : DEFAULT_MOCK_TIMEOUT_MS;
   const rawTimeout = Number(firstDefined(
     overrides.timeoutMs,
     viteEnv.VITE_AGENT_TIMEOUT_MS,
@@ -90,12 +100,12 @@ export function resolveAgentTransportConfig(overrides = {}) {
   const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout >= 1000
     ? Math.floor(rawTimeout)
     : fallbackTimeout;
-  const modelLabel = String(firstDefined(
+  const modelLabel = transportLabel(mode, firstDefined(
     overrides.modelLabel,
     viteEnv.VITE_AGENT_MODEL_LABEL,
     readProcessEnv('VITE_AGENT_MODEL_LABEL'),
-    HTTP_LABEL,
-  )).trim() || HTTP_LABEL;
+    '',
+  ));
 
   return {
     mode,
@@ -103,7 +113,7 @@ export function resolveAgentTransportConfig(overrides = {}) {
     baseUrl,
     timeoutMs,
     contractVersion: DEFAULT_CONTRACT_VERSION,
-    label: mode === 'http' ? modelLabel : MOCK_LABEL,
+    label: modelLabel,
   };
 }
 
@@ -150,12 +160,55 @@ export function applyAgentRuntimeConfig(config = {}) {
   const next = {};
   const source = config && typeof config === 'object' ? config : {};
   if (source.transport !== undefined) next.transport = source.transport;
+  // 用户只选「模型通道」：deepseek=直连 DeepSeek，server=本机模型服务。
+  if (source.modelChannel === 'deepseek') next.transport = 'direct';
+  else if (source.modelChannel === 'server') next.transport = 'http';
   if (source.endpoint !== undefined) next.endpoint = source.endpoint;
   if (source.baseUrl !== undefined) next.baseUrl = source.baseUrl;
   if (source.timeoutMs !== undefined) next.timeoutMs = source.timeoutMs;
   if (source.modelLabel !== undefined) next.modelLabel = source.modelLabel;
+  if (source.modelApiBaseUrl !== undefined) next.modelBaseUrl = source.modelApiBaseUrl;
+  if (source.modelName !== undefined) next.modelName = source.modelName;
+  if (source.modelTimeoutMs !== undefined) next.modelTimeoutMs = source.modelTimeoutMs;
   runtimeOverrides = next;
   return getAgentTransportConfig();
+}
+
+/**
+ * 当前模型配置（只含地址/模型名/超时，绝不含 Key）。
+ * direct 通道下这些值会随主进程 IPC 一起发给 DeepSeek；server 通道下只用于界面展示。
+ */
+export function getModelConfig() {
+  const overrides = runtimeOverrides || {};
+  const viteEnv = readViteEnv();
+  const baseUrl = String(firstDefined(
+    overrides.modelBaseUrl,
+    viteEnv.VITE_MODEL_BASE_URL,
+    readProcessEnv('VITE_MODEL_BASE_URL'),
+    '',
+  )).trim() || 'https://api.deepseek.com';
+  const model = String(firstDefined(
+    overrides.modelName,
+    viteEnv.VITE_MODEL_NAME,
+    readProcessEnv('VITE_MODEL_NAME'),
+    '',
+  )).trim() || 'deepseek-chat';
+  const rawTimeout = Number(firstDefined(
+    overrides.modelTimeoutMs,
+    viteEnv.VITE_MODEL_TIMEOUT_MS,
+    readProcessEnv('VITE_MODEL_TIMEOUT_MS'),
+    '',
+  ));
+  const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout >= 5000
+    ? Math.floor(rawTimeout)
+    : 60000;
+  const current = getAgentTransportConfig();
+  return {
+    channel: current.mode === 'http' ? 'server' : (current.mode === 'direct' ? 'deepseek' : 'none'),
+    baseUrl,
+    model,
+    timeoutMs,
+  };
 }
 
 export function resetAgentRuntimeConfig() {

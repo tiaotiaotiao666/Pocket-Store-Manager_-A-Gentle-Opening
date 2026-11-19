@@ -60,7 +60,6 @@ export default function HandoffWizard({
   const current = handoff ? findStep(handoff.stepId) : HANDOFF_STEPS[0];
   const completed = new Set(handoff?.completedStepIds || []);
   const outputPath = result?.outputPath || '';
-  const lockDigest = result?.lockDigest || '';
 
   const copy = async (label, text) => {
     const ok = await inlineCopy(text);
@@ -85,7 +84,6 @@ export default function HandoffWizard({
             <p className="handoff-lead">先确认这次生成的产物是你要交付的那一份。</p>
             <dl className="handoff-facts">
               <div><dt>工程目录</dt><dd className="handoff-path">{outputPath || '—'}</dd></div>
-              <div><dt>Lock 摘要</dt><dd className="handoff-mono">{lockDigest || '—'}</dd></div>
               <div><dt>仅预览能力</dt><dd>{(result?.previewOnly || []).join('、') || '无'}</dd></div>
               <div><dt>导出提示</dt><dd>{(result?.warnings || []).join('；') || '无'}</dd></div>
             </dl>
@@ -135,8 +133,7 @@ export default function HandoffWizard({
         return (
           <>
             <p className="handoff-lead">
-              把 AppID 写入 <code>project.config.json</code>。配方指纹与模板指纹不变，但产物摘要会变化，
-              本应用会按清单口径回填 <code>composition.lock.json</code> 与 <code>generation-report.json</code>。
+              把 AppID 写进工程的配置文件；写完会立刻自检一次，确认工程仍然完整。
             </p>
             <label className="handoff-field">
               <span>AppID</span>
@@ -161,11 +158,11 @@ export default function HandoffWizard({
             {handoff?.appidApplied ? (
               <div className="handoff-ok">
                 <CheckCircle2 size={15} />
-                已写入并完成自检。改写前 {String(handoff.appidDigestBefore || '').slice(0, 18)}… → 改写后 {String(handoff.appidDigestAfter || '').slice(0, 18)}…
+                已写入并完成自检。
               </div>
             ) : null}
             <p className="handoff-note">
-              可复现性说明：相同方案 + 相同模板版本 + 相同 AppID → 完全相同的工程与 lockDigest；更换 AppID 只会改变产物指纹。
+              同一个方案、同一版模板、同一个 AppID，重新生成会得到同样的工程；更换 AppID 只会改动这一处配置。
             </p>
           </>
         );

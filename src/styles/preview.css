@@ -49,6 +49,27 @@
   opacity: 0.75;
 }
 
+/* 手机外框里的信号条：用 CSS 画，避免出现 ▮▮▮ 这类看起来像乱码的符号。 */
+.mini-phone-signal {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 9px;
+}
+
+.mini-phone-signal i {
+  display: block;
+  width: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+.mini-phone-signal i:nth-child(1) { height: 3px; }
+.mini-phone-signal i:nth-child(2) { height: 5px; }
+.mini-phone-signal i:nth-child(3) { height: 7px; }
+.mini-phone-signal i:nth-child(4) { height: 9px; opacity: 0.85; }
+
 .mini-phone-head {
   display: flex;
   align-items: center;

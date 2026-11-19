@@ -10,7 +10,7 @@ async function loadModule(path) {
   return import(path);
 }
 
-test('C1 默认（未设置环境变量）仍为 mock，超时 12s，标签可辨识', async () => {
+test('C1 默认（未设置环境变量）为本地演示模式，超时 12s，标签可辨识', async () => {
   const config = await loadModule('../src/services/agentTurn/agentServiceConfig.js');
   assert.equal(config.AGENT_TRANSPORT, 'mock');
   assert.equal(config.AGENT_ENDPOINT, '/api/v1/agent/turn');
@@ -18,7 +18,7 @@ test('C1 默认（未设置环境变量）仍为 mock，超时 12s，标签可�
   assert.equal(config.AGENT_CONTRACT_VERSION, 'agent-turn.v1');
   assert.deepEqual(config.describeAgentTransport(), {
     mode: 'mock',
-    label: '本地 Mock（未接入真实模型）',
+    label: '本地演示模式',
   });
 });
 
@@ -29,7 +29,7 @@ test('C2 resolveAgentTransportConfig 支持 http 覆盖与 endpoint/timeout 覆�
   assert.equal(http.mode, 'http');
   assert.equal(http.endpoint, '/api/v1/agent/turn');
   assert.equal(http.timeoutMs, 30000);
-  assert.equal(http.label, 'DeepSeek 后端（真实模型）');
+  assert.equal(http.label, '本机模型服务');
 
   const custom = config.resolveAgentTransportConfig({
     transport: 'http',
@@ -71,7 +71,7 @@ test('C3 真正设置 VITE_AGENT_TRANSPORT=http 时模块级配置切换为 http
   assert.equal(parsed.mode, 'http');
   assert.equal(parsed.timeout, 28000);
   assert.equal(parsed.endpoint, '/api/v1/agent/turn');
-  assert.equal(parsed.label, 'DeepSeek 后端（真实模型）');
+  assert.equal(parsed.label, '本机模型服务');
 });
 
 test('C4 前端 HTTP transport 默认不携带 Authorization（绝不携带 DeepSeek Key）', async () => {
@@ -149,7 +149,7 @@ test('C6 设置页保存的模型配置可在运行时覆盖，并丢弃旧 tran
   assert.equal(config.getAgentTransportConfig().timeoutMs, 45000);
   assert.deepEqual(config.describeAgentTransport(), {
     mode: 'http',
-    label: 'DeepSeek 后端（真实模型）',
+    label: '本机模型服务',
   });
   assert.equal(serviceModule.createAgentTurnService().transportName, 'http');
 

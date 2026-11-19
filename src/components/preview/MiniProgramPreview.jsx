@@ -74,7 +74,9 @@ function FullPreview({ viewModel, activeTab, onTabChange }) {
         >
           <div className="mini-phone-status">
             <span>9:41</span>
-            <span>▮▮▮ ◉</span>
+            <span className="mini-phone-signal" aria-hidden="true">
+              <i /><i /><i /><i />
+            </span>
           </div>
           <StoreHeader store={store} theme={theme} />
           <div className="mini-phone-body">

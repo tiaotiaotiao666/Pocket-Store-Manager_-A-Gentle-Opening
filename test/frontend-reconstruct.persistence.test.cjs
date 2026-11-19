@@ -96,6 +96,49 @@ function materializeOnce(t, userDataDir, suffix) {
   };
 }
 
+/**
+ * B1：导出闸门要求 attempt 下同时有 adopted.json 与「绑定同一候选」的最新运行时证据。
+ * 这里按 adoptCandidate 的真实写入形状落盘（测试不需要真跑微信验证）。
+ */
+function seedAdoption(candidate, options) {
+  const opts = options || {};
+  const runtimeStatus = opts.runtimeStatus || 'NOT_RUN';
+  const dirName = opts.dirName || 'runtime';
+  const generatedAt = opts.generatedAt || '2026-11-17T00:00:00.000Z';
+  const evidenceDir = path.join(candidate.attemptDir, 'verification', dirName);
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  fs.writeFileSync(path.join(evidenceDir, 'frontend-runtime.json'), JSON.stringify({
+    schemaVersion: 'frontend-runtime.v1',
+    generatedAt,
+    status: runtimeStatus,
+    code: null,
+    summary: 'seed',
+    screenshots: [],
+    candidate: {
+      id: opts.candidateId || candidate.candidateId,
+      version: opts.candidateVersion || candidate.candidateVersion,
+      integrity: opts.integrity || candidate.integrity,
+    },
+  }, null, 2));
+  const record = {
+    schemaVersion: 'frontend-adoption.v1',
+    status: 'adopted',
+    projectId: candidate.projectId,
+    runId: candidate.runId,
+    attempt: candidate.attempt,
+    candidateId: candidate.candidateId,
+    candidateVersion: candidate.candidateVersion,
+    integrity: candidate.integrity,
+    staticGates: 'pass',
+    runtimeStatus,
+    partialConfirmed: runtimeStatus === 'PASS' ? false : opts.partialConfirmed !== false,
+    evidence: { dirName, generatedAt },
+    adoptedAt: '2026-11-17T00:00:00.000Z',
+  };
+  fs.writeFileSync(path.join(candidate.attemptDir, 'adopted.json'), JSON.stringify(record, null, 2));
+  return record;
+}
+
 function sessionState(overrides) {
   return {
     store: {
@@ -419,6 +462,7 @@ test('P5 正式导出：Composer 使用同一 overlay，报告与产物都带候
   const userDataDir = tempDir(t, 'userdata');
   const exportParent = tempDir(t, 'exports');
   const candidate = materializeOnce(t, userDataDir, 'export');
+  seedAdoption(candidate);
   const slice = candidateSlice(candidate, { verified: true });
   const built = planModule.buildExportPlanFromSession(sessionState({ frontendCandidate: slice }));
   assert.strictEqual(built.ok, true, JSON.stringify(built));
@@ -634,6 +678,7 @@ test('P5 端到端：采用→保存→重开（校验摘要）→正式导出�
   const userDataDir = tempDir(t, 'e2e-userdata');
   const exportParent = tempDir(t, 'e2e-exports');
   const candidate = materializeOnce(t, userDataDir, 'e2e');
+  seedAdoption(candidate);
   const planRef = {
     planId: 'order-warm-home',
     planVersion: '1.0.0',

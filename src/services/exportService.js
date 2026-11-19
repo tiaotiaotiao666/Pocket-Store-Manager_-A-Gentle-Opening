@@ -45,6 +45,13 @@ const EXPORT_ERROR_TEXT = Object.freeze({
   FRONTEND_DIGEST_MISMATCH: '候选 overlay 摘要与快照不一致，已阻止导出。',
   FRONTEND_OVERLAY_MISMATCH: '导出的 Plan 与候选 overlay 不是同一个候选，已阻止导出。',
   FRONTEND_CANDIDATE_INVALID: '候选 overlay 记录不合法，已阻止导出。',
+  // B1：采用与运行时证据闸门（主进程按磁盘记录判定，不看界面状态）
+  FRONTEND_CANDIDATE_NOT_ADOPTED: '这个候选还没有被采用，不能作为正式成果导出；请先采用候选。',
+  FRONTEND_CANDIDATE_ADOPTION_MISMATCH: '采用记录与当前候选不是同一份，已阻止导出；请重新采用这个候选。',
+  FRONTEND_RUNTIME_EVIDENCE_MISSING: '还没有微信运行时验证证据，不能把未验证的候选当成成果导出。',
+  FRONTEND_RUNTIME_EVIDENCE_STALE: '微信运行时证据不属于当前候选（可能已重建），请重新验证后再导出。',
+  FRONTEND_RUNTIME_FAILED: '微信真实编译或关键交互验证失败（FAIL），这个候选不能采用，也不能导出。',
+  FRONTEND_PARTIAL_NOT_CONFIRMED: '微信验证还没通过；导出前需要在候选上单独确认「部分采用」。',
 });
 
 const CANDIDATE_OVERLAY_KEYS = Object.freeze([

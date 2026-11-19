@@ -1,0 +1,53 @@
+{
+  "task": "B1 候选采用与导出门禁",
+  "baseline": "2f99ae8",
+  "sampledAt": "2026-11-19T11:05:00+08:00",
+  "scope": "只改 frontend-reconstruct 的采用/导出判定；不改产品交互、网络、模板与 Agent 编排",
+  "rules": [
+    "仅当 Plan 引用 frontendPack（本次导出使用 frontend-reconstruct overlay）时执行闸门；普通 Base/Recipe 导出路径不变",
+    "采用：主进程按 attempt.json 校验 candidateId/version/integrity，并持久化 adopted.json（status/runtimeStatus/partialConfirmed/evidence/adoptedAt）",
+    "运行时状态：主进程读取 attempt 下最新 verification/runtime*/frontend-runtime.json，忽略 overlay.runtimeStatus（渲染层自报）",
+    "证据绑定：frontend-runtime.json 写入 candidate{id,version,integrity}；与 attempt 不一致即 FRONTEND_RUNTIME_EVIDENCE_STALE",
+    "采用后证据发生变化（目录名或 generatedAt 不同）视为过期，需重新确认",
+    "FAIL：采用与导出一律拒绝（FRONTEND_RUNTIME_FAILED），partialConfirmed 不能覆盖",
+    "BLOCKED/NOT_RUN：要求 adopted.json 记录 partialConfirmed=true 且状态一致；界面与证据只用「部分采用」，不称验收通过",
+    "导出：未采用 FRONTEND_CANDIDATE_NOT_ADOPTED；候选/版本/摘要不一致 FRONTEND_CANDIDATE_ADOPTION_MISMATCH；证据缺失 FRONTEND_RUNTIME_EVIDENCE_MISSING"
+  ],
+  "files": {
+    "changed": [
+      "desktop/frontend-reconstruct/adoption.cjs",
+      "desktop/frontend-reconstruct/verify-runtime.cjs",
+      "desktop/frontend-reconstruct-ipc.cjs",
+      "desktop/composer-ipc.cjs",
+      "src/services/exportService.js",
+      "test/frontend-reconstruct.desktop.test.cjs",
+      "test/frontend-reconstruct.persistence.test.cjs"
+    ],
+    "added": [
+      "test/frontend-reconstruct.adoption-gate.test.cjs",
+      "docs/交付/evidence/b1-adoption-gate.json"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "node --test test/frontend-reconstruct.adoption-gate.test.cjs -> 6/6 pass",
+      "node --test test/frontend-reconstruct.desktop.test.cjs test/frontend-reconstruct.persistence.test.cjs test/app-frontend-reconstruct.test.cjs test/desktop-contract.test.cjs -> 81/81 pass",
+      "npm test -> 1004/1004 pass",
+      "npm run build -> built in 4.06s（TMP 指向 node_modules/.cache/build-tmp）"
+    ],
+    "newNegativeCases": [
+      "未采用：导出 FRONTEND_CANDIDATE_NOT_ADOPTED，Composer 未被调用，目标目录未创建",
+      "FAIL + partialConfirmed=true：采用与导出都拒绝",
+      "BLOCKED + 显式确认：部分采用，记录 runtimeStatus/partialConfirmed/adoptedAt/evidence，报告行带 partial=confirmed",
+      "候选 id/version/摘要不一致：FRONTEND_CANDIDATE_ADOPTION_MISMATCH",
+      "证据属于别的候选或采用后重跑：FRONTEND_RUNTIME_EVIDENCE_STALE",
+      "渲染层伪造 runtimeStatus=PASS：导出仍按磁盘证据（BLOCKED / FAIL）判定",
+      "普通 Base 导出：不需要 adopted.json，Composer 不被塞 overlay"
+    ]
+  },
+  "notVerified": [
+    "未执行真实微信运行时验证（本机 DevTools CLI 不可用），运行时证据来自按 wrapper 形状注入的测试夹具",
+    "未做界面点击走查；采用/导出的界面文案只做代码层错误码映射",
+    "未在真实 Electron 主进程里跑一次手工导出（仅 test harness 走 composer-ipc + 真 Composer）"
+  ]
+}

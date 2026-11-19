@@ -372,6 +372,8 @@ function baseResult(status, code, summary, extra) {
  * @param {number} [options.autoPort=9420]
  * @param {number} [options.timeoutMs=600000] 上限 1800000
  * @param {object} [options.signal]           取消信号（{cancelled} 或 AbortSignal）
+ * @param {object} [options.candidate]        B1：本次验证的候选身份 {id, version, integrity}，
+ *                                             只用于把证据绑定到候选（不参与命令拼装）
  * @param {Function} [options.spawnImpl]      仅测试注入；生产永远走固定脚本
  */
 async function verifyRuntime(options) {
@@ -482,6 +484,8 @@ async function verifyRuntime(options) {
     if (extra && extra.pages) result.pages = extra.pages;
     if (extra && extra.interactions) result.interactions = extra.interactions;
     // 包装层证据（相对路径；不含绝对路径/命令环境）
+    // B1：把候选身份写进证据，采用/导出闸门据此判断「证据是否属于当前候选」。
+    const candidateRef = opts.candidate && typeof opts.candidate === 'object' ? opts.candidate : null;
     const wrapper = {
       schemaVersion: WRAPPER_SCHEMA_VERSION,
       generatedAt: new Date().toISOString(),
@@ -494,6 +498,17 @@ async function verifyRuntime(options) {
       projectDirRelative: path.relative(privateRoot, opts.projectDir).replace(/\\/g, '/'),
       autoPort: Number.isInteger(opts.autoPort) ? opts.autoPort : DEFAULT_AUTO_PORT,
       timeoutMs,
+      ...(candidateRef && typeof candidateRef.id === 'string' && candidateRef.id
+        ? {
+          candidate: {
+            id: truncate(candidateRef.id, 80),
+            version: truncate(String(candidateRef.version || ''), 24),
+            integrity: /^sha256:[0-9a-f]{64}$/.test(String(candidateRef.integrity || ''))
+              ? candidateRef.integrity
+              : null,
+          },
+        }
+        : {}),
     };
     try {
       fs.writeFileSync(path.join(evidenceDir, WRAPPER_EVIDENCE), JSON.stringify(wrapper, null, 2) + '\n', 'utf8');

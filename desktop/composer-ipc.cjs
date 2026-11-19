@@ -252,8 +252,10 @@ function createComposerIpc(options) {
     const shortDigest = typeof candidate.integrity === 'string'
       ? candidate.integrity.replace(/^sha256:/, '').slice(0, 12)
       : 'unknown';
+    // B1：非 PASS 的采用必须显式标注为 partial，不能读成「验收通过」。
+    const partial = candidate.partialConfirmed === true && runtime !== 'PASS' ? ' partial=confirmed' : '';
     return 'candidate: ' + candidate.candidateId + '@' + candidate.candidateVersion
-      + ' static=pass runtime=' + runtime + ' repairs=' + repairs + ' integrity=' + shortDigest;
+      + ' static=pass runtime=' + runtime + partial + ' repairs=' + repairs + ' integrity=' + shortDigest;
   }
 
   function resolveParentToken(value) {    if (value === PREVIEW_PARENT_TOKEN) return previewParentDir;

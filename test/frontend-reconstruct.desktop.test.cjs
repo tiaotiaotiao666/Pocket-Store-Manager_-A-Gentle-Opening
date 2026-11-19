@@ -189,7 +189,20 @@ function seedOwnedAttempt(userDataDir, options) {
     fs.mkdirSync(path.join(attemptDir, 'verification', 'runtime'), { recursive: true });
     fs.writeFileSync(
       path.join(attemptDir, 'verification', 'runtime', 'frontend-runtime.json'),
-      JSON.stringify({ schemaVersion: 'frontend-runtime.v1', status: opts.runtimeStatus, code: null, summary: 'seed', screenshots: [] }, null, 2),
+      JSON.stringify({
+        schemaVersion: 'frontend-runtime.v1',
+        generatedAt: '2026-11-17T00:00:00.000Z',
+        status: opts.runtimeStatus,
+        code: null,
+        summary: 'seed',
+        screenshots: [],
+        // B1：证据必须绑定候选身份，否则采用/导出闸门视为过期证据。
+        candidate: {
+          id: opts.evidenceCandidateId || candidateId,
+          version: opts.evidenceCandidateVersion || '1.0.0',
+          integrity: opts.evidenceIntegrity || 'sha256:' + 'a'.repeat(64),
+        },
+      }, null, 2),
     );
   }
   const recorded = workspace.recordAttempt(created, {

@@ -84,6 +84,9 @@ const CODES = Object.freeze({
   VERIFICATION_MISSING: 'FRONTEND_VERIFICATION_MISSING',
   STATIC_GATES_FAILED: 'FRONTEND_STATIC_GATES_FAILED',
   PARTIAL_CONFIRM_REQUIRED: 'FRONTEND_PARTIAL_CONFIRM_REQUIRED',
+  // B1：运行时证据与 FAIL 的采用门禁
+  RUNTIME_FAILED: 'FRONTEND_RUNTIME_FAILED',
+  RUNTIME_EVIDENCE_STALE: 'FRONTEND_RUNTIME_EVIDENCE_STALE',
   ANALYZE_FAILED: 'FRONTEND_ANALYZE_FAILED',
   ANALYZE_TIMEOUT: 'FRONTEND_ANALYZE_TIMEOUT',
   ANALYZE_UNAVAILABLE: 'FRONTEND_ANALYZE_UNAVAILABLE',
@@ -446,9 +449,10 @@ function latestRuntimeEvidence(attemptDir) {
     .map((entry) => ({ name: entry.name, rank: Number((/^runtime-([1-9][0-9]?)$/.exec(entry.name) || [])[1] || 1) }))
     .sort((a, b) => b.rank - a.rank);
   if (ranked.length === 0) return null;
-  const read = readJsonBounded(path.join(dir, ranked[0].name, RUNTIME_WRAPPER_FILE), MAX_EVIDENCE_BYTES);
+  const dirName = ranked[0].name;
+  const read = readJsonBounded(path.join(dir, dirName, RUNTIME_WRAPPER_FILE), MAX_EVIDENCE_BYTES);
   if (!read.ok || !isPlainObject(read.value)) return null;
-  return read.value;
+  return { dirName, evidence: read.value };
 }
 
 function staticGateOf(evidence) {
@@ -933,6 +937,12 @@ function createFrontendReconstructIpc(options) {
           projectDir,
           privateRoot: resolved.attemptDir,
           evidenceDir: path.join(resolved.attemptDir, 'verification', 'runtime'),
+          // B1：证据必须能证明「这是哪个候选的验证结果」。
+          candidate: {
+            id: resolved.meta.candidate.id,
+            version: resolved.meta.candidate.version,
+            integrity: resolved.meta.candidate.integrity,
+          },
           ...(payload.timeoutMs ? { timeoutMs: payload.timeoutMs } : {}),
           signal: session.signal,
           ...(state.spawnImpl ? { spawnImpl: state.spawnImpl } : {}),
@@ -996,8 +1006,34 @@ function createFrontendReconstructIpc(options) {
       return fail(CODES.STATIC_GATES_FAILED, '静态门禁未通过，不能采用这个候选', { code: staticGates.code });
     }
     const runtime = latestRuntimeEvidence(resolved.attemptDir);
-    const runtimeStatus = runtime && RUNTIME_STATUSES.includes(runtime.status) ? runtime.status : 'NOT_RUN';
+    const recordedRuntime = runtime && isPlainObject(runtime.evidence) ? runtime.evidence : null;
+    const runtimeStatus = recordedRuntime && RUNTIME_STATUSES.includes(recordedRuntime.status)
+      ? recordedRuntime.status
+      : 'NOT_RUN';
+    // B1：证据必须属于当前候选（否则就是重建后用旧证据冒充）。
+    if (recordedRuntime) {
+      const evidenceCandidate = isPlainObject(recordedRuntime.candidate) ? recordedRuntime.candidate : null;
+      const expected = resolved.meta.candidate;
+      if (!evidenceCandidate
+        || evidenceCandidate.id !== expected.id
+        || evidenceCandidate.version !== expected.version
+        || evidenceCandidate.integrity !== expected.integrity) {
+        return fail(
+          CODES.RUNTIME_EVIDENCE_STALE,
+          '微信运行时证据不属于当前候选（候选可能已重建）；请重新验证后再采用',
+          { runtimeStatus: 'NOT_RUN' },
+        );
+      }
+    }
     const partialConfirmed = payload.partialConfirmed === true;
+    // B1：FAIL 一律拒绝，partial 确认不覆盖真实失败。
+    if (runtimeStatus === 'FAIL') {
+      return fail(
+        CODES.RUNTIME_FAILED,
+        '微信验证结果是 FAIL（真实编译或关键交互未通过）；该候选不能采用，确认 partial 也不能覆盖',
+        { runtimeStatus },
+      );
+    }
     if (runtimeStatus !== RUNTIME_PASS && !partialConfirmed) {
       return fail(
         CODES.PARTIAL_CONFIRM_REQUIRED,
@@ -1007,6 +1043,7 @@ function createFrontendReconstructIpc(options) {
     }
     const adoption = {
       schemaVersion: ADOPTION_SCHEMA_VERSION,
+      status: 'adopted',
       projectId: checked.projectId,
       runId: checked.runId,
       attempt: resolved.attempt,
@@ -1015,7 +1052,14 @@ function createFrontendReconstructIpc(options) {
       integrity: resolved.meta.candidate.integrity,
       staticGates: 'pass',
       runtimeStatus,
-      partialConfirmed,
+      // PASS 时不存在「部分采用」；非 PASS 必须在记录里留下显式确认。
+      partialConfirmed: runtimeStatus === RUNTIME_PASS ? false : partialConfirmed,
+      evidence: recordedRuntime
+        ? {
+          dirName: runtime.dirName,
+          generatedAt: bounded(recordedRuntime.generatedAt, 40) || null,
+        }
+        : null,
       adoptedAt: new Date(state.now()).toISOString(),
     };
     try {
@@ -1030,10 +1074,14 @@ function createFrontendReconstructIpc(options) {
         candidateVersion: adoption.candidateVersion,
         attempt: adoption.attempt,
         runtimeStatus,
-        partialConfirmed,
+        partialConfirmed: adoption.partialConfirmed,
         adoptedAt: adoption.adoptedAt,
         recordRelative: relativeInside(state.userDataDir, path.join(resolved.attemptDir, 'adopted.json')),
       },
+      // B1：非 PASS 的采用只是「部分采用」，不得在任何呈现层被叫作验收通过。
+      message: runtimeStatus === RUNTIME_PASS
+        ? '候选已采用（微信运行时验证 PASS）'
+        : '已记录为部分采用（微信验证 ' + runtimeStatus + '），不构成验收通过',
     });
   }
 

@@ -44,7 +44,20 @@ const CODES = Object.freeze({
   OVERLAY_MISSING: 'FRONTEND_OVERLAY_MISSING',
   OVERLAY_MISMATCH: 'FRONTEND_OVERLAY_MISMATCH',
   WORKSPACE_INVALID: 'FRONTEND_WORKSPACE_INVALID',
+  // B1：采用与导出闸门（全部为主进程按磁盘记录判定，忽略渲染层自报）
+  NOT_ADOPTED: 'FRONTEND_CANDIDATE_NOT_ADOPTED',
+  ADOPTION_MISMATCH: 'FRONTEND_CANDIDATE_ADOPTION_MISMATCH',
+  RUNTIME_EVIDENCE_MISSING: 'FRONTEND_RUNTIME_EVIDENCE_MISSING',
+  RUNTIME_EVIDENCE_STALE: 'FRONTEND_RUNTIME_EVIDENCE_STALE',
+  RUNTIME_FAILED: 'FRONTEND_RUNTIME_FAILED',
+  PARTIAL_NOT_CONFIRMED: 'FRONTEND_PARTIAL_NOT_CONFIRMED',
 });
+
+/** attempt 下的采用记录与运行时证据文件名（与 frontend-reconstruct-ipc 写入侧一致）。 */
+const ADOPTION_RECORD_FILE = 'adopted.json';
+const RUNTIME_EVIDENCE_FILE = 'frontend-runtime.json';
+const RUNTIME_EVIDENCE_DIR = /^runtime(?:-([1-9][0-9]?))?$/;
+const MAX_EVIDENCE_BYTES = 512 * 1024;
 
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const DRIVE_PATTERN = /^[A-Za-z]:/;
@@ -382,9 +395,129 @@ function inspectAdoption(options = {}) {
   };
 }
 
+function readJsonFileBounded(file, maxBytes) {
+  let stats;
+  try {
+    stats = fs.statSync(file);
+  } catch (error) {
+    return { ok: false, code: 'missing' };
+  }
+  if (!stats.isFile() || stats.size > maxBytes) return { ok: false, code: 'invalid' };
+  try {
+    const text = fs.readFileSync(file, 'utf8');
+    const value = JSON.parse(text);
+    return { ok: true, value };
+  } catch (error) {
+    return { ok: false, code: 'invalid' };
+  }
+}
+
+/** 读取 attempt 下的采用记录；缺失或损坏都返回结构化失败。 */
+function readAdoptionRecord(attemptDir) {
+  const read = readJsonFileBounded(path.join(attemptDir, ADOPTION_RECORD_FILE), MAX_EVIDENCE_BYTES);
+  if (!read.ok) {
+    return fail(CODES.NOT_ADOPTED, '这个候选还没有被采用：找不到采用记录');
+  }
+  if (!read.value || typeof read.value !== 'object' || Array.isArray(read.value)) {
+    return fail(CODES.NOT_ADOPTED, '采用记录格式不可用，已阻断导出；请重新采用这个候选');
+  }
+  return { ok: true, record: read.value };
+}
+
+/** 读取 attempt 下最新一次微信运行时证据（runtime / runtime-2 / …）。 */
+function readLatestRuntimeEvidence(attemptDir) {
+  const dir = path.join(attemptDir, 'verification');
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (error) {
+    return fail(CODES.RUNTIME_EVIDENCE_MISSING, '还没有微信运行时验证证据；不能把未验证的候选当成成果导出');
+  }
+  const ranked = entries
+    .filter((entry) => entry.isDirectory() && RUNTIME_EVIDENCE_DIR.test(entry.name))
+    .map((entry) => ({ name: entry.name, rank: Number((RUNTIME_EVIDENCE_DIR.exec(entry.name) || [])[1] || 1) }))
+    .sort((a, b) => b.rank - a.rank);
+  if (ranked.length === 0) {
+    return fail(CODES.RUNTIME_EVIDENCE_MISSING, '还没有微信运行时验证证据；不能把未验证的候选当成成果导出');
+  }
+  const dirName = ranked[0].name;
+  const read = readJsonFileBounded(path.join(dir, dirName, RUNTIME_EVIDENCE_FILE), MAX_EVIDENCE_BYTES);
+  if (!read.ok || !read.value || typeof read.value !== 'object' || Array.isArray(read.value)) {
+    return fail(CODES.RUNTIME_EVIDENCE_MISSING, '微信运行时证据不可读，已阻断导出；请重新验证');
+  }
+  return { ok: true, dirName, evidence: read.value };
+}
+
+/**
+ * B1 采用闸门（供 adopt 与 export 共用）：
+ * 1) adopted.json 必须存在，且 candidateId / version / integrity 与 attempt.json 一致；
+ * 2) 运行时状态只认主进程从 attempt 目录读到的最新证据，忽略调用方自报；
+ * 3) 证据必须属于同一个候选（含 integrity），否则视为过期；
+ * 4) FAIL 一律拒绝，partial 确认不得覆盖；
+ * 5) 非 PASS 只有「采用记录里明确记录过 partialConfirmed 且状态一致」才放行。
+ */
+function adoptionGate(options = {}) {
+  const attemptDir = options.attemptDir;
+  const meta = options.meta;
+  if (typeof attemptDir !== 'string' || !meta || !meta.candidate) {
+    return fail(CODES.INVALID, '采用闸门缺少候选上下文，已阻断');
+  }
+  const expectedId = meta.candidate.id;
+  const expectedVersion = meta.candidate.version;
+  const expectedIntegrity = meta.candidate.integrity;
+
+  const adopted = readAdoptionRecord(attemptDir);
+  if (!adopted.ok) return adopted;
+  const record = adopted.record;
+  if (record.candidateId !== expectedId) {
+    return fail(CODES.ADOPTION_MISMATCH, '采用记录里的候选与当前 attempt 不是同一个候选，已阻断');
+  }
+  if (record.candidateVersion !== expectedVersion) {
+    return fail(CODES.ADOPTION_MISMATCH, '采用记录里的候选版本与当前 attempt 不一致，已阻断');
+  }
+  if (record.integrity !== expectedIntegrity) {
+    return fail(CODES.ADOPTION_MISMATCH, '采用记录里的候选摘要与当前 attempt 不一致，已阻断');
+  }
+
+  const runtime = readLatestRuntimeEvidence(attemptDir);
+  if (!runtime.ok) return runtime;
+  const evidence = runtime.evidence;
+  const evidenceCandidate = evidence && evidence.candidate && typeof evidence.candidate === 'object'
+    ? evidence.candidate
+    : null;
+  if (!evidenceCandidate || evidenceCandidate.id !== expectedId || evidenceCandidate.version !== expectedVersion) {
+    return fail(CODES.RUNTIME_EVIDENCE_STALE, '微信运行时证据不属于当前候选（可能已重建），请重新验证后再导出');
+  }
+  if (evidenceCandidate.integrity !== expectedIntegrity) {
+    return fail(CODES.RUNTIME_EVIDENCE_STALE, '微信运行时证据的候选摘要与当前候选不一致，请重新验证');
+  }
+  const status = RUNTIME_STATUSES.includes(evidence.status) ? evidence.status : 'NOT_RUN';
+  const generatedAt = candidateText(evidence.generatedAt, 40) || null;
+  if (status === 'FAIL') {
+    return fail(CODES.RUNTIME_FAILED, '微信真实编译/关键交互验证失败（FAIL）；该候选不能采用，也不能导出');
+  }
+  // 证据必须与采用记录指向同一次验证；否则就是「采用之后证据又变了」。
+  const recordedEvidence = record.evidence && typeof record.evidence === 'object' ? record.evidence : null;
+  if (!recordedEvidence || recordedEvidence.dirName !== runtime.dirName || recordedEvidence.generatedAt !== generatedAt) {
+    return fail(CODES.RUNTIME_EVIDENCE_STALE, '采用之后微信验证证据发生了变化，请重新确认后再导出');
+  }
+  if (status !== 'PASS' && record.partialConfirmed !== true) {
+    return fail(CODES.PARTIAL_NOT_CONFIRMED, '微信验证未完成（' + status + '）；采用与导出都需要单独确认 partial');
+  }
+  return {
+    ok: true,
+    runtimeStatus: status,
+    partialConfirmed: record.partialConfirmed === true,
+    evidenceDirName: runtime.dirName,
+    evidenceGeneratedAt: generatedAt,
+    adoptedAt: candidateText(record.adoptedAt, 40) || null,
+  };
+}
+
 /**
  * 正式导出入口：渲染进程只传候选 id，主进程按 id 解析同一 overlay 并校验摘要。
  * 缺 overlay / 摘要漂移 / Plan 与候选不一致都返回结构化失败，调用方必须阻断导出。
+ * B1：overlay 校验通过后还要过采用闸门（adopted.json + 最新真实证据）。
  */
 function resolveExportOverlay(options = {}) {
   const overlay = options.candidateOverlay;
@@ -418,6 +551,9 @@ function resolveExportOverlay(options = {}) {
   }
   const verified = verifyOverlayForCandidate(resolved, candidateId, version, integrity || meta.candidate.integrity);
   if (!verified.ok) return verified;
+  // B1：只信任磁盘上的 adopted.json 与 attempt 目录里的最新真实证据。
+  const gate = adoptionGate({ attemptDir: resolved.attemptDir, meta });
+  if (!gate.ok) return gate;
   return {
     ok: true,
     overlayRoot: verified.overlayRoot,
@@ -429,7 +565,9 @@ function resolveExportOverlay(options = {}) {
       attempt: overlay.attempt,
       runId: overlay.runId,
       projectId: overlay.projectId,
-      runtimeStatus: RUNTIME_STATUSES.includes(overlay.runtimeStatus) ? overlay.runtimeStatus : 'NOT_RUN',
+      runtimeStatus: gate.runtimeStatus,
+      partialConfirmed: gate.partialConfirmed,
+      adoptedAt: gate.adoptedAt,
       repairs: Number.isInteger(overlay.repairs) && overlay.repairs >= 0 && overlay.repairs <= 2 ? overlay.repairs : 0,
       usedOverlay: true,
     },
@@ -443,6 +581,8 @@ module.exports = {
   STATUSES,
   LIMITS,
   CODES,
+  ADOPTION_RECORD_FILE,
+  RUNTIME_EVIDENCE_FILE,
   CANDIDATE_OVERLAY_KEYS,
   canonicalRelativePath,
   pickAdoption,
@@ -451,4 +591,7 @@ module.exports = {
   inspectAdoption,
   resolveExportOverlay,
   verifyOverlayForCandidate,
+  readAdoptionRecord,
+  readLatestRuntimeEvidence,
+  adoptionGate,
 };

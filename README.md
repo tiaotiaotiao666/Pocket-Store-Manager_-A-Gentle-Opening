@@ -57,6 +57,15 @@ curl.exe http://127.0.0.1:5173          # 200
 
 `database":"ok"` 才算后端可用；`cache":"memory"` 表示未接 Redis，属预期降级。
 
+### 监听来源与模型调用鉴权（B2）
+
+- 后端默认只监听 `127.0.0.1`（`SERVER_HOST`）；要让局域网访问必须显式设 `SERVER_HOST=0.0.0.0`（或网卡 IP）**并**保留 `AGENT_REQUIRE_AUTH=true`，否则启动即报错。
+- 桌面端不需要用户手填 Token：主进程自动 `POST /api/v1/desktop/session` 申领一个短期本地会话（默认 900 秒，`DESKTOP_SESSION_TTL_SECONDS`），内存持有，再以 `Authorization: Bearer` 调 `/api/v1/agent/**`。凭证不进渲染进程、不进日志、不进证据文件。
+- 会话过期/后端重启/被 401 拒绝时，界面明确提示「本地会话已失效，请重新连接后重试」，可重试；**不会**静默匿名回退，也**不会**把 401 说成「模型不可用」。
+- CORS 只放行白名单来源（`DESKTOP_ORIGIN` + `CORS_ALLOWED_ORIGINS`，默认 `127.0.0.1:5173` / `localhost:5173` / `app://desktop`），非白名单 `Origin` 直接 403；CORS 不替代鉴权。
+- 模型接口有额度护栏：每来源每分钟 `AGENT_RATE_LIMIT_PER_MINUTE`、并发 `AGENT_MAX_CONCURRENT`，超限返回 429 + `Retry-After`，且**不会**发起上游模型调用。
+- `GET /api/v1/health`、`/api/v1/readyz` 保持无鉴权、无护栏。
+
 ## 3. 演示路径（普通开店主线）
 
 1. 打开客户端 → **新建项目** → 命名小程序。

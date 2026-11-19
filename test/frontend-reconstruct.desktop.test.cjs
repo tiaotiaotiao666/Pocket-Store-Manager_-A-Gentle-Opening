@@ -216,6 +216,15 @@ function seedOwnedAttempt(userDataDir, options) {
   return { projectId, runId, attempt, attemptDir };
 }
 
+/** B2：桌面会话凭证桩（真实实现见 desktop/desktop-session.cjs）。 */
+function stubCredentials() {
+  return {
+    getAuthorization: async () => ({ ok: true, authorization: 'Bearer ds_stub', expiresAt: null }),
+    invalidate: () => {},
+    describe: () => ({ hasToken: true, expiresAt: null, lastFailureCode: null }),
+  };
+}
+
 function fakeFetch(response) {
   const calls = [];
   const impl = async (url, init) => {
@@ -323,6 +332,8 @@ test('analyze：主进程按设置代发请求，请求体单图 + 严格契约�
   const fetch = fakeFetch(plannedServerResponse());
   const created = createFrontendReconstructIpc({
     userDataDir,
+    // B2：这些用例只验证主进程代发逻辑，凭证用桩，避免为每个用例申领会话。
+    credentials: stubCredentials(),
     fetchImpl: fetch.impl,
     resolveConfig: async () => ({ apiBaseUrl: 'http://127.0.0.1:3000/api/v1', agentTransport: 'http', agentTimeoutMs: 8000 }),
   });
@@ -354,6 +365,8 @@ test('analyze：图片/文字/页面/未知参数/体积上限都被拒绝，且
   const fetch = fakeFetch(plannedServerResponse());
   const created = createFrontendReconstructIpc({
     userDataDir,
+    // B2：这些用例只验证主进程代发逻辑，凭证用桩，避免为每个用例申领会话。
+    credentials: stubCredentials(),
     fetchImpl: fetch.impl,
     resolveConfig: async () => ({ apiBaseUrl: 'http://127.0.0.1:3000/api/v1', agentTransport: 'http' }),
   });
@@ -380,6 +393,8 @@ test('analyze：模拟模式/上游不可用/契约不一致都如实失败，�
   const userDataDir = tempUserData(t, 'analyze-fail');
   const created = createFrontendReconstructIpc({
     userDataDir,
+    // B2：这些用例只验证主进程代发逻辑，凭证用桩，避免为每个用例申领会话。
+    credentials: stubCredentials(),
     fetchImpl: fakeFetch(plannedServerResponse()).impl,
     resolveConfig: async () => ({ apiBaseUrl: 'http://127.0.0.1:3000/api/v1', agentTransport: 'mock' }),
   });
@@ -388,6 +403,8 @@ test('analyze：模拟模式/上游不可用/契约不一致都如实失败，�
 
   const mismatchIpc = createFrontendReconstructIpc({
     userDataDir,
+    // B2：这些用例只验证主进程代发逻辑，凭证用桩，避免为每个用例申领会话。
+    credentials: stubCredentials(),
     fetchImpl: fakeFetch({ ...plannedServerResponse(), contractVersion: 'v9' }).impl,
     resolveConfig: async () => ({ apiBaseUrl: 'http://127.0.0.1:3000/api/v1', agentTransport: 'http' }),
   });
@@ -396,6 +413,8 @@ test('analyze：模拟模式/上游不可用/契约不一致都如实失败，�
 
   const upstreamIpc = createFrontendReconstructIpc({
     userDataDir,
+    // B2：这些用例只验证主进程代发逻辑，凭证用桩，避免为每个用例申领会话。
+    credentials: stubCredentials(),
     fetchImpl: async () => ({
       status: 502,
       text: async () => JSON.stringify({ code: 'DEEPSEEK_VISION_UNAVAILABLE', message: '上游 502' }),
@@ -419,6 +438,8 @@ test('每项目单任务串行；按 runId 取消后槽位释放', async (t) => 
   });
   const created = createFrontendReconstructIpc({
     userDataDir,
+    // B2：这些用例只验证主进程代发逻辑，凭证用桩，避免为每个用例申领会话。
+    credentials: stubCredentials(),
     fetchImpl: hangingFetch,
     resolveConfig: async () => ({ apiBaseUrl: 'http://127.0.0.1:3000/api/v1', agentTransport: 'http' }),
   });

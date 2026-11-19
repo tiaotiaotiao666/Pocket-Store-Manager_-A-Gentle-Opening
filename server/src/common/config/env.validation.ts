@@ -1,5 +1,6 @@
 import { plainToInstance, Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, IsUrl, Matches, Max, Min, validateSync } from 'class-validator';
+import { isLoopbackHost } from '../../desktop/loopback';
 
 class EnvironmentVariables {
   @IsIn(['development', 'test', 'production'])
@@ -90,6 +91,52 @@ class EnvironmentVariables {
   /** 未认证联调开关：只允许 development/test 使用，production 必须为 true。 */
   @IsIn(['true', 'false'])
   AGENT_REQUIRE_AUTH = 'false';
+
+  // ---------------------------------------------------------------
+  // B2：监听来源 / CORS 白名单 / 桌面会话 / 模型额度护栏
+  // ---------------------------------------------------------------
+
+  /** 监听地址：默认只对本机开放。改成 0.0.0.0 等非回环地址时必须强制鉴权。 */
+  @Matches(/^[A-Za-z0-9._:-]{1,64}$/)
+  SERVER_HOST = '127.0.0.1';
+
+  /** 额外允许的浏览器来源（逗号分隔）；与 DESKTOP_ORIGIN 合并成 CORS 白名单。 */
+  @IsOptional()
+  @IsString()
+  CORS_ALLOWED_ORIGINS?: string;
+
+  /** 桌面短期本地会话有效期（秒）：到期即 401，桌面自行重领。 */
+  @Type(() => Number)
+  @IsInt()
+  @Min(60)
+  @Max(86400)
+  DESKTOP_SESSION_TTL_SECONDS = 900;
+
+  /** 同一个本机来源每分钟最多申领几次桌面会话。 */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(120)
+  DESKTOP_SESSION_ISSUE_PER_MINUTE = 10;
+
+  /** 模型接口每个来源每分钟最多请求数；0 = 关闭（仅本地联调建议）。 */
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(600)
+  AGENT_RATE_LIMIT_PER_MINUTE = 120;
+
+  /** 模型接口同时进行中的请求上限；0 = 关闭。 */
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(16)
+  AGENT_MAX_CONCURRENT = 2;
+
+  /** 测试环境默认关闭额度护栏，需要验证 429 时显式设 1。 */
+  @IsOptional()
+  @IsIn(['0', '1'])
+  AGENT_RAILS_ENFORCE?: string;
 
   /**
    * Agent JSON 请求体上限（字节），只对 /api/v1/agent 前缀生效。
@@ -184,6 +231,26 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     normalized.AGENT_RUN_TIMEOUT_MS = 60000;
   }
 
+  // B2：监听地址为空/空白时回落到本机回环，不留 0.0.0.0 隐患。
+  if (typeof normalized.SERVER_HOST !== 'string' || !normalized.SERVER_HOST.trim()) {
+    normalized.SERVER_HOST = '127.0.0.1';
+  }
+
+  // B2：护栏与会话默认值同样落进 normalized，
+  // 让 ConfigService.get 拿到确定值（各消费方仍保留同名兜底，双保险）。
+  const numericDefaults: Record<string, number> = {
+    DESKTOP_SESSION_TTL_SECONDS: 900,
+    DESKTOP_SESSION_ISSUE_PER_MINUTE: 10,
+    AGENT_RATE_LIMIT_PER_MINUTE: 120,
+    AGENT_MAX_CONCURRENT: 2,
+  };
+  for (const [key, fallback] of Object.entries(numericDefaults)) {
+    const raw = (normalized as Record<string, unknown>)[key];
+    if (raw === undefined || raw === null || (typeof raw === 'string' && !String(raw).trim())) {
+      (normalized as Record<string, unknown>)[key] = fallback;
+    }
+  }
+
   const instance = plainToInstance(EnvironmentVariables, normalized, { enableImplicitConversion: true });
   const errors = validateSync(instance, { skipMissingProperties: false, whitelist: true });
   if (errors.length > 0) {
@@ -205,6 +272,14 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     if (instance.AGENT_REQUIRE_AUTH !== 'true') {
       throw new Error('生产环境必须配置 AGENT_REQUIRE_AUTH=true，禁止未认证调用开店助手');
     }
+  }
+
+  // B2：非回环监听（局域网/公网可达）必须强制鉴权，
+  // 禁止「非 production 所以匿名」的远程模型通道。
+  if (!isLoopbackHost(instance.SERVER_HOST) && instance.AGENT_REQUIRE_AUTH !== 'true') {
+    throw new Error(
+      'SERVER_HOST 不是回环地址时必须配置 AGENT_REQUIRE_AUTH=true（局域网/公网禁止匿名调用模型接口）',
+    );
   }
 
   const baseUrl = String(instance.DEEPSEEK_API_BASE_URL);

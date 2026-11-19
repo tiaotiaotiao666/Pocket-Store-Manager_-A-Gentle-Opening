@@ -25,6 +25,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { isTrustedSender } = require('./composer-ipc.cjs');
+const { createDesktopCredentialProvider } = require('./desktop-session.cjs');
 const defaultReconstruct = require('./frontend-reconstruct/index.cjs');
 
 const CONTRACT_VERSION = 'frontend-reconstruct.v1';
@@ -90,6 +91,9 @@ const CODES = Object.freeze({
   ANALYZE_FAILED: 'FRONTEND_ANALYZE_FAILED',
   ANALYZE_TIMEOUT: 'FRONTEND_ANALYZE_TIMEOUT',
   ANALYZE_UNAVAILABLE: 'FRONTEND_ANALYZE_UNAVAILABLE',
+  // B2：会话问题与模型不可用必须分开说，401 不能伪装成「模型挂了」。
+  ANALYZE_AUTH_REQUIRED: 'FRONTEND_ANALYZE_AUTH_REQUIRED',
+  ANALYZE_RATE_LIMITED: 'FRONTEND_ANALYZE_RATE_LIMITED',
   CONTRACT_MISMATCH: 'FRONTEND_CONTRACT_MISMATCH',
   CANCELLED: 'FRONTEND_CANCELLED',
   BUILD_FAILED: 'FRONTEND_BUILD_FAILED',
@@ -592,6 +596,13 @@ function createFrontendReconstructIpc(options) {
     lastCancelAt: null,
     loadSettings: typeof opts.loadSettings === 'function' ? opts.loadSettings : null,
     fetchImpl: typeof opts.fetchImpl === 'function' ? opts.fetchImpl : (typeof fetch === 'function' ? fetch : null),
+    // B2：桌面会话凭证由主进程持有；渲染进程既看不到也传不进来。
+    credentials:
+      opts.credentials
+      || createDesktopCredentialProvider({
+        fetchImpl: typeof opts.fetchImpl === 'function' ? opts.fetchImpl : (typeof fetch === 'function' ? fetch : null),
+        now: typeof opts.now === 'function' ? opts.now : undefined,
+      }),
     resolveConfig: typeof opts.resolveConfig === 'function' ? opts.resolveConfig : defaultResolveConfig,
     repairTransport: typeof opts.repairTransport === 'function' ? opts.repairTransport : null,
     spawnImpl: typeof opts.spawnImpl === 'function' ? opts.spawnImpl : undefined,
@@ -636,6 +647,27 @@ function createFrontendReconstructIpc(options) {
       const configuredTimeout = Number.isFinite(config.agentTimeoutMs) ? config.agentTimeoutMs : 60000;
       const timeoutMs = Math.max(5000, Math.min(configuredTimeout, 120000));
 
+      // B2：先取桌面会话凭证（主进程内存持有、短期、可失效）。
+      // 拿不到就明确告诉用户「会话失效/需重新连接」，不做匿名回退。
+      let authorization = null;
+      if (state.credentials && typeof state.credentials.getAuthorization === 'function') {
+        const credential = await state.credentials.getAuthorization(baseUrl);
+        if (!credential || credential.ok !== true) {
+          return fail(
+            CODES.ANALYZE_AUTH_REQUIRED,
+            '本地会话不可用（可能已过期或后端未启动），请重新连接后重试；这次没有调用模型。',
+            { retryable: true, reason: credential && credential.code ? credential.code : null },
+          );
+        }
+        authorization = credential.authorization;
+      }
+      if (typeof authorization !== 'string' || !authorization) {
+        return fail(CODES.ANALYZE_AUTH_REQUIRED, '缺少本地会话凭证，请重新连接本地服务后重试。', {
+          retryable: true,
+          reason: null,
+        });
+      }
+
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       const watcher = setInterval(() => {
@@ -652,6 +684,7 @@ function createFrontendReconstructIpc(options) {
             'Content-Type': 'application/json; charset=utf-8',
             Accept: 'application/json',
             'X-Agent-Contract': CONTRACT_VERSION,
+            Authorization: authorization,
           },
           body: JSON.stringify(built.body),
           signal: controller.signal,
@@ -681,7 +714,20 @@ function createFrontendReconstructIpc(options) {
         try { parsed = JSON.parse(responseText); } catch (error) { parsed = null; }
       }
       if (responseStatus === 401) {
-        return fail(CODES.ANALYZE_FAILED, '识别服务要求店主身份，请重新登录后再试');
+        // B2：会话失效就清缓存、要求重连；不把它当成模型不可用。
+        if (state.credentials && typeof state.credentials.invalidate === 'function') state.credentials.invalidate();
+        return fail(
+          CODES.ANALYZE_AUTH_REQUIRED,
+          '本地会话已失效，请重新连接后重试（这次没有调用模型）。',
+          { retryable: true, reason: 'AUTH_REJECTED' },
+        );
+      }
+      if (responseStatus === 429) {
+        return fail(
+          CODES.ANALYZE_RATE_LIMITED,
+          '识别请求太频繁了，稍等一会儿再试；这次没有重复调用模型。',
+          { retryable: true, status: 429, upstream: isPlainObject(parsed) && typeof parsed.code === 'string' ? parsed.code : null },
+        );
       }
       if (responseStatus === 413) {
         return fail(CODES.IMAGE_TOO_LARGE, '截图太大了，请压到 400KB 以内再上传');

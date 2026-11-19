@@ -145,6 +145,11 @@ export const FRONTEND_ERROR_TEXT = Object.freeze({
   FRONTEND_ANALYZE_FAILED: '没能拿到截图识别结果，可以稍后重试；当前版本没有变化。',
   FRONTEND_ANALYZE_TIMEOUT: '识别超时，可以稍后重试；当前版本没有变化。',
   FRONTEND_ANALYZE_UNAVAILABLE: '后端或图片识别模型当前不可用，这次没有生成候选。',
+  // B2：会话问题与「模型不可用」分开说；401/429 都明确可重试。
+  FRONTEND_ANALYZE_AUTH_REQUIRED: '本地会话已失效或需要重新连接，请重连本地服务后重试；这次没有调用模型。',
+  FRONTEND_ANALYZE_RATE_LIMITED: '识别请求太频繁了，稍等一会儿再试；这次没有重复调用模型。',
+  ANALYZE_AUTH_REQUIRED: '本地会话已失效或需要重新连接，请重连本地服务后重试；这次没有调用模型。',
+  ANALYZE_RATE_LIMITED: '识别请求太频繁了，稍等一会儿再试；这次没有重复调用模型。',
   FRONTEND_CONTRACT_MISMATCH: '服务端返回的契约版本不一致，请升级后再试。',
   FRONTEND_DRAFT_MISSING: '这次识别没有产出可物化的草稿，请补充要求后重试。',
   FRONTEND_BUILD_FAILED: '候选构建失败，已保留输入；当前版本没有被改动。',

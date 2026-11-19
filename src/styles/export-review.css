@@ -5,9 +5,10 @@
   flex-direction: column;
   gap: 14px;
   padding: 16px 18px;
-  border: 1px solid var(--line-soft, rgba(255, 255, 255, 0.12));
+  border: 1px solid var(--line);
   border-radius: 14px;
-  background: var(--surface-raised, rgba(255, 255, 255, 0.03));
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-xs);
 }
 
 .export-review-head {
@@ -24,26 +25,28 @@
   width: 30px;
   height: 30px;
   border-radius: 10px;
-  background: rgba(84, 178, 120, 0.16);
-  color: #6fd39a;
+  background: var(--success-soft);
+  color: var(--success);
   flex: none;
 }
 
 .export-review-mark.is-stale {
-  background: rgba(226, 160, 63, 0.18);
-  color: #e2a03f;
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .export-review-head h3 {
   margin: 0 0 4px;
   font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .export-review-head p {
   margin: 0;
   font-size: 12.5px;
   line-height: 1.6;
-  color: var(--text-muted, rgba(255, 255, 255, 0.62));
+  color: var(--muted);
 }
 
 .export-review-stale {
@@ -54,20 +57,20 @@
   align-items: flex-start;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(226, 160, 63, 0.12);
-  border: 1px solid rgba(226, 160, 63, 0.35);
+  background: var(--warn-soft);
+  border: 1px solid #f0d9bd;
   max-width: 320px;
 }
 
 .export-review-stale strong {
   font-size: 12.5px;
-  color: #e2a03f;
+  color: var(--warn);
 }
 
 .export-review-stale span {
   font-size: 12px;
   line-height: 1.5;
-  color: var(--text-muted, rgba(255, 255, 255, 0.62));
+  color: var(--ink-soft);
 }
 
 .export-review-sections {
@@ -81,7 +84,7 @@
   font-size: 12.5px;
   letter-spacing: 0.04em;
   text-transform: none;
-  color: var(--text-muted, rgba(255, 255, 255, 0.62));
+  color: var(--muted);
 }
 
 .export-review-list {
@@ -101,17 +104,17 @@
 }
 
 .export-review-row dt {
-  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+  color: var(--muted);
 }
 
 .export-review-row dd {
   margin: 0;
-  color: var(--text-primary, rgba(255, 255, 255, 0.9));
+  color: var(--ink);
   word-break: break-word;
 }
 
 .export-review-row.is-warn dd {
-  color: #e2a03f;
+  color: var(--warn);
 }
 
 .export-review-list.is-compact .export-review-row {
@@ -134,7 +137,7 @@
   align-items: flex-start;
   font-size: 12px;
   line-height: 1.55;
-  color: var(--text-muted, rgba(255, 255, 255, 0.62));
+  color: var(--ink-soft);
 }
 
 .export-review-notes svg {
@@ -145,11 +148,12 @@
 .export-review-scope {
   margin: 0;
   padding: 8px 10px;
+  border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-sunken);
   font-size: 12px;
   line-height: 1.55;
-  color: var(--text-muted, rgba(255, 255, 255, 0.68));
+  color: var(--muted);
 }
 
 .export-review-tech {
@@ -158,19 +162,20 @@
 
 .export-review-tech summary {
   cursor: pointer;
-  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+  color: var(--muted);
   padding: 2px 0;
 }
 
 .export-review-tech summary:hover {
-  color: var(--text-primary, rgba(255, 255, 255, 0.85));
+  color: var(--ink);
 }
 
 .export-review-tech .export-review-list {
   margin-top: 8px;
   padding: 10px 12px;
+  border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--bg-sunken);
 }
 
 /* 体检面板：默认只显示人话，技术字段收进「技术详情」。 */
@@ -183,7 +188,7 @@
 
 .preflight-row-action {
   font-size: 12px;
-  color: var(--text-muted, rgba(255, 255, 255, 0.62));
+  color: var(--muted);
 }
 
 .preflight-tech {
@@ -192,23 +197,24 @@
 
 .preflight-tech summary {
   cursor: pointer;
-  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+  color: var(--muted);
 }
 
 .preflight-tech summary:hover {
-  color: var(--text-primary, rgba(255, 255, 255, 0.85));
+  color: var(--ink);
 }
 
 .preflight-tech-list {
   margin: 8px 0 0;
   padding: 10px 12px;
+  border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--bg-sunken);
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 11.5px;
-  color: var(--text-muted, rgba(255, 255, 255, 0.62));
+  color: var(--ink-soft);
 }
 
 .preflight-tech-list code {
@@ -221,14 +227,14 @@
   gap: 6px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(226, 160, 63, 0.35);
-  background: rgba(226, 160, 63, 0.1);
+  border: 1px solid #f0d9bd;
+  background: var(--warn-soft);
   font-size: 12.5px;
   line-height: 1.6;
 }
 
 .preflight-consequence strong {
-  color: #e2a03f;
+  color: var(--warn);
 }
 
 /* 模板结构说明：真实独立结构套数（B4 规则 1）。 */
@@ -236,7 +242,7 @@
   margin: 4px 0 0;
   font-size: 12px;
   line-height: 1.55;
-  color: var(--text-muted, rgba(255, 255, 255, 0.62));
+  color: var(--muted);
 }
 
 /* 体检面板：后果确认小标题（B4 规则 8）。 */
@@ -244,5 +250,5 @@
   margin: 6px 0 2px;
   font-size: 12px;
   line-height: 1.55;
-  color: var(--text-muted, rgba(255, 255, 255, 0.62));
+  color: var(--muted);
 }

@@ -28,13 +28,26 @@ function featureLabel(id) {
   return catalogFeatures.find((feature) => feature.id === id)?.label || id;
 }
 
-function rule(ruleId, level, message, fieldPath, action) {
+/**
+ * @param {string} ruleId 技术标识（只在「技术详情」里展示）
+ * @param {'error'|'warn'|'info'} level
+ * @param {string} message 用户可读的一句话
+ * @param {string|null} fieldPath 技术定位（只在「技术详情」里展示）
+ * @param {{label?: string, phase?: string}|null} action 可执行动作
+ * @param {{requiresAck?: boolean, consequence?: string}} [extra]
+ *   `requiresAck:false` = 只是披露，不要让用户例行点「我已了解」（B4 规则 8）；
+ *   `consequence` = 用户真正要承担的后果，和 message 分开显示。
+ */
+function rule(ruleId, level, message, fieldPath, action, extra) {
+  const options = extra && typeof extra === 'object' ? extra : {};
   return {
     ruleId,
     level,
     message,
     fieldPath: fieldPath || null,
     action: action || null,
+    requiresAck: options.requiresAck !== false,
+    ...(options.consequence ? { consequence: options.consequence } : {}),
   };
 }
 
@@ -122,26 +135,30 @@ export function evaluateLocal(state, options) {
   const selected = Array.isArray(state.features && state.features.selected) ? state.features.selected : [];
   const unmapped = selected.filter((id) => !BASE_CAPABILITIES.has(id));
   if (unmapped.length > 0) {
+    // 这是唯一需要用户确认后果的一类：他自己勾了，但这次真的不会交付。
     warns.push(rule(
       'W-UNMAPPED-FEATURE',
       'warn',
-      `以下能力暂无模板资产，不会写入导出工程：${unmapped.map(featureLabel).join('、')}。`,
+      `你勾选的「${unmapped.map(featureLabel).join('、')}」这次不会生成。`,
       'features.selected',
       null,
+      { requiresAck: true, consequence: '当前模板没有这些能力对应的资产；导出的小程序里不会有它们，需要额外开发或换模板。' },
     ));
   }
 
   // 反向披露：Base 自带的页面/组件不因取消勾选而消失。
   // 只在用户真的做过勾选时提示，避免首次进入就报噪音。
+  // 这是「说明」而不是「后果」，不再要求逐条点「我已了解」（B4 规则 8）。
   if (selected.length > 0) {
     const unselectedBase = OPTIONAL_BASE_CAPABILITY_IDS.filter((id) => !selected.includes(id));
     if (unselectedBase.length > 0) {
       warns.push(rule(
         'W-BASE-FEATURE-UNCHECKED',
         'warn',
-        `未勾选的「${unselectedBase.map(featureLabel).join('、')}」不会从导出工程移除：它们由基础模板自带，勾选只影响模板推荐。`,
+        `「${unselectedBase.map(featureLabel).join('、')}」由基础模板自带，不勾选也仍在导出工程里。`,
         'features.selected',
         { label: '去确认能力勾选', phase: 'features' },
+        { requiresAck: false },
       ));
     }
   }
@@ -150,14 +167,23 @@ export function evaluateLocal(state, options) {
     warns.push(rule(
       'W-DISH-DROPPED',
       'warn',
-      `有 ${dishes.length - validDishes.length} 道菜缺少名称或整数价格，不会写入导出配置。`,
+      `有 ${dishes.length - validDishes.length} 道菜缺菜名或价格，不会写进小程序。`,
       'agentDraft.dishes',
       { label: '去补全菜品', phase: 'store-info' },
+      { requiresAck: true, consequence: '这些菜在小程序菜单里看不到；补全菜名和价格后重新体检就会包含。' },
     ));
   }
 
   if (!appid) {
-    warns.push(rule('W-NO-APPID', 'warn', '还没有 AppID，产物会保留 touristappid；可在交接向导第 3 步写入。', 'appid', null));
+    // 常规信息披露：AppID 可以在交接向导里写，不必为此卡一次确认。
+    warns.push(rule(
+      'W-NO-APPID',
+      'warn',
+      '还没有 AppID，产物先保留 touristappid，正式上传前在交接向导第 3 步写入即可。',
+      'appid',
+      null,
+      { requiresAck: false },
+    ));
   }
 
   const images = state.assets && Array.isArray(state.assets.images) ? state.assets.images : [];
@@ -194,13 +220,22 @@ export function mergeComposerResult(local, composerResult) {
 
   if (result.ok === false) {
     const code = result.code || 'COMPOSE_FAILED';
-    const ruleId = code === 'THEME_CONTRAST_LOW' ? 'E-THEME-CONTRAST' : 'E-PLAN-CONTRACT';
+    // 未验证配方（B4 规则 3）：Composer 结构化拒绝，这里翻成人话 + 可执行动作。
+    const recipeStageBlocked = String(code).startsWith('RECIPE_STAGE');
+    const ruleId = recipeStageBlocked
+      ? 'E-RECIPE-STAGE'
+      : (code === 'THEME_CONTRAST_LOW' ? 'E-THEME-CONTRAST' : 'E-PLAN-CONTRACT');
     errors.push(rule(
       ruleId,
       'error',
       result.message || `Composer 校验未通过（${code}）`,
       result.path || null,
-      code === 'THEME_CONTRAST_LOW' ? { label: '去换一套风格', phase: 'store-info' } : null,
+      recipeStageBlocked
+        ? { label: '去换一个已验证模板', phase: 'template' }
+        : (code === 'THEME_CONTRAST_LOW' ? { label: '去换一套风格', phase: 'store-info' } : null),
+      recipeStageBlocked
+        ? { consequence: '未验证的页面结构不会被当作正式成果导出，避免交付一个没跑通过的工程。' }
+        : undefined,
     ));
     return { errors, warns, infos, planDigest: null, checkedAt: base.checkedAt || null };
   }
@@ -210,9 +245,10 @@ export function mergeComposerResult(local, composerResult) {
     warns.push(rule(
       'W-PREVIEW-ONLY',
       'warn',
-      `以下能力仅预览、未接入线上：${previewOnly.map(featureLabel).join('、')}。`,
+      `「${previewOnly.map(featureLabel).join('、')}」目前只能预览，没有接入线上能力。`,
       'features.selected',
       null,
+      { requiresAck: true, consequence: '上线后这些入口能点但没有真实后端；对外不能说已经接入。' },
     ));
   }
 
@@ -224,6 +260,7 @@ export function mergeComposerResult(local, composerResult) {
       `有可用模板版本：${updates.map((item) => `${item.id} ${item.current} → ${item.available}`).join('；')}。本次仍按 Plan 精确版本导出。`,
       null,
       null,
+      { requiresAck: false },
     ));
   }
 
@@ -232,6 +269,8 @@ export function mergeComposerResult(local, composerResult) {
     warns,
     infos,
     planDigest: result.planDigest || null,
+    // 配方交付状态（stage/wechatCompile/knownLimits）如实带给界面，用于导出摘要。
+    recipe: result.recipe || null,
     checkedAt: base.checkedAt || null,
   };
 }
@@ -283,12 +322,15 @@ export function mergeTargetPreflight(local, targetResult) {
     warns: [...(base.warns || [])],
     infos: [...(base.infos || [])],
     planDigest: base.planDigest || null,
+    recipe: base.recipe || null,
     checkedAt: base.checkedAt || null,
   };
 }
 
 export const PREFLIGHT_RULE_IDS = Object.freeze({
-  ERROR: ['E-PLAN-NAME', 'E-PLAN-DISHES', 'E-PLAN-PRICE', 'E-PLAN-HOURS', 'E-PLAN-FULFILLMENT', 'E-PLAN-CONTRACT', 'E-THEME-CONTRAST', 'E-APPID-FORMAT', 'E-DESKTOP-REQUIRED', 'E-TARGET-EXISTS', 'E-TARGET-CHECK-FAILED'],
+  ERROR: ['E-PLAN-NAME', 'E-PLAN-DISHES', 'E-PLAN-PRICE', 'E-PLAN-HOURS', 'E-PLAN-FULFILLMENT', 'E-PLAN-CONTRACT', 'E-RECIPE-STAGE', 'E-THEME-CONTRAST', 'E-APPID-FORMAT', 'E-DESKTOP-REQUIRED', 'E-TARGET-EXISTS', 'E-TARGET-CHECK-FAILED'],
+  /** 需要用户确认后果的规则（B4 规则 8）：只有「你选了但真的不交付」与「会丢数据」两类。 */
+  ACK: ['W-PREVIEW-ONLY', 'W-UNMAPPED-FEATURE', 'W-DISH-DROPPED'],
   WARN: ['W-PREVIEW-ONLY', 'W-VERSION-GAP', 'W-UNMAPPED-FEATURE', 'W-BASE-FEATURE-UNCHECKED', 'W-DISH-DROPPED', 'W-NO-APPID'],
   INFO: ['I-IMG-NOT-EXPORTED', 'I-SESSION-LONG', 'I-DEVTOOLS-NOT-FOUND', 'I-DEMO-PAYMENT'],
 });

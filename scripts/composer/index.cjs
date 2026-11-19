@@ -35,6 +35,71 @@ function emitProgress(onProgress, stageIndex, detail) {
   });
 }
 
+/** 可作为正式交付的 Recipe 发布状态；其余（candidate/preview-only/blocked/未知）一律拒绝。 */
+const DELIVERABLE_RECIPE_STAGES = Object.freeze(['direct', 'online-ready', 'stable']);
+
+/**
+ * P1.5：Recipe 交付状态闸（B4 规则 3）。
+ *
+ * 事实来源是注册表里的 recipe.json / release.json，不是调用方入参：
+ * 未验证的 Recipe 不得因为「界面上选得到」就默认进入正式导出。
+ */
+function recipeStageGate(plan, loaded, requestedStage, options) {
+  const gateOptions = options && typeof options === 'object' ? options : {};
+  const requireDeliverable = gateOptions.requireDeliverable !== false;
+  const assets = Array.isArray(loaded && loaded.assets) ? loaded.assets : [];
+  const asset = assets.find((item) => item
+    && item.kind === 'recipe'
+    && item.id === plan.planId
+    && item.version === plan.planVersion);
+  if (!asset) {
+    // 未登记的 Recipe 交给 resolve 报 ASSET_NOT_REGISTERED，避免两处错误语义打架。
+    return { ok: true, stage: null, asset: null };
+  }
+  const stage = typeof asset.stage === 'string' ? asset.stage : null;
+  const details = { recipeId: asset.id, recipeVersion: asset.version, stage: stage || 'unknown' };
+  if (requestedStage && requestedStage !== stage) {
+    return fail('RECIPE_STAGE_MISMATCH', 'planId', '调用方声明的 Recipe 状态与注册表不一致：' + requestedStage + ' ≠ ' + String(stage), details);
+  }
+  if (!stage) {
+    return fail('RECIPE_STAGE_UNKNOWN', 'planId', '配方「' + asset.id + '」没有可核对的发布状态，不能作为正式交付导出', details);
+  }
+  if (!DELIVERABLE_RECIPE_STAGES.includes(stage)) {
+    if (requireDeliverable) {
+      return fail(
+        'RECIPE_STAGE_NOT_DELIVERABLE',
+        'planId',
+        '配方「' + asset.id + '」当前状态是 ' + stage + '，还没有通过正式交付校验，不能导出正式工程',
+        details,
+      );
+    }
+    // 候选验证上下文（私有 overlay 的 dry-run）：允许组合，但结果必须自我标注「不可交付」。
+    return { ok: true, stage, asset, verificationOnly: true };
+  }
+  return { ok: true, stage, asset };
+}
+
+/** 导出结果/校验结果里如实带上配方状态，界面不用自己猜。 */
+function describeRecipeStage(gate) {
+  const asset = gate && gate.asset;
+  if (!asset) return null;
+  const release = asset.release && typeof asset.release === 'object' ? asset.release : null;
+  const declared = asset.recipe && asset.recipe.recipe && typeof asset.recipe.recipe === 'object' ? asset.recipe.recipe : {};
+  const knownLimits = Array.isArray(declared.knownLimits)
+    ? declared.knownLimits.filter((item) => typeof item === 'string').slice(0, 8)
+    : (release && Array.isArray(release.knownLimits) ? release.knownLimits.filter((item) => typeof item === 'string').slice(0, 8) : []);
+  return {
+    id: asset.id,
+    version: asset.version,
+    stage: gate.stage,
+    deliverable: DELIVERABLE_RECIPE_STAGES.includes(gate.stage) && gate.verificationOnly !== true,
+    displayName: declared.displayName && typeof declared.displayName === 'string' ? declared.displayName : null,
+    wechatCompile: typeof declared.wechatCompile === 'string' ? declared.wechatCompile : (release && typeof release.wechatCompile === 'string' ? release.wechatCompile : null),
+    verifiedAt: declared.verifiedAt || (release && release.verifiedAt) || null,
+    knownLimits,
+  };
+}
+
 function idle() {
   return new Promise((resolve) => setImmediate(resolve));
 }
@@ -95,10 +160,22 @@ async function compose(options) {
   if (!loaded.ok) return loaded;
   mark('registry');
 
+  // 私有 overlay（候选链 dry-run）才可能组合 candidate 配方；正式导出必须可交付。
+  const privateOverlay = Boolean(opts.registryRoot || opts.assetRoots);
+  const stageGate = recipeStageGate(opts.plan, loaded, opts.recipeStage, {
+    requireDeliverable: !privateOverlay || mode === 'production',
+  });
+  const recipe = describeRecipeStage(stageGate);
+
   await idle();
   emitProgress(opts.onProgress, 2);
-  const graph = resolvePlan(opts.plan, loaded, { onlineRecipe: opts.recipeStage === 'direct', role: opts.role });
+  const graph = resolvePlan(opts.plan, loaded, {
+    onlineRecipe: stageGate.ok === true && stageGate.stage === 'direct',
+    role: opts.role,
+  });
   if (!graph.ok) return graph;
+  // 组合解析通过后再拦：更具体的错误优先，未验证配方仍然被结构化拒绝。
+  if (!stageGate.ok) return stageGate;
   mark('resolve');
 
   await idle();
@@ -232,6 +309,8 @@ async function compose(options) {
       fileCount: verified.files.length,
       checks: verified.checks,
       stats: emitted.stats,
+      recipe,
+      recipeDeliverable: Boolean(recipe && recipe.deliverable),
       previewOnly: graph.previewOnly,
       degraded: graph.degraded,
       updatesAvailable: graph.updatesAvailable,
@@ -252,11 +331,18 @@ function validateComposition(plan, options) {
   if (!planValidation.ok) return planValidation;
   const loaded = opts.loaded || loadRegistryForCompose(opts);
   if (!loaded.ok) return loaded;
-  const graph = resolvePlan(plan, loaded, { onlineRecipe: opts.recipeStage === 'direct', role: opts.role });
+  const stageGate = recipeStageGate(plan, loaded, opts.recipeStage, { requireDeliverable: true });
+  const recipe = describeRecipeStage(stageGate);
+  const graph = resolvePlan(plan, loaded, {
+    onlineRecipe: stageGate.ok === true && stageGate.stage === 'direct',
+    role: opts.role,
+  });
   if (!graph.ok) return graph;
+  if (!stageGate.ok) return stageGate;
   return {
     ...ok(),
     planDigest: planDigest(plan),
+    recipe,
     registryVersion: loaded.registry.registryVersion,
     registryDigest: loaded.registryDigest,
     capabilitySet: graph.capabilitySet,

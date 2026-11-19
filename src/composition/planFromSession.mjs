@@ -256,8 +256,18 @@ export function buildPlanFromSession(state, options = {}) {
   const resolved = resolveRecipe(selectedTemplateId);
   const recipe = resolved.recipe;
   const recipeId = recipe.id;
-  if (resolved.fallback) {
-    warnings.push('未找到候选模板对应的 Recipe，已回落到 order-classic。');
+  // B4 规则 2：模板 → Recipe 回落不静默。把「原请求 / 实际 Recipe / 原因」写进 Plan，
+  // 用户确认页与导出摘要都从这一处派生，不另存一份说明。
+  const recipeFallback = resolved.fallback
+    ? {
+      requestedTemplateId: typeof selectedTemplateId === 'string' && selectedTemplateId ? selectedTemplateId : null,
+      recipeId,
+      recipeDisplayName: recipe.displayName,
+      reason: '「' + String(selectedTemplateId || '未指定模板') + '」没有对应的正式 Recipe，已回落到「' + recipe.displayName + '」。',
+    }
+    : null;
+  if (recipeFallback) {
+    warnings.push(recipeFallback.reason);
   }
 
   const selectedFeatures = Array.isArray(state.features && state.features.selected)
@@ -329,6 +339,8 @@ export function buildPlanFromSession(state, options = {}) {
     schemaVersion: 'composition.v1',
     planId: recipeId,
     planVersion: recipe.version,
+    // 只有真的发生回落时才写；未回落时 Plan 形状与旧存档完全一致。
+    ...(recipeFallback ? { recipeFallback } : {}),
     baseTemplate: { id: 'ordering-base', version: '1.0.0' },
     ...(frontendCandidate && frontendCandidate.status === 'adopted'
       ? { frontendPack: { id: frontendCandidate.candidateId, version: frontendCandidate.candidateVersion } }
@@ -365,6 +377,7 @@ export function buildPlanFromSession(state, options = {}) {
     unmappedCapabilities,
     recipeId,
     recipeDisplayName: recipe.displayName,
+    recipeFallback,
     themePresetId: theme.presetId,
     frontendCandidate,
   };
@@ -404,6 +417,7 @@ export function buildExportPlanFromSession(state, options = {}) {
     plan: built.plan,
     warnings: built.warnings,
     frontendCandidate: candidate,
+    recipeFallback: built.recipeFallback,
     recipeId: built.recipeId,
     recipeDisplayName: built.recipeDisplayName,
     themePresetId: built.themePresetId,

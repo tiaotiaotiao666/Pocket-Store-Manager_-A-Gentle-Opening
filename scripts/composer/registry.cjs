@@ -162,7 +162,35 @@ function loadRegistry(options) {
         errors.push({ code: 'MANIFEST_UNREADABLE', path: entry.path + '/recipe.json', message: recipeRead.error });
         continue;
       }
-      assets.push({ ...entry, dir: path.dirname(recipeFile), recipe: recipeRead.value, manifest: null });
+      // B4 规则 3：Recipe 的发布状态必须能被 Composer 直接读到，
+      // 不能靠调用方自称「已验证」。release.json 优先，其次 recipe.json 里的 recipe.stage。
+      const releaseFile = resolveAssetPath(path.join(entry.path, 'release.json'));
+      let release = null;
+      if (releaseFile && fs.existsSync(releaseFile)) {
+        const releaseRead = readJson(releaseFile);
+        if (releaseRead.ok && releaseRead.value && typeof releaseRead.value === 'object') release = releaseRead.value;
+      }
+      // 候选配方只有 candidate.json（没有 release.json）：它声明的 stage 同样算数，
+      // 不能把「没有 release.json」当成「已通过验证」。
+      if (!release) {
+        const candidateFile = resolveAssetPath(path.join(entry.path, 'candidate.json'));
+        if (candidateFile && fs.existsSync(candidateFile)) {
+          const candidateRead = readJson(candidateFile);
+          if (candidateRead.ok && candidateRead.value && typeof candidateRead.value === 'object') release = candidateRead.value;
+        }
+      }
+      const declaredStage = recipeRead.value && recipeRead.value.recipe && typeof recipeRead.value.recipe.stage === 'string'
+        ? recipeRead.value.recipe.stage
+        : null;
+      const stage = (release && typeof release.stage === 'string' && release.stage) || declaredStage;
+      assets.push({
+        ...entry,
+        dir: path.dirname(recipeFile),
+        recipe: recipeRead.value,
+        manifest: null,
+        release,
+        stage,
+      });
       byKey.set(entry.id + '@' + entry.version, assets[assets.length - 1]);
       continue;
     }

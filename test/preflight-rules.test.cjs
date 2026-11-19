@@ -101,7 +101,7 @@ test('AppID 非法与浏览器模式分别命中 error', async () => {
   assert.ok(ids(rules.evaluateLocal(browser).errors).includes('E-DESKTOP-REQUIRED'));
 });
 
-test('模板外能力、菜品丢弃与缺少 AppID 产生 warn', async () => {
+test('模板外能力、菜品丢弃与缺少 AppID 产生 warn（B4：只有前两类需要确认后果）', async () => {
   const { machine, rules } = await load();
   const state = baseState(machine, {
     features: { selected: ['scan-order', 'product-catalog', 'cart-checkout', 'order-tracking', 'store-gallery'], custom: '' },
@@ -114,15 +114,24 @@ test('模板外能力、菜品丢弃与缺少 AppID 产生 warn', async () => {
   assert.ok(ids(result.warns).includes('W-UNMAPPED-FEATURE'));
   assert.ok(ids(result.warns).includes('W-DISH-DROPPED'));
   assert.ok(ids(result.warns).includes('W-NO-APPID'));
+  // B4 规则 8：缺 AppID 只是披露，不再要求用户点「我已了解」。
+  const byId = (id) => result.warns.find((item) => item.ruleId === id);
+  assert.strictEqual(byId('W-NO-APPID').requiresAck, false);
+  // 用户自己勾了但不会交付的能力，必须保留一次明确的后果说明。
+  assert.strictEqual(byId('W-UNMAPPED-FEATURE').requiresAck, true);
+  assert.ok(String(byId('W-UNMAPPED-FEATURE').consequence || '').length > 0);
+  assert.strictEqual(byId('W-DISH-DROPPED').requiresAck, true);
 });
 
-test('未勾选的基础能力仍随模板导出：W-BASE-FEATURE-UNCHECKED 只披露不裁剪', async () => {
+test('未勾选的基础能力仍随模板导出：W-BASE-FEATURE-UNCHECKED 只披露、不要求确认', async () => {
   const { machine, rules } = await load();
   const result = rules.evaluateLocal(baseState(machine));
   const hits = result.warns.filter((item) => item.ruleId === 'W-BASE-FEATURE-UNCHECKED');
   assert.strictEqual(hits.length, 1);
   assert.ok(hits[0].message.includes('堂食'));
-  assert.ok(hits[0].message.includes('不会从导出工程移除'));
+  assert.ok(hits[0].message.includes('由基础模板自带'));
+  // B4 规则 8：这类说明不进「我已了解」清单。
+  assert.strictEqual(hits[0].requiresAck, false);
   assert.strictEqual(hits[0].fieldPath, 'features.selected');
   assert.deepStrictEqual(hits[0].action, { label: '去确认能力勾选', phase: 'features' });
   // 9 个基础能力全部勾选时不再提示

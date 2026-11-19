@@ -78,6 +78,10 @@ export function createEmptyPreflight() {
     infos: [],
     acknowledged: [],
     planDigest: null,
+    /** B4：这次体检绑定的导出签名（Plan + 素材 + 目标位置）；资料一改就过期。 */
+    signature: null,
+    /** 配方交付状态（stage/wechatCompile/knownLimits），由 Composer 校验结果带回。 */
+    recipe: null,
     checkedAt: null,
     error: null,
   };

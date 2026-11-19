@@ -12,6 +12,8 @@ import {
   DEPLOY_STATUS,
 } from './state/constants.mjs';
 import { buildPlanFromSession, buildExportPlanFromSession } from './composition/planFromSession.mjs';
+import { buildExportReview } from './domain/exportReview.mjs';
+import { buildSignatureParts, describeSignatureDrift } from './domain/planSignature.mjs';
 import { buildSessionPreviewViewModels } from './composition/previewViewModel.mjs';
 import { buildConversationStream } from './state/conversationStream.mjs';
 import {
@@ -129,6 +131,7 @@ import AgentDraftSummary from './components/agent/AgentDraftSummary.jsx';
 import ProjectWorkbench from './components/workbench/ProjectWorkbench.jsx';
 import SettingsPanel from './components/settings/SettingsPanel.jsx';
 import PreflightPanel from './components/deploy/PreflightPanel.jsx';
+import ExportReviewCard from './components/deploy/ExportReviewCard.jsx';
 import HandoffWizard from './components/deploy/HandoffWizard.jsx';
 
 const FEATURE_GROUPS = [...new Set(catalogFeatures.map((feature) => feature.group))];
@@ -617,6 +620,67 @@ export default function App() {
     () => candidateOverlayFromAdoption(frontendCandidateRecord),
     [frontendCandidateRecord],
   );
+
+  // ——— B4：导出前的「最终生成内容」与导出签名 ———
+  // 两者都从同一份 Plan（导出真正用的那份）派生，不另存一份数据副本。
+  const exportPlanForReview = useMemo(
+    () => buildExportPlanFromSession(frontendStateWithCandidate),
+    [frontendStateWithCandidate],
+  );
+  const exportTargetDirectory = state.deploy.directory
+    || (defaultTarget.status === 'ok' ? defaultTarget.path : '');
+  const exportProjectName = state.deploy.projectName
+    || sanitizeProjectName(state.store.name || state.agentDraft.storeName);
+  const exportSignatureParts = useMemo(
+    () => buildSignatureParts({
+      plan: exportPlanForReview.ok ? exportPlanForReview.plan : null,
+      posterAssetId: state.visual.imageAssetId || null,
+      directory: exportTargetDirectory,
+      projectName: exportProjectName,
+    }),
+    [exportPlanForReview, state.visual.imageAssetId, exportTargetDirectory, exportProjectName],
+  );
+  const exportReview = useMemo(() => {
+    // 已采用修改 = 当前 Plan 与「同一 builder、去掉展示补丁」的基线 Plan 之差。
+    const baselineSource = state.presentation ? { ...frontendStateWithCandidate, presentation: null } : frontendStateWithCandidate;
+    const baselineBuilt = buildPlanFromSession(baselineSource);
+    return buildExportReview({
+      plan: exportPlanForReview.ok ? exportPlanForReview.plan : null,
+      baselinePlan: baselineBuilt && baselineBuilt.plan ? baselineBuilt.plan : null,
+      templateId: state.build.selectedId ?? null,
+      styleName,
+      unmappedCapabilities: exportPlanForReview.ok ? exportPlanForReview.unmappedCapabilities : [],
+      warnings: exportPlanForReview.ok ? exportPlanForReview.warnings : [],
+      target: { directory: exportTargetDirectory, projectName: exportProjectName },
+      poster: {
+        included: Boolean(state.visual.imageAssetId),
+        reason: state.visual.imageAssetId ? null : '没有选海报图，不进工程；基础页面照常生成',
+      },
+      frontendCandidate: exportPlanForReview.ok ? exportPlanForReview.frontendCandidate : null,
+      recipeStage: state.deploy.preflight.recipe || null,
+    });
+  }, [
+    exportPlanForReview,
+    frontendStateWithCandidate,
+    state.presentation,
+    state.build.selectedId,
+    state.visual.imageAssetId,
+    state.deploy.preflight.recipe,
+    styleName,
+    exportTargetDirectory,
+    exportProjectName,
+  ]);
+  // 规则 6：体检结果绑定签名；资料/目标一改，旧结果与旧确认立即失效。
+  const preflightSignature = state.deploy.preflight.signature || null;
+  const preflightSignatureText = preflightSignature && typeof preflightSignature === 'object'
+    ? preflightSignature.signature || null
+    : (typeof preflightSignature === 'string' ? preflightSignature : null);
+  const preflightStale = state.deploy.preflight.status === 'done'
+    && Boolean(preflightSignatureText)
+    && preflightSignatureText !== exportSignatureParts.signature;
+  const preflightStaleReason = preflightStale && preflightSignature && typeof preflightSignature === 'object'
+    ? describeSignatureDrift(preflightSignature, exportSignatureParts)
+    : null;
 
   // P2：主线步骤条只是只读投影，不改任何业务动作；构建中不提供返回入口。
   const flowDescriptor = useMemo(
@@ -2774,7 +2838,7 @@ export default function App() {
 
   const handleDeployChooseDirectory = async () => {
     if (deployBusy.current) return;
-    const gate = selectCanChooseDirectory(state);
+    const gate = selectCanChooseDirectory(state, exportSignatureParts.signature);
     if (!gate.can) {
       setNotice(`还不能选择导出位置：${gate.reason}`);
       return;
@@ -2813,7 +2877,7 @@ export default function App() {
 
   const handleDeployExportDefault = async () => {
     if (deployBusy.current) return;
-    const gate = selectCanChooseDirectory(state);
+    const gate = selectCanChooseDirectory(state, exportSignatureParts.signature);
     if (!gate.can) {
       setNotice(`还不能导出：${gate.reason}`);
       return;
@@ -2866,7 +2930,7 @@ export default function App() {
       await handleDeployChooseDirectory();
       return;
     }
-    const gate = selectCanChooseDirectory(state);
+    const gate = selectCanChooseDirectory(state, exportSignatureParts.signature);
     if (!gate.can) {
       setNotice(`还不能重试导出：${gate.reason}`);
       return;
@@ -2926,6 +2990,8 @@ export default function App() {
       const rawTargetName = String(state.deploy.projectName || state.store.name || state.agentDraft.storeName || '').trim();
       const preflightParent = state.deploy.directory
         || (defaultTarget.status === 'ok' ? (defaultTarget.token || defaultTarget.path) : '');
+      let effectiveDirectory = state.deploy.directory
+        || (defaultTarget.status === 'ok' ? defaultTarget.path : '');
       if (desktop && preflightParent && rawTargetName) {
         const projectNameForCheck = sanitizeProjectName(rawTargetName);
         let target = await preflightTarget({ parentDir: preflightParent, projectName: projectNameForCheck });
@@ -2942,17 +3008,29 @@ export default function App() {
           });
           if (fallback.status === 'ok' || fallback.status === 'conflict') {
             dispatch({ type: 'DEPLOY_FORGET_DIRECTORY' });
+            effectiveDirectory = defaultTarget.path;
             target = fallback;
           }
         }
         merged = mergeTargetPreflight(merged, target);
       }
+      // B4 规则 6：体检结果与「当前 Plan + 素材 + 目标位置」的签名一起落库，
+      // 任何一项变了都会让这份结果失效，不再显示「可以导出」。
+      const signatureParts = buildSignatureParts({
+        plan: exportPlanForReview.ok ? exportPlanForReview.plan : null,
+        posterAssetId: state.visual.imageAssetId || null,
+        directory: effectiveDirectory,
+        projectName: state.deploy.projectName
+          || sanitizeProjectName(state.store.name || state.agentDraft.storeName),
+      });
       dispatch({
         type: 'PREFLIGHT_RESULT',
         errors: merged.errors,
         warns: merged.warns,
         infos: merged.infos,
         planDigest: merged.planDigest,
+        recipe: merged.recipe || null,
+        signature: signatureParts,
         checkedAt: merged.checkedAt,
         error: merged.error || null,
       });
@@ -3422,8 +3500,9 @@ export default function App() {
           />
         );
 case PHASES.DEPLOY: {
-        const exportGate = selectCanExport(state);
-        const chooseGate = selectCanChooseDirectory(state);
+        // 规则 6：体检结果过期时不允许导出（旧的「可以导出」不能继续用）。
+        const exportGate = selectCanExport(state, exportSignatureParts.signature);
+        const chooseGate = selectCanChooseDirectory(state, exportSignatureParts.signature);
         return (
           <>
             <PreflightPanel
@@ -3433,11 +3512,20 @@ case PHASES.DEPLOY: {
               infos={state.deploy.preflight.infos}
               acknowledged={state.deploy.preflight.acknowledged}
               planDigest={state.deploy.preflight.planDigest}
+              signature={preflightSignatureText}
               checkedAt={state.deploy.preflight.checkedAt}
               canExport={exportGate}
+              stale={preflightStale}
+              staleReason={preflightStaleReason}
               onRerun={runPreflight}
               onToggleAck={(ruleId) => dispatch({ type: 'PREFLIGHT_ACK_TOGGLE', ruleId })}
               onGoto={(nextPhase) => dispatch({ type: 'PHASE_GOTO', phase: nextPhase })}
+            />
+            <ExportReviewCard
+              review={exportReview}
+              stale={preflightStale}
+              staleReason={preflightStaleReason}
+              onRerun={runPreflight}
             />
             <DeployStep
               status={state.deploy.status}

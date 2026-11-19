@@ -14,6 +14,10 @@ const EXPORT_ERROR_TEXT = Object.freeze({
   PLAN_FIELD_FORBIDDEN: '导出配置包含不允许的字段，已拒绝生成。',
   THEME_CONTRAST_LOW: '所选配色对比度不足，请换一套风格。',
   PREVIEW_ONLY_NOT_ACKNOWLEDGED: '存在仅预览能力，需要先确认后才能导出。',
+  // B4：Recipe 交付状态闸（未验证配方不得默认进入正式导出）。
+  RECIPE_STAGE_NOT_DELIVERABLE: '这套页面结构还没有通过正式交付校验（未验证配方），不能导出正式工程；请换用已验证的模板。',
+  RECIPE_STAGE_UNKNOWN: '这套页面结构缺少可核对的发布状态，已阻止导出；请换用已验证的模板。',
+  RECIPE_STAGE_MISMATCH: '页面结构的发布状态与登记信息不一致，已阻止导出；请更新应用后重试。',
   ASSET_NOT_REGISTERED: '模板资产未登记，无法导出。',
   ASSET_VERSION_NOT_FOUND: '模板版本不存在，请更新应用。',
   API_BASE_URL_NOT_HTTPS: '生产环境的接口地址必须使用 HTTPS。',

@@ -5,6 +5,7 @@ import TemplateRevisePanel from './TemplateRevisePanel.jsx';
 import MiniProgramPreview from '../preview/MiniProgramPreview.jsx';
 import PreviewLaunchButton from '../preview/PreviewLaunchButton.jsx';
 import { describeTemplateReviseTransport } from '../../services/agentTurn/templateReviseService.js';
+import { describeStructureCoverage, describeTemplateStructure } from '../../domain/templateGroups.mjs';
 import { SATISFACTION } from '../../domain/onboardingScript.mjs';
 
 /**
@@ -59,6 +60,8 @@ export default function TemplateGallery({
     return [left, right];
   })();
   const reviseEnabled = typeof onRevise === 'function' || presentation != null;
+  // B4 规则 1：模板页先说明「真实独立结构有几套」，同一结构的候选只算配色方案。
+  const coverage = describeStructureCoverage(ids);
   // 显式传布尔值时尊重父组件；未传时按当前 transport 模式自动标注，
   // 避免 T14 忘记传 prop 时把本地 Mock 结果说成真实模型成功。
   const mockBadge = typeof mockRevise === 'boolean'
@@ -98,6 +101,8 @@ export default function TemplateGallery({
         <div>
           <h3>实时小程序预览</h3>
           <p>点选骨架会立刻按模板结构与配色重新渲染，下方可以切换首页、菜单和订单。</p>
+          {/* B4 规则 1：先讲清真实结构有几套，避免把同一结构的两种配色当成两套骨架。 */}
+          <p className="template-structure-hint">{coverage.text}</p>
           {statusHint ? <p className="template-intro-hint">{statusHint}</p> : null}
         </div>
         {compareEnabled && ids.length > 1 ? (
@@ -120,6 +125,7 @@ export default function TemplateGallery({
           const recipeName = viewModelsByTemplateId[item.id] && viewModelsByTemplateId[item.id].recipe
             ? viewModelsByTemplateId[item.id].recipe.displayName
             : null;
+          const structure = describeTemplateStructure(item.id);
           return (
             <button
               type="button"
@@ -153,7 +159,11 @@ export default function TemplateGallery({
                     <span className="template-source is-reference">{status.referenceTag}</span>
                   ) : null}
                   {item.source ? <span className="template-source">{item.source}</span> : null}
-                  {recipeName ? <span className="template-recipe">{recipeName}</span> : null}
+                  {recipeName ? (
+                    <span className="template-recipe" title={structure.note}>
+                      {structure.badge || recipeName}
+                    </span>
+                  ) : null}
                   {/* B3：不再展示裸百分比（分数是本地覆盖率估算，不是概率）。 */}
                   {item.customized ? <span className="template-customized">已定制</span> : null}
                   {item.briefHits > 0 ? (

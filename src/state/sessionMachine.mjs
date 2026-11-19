@@ -827,6 +827,8 @@ function baseReducer(state, action) {
             infos: Array.isArray(action.infos) ? action.infos : [],
             acknowledged: state.deploy.preflight.acknowledged || [],
             planDigest: action.planDigest || null,
+            signature: action.signature || null,
+            recipe: action.recipe || null,
             checkedAt: action.checkedAt || null,
             error: action.error || null,
           },
@@ -2494,21 +2496,44 @@ export function selectSaveLabel(state) {
   return { tone: 'saved', text: '尚未保存' };
 }
 
-export function selectCanExport(state) {
+/**
+ * 是否允许导出。
+ *
+ * B4 规则 6：体检结果绑定导出签名。调用方把「当前 Plan + 素材 + 目标位置」的签名传进来，
+ * 与落库的签名不一致时，旧的「可以导出」立即失效。
+ *
+ * @param {object} state
+ * @param {string|null} [currentSignature] 当前导出签名（`buildSignatureParts().signature`）
+ */
+export function selectCanExport(state, currentSignature = null) {
   const preflight = (state.deploy && state.deploy.preflight) || { status: 'idle', errors: [], warns: [], acknowledged: [] };
   if ((state.project || {}).mode === 'browser') {
     return { can: false, reason: '浏览器预览不能写出工程，请在桌面应用中导出' };
   }
   if (preflight.status === 'checking') return { can: false, reason: '正在体检，请稍候' };
   if (preflight.status === 'failed') return { can: false, reason: '体检未完成，请重试' };
+  if (preflight.status !== 'done') return { can: false, reason: '请先完成导出前体检' };
+  const stale = isPreflightStale(preflight, currentSignature);
+  if (stale) return { can: false, stale: true, reason: '资料或导出位置已变化，请重新体检后再导出' };
   if ((preflight.errors || []).length > 0) {
     return { can: false, reason: `有 ${preflight.errors.length} 项需要先修正` };
   }
   const acknowledged = new Set(preflight.acknowledged || []);
-  const unacked = (preflight.warns || []).filter((warn) => !acknowledged.has(warn.ruleId));
+  // B4 规则 8：只有「需要确认后果」的提示才阻断导出；纯披露类（缺 AppID、自带能力说明）不拦。
+  const unacked = (preflight.warns || []).filter((warn) => warn
+    && warn.requiresAck !== false
+    && !acknowledged.has(warn.ruleId));
   if (unacked.length > 0) return { can: false, reason: `还有 ${unacked.length} 项提示需要确认` };
-  if (preflight.status !== 'done') return { can: false, reason: '请先完成导出前体检' };
   return { can: true, reason: '可以导出' };
+}
+
+/** 落库签名与当前签名是否不一致（任一为空时按「无绑定」处理，不误判为过期）。 */
+function isPreflightStale(preflight, currentSignature) {
+  if (!currentSignature) return false;
+  const stored = preflight && preflight.signature;
+  const storedText = stored && typeof stored === 'object' ? stored.signature : stored;
+  if (!storedText) return false;
+  return storedText !== currentSignature;
 }
 
 /**
@@ -2517,7 +2542,7 @@ export function selectCanExport(state) {
  * 与 selectCanExport 的区别：目标同名冲突时不允许直接导出，但必须允许用户换目录，
  * 否则唯一解冲突的入口会被门禁锁死。其他 error 或未确认 warn 仍然阻断。
  */
-export function selectCanChooseDirectory(state) {
+export function selectCanChooseDirectory(state, currentSignature = null) {
   const preflight = (state.deploy && state.deploy.preflight) || { status: 'idle', errors: [], warns: [], acknowledged: [] };
   if ((state.project || {}).mode === 'browser') {
     return { can: false, reason: '浏览器预览不能写出工程，请在桌面应用中导出' };
@@ -2525,6 +2550,9 @@ export function selectCanChooseDirectory(state) {
   if (preflight.status === 'checking') return { can: false, reason: '正在体检，请稍候' };
   if (preflight.status === 'failed') return { can: false, reason: '体检未完成，请重试' };
   if (preflight.status !== 'done') return { can: false, reason: '请先完成导出前体检' };
+  if (isPreflightStale(preflight, currentSignature)) {
+    return { can: false, stale: true, reason: '资料或导出位置已变化，请重新体检后再导出' };
+  }
 
   const errors = preflight.errors || [];
   const otherErrors = errors.filter((item) => item && item.ruleId !== 'E-TARGET-EXISTS');
@@ -2532,7 +2560,9 @@ export function selectCanChooseDirectory(state) {
     return { can: false, reason: `有 ${otherErrors.length} 项需要先修正` };
   }
   const acknowledged = new Set(preflight.acknowledged || []);
-  const unacked = (preflight.warns || []).filter((warn) => !acknowledged.has(warn.ruleId));
+  const unacked = (preflight.warns || []).filter((warn) => warn
+    && warn.requiresAck !== false
+    && !acknowledged.has(warn.ruleId));
   if (unacked.length > 0) return { can: false, reason: `还有 ${unacked.length} 项提示需要确认` };
 
   const hasConflict = errors.some((item) => item && item.ruleId === 'E-TARGET-EXISTS');

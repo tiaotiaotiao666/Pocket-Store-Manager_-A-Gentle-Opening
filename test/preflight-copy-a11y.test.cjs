@@ -19,12 +19,17 @@ const PANEL = fs.readFileSync(
   'utf8',
 );
 
-test('体检勾选是 ARIA 自绘复选框，名称带 ruleId 且状态可读', () => {
+test('体检勾选是 ARIA 自绘复选框，名称唯一可读（B4：默认不显示 ruleId）', () => {
   assert.match(PANEL, /role="checkbox"/);
-  assert.match(PANEL, /aria-checked=\{acknowledged\.includes\(rule\.ruleId\)\}/);
-  assert.match(PANEL, /aria-label=\{`我已了解：\$\{rule\.ruleId\}`\}/);
+  assert.match(PANEL, /aria-checked=\{acked\}/);
+  // B4 规则 7/8：名称用人话（rule.message），agent 仍能唯一定位，界面上不摆技术 ID。
+  assert.match(PANEL, /aria-label=\{`我已了解：\$\{rule\.message\}`\}/);
   assert.match(PANEL, /className="preflight-ack-box"/);
-  assert.doesNotMatch(PANEL, /<input\s+type="checkbox"/, '原生 input 在 Chromium/UIA 下不可见，不要退回');
+  assert.doesNotMatch(PANEL, /<input\s+type="checkbox"/, "原生 input 在 Chromium/UIA 下不可见，不要退回");
+  // 只有「需要确认后果」的提示才出现勾选框（规则 8）。
+  assert.match(PANEL, /requiresAck !== false/);
+  // ruleId / fieldPath / Plan 摘要只出现在「技术详情」里（规则 7）。
+  assert.match(PANEL, /<summary>技术详情<\/summary>/);
 });
 
 test('E-TARGET-EXISTS 时给出换目录/改名的解释，而不是只说「有 1 项需要先修正」', () => {

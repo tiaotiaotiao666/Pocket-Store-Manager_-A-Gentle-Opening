@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
     "lineStart": 110,
     "lineEnd": 120,
-    "digest": "sha256:e7542f020e98fd791a539d3e83829bdd627851bbd9038d97318b6a9c7ff299cb"
+    "digest": "sha256:88151347c1deb0f8220ef36685956fca629913fc68c64b62d298d4d97b9229c7"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 110,
         "lineEnd": 120,
-        "code": "<view wx:if=\"{{!payResult && order && (order.canPay || order.canCancel || merchantActions.length > 0)}}\" class=\"detail__bar\">\r\n    <view wx:if=\"{{order.canCancel}}\" class=\"detail__bar-ghost\" bind:tap=\"onCancel\">\r\n      {{acting && actionLabel === 'cancel' ? '处理中…' : '取消订单'}}\r\n    </view>\r\n    <view wx:if=\"{{order.canPay}}\" class=\"detail__bar-primary\" bind:tap=\"onPay\">\r\n      {{acting && actionLabel === 'pay' ? '处理中…' : '演示模拟支付'}}\r\n    </view>\r\n    <view wx:if=\"{{role === 'MERCHANT' && merchantActions.length > 0}}\" class=\"detail__bar-primary\" bind:tap=\"onAdvance\" data-status=\"{{merchantActions[0].toStatus}}\">\r\n      {{acting && actionLabel === merchantActions[0].toStatus ? '处理中…' : merchantActions[0].label}}\r\n    </view>\r\n  </view>"
+        "code": "<view wx:if=\"{{!payResult && order && (order.canPay || order.canCancel || merchantActions.length > 0)}}\" class=\"detail__bar\">\n    <view wx:if=\"{{order.canCancel}}\" class=\"detail__bar-ghost\" bind:tap=\"onCancel\">\n      {{acting && actionLabel === 'cancel' ? '处理中…' : '取消订单'}}\n    </view>\n    <view wx:if=\"{{order.canPay}}\" class=\"detail__bar-primary\" bind:tap=\"onPay\">\n      {{acting && actionLabel === 'pay' ? '处理中…' : '演示模拟支付'}}\n    </view>\n    <view wx:if=\"{{role === 'MERCHANT' && merchantActions.length > 0}}\" class=\"detail__bar-primary\" bind:tap=\"onAdvance\" data-status=\"{{merchantActions[0].toStatus}}\">\n      {{acting && actionLabel === merchantActions[0].toStatus ? '处理中…' : merchantActions[0].label}}\n    </view>\n  </view>"
       }
     ]
   },
@@ -157,6 +157,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:e7542f020e98fd791a539d3e83829bdd627851bbd9038d97318b6a9c7ff299cb"
+    "digest": "sha256:88151347c1deb0f8220ef36685956fca629913fc68c64b62d298d4d97b9229c7"
   }
 }

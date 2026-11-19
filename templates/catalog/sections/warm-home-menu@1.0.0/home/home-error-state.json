@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
     "lineStart": 31,
     "lineEnd": 34,
-    "digest": "sha256:27cb60eb3c46571c36b8c3884a6b2a54e2b729b3f0762619dfe815c3cf8b2efd"
+    "digest": "sha256:9fe6fb284a18f8706ce3274f4030f684efe71edee889c16aabb803f8a1351264"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 31,
         "lineEnd": 34,
-        "code": "<view wx:elif=\"{{error}}\" class=\"fp-home__error\">\r\n      <error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onRetry\" />\r\n      <view class=\"ghost-button fp-home__retry\" bind:tap=\"onRetry\">重新加载</view>\r\n    </view>"
+        "code": "<view wx:elif=\"{{error}}\" class=\"fp-home__error\">\n      <error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onRetry\" />\n      <view class=\"ghost-button fp-home__retry\" bind:tap=\"onRetry\">重新加载</view>\n    </view>"
       }
     ]
   },
@@ -139,6 +139,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:27cb60eb3c46571c36b8c3884a6b2a54e2b729b3f0762619dfe815c3cf8b2efd"
+    "digest": "sha256:9fe6fb284a18f8706ce3274f4030f684efe71edee889c16aabb803f8a1351264"
   }
 }

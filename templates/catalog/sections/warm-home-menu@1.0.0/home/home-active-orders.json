@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
     "lineStart": 89,
     "lineEnd": 97,
-    "digest": "sha256:085e35febbbb3318bba91793848fbc130a2c51484727d419fddc3ec3556fbea3"
+    "digest": "sha256:62644c91f9fba44a54712d2384df84f526215083428ea2b04706032e4c8f0981"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 89,
         "lineEnd": 97,
-        "code": "<view wx:if=\"{{activeOrders.length > 0}}\" class=\"fp-home__orders\">\r\n        <view class=\"fp-home__section-head\">\r\n          <text class=\"fp-home__section-title\">进行中</text>\r\n          <text class=\"fp-home__section-extra\" bind:tap=\"goOrders\">全部订单 ›</text>\r\n        </view>\r\n        <view wx:for=\"{{activeOrders}}\" wx:key=\"id\" class=\"fp-home__order\">\r\n          <order-card order=\"{{item}}\" role=\"CUSTOMER\" actionable=\"{{false}}\" bind:open=\"onOpenOrder\" />\r\n        </view>\r\n      </view>"
+        "code": "<view wx:if=\"{{activeOrders.length > 0}}\" class=\"fp-home__orders\">\n        <view class=\"fp-home__section-head\">\n          <text class=\"fp-home__section-title\">进行中</text>\n          <text class=\"fp-home__section-extra\" bind:tap=\"goOrders\">全部订单 ›</text>\n        </view>\n        <view wx:for=\"{{activeOrders}}\" wx:key=\"id\" class=\"fp-home__order\">\n          <order-card order=\"{{item}}\" role=\"CUSTOMER\" actionable=\"{{false}}\" bind:open=\"onOpenOrder\" />\n        </view>\n      </view>"
       }
     ]
   },
@@ -194,6 +194,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:085e35febbbb3318bba91793848fbc130a2c51484727d419fddc3ec3556fbea3"
+    "digest": "sha256:62644c91f9fba44a54712d2384df84f526215083428ea2b04706032e4c8f0981"
   }
 }

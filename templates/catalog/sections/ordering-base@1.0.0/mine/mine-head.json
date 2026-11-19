@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
     "lineStart": 2,
     "lineEnd": 5,
-    "digest": "sha256:59c91bbdbcbc14d88a843234050e6f0e245d4ba511832aa4f2561d0542b5b7f3"
+    "digest": "sha256:868cf473acd4cfcf5d04485766898b762f5662a10e81ced0789e693a6ff2feee"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 2,
         "lineEnd": 5,
-        "code": "<view class=\"mine__head\">\r\n    <text class=\"mine__eyebrow\">我的</text>\r\n    <text class=\"mine__title\">身份与门店</text>\r\n  </view>"
+        "code": "<view class=\"mine__head\">\n    <text class=\"mine__eyebrow\">我的</text>\n    <text class=\"mine__title\">身份与门店</text>\n  </view>"
       }
     ]
   },
@@ -102,6 +102,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:59c91bbdbcbc14d88a843234050e6f0e245d4ba511832aa4f2561d0542b5b7f3"
+    "digest": "sha256:868cf473acd4cfcf5d04485766898b762f5662a10e81ced0789e693a6ff2feee"
   }
 }

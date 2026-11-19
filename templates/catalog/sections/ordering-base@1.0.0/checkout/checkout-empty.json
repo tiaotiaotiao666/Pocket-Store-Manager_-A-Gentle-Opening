@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
     "lineStart": 11,
     "lineEnd": 19,
-    "digest": "sha256:ac5a907796b232d3d2be2b42983dd66a73170f8c4fae3344d0f9ac738ffdcd6a"
+    "digest": "sha256:efc269f2b872a2457efc7d3f526e74c676eec9ebd58a1a5fcda6ebfcc96e0511"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 11,
         "lineEnd": 19,
-        "code": "<view wx:if=\"{{emptyCart}}\" class=\"checkout__empty\">\r\n      <state-view\r\n        state=\"empty\"\r\n        title=\"购物车是空的\"\r\n        description=\"回到菜单挑选几道菜，再回来结算\"\r\n        action-text=\"去点餐\"\r\n        bind:retry=\"goMenu\"\r\n      />\r\n    </view>"
+        "code": "<view wx:if=\"{{emptyCart}}\" class=\"checkout__empty\">\n      <state-view\n        state=\"empty\"\n        title=\"购物车是空的\"\n        description=\"回到菜单挑选几道菜，再回来结算\"\n        action-text=\"去点餐\"\n        bind:retry=\"goMenu\"\n      />\n    </view>"
       }
     ]
   },
@@ -121,6 +121,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:ac5a907796b232d3d2be2b42983dd66a73170f8c4fae3344d0f9ac738ffdcd6a"
+    "digest": "sha256:efc269f2b872a2457efc7d3f526e74c676eec9ebd58a1a5fcda6ebfcc96e0511"
   }
 }

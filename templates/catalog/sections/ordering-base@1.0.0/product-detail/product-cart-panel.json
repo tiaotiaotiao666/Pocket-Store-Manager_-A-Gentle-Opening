@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxss",
     "lineStart": 42,
     "lineEnd": 53,
-    "digest": "sha256:06d8ad8c1f4a3f2eaf0c3ff532f667c7ac248f262fc0d77e9371e837f2e83329"
+    "digest": "sha256:96bceb4cc98238c38bf333d9d19376178a199e5b05faf06e72c6b3f46777900e"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 42,
         "lineEnd": 53,
-        "code": "<cart-panel\r\n    wx:if=\"{{product}}\"\r\n    visible=\"{{cartVisible}}\"\r\n    items=\"{{cartSummary.items}}\"\r\n    total-cents=\"{{cartSummary.totalCents}}\"\r\n    total-quantity=\"{{cartSummary.totalQuantity}}\"\r\n    submitting=\"{{false}}\"\r\n    bind:close=\"onCloseCart\"\r\n    bind:add=\"onCartAdd\"\r\n    bind:remove=\"onCartRemove\"\r\n    bind:checkout=\"onCheckout\"\r\n  />"
+        "code": "<cart-panel\n    wx:if=\"{{product}}\"\n    visible=\"{{cartVisible}}\"\n    items=\"{{cartSummary.items}}\"\n    total-cents=\"{{cartSummary.totalCents}}\"\n    total-quantity=\"{{cartSummary.totalQuantity}}\"\n    submitting=\"{{false}}\"\n    bind:close=\"onCloseCart\"\n    bind:add=\"onCartAdd\"\n    bind:remove=\"onCartRemove\"\n    bind:checkout=\"onCheckout\"\n  />"
       }
     ]
   },
@@ -151,6 +151,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:06d8ad8c1f4a3f2eaf0c3ff532f667c7ac248f262fc0d77e9371e837f2e83329"
+    "digest": "sha256:96bceb4cc98238c38bf333d9d19376178a199e5b05faf06e72c6b3f46777900e"
   }
 }

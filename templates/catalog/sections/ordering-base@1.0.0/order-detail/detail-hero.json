@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
     "lineStart": 25,
     "lineEnd": 42,
-    "digest": "sha256:1f0d774d305df40e0b25b02dfb3bb1d43ee3500f4039c738a290d88353c0d61d"
+    "digest": "sha256:90fcc395f205211cbfc0abe1de6f3ab591ba7d1ec195d450ba64fd8406b6a3ed"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 25,
         "lineEnd": 42,
-        "code": "<view wx:if=\"{{order}}\" class=\"detail__hero\">\r\n      <view class=\"detail__hero-top\">\r\n        <view class=\"detail__hero-id\">\r\n          <text class=\"detail__hero-label\">订单号</text>\r\n          <text class=\"detail__hero-number\">#{{order.shortId}}</text>\r\n        </view>\r\n        <text class=\"detail__hero-time\">{{order.createdAtFullText}}</text>\r\n      </view>\r\n      <order-status status=\"{{order.status}}\" payment-status=\"{{order.paymentStatus}}\" />\r\n      <view class=\"detail__hero-foot\">\r\n        <view class=\"detail__hero-mode\">\r\n          <text>{{order.fulfillmentText}}</text>\r\n          <text class=\"detail__hero-dot\">·</text>\r\n          <text>{{order.itemSummary || '无明细'}}</text>\r\n        </view>\r\n        <text class=\"detail__hero-total\">{{order.totalText}}</text>\r\n      </view>\r\n    </view>"
+        "code": "<view wx:if=\"{{order}}\" class=\"detail__hero\">\n      <view class=\"detail__hero-top\">\n        <view class=\"detail__hero-id\">\n          <text class=\"detail__hero-label\">订单号</text>\n          <text class=\"detail__hero-number\">#{{order.shortId}}</text>\n        </view>\n        <text class=\"detail__hero-time\">{{order.createdAtFullText}}</text>\n      </view>\n      <order-status status=\"{{order.status}}\" payment-status=\"{{order.paymentStatus}}\" />\n      <view class=\"detail__hero-foot\">\n        <view class=\"detail__hero-mode\">\n          <text>{{order.fulfillmentText}}</text>\n          <text class=\"detail__hero-dot\">·</text>\n          <text>{{order.itemSummary || '无明细'}}</text>\n        </view>\n        <text class=\"detail__hero-total\">{{order.totalText}}</text>\n      </view>\n    </view>"
       }
     ]
   },
@@ -197,6 +197,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:1f0d774d305df40e0b25b02dfb3bb1d43ee3500f4039c738a290d88353c0d61d"
+    "digest": "sha256:90fcc395f205211cbfc0abe1de6f3ab591ba7d1ec195d450ba64fd8406b6a3ed"
   }
 }

@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
     "lineStart": 47,
     "lineEnd": 62,
-    "digest": "sha256:3e86ebe63624fd6a3e9a7bf3b157f62606b5748916e9fcf1f84f9582fe7de8fd"
+    "digest": "sha256:85cc49e05be354d850be21954155362074bdd14fa567042ae15cbbd21652b271"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 47,
         "lineEnd": 62,
-        "code": "<view class=\"mine__identities\">\r\n        <view\r\n          wx:for=\"{{identityOptions}}\"\r\n          wx:key=\"key\"\r\n          class=\"mine__identity {{identity.key === item.key ? 'mine__identity--active' : ''}}\"\r\n          data-key=\"{{item.key}}\"\r\n          bind:tap=\"onSwitchIdentity\"\r\n        >\r\n          <view class=\"mine__identity-main\">\r\n            <text class=\"mine__identity-label\">{{item.label}}</text>\r\n            <text class=\"mine__identity-desc\">{{item.description}}</text>\r\n          </view>\r\n          <view wx:if=\"{{identity.key === item.key}}\" class=\"mine__identity-badge\">当前</view>\r\n          <view wx:elif=\"{{switching === item.key}}\" class=\"mine__identity-badge mine__identity-badge--busy\">切换中</view>\r\n        </view>\r\n      </view>"
+        "code": "<view class=\"mine__identities\">\n        <view\n          wx:for=\"{{identityOptions}}\"\n          wx:key=\"key\"\n          class=\"mine__identity {{identity.key === item.key ? 'mine__identity--active' : ''}}\"\n          data-key=\"{{item.key}}\"\n          bind:tap=\"onSwitchIdentity\"\n        >\n          <view class=\"mine__identity-main\">\n            <text class=\"mine__identity-label\">{{item.label}}</text>\n            <text class=\"mine__identity-desc\">{{item.description}}</text>\n          </view>\n          <view wx:if=\"{{identity.key === item.key}}\" class=\"mine__identity-badge\">当前</view>\n          <view wx:elif=\"{{switching === item.key}}\" class=\"mine__identity-badge mine__identity-badge--busy\">切换中</view>\n        </view>\n      </view>"
       }
     ]
   },
@@ -179,6 +179,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:3e86ebe63624fd6a3e9a7bf3b157f62606b5748916e9fcf1f84f9582fe7de8fd"
+    "digest": "sha256:85cc49e05be354d850be21954155362074bdd14fa567042ae15cbbd21652b271"
   }
 }

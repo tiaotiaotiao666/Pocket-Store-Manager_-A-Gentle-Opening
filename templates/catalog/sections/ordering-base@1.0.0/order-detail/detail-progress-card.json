@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
     "lineStart": 59,
     "lineEnd": 65,
-    "digest": "sha256:ddd5e91a0d5b121513f31c46a815e602870229761886d087b659c7b8ec35771e"
+    "digest": "sha256:39bb809877e7ffe526ec3db1983069393c8c0a42b12e47ad576b89da77d9cea4"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 59,
         "lineEnd": 65,
-        "code": "<view wx:if=\"{{order}}\" class=\"surface-card detail__card\">\r\n      <view class=\"detail__card-head\">\r\n        <text class=\"detail__card-title\">订单进度</text>\r\n        <text class=\"detail__card-extra\">{{order.hint}}</text>\r\n      </view>\r\n      <status-timeline steps=\"{{order.progressSteps}}\" timeline=\"{{order.timeline}}\" status=\"{{order.status}}\" />\r\n    </view>"
+        "code": "<view wx:if=\"{{order}}\" class=\"surface-card detail__card\">\n      <view class=\"detail__card-head\">\n        <text class=\"detail__card-title\">订单进度</text>\n        <text class=\"detail__card-extra\">{{order.hint}}</text>\n      </view>\n      <status-timeline steps=\"{{order.progressSteps}}\" timeline=\"{{order.timeline}}\" status=\"{{order.status}}\" />\n    </view>"
       }
     ]
   },
@@ -136,6 +136,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:ddd5e91a0d5b121513f31c46a815e602870229761886d087b659c7b8ec35771e"
+    "digest": "sha256:39bb809877e7ffe526ec3db1983069393c8c0a42b12e47ad576b89da77d9cea4"
   }
 }

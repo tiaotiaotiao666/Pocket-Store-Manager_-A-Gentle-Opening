@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
     "lineStart": 83,
     "lineEnd": 87,
-    "digest": "sha256:3c5a760eb7fd672ef0cc428a910f10bac92298fcaf08cb75ca87cdadb6698589"
+    "digest": "sha256:ec9bc6e6c1f7fcf380f6f75149d9d2934e2d18661c1f238d2e2315ddcb133ba9"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 83,
         "lineEnd": 87,
-        "code": "<view wx:if=\"{{pendingPaymentCount > 0}}\" class=\"fp-home__notice\" bind:tap=\"goOrders\">\r\n        <view class=\"fp-home__notice-dot\"></view>\r\n        <text class=\"fp-home__notice-text\">你有 {{pendingPaymentCount}} 笔订单待演示付款</text>\r\n        <text class=\"fp-home__notice-arrow\">去处理 ›</text>\r\n      </view>"
+        "code": "<view wx:if=\"{{pendingPaymentCount > 0}}\" class=\"fp-home__notice\" bind:tap=\"goOrders\">\n        <view class=\"fp-home__notice-dot\"></view>\n        <text class=\"fp-home__notice-text\">你有 {{pendingPaymentCount}} 笔订单待演示付款</text>\n        <text class=\"fp-home__notice-arrow\">去处理 ›</text>\n      </view>"
       }
     ]
   },
@@ -158,6 +158,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:3c5a760eb7fd672ef0cc428a910f10bac92298fcaf08cb75ca87cdadb6698589"
+    "digest": "sha256:ec9bc6e6c1f7fcf380f6f75149d9d2934e2d18661c1f238d2e2315ddcb133ba9"
   }
 }

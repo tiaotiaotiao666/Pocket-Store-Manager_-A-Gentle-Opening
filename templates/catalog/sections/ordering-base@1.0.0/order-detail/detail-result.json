@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
     "lineStart": 9,
     "lineEnd": 22,
-    "digest": "sha256:520905f1d3c528842f33b85aeb02560a78bfbe67599de6f61b23f219bf5f8518"
+    "digest": "sha256:ec4294b86c5e27e998651d92ff2d6dfda7e35d8640471eac024c3d8a19742767"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 9,
         "lineEnd": 22,
-        "code": "<view wx:elif=\"{{payResult}}\" class=\"detail__result\">\r\n    <pay-result\r\n      state=\"{{payResult.state}}\"\r\n      short-id=\"{{payResult.shortId}}\"\r\n      total-text=\"{{payResult.totalText}}\"\r\n      fulfillment-text=\"{{payResult.fulfillmentText}}\"\r\n      title=\"{{payResult.title}}\"\r\n      description=\"{{payResult.description}}\"\r\n      request-id=\"{{payResult.requestId}}\"\r\n      bind:primary=\"onResultPrimary\"\r\n      bind:secondary=\"onResultSecondary\"\r\n      bind:retry=\"onResultRetry\"\r\n    />\r\n  </view>"
+        "code": "<view wx:elif=\"{{payResult}}\" class=\"detail__result\">\n    <pay-result\n      state=\"{{payResult.state}}\"\n      short-id=\"{{payResult.shortId}}\"\n      total-text=\"{{payResult.totalText}}\"\n      fulfillment-text=\"{{payResult.fulfillmentText}}\"\n      title=\"{{payResult.title}}\"\n      description=\"{{payResult.description}}\"\n      request-id=\"{{payResult.requestId}}\"\n      bind:primary=\"onResultPrimary\"\n      bind:secondary=\"onResultSecondary\"\n      bind:retry=\"onResultRetry\"\n    />\n  </view>"
       }
     ]
   },
@@ -158,6 +158,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:520905f1d3c528842f33b85aeb02560a78bfbe67599de6f61b23f219bf5f8518"
+    "digest": "sha256:ec4294b86c5e27e998651d92ff2d6dfda7e35d8640471eac024c3d8a19742767"
   }
 }

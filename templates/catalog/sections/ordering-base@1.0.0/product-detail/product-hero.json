@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/product-detail/index.wxss",
     "lineStart": 8,
     "lineEnd": 11,
-    "digest": "sha256:17543bb5f891acd3154d92daafa3832e134614e94020079ab605ce93fa2781f5"
+    "digest": "sha256:9274f25ce34f6ecfc2be4c7377e9754512e187b6f25ede9aa75d2cd9baeeb3ca"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 8,
         "lineEnd": 11,
-        "code": "<view class=\"product-page__hero\">\r\n      <image wx:if=\"{{product.imageUrl}}\" class=\"product-page__image\" src=\"{{product.imageUrl}}\" mode=\"aspectFill\" />\r\n      <view wx:else class=\"product-page__placeholder\">{{product.initial}}</view>\r\n    </view>"
+        "code": "<view class=\"product-page__hero\">\n      <image wx:if=\"{{product.imageUrl}}\" class=\"product-page__image\" src=\"{{product.imageUrl}}\" mode=\"aspectFill\" />\n      <view wx:else class=\"product-page__placeholder\">{{product.initial}}</view>\n    </view>"
       }
     ]
   },
@@ -111,6 +111,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:17543bb5f891acd3154d92daafa3832e134614e94020079ab605ce93fa2781f5"
+    "digest": "sha256:9274f25ce34f6ecfc2be4c7377e9754512e187b6f25ede9aa75d2cd9baeeb3ca"
   }
 }

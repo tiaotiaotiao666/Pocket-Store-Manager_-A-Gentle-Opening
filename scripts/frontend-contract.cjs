@@ -157,8 +157,20 @@ function loadContract(filePath) {
   return { contract, text };
 }
 
+/**
+ * 行尾归一化。
+ *
+ * Windows 上 `core.autocrlf=true` 会把仓库里的 LF 文件检出成 CRLF，于是同一份契约会
+ * 出现「磁盘是 CRLF、生成器产出 LF」的差异：既让逐字节比对必然飘红，也会让 sha256
+ * 在 Windows 与 Linux 上算出两个不同摘要（重生成后提交，反而会让 Linux CI 变红）。
+ * 因此凡是参与哈希与比对的文本，统一按 LF 归一化；实际写盘仍保持生成器的原始输出。
+ */
+function normalizeEol(value) {
+  return typeof value === 'string' ? value.replace(/\r\n?/g, '\n') : value;
+}
+
 function contractHash(text) {
-  return crypto.createHash('sha256').update(text, 'utf8').digest('hex');
+  return crypto.createHash('sha256').update(normalizeEol(text), 'utf8').digest('hex');
 }
 
 function banner(contract, hash, surface) {
@@ -382,7 +394,7 @@ function renderAll(contract, text) {
   };
 }
 
-/** 漂移检查：生成值与磁盘值逐字节比对。 */
+/** 漂移检查：生成值与磁盘值逐字节比对（行尾归一化后比较，避免 Windows CRLF 假阳性）。 */
 function checkGenerated() {
   const { contract, text } = loadContract();
   const rendered = renderAll(contract, text);
@@ -390,7 +402,7 @@ function checkGenerated() {
   for (const file of rendered.files) {
     const absolute = path.join(REPO, file.relative);
     const current = fs.existsSync(absolute) ? fs.readFileSync(absolute, 'utf8') : null;
-    if (current !== file.content) drifted.push(file.relative.split(path.sep).join('/'));
+    if (normalizeEol(current) !== normalizeEol(file.content)) drifted.push(file.relative.split(path.sep).join('/'));
   }
   return { ok: drifted.length === 0, hash: rendered.hash, drifted };
 }

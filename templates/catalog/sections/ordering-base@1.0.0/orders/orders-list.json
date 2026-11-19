@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxss",
     "lineStart": 40,
     "lineEnd": 55,
-    "digest": "sha256:41b89adef233d7ccbe20585f589e01c4c5f236c744e3d91494b033de8eeb1c4c"
+    "digest": "sha256:b18a725e585f8cfd6aa7da20234a3248b96a39ef1857d7cd3d73dcd809bb566a"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 40,
         "lineEnd": 55,
-        "code": "<view wx:else class=\"orders__list\">\r\n    <view wx:for=\"{{orders}}\" wx:key=\"id\" class=\"orders__item\">\r\n      <order-card\r\n        order=\"{{item}}\"\r\n        role=\"CUSTOMER\"\r\n        actionable=\"{{true}}\"\r\n        bind:open=\"onOpen\"\r\n        bind:pay=\"onPay\"\r\n        bind:cancel=\"onCancel\"\r\n      />\r\n    </view>\r\n\r\n    <view wx:if=\"{{hasMore}}\" class=\"ghost-button orders__more\" bind:tap=\"onLoadMore\">\r\n      {{loadingMore ? '加载中…' : '加载更多'}}\r\n    </view>\r\n  </view>"
+        "code": "<view wx:else class=\"orders__list\">\n    <view wx:for=\"{{orders}}\" wx:key=\"id\" class=\"orders__item\">\n      <order-card\n        order=\"{{item}}\"\n        role=\"CUSTOMER\"\n        actionable=\"{{true}}\"\n        bind:open=\"onOpen\"\n        bind:pay=\"onPay\"\n        bind:cancel=\"onCancel\"\n      />\n    </view>\n\n    <view wx:if=\"{{hasMore}}\" class=\"ghost-button orders__more\" bind:tap=\"onLoadMore\">\n      {{loadingMore ? '加载中…' : '加载更多'}}\n    </view>\n  </view>"
       }
     ]
   },
@@ -157,6 +157,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:41b89adef233d7ccbe20585f589e01c4c5f236c744e3d91494b033de8eeb1c4c"
+    "digest": "sha256:b18a725e585f8cfd6aa7da20234a3248b96a39ef1857d7cd3d73dcd809bb566a"
   }
 }

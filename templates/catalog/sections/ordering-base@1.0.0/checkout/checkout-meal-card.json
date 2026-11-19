@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
     "lineStart": 22,
     "lineEnd": 60,
-    "digest": "sha256:74bbc83cf37743caf3cee284a318bb72bde377a440bdeeba28987fdb640564c9"
+    "digest": "sha256:e6d68ad3aeb1770e704cb7eec7a30a2e527303c5376aecf33bac9417ab8650c7"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 22,
         "lineEnd": 60,
-        "code": "<view class=\"surface-card checkout__card\">\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">用餐方式</text>\r\n          <text class=\"checkout__row-value\">{{modeText}}</text>\r\n        </view>\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">桌号</text>\r\n          <text class=\"checkout__row-value\">{{tableName || '无需桌号'}}</text>\r\n        </view>\r\n        <view class=\"checkout__row\">\r\n          <text class=\"checkout__row-label\">下单身份</text>\r\n          <text class=\"checkout__row-value\">{{identityLabel}}</text>\r\n        </view>\r\n        <view wx:if=\"{{mode === 'DINE_IN'}}\" class=\"checkout__tables\">\r\n          <text class=\"checkout__tables-label\">门店桌号</text>\r\n          <block wx:if=\"{{tablesLoading}}\">\r\n            <text class=\"checkout__tables-hint\">正在读取门店桌号…</text>\r\n          </block>\r\n          <block wx:elif=\"{{tablesError}}\">\r\n            <text class=\"checkout__tables-hint\">{{tablesError}}</text>\r\n            <view class=\"checkout__tables-retry\" bind:tap=\"onRetryTables\">重试</view>\r\n          </block>\r\n          <block wx:elif=\"{{tableOptions.length === 0}}\">\r\n            <text class=\"checkout__tables-hint\">当前门店还没有可用桌号，请联系店员确认</text>\r\n          </block>\r\n          <block wx:else>\r\n            <view\r\n              wx:for=\"{{tableOptions}}\"\r\n              wx:key=\"id\"\r\n              class=\"checkout__table {{tableName === item.name ? 'checkout__table--active' : ''}}\"\r\n              data-id=\"{{item.id}}\"\r\n              data-name=\"{{item.name}}\"\r\n              bind:tap=\"onPickTable\"\r\n            >\r\n              {{item.name}}\r\n            </view>\r\n          </block>\r\n        </view>\r\n      </view>"
+        "code": "<view class=\"surface-card checkout__card\">\n        <view class=\"checkout__row\">\n          <text class=\"checkout__row-label\">用餐方式</text>\n          <text class=\"checkout__row-value\">{{modeText}}</text>\n        </view>\n        <view class=\"checkout__row\">\n          <text class=\"checkout__row-label\">桌号</text>\n          <text class=\"checkout__row-value\">{{tableName || '无需桌号'}}</text>\n        </view>\n        <view class=\"checkout__row\">\n          <text class=\"checkout__row-label\">下单身份</text>\n          <text class=\"checkout__row-value\">{{identityLabel}}</text>\n        </view>\n        <view wx:if=\"{{mode === 'DINE_IN'}}\" class=\"checkout__tables\">\n          <text class=\"checkout__tables-label\">门店桌号</text>\n          <block wx:if=\"{{tablesLoading}}\">\n            <text class=\"checkout__tables-hint\">正在读取门店桌号…</text>\n          </block>\n          <block wx:elif=\"{{tablesError}}\">\n            <text class=\"checkout__tables-hint\">{{tablesError}}</text>\n            <view class=\"checkout__tables-retry\" bind:tap=\"onRetryTables\">重试</view>\n          </block>\n          <block wx:elif=\"{{tableOptions.length === 0}}\">\n            <text class=\"checkout__tables-hint\">当前门店还没有可用桌号，请联系店员确认</text>\n          </block>\n          <block wx:else>\n            <view\n              wx:for=\"{{tableOptions}}\"\n              wx:key=\"id\"\n              class=\"checkout__table {{tableName === item.name ? 'checkout__table--active' : ''}}\"\n              data-id=\"{{item.id}}\"\n              data-name=\"{{item.name}}\"\n              bind:tap=\"onPickTable\"\n            >\n              {{item.name}}\n            </view>\n          </block>\n        </view>\n      </view>"
       }
     ]
   },
@@ -230,6 +230,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:74bbc83cf37743caf3cee284a318bb72bde377a440bdeeba28987fdb640564c9"
+    "digest": "sha256:e6d68ad3aeb1770e704cb7eec7a30a2e527303c5376aecf33bac9417ab8650c7"
   }
 }

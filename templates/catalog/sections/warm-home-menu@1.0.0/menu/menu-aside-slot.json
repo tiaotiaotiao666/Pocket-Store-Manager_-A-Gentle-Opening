@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
     "lineStart": 56,
     "lineEnd": 59,
-    "digest": "sha256:9b403e59b0bf9599b9903db813f51375332a4aa255e4e701ca522f36e880dba0"
+    "digest": "sha256:9a33d4a8dfb6dccdb98b1a1e12d4bf3c69c1a4a265987f263b0d73b2303325c2"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 56,
         "lineEnd": 59,
-        "code": "<!-- @slot-fallback:menu-aside -->\r\n      <!-- @slot-fallback:menu-aside:end -->\r\n      <!-- @slot:menu-aside:end -->"
+        "code": "<!-- @slot-fallback:menu-aside -->\n      <!-- @slot-fallback:menu-aside:end -->\n      <!-- @slot:menu-aside:end -->"
       }
     ]
   },
@@ -74,6 +74,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:9b403e59b0bf9599b9903db813f51375332a4aa255e4e701ca522f36e880dba0"
+    "digest": "sha256:9a33d4a8dfb6dccdb98b1a1e12d4bf3c69c1a4a265987f263b0d73b2303325c2"
   }
 }

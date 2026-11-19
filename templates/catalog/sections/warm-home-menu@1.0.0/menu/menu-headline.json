@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
     "lineStart": 45,
     "lineEnd": 49,
-    "digest": "sha256:a719377dd466166ef5f67fac7bbfae20967148f55de4ddc2ef724e8a54863234"
+    "digest": "sha256:01164adad3d4e78f89eca1eb02bff7e1c54fd39ac47debf56c54345e2fbddf9d"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 45,
         "lineEnd": 49,
-        "code": "<view class=\"fp-menu__headline\">\r\n        <text class=\"fp-menu__eyebrow\">TODAY'S MENU</text>\r\n        <text class=\"fp-menu__title\">{{activeCategoryName || '全部菜品'}}</text>\r\n        <text class=\"fp-menu__meta\">{{products.length}} 道菜 · {{tableName ? tableName + ' 桌' : '到店自取'}}</text>\r\n      </view>"
+        "code": "<view class=\"fp-menu__headline\">\n        <text class=\"fp-menu__eyebrow\">TODAY'S MENU</text>\n        <text class=\"fp-menu__title\">{{activeCategoryName || '全部菜品'}}</text>\n        <text class=\"fp-menu__meta\">{{products.length}} 道菜 · {{tableName ? tableName + ' 桌' : '到店自取'}}</text>\n      </view>"
       }
     ]
   },
@@ -119,6 +119,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:a719377dd466166ef5f67fac7bbfae20967148f55de4ddc2ef724e8a54863234"
+    "digest": "sha256:01164adad3d4e78f89eca1eb02bff7e1c54fd39ac47debf56c54345e2fbddf9d"
   }
 }

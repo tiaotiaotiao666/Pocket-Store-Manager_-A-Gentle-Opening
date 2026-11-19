@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
     "lineStart": 117,
     "lineEnd": 121,
-    "digest": "sha256:b4f020522c229493c9e0659c7d2601dff5cddd5bbc44b6285a792f288c2cb938"
+    "digest": "sha256:e1c133f2390a9bbd98db9b253cf21a2fa87d9981b9f288a42fa0cb4977673a3e"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 117,
         "lineEnd": 121,
-        "code": "<view class=\"merchant__product-summary\">\r\n        <text class=\"merchant__product-stat\">共 {{productCount}} 个商品</text>\r\n        <text class=\"merchant__product-stat merchant__product-stat--ok\">在售 {{availableCount}}</text>\r\n        <text class=\"merchant__product-stat merchant__product-stat--off\">下架 {{productCount - availableCount}}</text>\r\n      </view>"
+        "code": "<view class=\"merchant__product-summary\">\n        <text class=\"merchant__product-stat\">共 {{productCount}} 个商品</text>\n        <text class=\"merchant__product-stat merchant__product-stat--ok\">在售 {{availableCount}}</text>\n        <text class=\"merchant__product-stat merchant__product-stat--off\">下架 {{productCount - availableCount}}</text>\n      </view>"
       }
     ]
   },
@@ -117,6 +117,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:b4f020522c229493c9e0659c7d2601dff5cddd5bbc44b6285a792f288c2cb938"
+    "digest": "sha256:e1c133f2390a9bbd98db9b253cf21a2fa87d9981b9f288a42fa0cb4977673a3e"
   }
 }

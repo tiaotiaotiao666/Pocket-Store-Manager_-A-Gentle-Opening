@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
     "lineStart": 91,
     "lineEnd": 107,
-    "digest": "sha256:91b06ec49661d1d39797b80821c539f2ef66f765dc827f364d9e4cd18213e965"
+    "digest": "sha256:43d0b76de05151c030ec65753e0252c8a462dbdec58a4528c82f0807c40e042d"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 91,
         "lineEnd": 107,
-        "code": "<view wx:if=\"{{order && merchantActions.length > 0}}\" class=\"surface-card detail__card detail__merchant\">\r\n      <view class=\"detail__card-head\">\r\n        <text class=\"detail__card-title\">店主操作</text>\r\n        <text class=\"detail__card-extra\">当前身份可用</text>\r\n      </view>\r\n      <view class=\"detail__merchant-actions\">\r\n        <view\r\n          wx:for=\"{{merchantActions}}\"\r\n          wx:key=\"toStatus\"\r\n          class=\"detail__merchant-btn {{item.tone === 'primary' ? 'detail__merchant-btn--primary' : item.tone === 'success' ? 'detail__merchant-btn--success' : 'detail__merchant-btn--danger'}}\"\r\n          data-status=\"{{item.toStatus}}\"\r\n          bind:tap=\"onAdvance\"\r\n        >\r\n          {{acting && actionLabel === item.toStatus ? '处理中…' : item.label}}\r\n        </view>\r\n      </view>\r\n    </view>"
+        "code": "<view wx:if=\"{{order && merchantActions.length > 0}}\" class=\"surface-card detail__card detail__merchant\">\n      <view class=\"detail__card-head\">\n        <text class=\"detail__card-title\">店主操作</text>\n        <text class=\"detail__card-extra\">当前身份可用</text>\n      </view>\n      <view class=\"detail__merchant-actions\">\n        <view\n          wx:for=\"{{merchantActions}}\"\n          wx:key=\"toStatus\"\n          class=\"detail__merchant-btn {{item.tone === 'primary' ? 'detail__merchant-btn--primary' : item.tone === 'success' ? 'detail__merchant-btn--success' : 'detail__merchant-btn--danger'}}\"\n          data-status=\"{{item.toStatus}}\"\n          bind:tap=\"onAdvance\"\n        >\n          {{acting && actionLabel === item.toStatus ? '处理中…' : item.label}}\n        </view>\n      </view>\n    </view>"
       }
     ]
   },
@@ -187,6 +187,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:91b06ec49661d1d39797b80821c539f2ef66f765dc827f364d9e4cd18213e965"
+    "digest": "sha256:43d0b76de05151c030ec65753e0252c8a462dbdec58a4528c82f0807c40e042d"
   }
 }

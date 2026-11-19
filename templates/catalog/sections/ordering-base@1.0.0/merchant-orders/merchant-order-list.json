@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
     "lineStart": 94,
     "lineEnd": 106,
-    "digest": "sha256:372e5de181e5aa189f4bcf54a5039dd937ff8c1c28142b2399b90b7c55876716"
+    "digest": "sha256:818d7b9e3affebd86e5cb13c7f6042a867ba22829db827d21053a08198902185"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 94,
         "lineEnd": 106,
-        "code": "<view wx:else class=\"merchant__orders\">\r\n        <view wx:for=\"{{orders}}\" wx:key=\"id\" class=\"merchant__order\">\r\n          <order-card\r\n            order=\"{{item}}\"\r\n            role=\"MERCHANT\"\r\n            actionable=\"{{true}}\"\r\n            acting-id=\"{{orderActingIds[item.id] ? item.id : ''}}\"\r\n            acting-status=\"{{orderActingIds[item.id] || ''}}\"\r\n            bind:open=\"onOpenOrder\"\r\n            bind:advance=\"onAdvance\"\r\n          />\r\n        </view>\r\n      </view>"
+        "code": "<view wx:else class=\"merchant__orders\">\n        <view wx:for=\"{{orders}}\" wx:key=\"id\" class=\"merchant__order\">\n          <order-card\n            order=\"{{item}}\"\n            role=\"MERCHANT\"\n            actionable=\"{{true}}\"\n            acting-id=\"{{orderActingIds[item.id] ? item.id : ''}}\"\n            acting-status=\"{{orderActingIds[item.id] || ''}}\"\n            bind:open=\"onOpenOrder\"\n            bind:advance=\"onAdvance\"\n          />\n        </view>\n      </view>"
       }
     ]
   },
@@ -142,6 +142,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:372e5de181e5aa189f4bcf54a5039dd937ff8c1c28142b2399b90b7c55876716"
+    "digest": "sha256:818d7b9e3affebd86e5cb13c7f6042a867ba22829db827d21053a08198902185"
   }
 }

@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
     "lineStart": 73,
     "lineEnd": 83,
-    "digest": "sha256:fea6ba057b6ffc32a343dd5d155c75b29a5e6198939e2aff81548b648f88d0e3"
+    "digest": "sha256:5c22b15a7abd5e8ae8887b9c4b203b6597a3728734b8ae3b605e0cbd99e19118"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 73,
         "lineEnd": 83,
-        "code": "<view class=\"merchant__segments\">\r\n        <view\r\n          wx:for=\"{{segments}}\"\r\n          wx:key=\"key\"\r\n          class=\"merchant__segment {{segment === item.key ? 'merchant__segment--active' : ''}}\"\r\n          data-key=\"{{item.key}}\"\r\n          bind:tap=\"onChangeSegment\"\r\n        >\r\n          {{item.label}}\r\n        </view>\r\n      </view>"
+        "code": "<view class=\"merchant__segments\">\n        <view\n          wx:for=\"{{segments}}\"\n          wx:key=\"key\"\n          class=\"merchant__segment {{segment === item.key ? 'merchant__segment--active' : ''}}\"\n          data-key=\"{{item.key}}\"\n          bind:tap=\"onChangeSegment\"\n        >\n          {{item.label}}\n        </view>\n      </view>"
       }
     ]
   },
@@ -128,6 +128,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:fea6ba057b6ffc32a343dd5d155c75b29a5e6198939e2aff81548b648f88d0e3"
+    "digest": "sha256:5c22b15a7abd5e8ae8887b9c4b203b6597a3728734b8ae3b605e0cbd99e19118"
   }
 }

@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
     "lineStart": 75,
     "lineEnd": 81,
-    "digest": "sha256:f85ec34f79db3364b74ca1dd117bda4e05a005eae0345427d502840cbec06e69"
+    "digest": "sha256:f345ddc63cca4b999fd4e2bf29524d41967150a930a3d6e0c9fc4dbff2c98178"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 75,
         "lineEnd": 81,
-        "code": "<view class=\"fp-home__cta\" bind:tap=\"goMenu\">\r\n        <view class=\"fp-home__cta-copy\">\r\n          <text class=\"fp-home__cta-title\">开始点餐</text>\r\n          <text class=\"fp-home__cta-sub\">{{mode === 'DINE_IN' ? '堂食 · 请先确认桌号' : '到店自取 · 免排队'}}</text>\r\n        </view>\r\n        <text class=\"fp-home__cta-arrow\">→</text>\r\n      </view>"
+        "code": "<view class=\"fp-home__cta\" bind:tap=\"goMenu\">\n        <view class=\"fp-home__cta-copy\">\n          <text class=\"fp-home__cta-title\">开始点餐</text>\n          <text class=\"fp-home__cta-sub\">{{mode === 'DINE_IN' ? '堂食 · 请先确认桌号' : '到店自取 · 免排队'}}</text>\n        </view>\n        <text class=\"fp-home__cta-arrow\">→</text>\n      </view>"
       }
     ]
   },
@@ -170,6 +170,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:f85ec34f79db3364b74ca1dd117bda4e05a005eae0345427d502840cbec06e69"
+    "digest": "sha256:f345ddc63cca4b999fd4e2bf29524d41967150a930a3d6e0c9fc4dbff2c98178"
   }
 }

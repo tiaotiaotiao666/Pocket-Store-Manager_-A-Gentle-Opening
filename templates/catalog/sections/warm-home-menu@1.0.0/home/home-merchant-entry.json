@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
     "lineStart": 99,
     "lineEnd": 105,
-    "digest": "sha256:f3906d1fb0fe5ad55d538f2c7422ded87a2df5301169bbc0083f245f5fb666af"
+    "digest": "sha256:36e98cd3344c510eaeb6361bf9b81a6371c7495f89f9f1bb041e21fe8b6abb93"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 99,
         "lineEnd": 105,
-        "code": "<view wx:if=\"{{merchantStoreId}}\" class=\"fp-home__merchant\" bind:tap=\"goMerchant\">\r\n        <view class=\"fp-home__merchant-body\">\r\n          <text class=\"fp-home__merchant-title\">店主订单台</text>\r\n          <text class=\"fp-home__merchant-sub\">当前身份拥有该门店的管理权限</text>\r\n        </view>\r\n        <text class=\"fp-home__merchant-arrow\">›</text>\r\n      </view>"
+        "code": "<view wx:if=\"{{merchantStoreId}}\" class=\"fp-home__merchant\" bind:tap=\"goMerchant\">\n        <view class=\"fp-home__merchant-body\">\n          <text class=\"fp-home__merchant-title\">店主订单台</text>\n          <text class=\"fp-home__merchant-sub\">当前身份拥有该门店的管理权限</text>\n        </view>\n        <text class=\"fp-home__merchant-arrow\">›</text>\n      </view>"
       }
     ]
   },
@@ -165,6 +165,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:f3906d1fb0fe5ad55d538f2c7422ded87a2df5301169bbc0083f245f5fb666af"
+    "digest": "sha256:36e98cd3344c510eaeb6361bf9b81a6371c7495f89f9f1bb041e21fe8b6abb93"
   }
 }

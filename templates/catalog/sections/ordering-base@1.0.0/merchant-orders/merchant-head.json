@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
     "lineStart": 2,
     "lineEnd": 23,
-    "digest": "sha256:08b0a5a17d1454e854859546c05ec1a8a5c3bb5bab145ac058f12a72fea02cab"
+    "digest": "sha256:a55d6294d538a918d96b16550440d79faa1f20df62449823a6ef6ee6a52db174"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 2,
         "lineEnd": 23,
-        "code": "<view class=\"merchant__head\">\r\n    <view class=\"merchant__head-top\">\r\n      <view class=\"merchant__head-main\">\r\n        <text class=\"merchant__eyebrow\">店主工作台</text>\r\n        <text class=\"merchant__title\">{{storeName || storeId || '门店'}}</text>\r\n      </view>\r\n      <view class=\"merchant__role\">{{roleLabel || '—'}}</view>\r\n    </view>\r\n    <view class=\"merchant__meta\">\r\n      <text>{{lastUpdated || '尚未刷新'}}</text>\r\n      <text wx:if=\"{{allowed}}\" class=\"merchant__polling\">\r\n        {{polling ? '每 10 秒自动刷新' : '自动刷新已暂停'}}\r\n      </text>\r\n    </view>\r\n    <view wx:if=\"{{allowed}}\" class=\"merchant__actions\">\r\n      <view class=\"merchant__refresh\" bind:tap=\"onRefresh\">立即刷新</view>\r\n      <view class=\"merchant__poll-switch\">\r\n        <text class=\"merchant__poll-label\">自动刷新</text>\r\n        <switch checked=\"{{polling}}\" color=\"#E86A17\" bindchange=\"onTogglePolling\" />\r\n      </view>\r\n    </view>\r\n  </view>"
+        "code": "<view class=\"merchant__head\">\n    <view class=\"merchant__head-top\">\n      <view class=\"merchant__head-main\">\n        <text class=\"merchant__eyebrow\">店主工作台</text>\n        <text class=\"merchant__title\">{{storeName || storeId || '门店'}}</text>\n      </view>\n      <view class=\"merchant__role\">{{roleLabel || '—'}}</view>\n    </view>\n    <view class=\"merchant__meta\">\n      <text>{{lastUpdated || '尚未刷新'}}</text>\n      <text wx:if=\"{{allowed}}\" class=\"merchant__polling\">\n        {{polling ? '每 10 秒自动刷新' : '自动刷新已暂停'}}\n      </text>\n    </view>\n    <view wx:if=\"{{allowed}}\" class=\"merchant__actions\">\n      <view class=\"merchant__refresh\" bind:tap=\"onRefresh\">立即刷新</view>\n      <view class=\"merchant__poll-switch\">\n        <text class=\"merchant__poll-label\">自动刷新</text>\n        <switch checked=\"{{polling}}\" color=\"#E86A17\" bindchange=\"onTogglePolling\" />\n      </view>\n    </view>\n  </view>"
       }
     ]
   },
@@ -212,6 +212,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:08b0a5a17d1454e854859546c05ec1a8a5c3bb5bab145ac058f12a72fea02cab"
+    "digest": "sha256:a55d6294d538a918d96b16550440d79faa1f20df62449823a6ef6ee6a52db174"
   }
 }

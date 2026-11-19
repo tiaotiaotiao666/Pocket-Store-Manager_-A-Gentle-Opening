@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
     "lineStart": 28,
     "lineEnd": 39,
-    "digest": "sha256:750b89e07d2427120e6d6466a6e97da09770de3ffdc963803565c98a24193804"
+    "digest": "sha256:e93a98f3a9f0a094824f676a79af8eece5702aa0a2cd69a97e90f80c2bc0220c"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 28,
         "lineEnd": 39,
-        "code": "<view class=\"surface-card mine__membership\">\r\n        <view wx:for=\"{{merchantEntries}}\" wx:key=\"storeId\" class=\"mine__membership-row\" data-store=\"{{item.storeId}}\" bind:tap=\"onOpenMerchant\">\r\n          <view class=\"mine__membership-main\">\r\n            <text class=\"mine__membership-name\">{{item.storeId}}</text>\r\n            <text class=\"mine__membership-role\">{{item.roleLabel}} · 可进入订单台</text>\r\n          </view>\r\n          <text class=\"mine__membership-arrow\">›</text>\r\n        </view>\r\n        <view wx:if=\"{{merchantEntries.length === 0}}\" class=\"mine__membership-empty\">\r\n          当前身份只有顾客权限，没有门店管理入口\r\n        </view>\r\n      </view>"
+        "code": "<view class=\"surface-card mine__membership\">\n        <view wx:for=\"{{merchantEntries}}\" wx:key=\"storeId\" class=\"mine__membership-row\" data-store=\"{{item.storeId}}\" bind:tap=\"onOpenMerchant\">\n          <view class=\"mine__membership-main\">\n            <text class=\"mine__membership-name\">{{item.storeId}}</text>\n            <text class=\"mine__membership-role\">{{item.roleLabel}} · 可进入订单台</text>\n          </view>\n          <text class=\"mine__membership-arrow\">›</text>\n        </view>\n        <view wx:if=\"{{merchantEntries.length === 0}}\" class=\"mine__membership-empty\">\n          当前身份只有顾客权限，没有门店管理入口\n        </view>\n      </view>"
       }
     ]
   },
@@ -157,6 +157,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:750b89e07d2427120e6d6466a6e97da09770de3ffdc963803565c98a24193804"
+    "digest": "sha256:e93a98f3a9f0a094824f676a79af8eece5702aa0a2cd69a97e90f80c2bc0220c"
   }
 }

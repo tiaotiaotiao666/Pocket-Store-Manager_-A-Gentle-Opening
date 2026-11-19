@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
     "lineStart": 276,
     "lineEnd": 282,
-    "digest": "sha256:d566f0f3bbc13723506330697da9872321d78d892e6e45d617fe6a55e9b65e2a"
+    "digest": "sha256:db5bd488b98e8ae13043e1b770745670e17d12d4a0b3a9f656fd7c6dde188769"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 276,
         "lineEnd": 282,
-        "code": "<view class=\"merchant__poster-heading\">\r\n        <view>\r\n          <text class=\"merchant__category-name\">首页海报</text>\r\n          <text class=\"merchant__poster-hint\">共 {{posters.length}} 张 · 点击后打开关联商品详情</text>\r\n        </view>\r\n        <button wx:if=\"{{isOwner}}\" class=\"merchant__owner-button\" size=\"mini\" disabled=\"{{productWriting || availableProducts.length === 0}}\" bind:tap=\"onOpenPosterForm\">新建海报</button>\r\n      </view>"
+        "code": "<view class=\"merchant__poster-heading\">\n        <view>\n          <text class=\"merchant__category-name\">首页海报</text>\n          <text class=\"merchant__poster-hint\">共 {{posters.length}} 张 · 点击后打开关联商品详情</text>\n        </view>\n        <button wx:if=\"{{isOwner}}\" class=\"merchant__owner-button\" size=\"mini\" disabled=\"{{productWriting || availableProducts.length === 0}}\" bind:tap=\"onOpenPosterForm\">新建海报</button>\n      </view>"
       }
     ]
   },
@@ -129,6 +129,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:d566f0f3bbc13723506330697da9872321d78d892e6e45d617fe6a55e9b65e2a"
+    "digest": "sha256:db5bd488b98e8ae13043e1b770745670e17d12d4a0b3a9f656fd7c6dde188769"
   }
 }

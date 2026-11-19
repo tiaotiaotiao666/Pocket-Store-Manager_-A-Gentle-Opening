@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
     "lineStart": 40,
     "lineEnd": 45,
-    "digest": "sha256:06bc381446a3117b1598f5a5a565763fb60417445f45f774e2303db576d5ad6a"
+    "digest": "sha256:8059e47575f19c44307beeb3f3963942430c03c12e591d1d532bc1e6f2dba5b3"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 40,
         "lineEnd": 45,
-        "code": "<view class=\"fp-home__marketing\">\r\n        <!-- @slot:home-marketing -->\r\n        <!-- @slot-fallback:home-marketing -->\r\n        <!-- @slot-fallback:home-marketing:end -->\r\n        <!-- @slot:home-marketing:end -->\r\n      </view>"
+        "code": "<view class=\"fp-home__marketing\">\n        <!-- @slot:home-marketing -->\n        <!-- @slot-fallback:home-marketing -->\n        <!-- @slot-fallback:home-marketing:end -->\n        <!-- @slot:home-marketing:end -->\n      </view>"
       }
     ]
   },
@@ -85,6 +85,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:06bc381446a3117b1598f5a5a565763fb60417445f45f774e2303db576d5ad6a"
+    "digest": "sha256:8059e47575f19c44307beeb3f3963942430c03c12e591d1d532bc1e6f2dba5b3"
   }
 }

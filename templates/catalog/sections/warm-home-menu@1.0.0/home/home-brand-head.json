@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
     "lineStart": 17,
     "lineEnd": 27,
-    "digest": "sha256:64a9959d3e6b97d46f2fcf12eaf46040a38cfbbc591961ac48cac66d28df5809"
+    "digest": "sha256:04a8f7739921a5cbd7dbfef4906b52f2c6f7597229df2e7e89bab6b04be0f37a"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 17,
         "lineEnd": 27,
-        "code": "<view class=\"fp-home__head\">\r\n      <view class=\"fp-home__brand\">\r\n        <text class=\"fp-home__eyebrow\">SMART STORE · 扫码点餐</text>\r\n        <text class=\"fp-home__title\">今天想吃点什么？</text>\r\n        <text class=\"fp-home__sub\">选好用餐方式，直接开始点单。</text>\r\n      </view>\r\n      <view class=\"fp-home__identity\" bind:tap=\"goMine\">\r\n        <text class=\"fp-home__identity-dot\"></text>\r\n        <text>{{identityLabel}}</text>\r\n      </view>\r\n    </view>"
+        "code": "<view class=\"fp-home__head\">\n      <view class=\"fp-home__brand\">\n        <text class=\"fp-home__eyebrow\">SMART STORE · 扫码点餐</text>\n        <text class=\"fp-home__title\">今天想吃点什么？</text>\n        <text class=\"fp-home__sub\">选好用餐方式，直接开始点单。</text>\n      </view>\n      <view class=\"fp-home__identity\" bind:tap=\"goMine\">\n        <text class=\"fp-home__identity-dot\"></text>\n        <text>{{identityLabel}}</text>\n      </view>\n    </view>"
       }
     ]
   },
@@ -198,6 +198,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:64a9959d3e6b97d46f2fcf12eaf46040a38cfbbc591961ac48cac66d28df5809"
+    "digest": "sha256:04a8f7739921a5cbd7dbfef4906b52f2c6f7597229df2e7e89bab6b04be0f37a"
   }
 }

@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
     "lineStart": 3,
     "lineEnd": 15,
-    "digest": "sha256:91bdceb67dcd8a0fa9ee634df0014c409c00cadfdb5c0c79cbb8efe43a039398"
+    "digest": "sha256:afc10157506f5d8b68a0c738af69e073762d8a5fca19c92f354ba930ec46e708"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 3,
         "lineEnd": 15,
-        "code": "<view class=\"fp-home__hero\">\r\n      <!-- @slot:home-hero -->\r\n      <!-- @slot-fallback:home-hero -->\r\n      <store-header\r\n        store-name=\"{{store.name}}\"\r\n        table-name=\"{{tableName}}\"\r\n        business-hours=\"{{store.businessHours}}\"\r\n        mode=\"{{mode}}\"\r\n        address=\"{{store.address}}\"\r\n      />\r\n      <!-- @slot-fallback:home-hero:end -->\r\n      <!-- @slot:home-hero:end -->\r\n    </view>"
+        "code": "<view class=\"fp-home__hero\">\n      <!-- @slot:home-hero -->\n      <!-- @slot-fallback:home-hero -->\n      <store-header\n        store-name=\"{{store.name}}\"\n        table-name=\"{{tableName}}\"\n        business-hours=\"{{store.businessHours}}\"\n        mode=\"{{mode}}\"\n        address=\"{{store.address}}\"\n      />\n      <!-- @slot-fallback:home-hero:end -->\n      <!-- @slot:home-hero:end -->\n    </view>"
       }
     ]
   },
@@ -122,6 +122,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:91bdceb67dcd8a0fa9ee634df0014c409c00cadfdb5c0c79cbb8efe43a039398"
+    "digest": "sha256:afc10157506f5d8b68a0c738af69e073762d8a5fca19c92f354ba930ec46e708"
   }
 }

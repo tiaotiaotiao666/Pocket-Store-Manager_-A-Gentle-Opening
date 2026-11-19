@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/order-detail/index.wxss",
     "lineStart": 67,
     "lineEnd": 89,
-    "digest": "sha256:ce56a40553f6f1d562b97dc2d6cd1f62ec0f704d25562aa5d4d26904fc7f0c45"
+    "digest": "sha256:b0812aa5e41484ef001805010e9c2919e40ebad6f3be288c76188f654ae8517d"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 67,
         "lineEnd": 89,
-        "code": "<view wx:if=\"{{order}}\" class=\"surface-card detail__card\">\r\n      <view class=\"detail__card-head\">\r\n        <text class=\"detail__card-title\">菜品明细</text>\r\n        <text class=\"detail__card-extra\">{{order.items.length}} 项</text>\r\n      </view>\r\n      <view class=\"detail__divider\"></view>\r\n      <view wx:for=\"{{order.itemViews}}\" wx:key=\"productId\" class=\"detail__item\">\r\n        <view class=\"detail__item-main\">\r\n          <text class=\"detail__item-name\">{{item.name}}</text>\r\n          <text class=\"detail__item-unit\">{{item.unitPriceText}} × {{item.quantity}}</text>\r\n        </view>\r\n        <text class=\"detail__item-line\">{{item.lineTotalText}}</text>\r\n      </view>\r\n      <view class=\"detail__divider\"></view>\r\n      <view class=\"detail__total\">\r\n        <text class=\"detail__total-label\">合计</text>\r\n        <text class=\"detail__total-value\">{{order.totalText}}</text>\r\n      </view>\r\n      <view wx:if=\"{{order.noteText}}\" class=\"detail__note\">\r\n        <text class=\"detail__note-label\">备注</text>\r\n        <text class=\"detail__note-text\">{{order.noteText}}</text>\r\n      </view>\r\n    </view>"
+        "code": "<view wx:if=\"{{order}}\" class=\"surface-card detail__card\">\n      <view class=\"detail__card-head\">\n        <text class=\"detail__card-title\">菜品明细</text>\n        <text class=\"detail__card-extra\">{{order.items.length}} 项</text>\n      </view>\n      <view class=\"detail__divider\"></view>\n      <view wx:for=\"{{order.itemViews}}\" wx:key=\"productId\" class=\"detail__item\">\n        <view class=\"detail__item-main\">\n          <text class=\"detail__item-name\">{{item.name}}</text>\n          <text class=\"detail__item-unit\">{{item.unitPriceText}} × {{item.quantity}}</text>\n        </view>\n        <text class=\"detail__item-line\">{{item.lineTotalText}}</text>\n      </view>\n      <view class=\"detail__divider\"></view>\n      <view class=\"detail__total\">\n        <text class=\"detail__total-label\">合计</text>\n        <text class=\"detail__total-value\">{{order.totalText}}</text>\n      </view>\n      <view wx:if=\"{{order.noteText}}\" class=\"detail__note\">\n        <text class=\"detail__note-label\">备注</text>\n        <text class=\"detail__note-text\">{{order.noteText}}</text>\n      </view>\n    </view>"
       }
     ]
   },
@@ -230,6 +230,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:ce56a40553f6f1d562b97dc2d6cd1f62ec0f704d25562aa5d4d26904fc7f0c45"
+    "digest": "sha256:b0812aa5e41484ef001805010e9c2919e40ebad6f3be288c76188f654ae8517d"
   }
 }

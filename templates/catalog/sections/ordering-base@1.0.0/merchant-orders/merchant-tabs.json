@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
     "lineStart": 48,
     "lineEnd": 70,
-    "digest": "sha256:e474b5e15dc6a243a368d9c5dc67f7ab8b17372aa95a026d5293377df09d0143"
+    "digest": "sha256:88b9712b221f3423d9b789418c063268da80caaa112bf2b9d11a16cec57f0af8"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 48,
         "lineEnd": 70,
-        "code": "<view class=\"merchant__tabs\">\r\n      <view\r\n        class=\"merchant__tab {{tab === 'orders' ? 'merchant__tab--active' : ''}}\"\r\n        data-tab=\"orders\"\r\n        bind:tap=\"onChangeTab\"\r\n      >\r\n        订单台\r\n      </view>\r\n      <view\r\n        class=\"merchant__tab {{tab === 'products' ? 'merchant__tab--active' : ''}}\"\r\n        data-tab=\"products\"\r\n        bind:tap=\"onChangeTab\"\r\n      >\r\n        商品管理\r\n      </view>\r\n      <view\r\n        class=\"merchant__tab {{tab === 'posters' ? 'merchant__tab--active' : ''}}\"\r\n        data-tab=\"posters\"\r\n        bind:tap=\"onChangeTab\"\r\n      >\r\n        海报装修\r\n      </view>\r\n    </view>"
+        "code": "<view class=\"merchant__tabs\">\n      <view\n        class=\"merchant__tab {{tab === 'orders' ? 'merchant__tab--active' : ''}}\"\n        data-tab=\"orders\"\n        bind:tap=\"onChangeTab\"\n      >\n        订单台\n      </view>\n      <view\n        class=\"merchant__tab {{tab === 'products' ? 'merchant__tab--active' : ''}}\"\n        data-tab=\"products\"\n        bind:tap=\"onChangeTab\"\n      >\n        商品管理\n      </view>\n      <view\n        class=\"merchant__tab {{tab === 'posters' ? 'merchant__tab--active' : ''}}\"\n        data-tab=\"posters\"\n        bind:tap=\"onChangeTab\"\n      >\n        海报装修\n      </view>\n    </view>"
       }
     ]
   },
@@ -143,6 +143,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:e474b5e15dc6a243a368d9c5dc67f7ab8b17372aa95a026d5293377df09d0143"
+    "digest": "sha256:88b9712b221f3423d9b789418c063268da80caaa112bf2b9d11a16cec57f0af8"
   }
 }

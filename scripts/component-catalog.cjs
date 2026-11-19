@@ -39,6 +39,18 @@ function json(value) {
   return JSON.stringify(value, null, 2) + '\n';
 }
 
+/**
+ * 读取源码文本并统一行尾为 LF。
+ *
+ * Windows 上 `core.autocrlf=true` 会让同一份仓库出现「部分文件 CRLF、部分 LF」的混合工作区；
+ * 段落卡片的 `code` 字段是把源码片段原样嵌进 JSON 字符串的，`\r` 会一起被序列化成转义的
+ * `\r\n`，其 `digest` 也随之在 Windows 与 Linux 之间分叉——同一份仓库在两套环境里
+ * `--check` 结果相反。凡参与片段抽取与摘要计算的源码都从这里读取，保证生成物与平台无关。
+ */
+function readSource(file) {
+  return fs.readFileSync(file, 'utf8').replace(/\r\n?/g, '\n');
+}
+
 function toPosix(value) {
   return String(value).replace(/\\/g, '/');
 }
@@ -69,7 +81,7 @@ function loadRegistryAssetMap() {
 }
 
 function collectPageDefinition(jsFile) {
-  const source = fs.readFileSync(jsFile, 'utf8');
+  const source = readSource(jsFile);
   let pageDefinition = null;
   const loose = new Proxy(function looseValue() {}, {
     get(_target, key) {
@@ -149,7 +161,7 @@ function extractPayloads(definition) {
 
 function styleInfo(componentDir, wxml, id) {
   const wxssFile = path.join(componentDir, 'index.wxss');
-  const wxss = fs.existsSync(wxssFile) ? fs.readFileSync(wxssFile, 'utf8') : '';
+  const wxss = fs.existsSync(wxssFile) ? readSource(wxssFile) : '';
   const classes = [];
   const classPattern = /\.([a-zA-Z][a-zA-Z0-9_-]*)/g;
   let classMatch = classPattern.exec(wxss);
@@ -239,7 +251,7 @@ function runtimeInfo(sourceKind) {
 function buildComponentCard(context) {
   const { id, dir, version, sourceKind, curation, registryAsset } = context;
   const componentJs = path.join(dir, 'index.js');
-  const wxml = fs.readFileSync(path.join(dir, 'index.wxml'), 'utf8');
+  const wxml = readSource(path.join(dir, 'index.wxml'));
   const collected = collectComponentDefinition(componentJs);
   if (!collected.definition) throw new Error('COMPONENT_NOT_REGISTERED: ' + repoRelative(componentJs));
   if (collected.sideEffects.length > 0) {
@@ -364,7 +376,7 @@ function collectPageCard(pageId, pageMeta, baseManifest, slotsDoc, knownComponen
   const pageDir = path.join(BASE_SRC, 'pages', pageId);
   const pageJs = path.join(pageDir, 'index.js');
   const pageJson = readJson(path.join(pageDir, 'index.json'));
-  const wxml = fs.readFileSync(path.join(pageDir, 'index.wxml'), 'utf8');
+  const wxml = readSource(path.join(pageDir, 'index.wxml'));
   const controller = collectPageDefinition(pageJs) || {};
   const declared = pageJson.usingComponents || {};
   const declaredIds = Object.keys(declared)
@@ -608,8 +620,8 @@ function buildLayoutCard(asset, curation) {
   const layoutCuration = curation.layouts[key] || {};
   const pages = manifest.pages.map((pageId) => {
     const pageDir = path.join(packSrc, 'pages', pageId);
-    const wxml = fs.readFileSync(path.join(pageDir, 'index.wxml'), 'utf8');
-    const wxss = fs.readFileSync(path.join(pageDir, 'index.wxss'), 'utf8');
+    const wxml = readSource(path.join(pageDir, 'index.wxml'));
+    const wxss = readSource(path.join(pageDir, 'index.wxss'));
     const pageJson = readJson(path.join(pageDir, 'index.json'));
     const ranges = slotRanges(wxml, (manifest.requiresSlots || []).map((slotId) => ({ slotId })));
     const blockMatches = parseWxmlBlocks(wxml, layoutCuration.blockPurposes || {});
@@ -910,8 +922,8 @@ function buildSectionCatalog(context) {
     const pageDir = path.join(srcRoot, 'pages', pageId);
     const wxmlFile = path.join(pageDir, 'index.wxml');
     const wxssFile = path.join(pageDir, 'index.wxss');
-    const wxml = fs.readFileSync(wxmlFile, 'utf8');
-    const wxss = fs.readFileSync(wxssFile, 'utf8');
+    const wxml = readSource(wxmlFile);
+    const wxss = readSource(wxssFile);
     const tags = scanWxmlTags(wxml);
     const rules = parseWxssRules(wxss);
     const handlers = basePageHandlers.get(pageId) || new Set();

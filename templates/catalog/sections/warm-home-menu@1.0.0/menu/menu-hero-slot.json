@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
     "lineStart": 51,
     "lineEnd": 54,
-    "digest": "sha256:4dc1e38dcb75add66326986b36327b69555e90e3381e83e5d4019edfdca7520b"
+    "digest": "sha256:15df8bfc0626755d3a4c291dc33506d77f5fab235426de3b39f164542d8f5b3c"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 51,
         "lineEnd": 54,
-        "code": "<!-- @slot-fallback:menu-hero -->\r\n      <!-- @slot-fallback:menu-hero:end -->\r\n      <!-- @slot:menu-hero:end -->"
+        "code": "<!-- @slot-fallback:menu-hero -->\n      <!-- @slot-fallback:menu-hero:end -->\n      <!-- @slot:menu-hero:end -->"
       }
     ]
   },
@@ -74,6 +74,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:4dc1e38dcb75add66326986b36327b69555e90e3381e83e5d4019edfdca7520b"
+    "digest": "sha256:15df8bfc0626755d3a4c291dc33506d77f5fab235426de3b39f164542d8f5b3c"
   }
 }

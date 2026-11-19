@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
     "lineStart": 10,
     "lineEnd": 17,
-    "digest": "sha256:40e24184f14d14ddf93d7afc464af191cb1dd6c21078df9b7ed7db08c1bf998c"
+    "digest": "sha256:420ddc0d792999b0157b29b4761e57005033d4716f02432ca9fbd2a99afba8ff"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 10,
         "lineEnd": 17,
-        "code": "<view class=\"mine__profile\">\r\n      <view class=\"mine__avatar\">{{avatarText}}</view>\r\n      <view class=\"mine__profile-body\">\r\n        <text class=\"mine__profile-name\">{{user.displayName || '未登录'}}</text>\r\n        <text class=\"mine__profile-meta\">{{identity.label}}{{loggedIn ? ' · 已登录' : ' · 未登录'}}</text>\r\n      </view>\r\n      <view class=\"mine__profile-tag\">{{storeName || '门店'}}</view>\r\n    </view>"
+        "code": "<view class=\"mine__profile\">\n      <view class=\"mine__avatar\">{{avatarText}}</view>\n      <view class=\"mine__profile-body\">\n        <text class=\"mine__profile-name\">{{user.displayName || '未登录'}}</text>\n        <text class=\"mine__profile-meta\">{{identity.label}}{{loggedIn ? ' · 已登录' : ' · 未登录'}}</text>\n      </view>\n      <view class=\"mine__profile-tag\">{{storeName || '门店'}}</view>\n    </view>"
       }
     ]
   },
@@ -161,6 +161,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:40e24184f14d14ddf93d7afc464af191cb1dd6c21078df9b7ed7db08c1bf998c"
+    "digest": "sha256:420ddc0d792999b0157b29b4761e57005033d4716f02432ca9fbd2a99afba8ff"
   }
 }

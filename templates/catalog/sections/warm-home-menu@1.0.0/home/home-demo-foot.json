@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/home/index.wxss",
     "lineStart": 107,
     "lineEnd": 109,
-    "digest": "sha256:5c68ae6bc0d5f4f44934eac503760e17249af9b86d455e5227f6048737b558cb"
+    "digest": "sha256:f0fbbddfc870896e04b7561b30f6fb56825afa2e41c1b2e5ed06c2c8cc8167b2"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 107,
         "lineEnd": 109,
-        "code": "<view class=\"fp-home__foot\">\r\n        <text wx:if=\"{{demoMode}}\">演示环境 · 演示登录与模拟支付，不产生真实交易</text>\r\n      </view>"
+        "code": "<view class=\"fp-home__foot\">\n        <text wx:if=\"{{demoMode}}\">演示环境 · 演示登录与模拟支付，不产生真实交易</text>\n      </view>"
       }
     ]
   },
@@ -88,6 +88,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:5c68ae6bc0d5f4f44934eac503760e17249af9b86d455e5227f6048737b558cb"
+    "digest": "sha256:f0fbbddfc870896e04b7561b30f6fb56825afa2e41c1b2e5ed06c2c8cc8167b2"
   }
 }

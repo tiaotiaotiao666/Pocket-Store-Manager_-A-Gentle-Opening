@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
     "lineStart": 27,
     "lineEnd": 35,
-    "digest": "sha256:3b48f50818c726ce7fbca3f8d84a6662dfc5ef9999cb3c198598df3c9b3fa3a1"
+    "digest": "sha256:9f52e0fc7ec7e26b3c36be334c2c0c432856f85aedb648ccc6adfb65c55e41a5"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 27,
         "lineEnd": 35,
-        "code": "<view wx:elif=\"{{!allowed}}\" class=\"merchant__denied\">\r\n    <state-view\r\n      state=\"empty\"\r\n      title=\"{{error || '没有门店操作权限'}}\"\r\n      description=\"店主入口以后端 memberships 为准。请在「我的」切换到演示店主或店员。\"\r\n      action-text=\"去切换身份\"\r\n      bind:retry=\"onRetry\"\r\n    />\r\n  </view>"
+        "code": "<view wx:elif=\"{{!allowed}}\" class=\"merchant__denied\">\n    <state-view\n      state=\"empty\"\n      title=\"{{error || '没有门店操作权限'}}\"\n      description=\"店主入口以后端 memberships 为准。请在「我的」切换到演示店主或店员。\"\n      action-text=\"去切换身份\"\n      bind:retry=\"onRetry\"\n    />\n  </view>"
       }
     ]
   },
@@ -121,6 +121,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:3b48f50818c726ce7fbca3f8d84a6662dfc5ef9999cb3c198598df3c9b3fa3a1"
+    "digest": "sha256:9f52e0fc7ec7e26b3c36be334c2c0c432856f85aedb648ccc6adfb65c55e41a5"
   }
 }

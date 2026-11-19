@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/merchant-orders/index.wxss",
     "lineStart": 108,
     "lineEnd": 113,
-    "digest": "sha256:3a9db93b9d445ae1c1599b55f98258d9ff31148d2a4b9cf14ea246dfba9778b8"
+    "digest": "sha256:9b72602301a39c2812fd3d8868d59ab7336b2ad215c47e50c8367666784181ce"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 108,
         "lineEnd": 113,
-        "code": "<view wx:if=\"{{orders.length > 0}}\" class=\"merchant__pagination\">\r\n        <text class=\"merchant__total\">已加载 {{orders.length}} / {{total}} 单</text>\r\n        <view wx:if=\"{{hasMore}}\" class=\"merchant__more {{ordersLoading ? 'merchant__more--disabled' : ''}}\" bind:tap=\"onLoadMore\">\r\n          {{ordersLoading ? '正在加载…' : '加载更多'}}\r\n        </view>\r\n      </view>"
+        "code": "<view wx:if=\"{{orders.length > 0}}\" class=\"merchant__pagination\">\n        <text class=\"merchant__total\">已加载 {{orders.length}} / {{total}} 单</text>\n        <view wx:if=\"{{hasMore}}\" class=\"merchant__more {{ordersLoading ? 'merchant__more--disabled' : ''}}\" bind:tap=\"onLoadMore\">\n          {{ordersLoading ? '正在加载…' : '加载更多'}}\n        </view>\n      </view>"
       }
     ]
   },
@@ -135,6 +135,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:3a9db93b9d445ae1c1599b55f98258d9ff31148d2a4b9cf14ea246dfba9778b8"
+    "digest": "sha256:9b72602301a39c2812fd3d8868d59ab7336b2ad215c47e50c8367666784181ce"
   }
 }

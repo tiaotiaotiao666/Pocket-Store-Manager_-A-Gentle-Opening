@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxss",
     "lineStart": 2,
     "lineEnd": 6,
-    "digest": "sha256:5ff0cf153715876a9591af6bc1c4a4376ed5ebf11f3c383dfbd91d924e96d6e7"
+    "digest": "sha256:734b1a3f9ecb4b82362c30528a54a98ce7073390ed9dc4b78c47c6930239bc08"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 2,
         "lineEnd": 6,
-        "code": "<view class=\"orders__head\">\r\n    <text class=\"orders__eyebrow\">我的订单</text>\r\n    <text class=\"orders__title\">{{storeName || '当前门店'}}</text>\r\n    <text class=\"orders__sub\">下单身份：{{identityLabel}}</text>\r\n  </view>"
+        "code": "<view class=\"orders__head\">\n    <text class=\"orders__eyebrow\">我的订单</text>\n    <text class=\"orders__title\">{{storeName || '当前门店'}}</text>\n    <text class=\"orders__sub\">下单身份：{{identityLabel}}</text>\n  </view>"
       }
     ]
   },
@@ -117,6 +117,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:5ff0cf153715876a9591af6bc1c4a4376ed5ebf11f3c383dfbd91d924e96d6e7"
+    "digest": "sha256:734b1a3f9ecb4b82362c30528a54a98ce7073390ed9dc4b78c47c6930239bc08"
   }
 }

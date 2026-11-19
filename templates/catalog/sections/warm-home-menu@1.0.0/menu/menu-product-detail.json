@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
     "lineStart": 106,
     "lineEnd": 113,
-    "digest": "sha256:78c7747225dc407f3cb80557586b4733c2a1e430f370a5890a10f204c2e6a3c0"
+    "digest": "sha256:0b1f549b442c143641d458e49b240c401536900af44b0acd742dfe6a8303e3aa"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 106,
         "lineEnd": 113,
-        "code": "<product-detail\r\n      visible=\"{{detailVisible}}\"\r\n      product=\"{{detailProduct}}\"\r\n      quantity=\"{{detailQuantity}}\"\r\n      bind:close=\"onDetailClose\"\r\n      bind:add=\"onDetailAdd\"\r\n      bind:remove=\"onDetailRemove\"\r\n    />"
+        "code": "<product-detail\n      visible=\"{{detailVisible}}\"\n      product=\"{{detailProduct}}\"\n      quantity=\"{{detailQuantity}}\"\n      bind:close=\"onDetailClose\"\n      bind:add=\"onDetailAdd\"\n      bind:remove=\"onDetailRemove\"\n    />"
       }
     ]
   },
@@ -127,6 +127,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:78c7747225dc407f3cb80557586b4733c2a1e430f370a5890a10f204c2e6a3c0"
+    "digest": "sha256:0b1f549b442c143641d458e49b240c401536900af44b0acd742dfe6a8303e3aa"
   }
 }

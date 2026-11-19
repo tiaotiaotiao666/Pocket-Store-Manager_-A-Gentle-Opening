@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
     "lineStart": 81,
     "lineEnd": 84,
-    "digest": "sha256:8d7c253603c021e28f2d7ef3b7c444408588d35532139ccfcd8907052a38ccd8"
+    "digest": "sha256:c3096c974125555e66009c8f40d2c8fbb68a881107ea70bea47e6c18c73cbff8"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 81,
         "lineEnd": 84,
-        "code": "<view class=\"mine__foot\">\r\n      <text wx:if=\"{{demoMode}}\">演示身份通过 demoOpenId 登录，服务端仅在开发环境允许。</text>\r\n      <text wx:if=\"{{demoMode}}\">模拟支付不代表真实微信支付成功。</text>\r\n    </view>"
+        "code": "<view class=\"mine__foot\">\n      <text wx:if=\"{{demoMode}}\">演示身份通过 demoOpenId 登录，服务端仅在开发环境允许。</text>\n      <text wx:if=\"{{demoMode}}\">模拟支付不代表真实微信支付成功。</text>\n    </view>"
       }
     ]
   },
@@ -88,6 +88,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:8d7c253603c021e28f2d7ef3b7c444408588d35532139ccfcd8907052a38ccd8"
+    "digest": "sha256:c3096c974125555e66009c8f40d2c8fbb68a881107ea70bea47e6c18c73cbff8"
   }
 }

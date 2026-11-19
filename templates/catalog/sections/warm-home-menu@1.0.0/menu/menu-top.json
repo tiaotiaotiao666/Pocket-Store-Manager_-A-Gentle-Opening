@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
     "lineStart": 3,
     "lineEnd": 35,
-    "digest": "sha256:07e2fab32f7fcc9b3b194a980728f630ea19c1e4bf62d193a53c14357c79643a"
+    "digest": "sha256:48b996e5cc794b36dd7b82bd403225f38885a693270a3d1c1dbb6e05309b7348"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 3,
         "lineEnd": 35,
-        "code": "<view class=\"fp-menu__top\">\r\n      <store-header\r\n        store-name=\"{{store.name || '菜单'}}\"\r\n        table-name=\"{{tableName}}\"\r\n        business-hours=\"{{store.businessHours}}\"\r\n        mode=\"{{mode}}\"\r\n        address=\"{{store.address}}\"\r\n        compact=\"{{true}}\"\r\n      />\r\n      <view class=\"fp-menu__switch\">\r\n        <fulfillment-switch\r\n          value=\"{{mode}}\"\r\n          dine-in-enabled=\"{{store.fulfillment.dineIn}}\"\r\n          takeaway-enabled=\"{{store.fulfillment.takeaway}}\"\r\n          table-name=\"{{tableName}}\"\r\n          table-required=\"{{true}}\"\r\n          bind:change=\"onModeChange\"\r\n        />\r\n        <view wx:if=\"{{mode === 'DINE_IN' && !tableName}}\" class=\"fp-menu__tables\">\r\n          <text class=\"fp-menu__tables-label\">演示桌号</text>\r\n          <view\r\n            wx:for=\"{{tableOptions}}\"\r\n            wx:key=\"id\"\r\n            class=\"fp-menu__table\"\r\n            data-id=\"{{item.id}}\"\r\n            data-name=\"{{item.name}}\"\r\n            bind:tap=\"onPickTable\"\r\n          >\r\n            {{item.name}}\r\n          </view>\r\n        </view>\r\n      </view>\r\n    </view>"
+        "code": "<view class=\"fp-menu__top\">\n      <store-header\n        store-name=\"{{store.name || '菜单'}}\"\n        table-name=\"{{tableName}}\"\n        business-hours=\"{{store.businessHours}}\"\n        mode=\"{{mode}}\"\n        address=\"{{store.address}}\"\n        compact=\"{{true}}\"\n      />\n      <view class=\"fp-menu__switch\">\n        <fulfillment-switch\n          value=\"{{mode}}\"\n          dine-in-enabled=\"{{store.fulfillment.dineIn}}\"\n          takeaway-enabled=\"{{store.fulfillment.takeaway}}\"\n          table-name=\"{{tableName}}\"\n          table-required=\"{{true}}\"\n          bind:change=\"onModeChange\"\n        />\n        <view wx:if=\"{{mode === 'DINE_IN' && !tableName}}\" class=\"fp-menu__tables\">\n          <text class=\"fp-menu__tables-label\">演示桌号</text>\n          <view\n            wx:for=\"{{tableOptions}}\"\n            wx:key=\"id\"\n            class=\"fp-menu__table\"\n            data-id=\"{{item.id}}\"\n            data-name=\"{{item.name}}\"\n            bind:tap=\"onPickTable\"\n          >\n            {{item.name}}\n          </view>\n        </view>\n      </view>\n    </view>"
       }
     ]
   },
@@ -295,6 +295,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:07e2fab32f7fcc9b3b194a980728f630ea19c1e4bf62d193a53c14357c79643a"
+    "digest": "sha256:48b996e5cc794b36dd7b82bd403225f38885a693270a3d1c1dbb6e05309b7348"
   }
 }

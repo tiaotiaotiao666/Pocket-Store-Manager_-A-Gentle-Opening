@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
     "lineStart": 5,
     "lineEnd": 9,
-    "digest": "sha256:3f3cbd82866264decf4b157c16a797df96ab43b5ae877e6e1aaf4a8113d332e6"
+    "digest": "sha256:9e01aa7e6b583bb02ea87bbd76a3392e411a68928c0fcd939ec80203ab42d40e"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 5,
         "lineEnd": 9,
-        "code": "<view class=\"checkout__head\">\r\n      <text class=\"checkout__eyebrow\">确认订单</text>\r\n      <text class=\"checkout__title\">{{store.name || '门店'}}</text>\r\n      <text class=\"checkout__sub\">{{modeText}}{{tableName ? ' · ' + tableName + ' 桌' : ''}}</text>\r\n    </view>"
+        "code": "<view class=\"checkout__head\">\n      <text class=\"checkout__eyebrow\">确认订单</text>\n      <text class=\"checkout__title\">{{store.name || '门店'}}</text>\n      <text class=\"checkout__sub\">{{modeText}}{{tableName ? ' · ' + tableName + ' 桌' : ''}}</text>\n    </view>"
       }
     ]
   },
@@ -120,6 +120,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:3f3cbd82866264decf4b157c16a797df96ab43b5ae877e6e1aaf4a8113d332e6"
+    "digest": "sha256:9e01aa7e6b583bb02ea87bbd76a3392e411a68928c0fcd939ec80203ab42d40e"
   }
 }

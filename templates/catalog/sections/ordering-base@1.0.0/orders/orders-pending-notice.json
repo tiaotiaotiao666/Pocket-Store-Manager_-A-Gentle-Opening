@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxss",
     "lineStart": 20,
     "lineEnd": 23,
-    "digest": "sha256:19a14e866a1082b39facd17e6bf28d8c231ad6acc342d65e90e1142d1572d57b"
+    "digest": "sha256:f49b71a3fa5f4ef01c23161d7b6d85665a99cd18d50ac94f5d56adb0ac771f79"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 20,
         "lineEnd": 23,
-        "code": "<view wx:if=\"{{pendingPaymentCount > 0 && filter !== 'history'}}\" class=\"orders__notice\">\r\n    <text class=\"orders__notice-dot\"></text>\r\n    <text>有 {{pendingPaymentCount}} 笔订单等待演示模拟支付</text>\r\n  </view>"
+        "code": "<view wx:if=\"{{pendingPaymentCount > 0 && filter !== 'history'}}\" class=\"orders__notice\">\n    <text class=\"orders__notice-dot\"></text>\n    <text>有 {{pendingPaymentCount}} 笔订单等待演示模拟支付</text>\n  </view>"
       }
     ]
   },
@@ -106,6 +106,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:19a14e866a1082b39facd17e6bf28d8c231ad6acc342d65e90e1142d1572d57b"
+    "digest": "sha256:f49b71a3fa5f4ef01c23161d7b6d85665a99cd18d50ac94f5d56adb0ac771f79"
   }
 }

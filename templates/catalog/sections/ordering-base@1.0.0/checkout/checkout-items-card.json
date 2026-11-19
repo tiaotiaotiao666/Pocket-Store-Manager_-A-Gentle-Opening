@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
     "lineStart": 62,
     "lineEnd": 80,
-    "digest": "sha256:7ec7922fc0357d055ea86c371eb895b431fd9d81f7343a020303f9103cb1d897"
+    "digest": "sha256:cd0fc5d50559c3423207b2718a436c79f644c8395bab1be89fc82c5cdfc143ab"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 62,
         "lineEnd": 80,
-        "code": "<view class=\"surface-card checkout__card\">\r\n        <view class=\"checkout__card-head\">\r\n          <text class=\"checkout__card-title\">菜品明细</text>\r\n          <text class=\"checkout__card-extra\">{{totalQuantity}} 件</text>\r\n        </view>\r\n        <view class=\"checkout__divider\"></view>\r\n        <view wx:for=\"{{items}}\" wx:key=\"productId\" class=\"checkout__item\">\r\n          <view class=\"checkout__item-main\">\r\n            <text class=\"checkout__item-name\">{{item.name}}</text>\r\n            <text class=\"checkout__item-unit\">{{item.unitPriceText}} × {{item.quantity}}</text>\r\n          </view>\r\n          <text class=\"checkout__item-line\">{{item.lineTotalText}}</text>\r\n        </view>\r\n        <view class=\"checkout__divider\"></view>\r\n        <view class=\"checkout__total\">\r\n          <text class=\"checkout__total-label\">合计（服务端将重新计价）</text>\r\n          <text class=\"checkout__total-value\">{{totalText}}</text>\r\n        </view>\r\n      </view>"
+        "code": "<view class=\"surface-card checkout__card\">\n        <view class=\"checkout__card-head\">\n          <text class=\"checkout__card-title\">菜品明细</text>\n          <text class=\"checkout__card-extra\">{{totalQuantity}} 件</text>\n        </view>\n        <view class=\"checkout__divider\"></view>\n        <view wx:for=\"{{items}}\" wx:key=\"productId\" class=\"checkout__item\">\n          <view class=\"checkout__item-main\">\n            <text class=\"checkout__item-name\">{{item.name}}</text>\n            <text class=\"checkout__item-unit\">{{item.unitPriceText}} × {{item.quantity}}</text>\n          </view>\n          <text class=\"checkout__item-line\">{{item.lineTotalText}}</text>\n        </view>\n        <view class=\"checkout__divider\"></view>\n        <view class=\"checkout__total\">\n          <text class=\"checkout__total-label\">合计（服务端将重新计价）</text>\n          <text class=\"checkout__total-value\">{{totalText}}</text>\n        </view>\n      </view>"
       }
     ]
   },
@@ -234,6 +234,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:7ec7922fc0357d055ea86c371eb895b431fd9d81f7343a020303f9103cb1d897"
+    "digest": "sha256:cd0fc5d50559c3423207b2718a436c79f644c8395bab1be89fc82c5cdfc143ab"
   }
 }

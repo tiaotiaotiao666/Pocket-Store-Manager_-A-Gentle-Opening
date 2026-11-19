@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/orders/index.wxss",
     "lineStart": 8,
     "lineEnd": 18,
-    "digest": "sha256:dd4468b450781f39df067a76de52b6b91a7a9694c11315b9909462b679d63df9"
+    "digest": "sha256:bb102ea6254a2197fbc76b07b330779415b82ba61c7cd6b9c2fa51ad8233ce0a"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 8,
         "lineEnd": 18,
-        "code": "<view class=\"orders__filters\">\r\n    <view\r\n      wx:for=\"{{filters}}\"\r\n      wx:key=\"key\"\r\n      class=\"orders__filter {{filter === item.key ? 'orders__filter--active' : ''}}\"\r\n      data-key=\"{{item.key}}\"\r\n      bind:tap=\"onChangeFilter\"\r\n    >\r\n      {{item.label}}\r\n    </view>\r\n  </view>"
+        "code": "<view class=\"orders__filters\">\n    <view\n      wx:for=\"{{filters}}\"\n      wx:key=\"key\"\n      class=\"orders__filter {{filter === item.key ? 'orders__filter--active' : ''}}\"\n      data-key=\"{{item.key}}\"\n      bind:tap=\"onChangeFilter\"\n    >\n      {{item.label}}\n    </view>\n  </view>"
       }
     ]
   },
@@ -133,6 +133,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:dd4468b450781f39df067a76de52b6b91a7a9694c11315b9909462b679d63df9"
+    "digest": "sha256:bb102ea6254a2197fbc76b07b330779415b82ba61c7cd6b9c2fa51ad8233ce0a"
   }
 }

@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
     "lineStart": 63,
     "lineEnd": 83,
-    "digest": "sha256:e0a49e5a9b1f8654c3978520369bfaab249d663f1e994079c7f3ec2dc4339657"
+    "digest": "sha256:28d68c510273f276f8bea498271ca79bf065707a567c2a0df9e1bb73327b7470"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 63,
         "lineEnd": 83,
-        "code": "<scroll-view class=\"fp-menu__list\" scroll-y>\r\n        <view wx:if=\"{{products.length > 0}}\" class=\"fp-menu__products\">\r\n          <view wx:for=\"{{products}}\" wx:key=\"id\" class=\"fp-menu__product\">\r\n            <product-card\r\n              product=\"{{item}}\"\r\n              quantity=\"{{quantityMap[item.id] || 0}}\"\r\n              disabled=\"{{item.available === false}}\"\r\n              bind:add=\"onProductAdd\"\r\n              bind:remove=\"onProductRemove\"\r\n              bind:openDetail=\"onOpenDetail\"\r\n            />\r\n          </view>\r\n        </view>\r\n        <state-view\r\n          wx:else\r\n          state=\"empty\"\r\n          title=\"这个分类还没有上架菜品\"\r\n          description=\"换一个分类看看，或稍后下拉刷新\"\r\n        />\r\n        <view class=\"fp-menu__spacer\"></view>\r\n      </scroll-view>"
+        "code": "<scroll-view class=\"fp-menu__list\" scroll-y>\n        <view wx:if=\"{{products.length > 0}}\" class=\"fp-menu__products\">\n          <view wx:for=\"{{products}}\" wx:key=\"id\" class=\"fp-menu__product\">\n            <product-card\n              product=\"{{item}}\"\n              quantity=\"{{quantityMap[item.id] || 0}}\"\n              disabled=\"{{item.available === false}}\"\n              bind:add=\"onProductAdd\"\n              bind:remove=\"onProductRemove\"\n              bind:openDetail=\"onOpenDetail\"\n            />\n          </view>\n        </view>\n        <state-view\n          wx:else\n          state=\"empty\"\n          title=\"这个分类还没有上架菜品\"\n          description=\"换一个分类看看，或稍后下拉刷新\"\n        />\n        <view class=\"fp-menu__spacer\"></view>\n      </scroll-view>"
       }
     ]
   },
@@ -238,6 +238,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:e0a49e5a9b1f8654c3978520369bfaab249d663f1e994079c7f3ec2dc4339657"
+    "digest": "sha256:28d68c510273f276f8bea498271ca79bf065707a567c2a0df9e1bb73327b7470"
   }
 }

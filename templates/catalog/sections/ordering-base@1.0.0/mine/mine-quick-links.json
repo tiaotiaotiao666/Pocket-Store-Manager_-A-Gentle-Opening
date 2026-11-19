@@ -22,7 +22,7 @@
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/mine/index.wxss",
     "lineStart": 69,
     "lineEnd": 78,
-    "digest": "sha256:597dc783db61b8aae5a0d8c7d2f58c6f6474e3417ae0d6867f73cba9d7967f24"
+    "digest": "sha256:cc7e7b6a6aedc2687327b4ef37002fcbd6a7a0f97fe86d8861fc4b886510861e"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 69,
         "lineEnd": 78,
-        "code": "<view class=\"surface-card mine__links\">\r\n        <view class=\"mine__link\" bind:tap=\"goOrders\">\r\n          <text class=\"mine__link-label\">我的订单</text>\r\n          <text class=\"mine__link-arrow\">›</text>\r\n        </view>\r\n        <view class=\"mine__link\" bind:tap=\"goHome\">\r\n          <text class=\"mine__link-label\">回到首页</text>\r\n          <text class=\"mine__link-arrow\">›</text>\r\n        </view>\r\n      </view>"
+        "code": "<view class=\"surface-card mine__links\">\n        <view class=\"mine__link\" bind:tap=\"goOrders\">\n          <text class=\"mine__link-label\">我的订单</text>\n          <text class=\"mine__link-arrow\">›</text>\n        </view>\n        <view class=\"mine__link\" bind:tap=\"goHome\">\n          <text class=\"mine__link-label\">回到首页</text>\n          <text class=\"mine__link-arrow\">›</text>\n        </view>\n      </view>"
       }
     ]
   },
@@ -159,6 +159,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:597dc783db61b8aae5a0d8c7d2f58c6f6474e3417ae0d6867f73cba9d7967f24"
+    "digest": "sha256:cc7e7b6a6aedc2687327b4ef37002fcbd6a7a0f97fe86d8861fc4b886510861e"
   }
 }

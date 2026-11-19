@@ -22,7 +22,7 @@
     "wxss": "templates/frontend-packs/warm-home-menu/1.0.0/src/pages/menu/index.wxss",
     "lineStart": 86,
     "lineEnd": 92,
-    "digest": "sha256:9cdeed50ae9a5fa4883c07317cb65e65e406d67386d573113281a56f19dea913"
+    "digest": "sha256:d4e61aadfe18d4eaeec12ede475ffc2f17f46f0a8f88178865abd440e414238d"
   },
   "template": {
     "occurrences": 1,
@@ -31,7 +31,7 @@
       {
         "lineStart": 86,
         "lineEnd": 92,
-        "code": "<cart-bar\r\n      total-cents=\"{{cartSummary.totalCents}}\"\r\n      total-quantity=\"{{cartSummary.totalQuantity}}\"\r\n      submitting=\"{{false}}\"\r\n      bind:expand=\"onExpandCart\"\r\n      bind:checkout=\"onCheckout\"\r\n    />"
+        "code": "<cart-bar\n      total-cents=\"{{cartSummary.totalCents}}\"\n      total-quantity=\"{{cartSummary.totalQuantity}}\"\n      submitting=\"{{false}}\"\n      bind:expand=\"onExpandCart\"\n      bind:checkout=\"onCheckout\"\n    />"
       }
     ]
   },
@@ -118,6 +118,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:9cdeed50ae9a5fa4883c07317cb65e65e406d67386d573113281a56f19dea913"
+    "digest": "sha256:d4e61aadfe18d4eaeec12ede475ffc2f17f46f0a8f88178865abd440e414238d"
   }
 }

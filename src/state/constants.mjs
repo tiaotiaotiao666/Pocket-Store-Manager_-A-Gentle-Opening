@@ -24,14 +24,14 @@ export const PHASE_META = Object.freeze({
   [PHASES.BUILDING]: { label: '构建中', caption: '正在拼装小程序' },
   [PHASES.TEMPLATE_PICK]: { label: '模板匹配', caption: '挑选页面骨架' },
   [PHASES.STORE_INFO]: { label: '店铺装修', caption: '信息与风格' },
-  [PHASES.PROMPT_STUDIO]: { label: '生图提示词', caption: '打磨视觉提示' },
+  [PHASES.PROMPT_STUDIO]: { label: '视觉偏好', caption: '只记录风格，不生成图片' },
   [PHASES.IMAGE_REVIEW]: { label: '效果审核', caption: '反复确认视觉' },
   [PHASES.DEPLOY]: { label: '部署小程序', caption: '交付上线' },
 });
 
 export const COMPOSER_PLACEHOLDER = Object.freeze({
   [PHASES.ONBOARDING]: '请给你的店铺小程序命名…',
-  [PHASES.STORE_INFO]: '用一句话说店名、品类、营业时间、取餐方式和 3–5 道菜…',
+  [PHASES.STORE_INFO]: '用一句话说店名、品类、营业时间、取餐方式和菜品（至少 1 道，最多 8 道）…',
   [PHASES.FEATURES]: '没有想要的功能？在这里告诉我们…',
   [PHASES.PROMPT_STUDIO]: '描述你想要的画面风格…',
   [PHASES.IMAGE_REVIEW]: '告诉我要修改的地方；不改就直接点右侧按钮继续…',
@@ -41,7 +41,7 @@ export const COMPOSER_SUBMIT_LABEL = Object.freeze({
   [PHASES.ONBOARDING]: '命名并开始',
   [PHASES.STORE_INFO]: '整理资料',
   [PHASES.FEATURES]: '确认当前选择，继续',
-  [PHASES.PROMPT_STUDIO]: '确认这版提示词',
+  [PHASES.PROMPT_STUDIO]: '确认这版视觉偏好',
   [PHASES.IMAGE_REVIEW]: '确认这版效果',
 });
 

@@ -1,11 +1,11 @@
-import { Check, GitCompareArrows, Loader2, RefreshCw } from 'lucide-react';
+import { Check, GitCompareArrows } from 'lucide-react';
 import SatisfactionPrompt from './SatisfactionPrompt.jsx';
 import TemplateCompare from './TemplateCompare.jsx';
 import TemplateRevisePanel from './TemplateRevisePanel.jsx';
 import MiniProgramPreview from '../preview/MiniProgramPreview.jsx';
 import PreviewLaunchButton from '../preview/PreviewLaunchButton.jsx';
 import { describeTemplateReviseTransport } from '../../services/agentTurn/templateReviseService.js';
-import { SATISFACTION, TEMPLATE_REFINE } from '../../domain/onboardingScript.mjs';
+import { SATISFACTION } from '../../domain/onboardingScript.mjs';
 
 /**
  * 模板页（`C-TEMPLATE-GALLERY@1`，plan.md 2.2.5）。
@@ -13,7 +13,8 @@ import { SATISFACTION, TEMPLATE_REFINE } from '../../domain/onboardingScript.mjs
  * 现有 props 与行为全部保留：
  * - 3 张候选卡始终展示、可切换；
  * - 「实时预览」只消费 `viewModelsByTemplateId[selectedId]`；
- * - 「不满意 → 重新用语言描述」表单仍是独立入口，提交走 `onRefine`。
+ * - B3：「修改当前页面」与「重新匹配候选」合并成**一个**输入框 + 模式开关（见 TemplateRevisePanel），
+ *   不再各摆一个输入框；`onRefine` 仍由父组件负责派发。
  *
  * 新增 props 全部可选，未传时行为与之前一致：
  * - `presentation` / `onRevise` / `onClearReviseError`：「对话修改当前模板」面板；
@@ -25,8 +26,6 @@ export default function TemplateGallery({
   onSelect,
   onConfirm,
   viewModelsByTemplateId = {},
-  refineText = '',
-  onRefineChange,
   onRefine,
   refining = false,
   refineError = null,
@@ -34,6 +33,8 @@ export default function TemplateGallery({
   presentation = null,
   onRevise,
   onClearReviseError,
+  canUndo = false,
+  onUndo,
   compareIds = null,
   onCompareChange,
   mockRevise = null,
@@ -48,8 +49,6 @@ export default function TemplateGallery({
   const selectedRecipe = selected && viewModelsByTemplateId[selected.id] && viewModelsByTemplateId[selected.id].recipe
     ? viewModelsByTemplateId[selected.id].recipe.displayName
     : null;
-  const trimmed = String(refineText ?? '').trim();
-  const canSubmit = trimmed.length > 0 && !refining;
 
   const ids = list.map((item) => item.id);
   const compareEnabled = typeof onCompareChange === 'function';
@@ -66,11 +65,6 @@ export default function TemplateGallery({
     ? mockRevise
     : (reviseEnabled ? describeTemplateReviseTransport().mock : false);
 
-  const handleRefineSubmit = (event) => {
-    event.preventDefault();
-    if (!canSubmit) return;
-    onRefine?.(trimmed);
-  };
 
   const handleToggleCompare = () => {
     if (!compareEnabled) return;
@@ -160,9 +154,7 @@ export default function TemplateGallery({
                   ) : null}
                   {item.source ? <span className="template-source">{item.source}</span> : null}
                   {recipeName ? <span className="template-recipe">{recipeName}</span> : null}
-                  {typeof item.score === 'number' ? (
-                    <span className="template-score">{Math.round(item.score)}%</span>
-                  ) : null}
+                  {/* B3：不再展示裸百分比（分数是本地覆盖率估算，不是概率）。 */}
                   {item.customized ? <span className="template-customized">已定制</span> : null}
                   {item.briefHits > 0 ? (
                     <span className="template-brief">描述命中 {item.briefHits}</span>
@@ -215,49 +207,23 @@ export default function TemplateGallery({
             <div className="template-detail-meta">
               {selected.source ? <span>{selected.source}</span> : null}
               {selectedRecipe ? <span>{selectedRecipe}</span> : null}
-              {typeof selected.score === 'number' ? <b>{Math.round(selected.score)}%</b> : null}
+              {/* 详情区同样不展示裸百分比，改用上面的推荐理由与描述。 */}
             </div>
             <p className="template-detail-hint">预览可点按手机底部标签，切换首页 / 菜单 / 订单。</p>
 
-            <form
-              className={`template-refine${refining ? ' is-busy' : ''}`}
-              onSubmit={handleRefineSubmit}
-            >
-              <div className="template-refine-head">
-                <span className="template-refine-title">{TEMPLATE_REFINE.title}</span>
-                <span className="template-refine-caption">
-                  {refining ? '正在按你的描述重新排骨架…' : TEMPLATE_REFINE.caption}
-                </span>
-              </div>
-              <div className="template-refine-form">
-                <input
-                  className="template-refine-input"
-                  type="text"
-                  value={refineText}
-                  disabled={refining}
-                  maxLength={TEMPLATE_REFINE.maxLength}
-                  placeholder={TEMPLATE_REFINE.placeholder}
-                  onChange={(event) => onRefineChange?.(event.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="template-refine-button"
-                  disabled={!canSubmit}
-                >
-                  {refining ? <Loader2 className="spin" size={15} /> : <RefreshCw size={15} />}
-                  {refining ? '重新匹配中' : TEMPLATE_REFINE.action}
-                </button>
-              </div>
-              {refineError ? (
-                <p className="template-refine-error" role="alert">{refineError.message || refineError}</p>
-              ) : null}
-            </form>
-
+            {/* 唯一主输入框：模式开关区分「修改当前页面」与「重新匹配候选」，不再各摆一个输入框。 */}
             {reviseEnabled ? (
               <TemplateRevisePanel
                 presentation={presentation}
                 templateName={selected.name}
+                canRevise={!refining && Boolean(selected)}
+                disabled={refining}
+                refining={refining}
+                refineError={refineError}
+                canUndo={canUndo}
                 onRevise={onRevise}
+                onRefine={onRefine}
+                onUndo={onUndo}
                 onClearError={onClearReviseError}
                 mock={mockBadge}
               />

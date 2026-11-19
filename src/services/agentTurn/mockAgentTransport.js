@@ -7,6 +7,7 @@ import {
   toContractDraft,
   validateAgentDraft,
 } from '../../domain/agentDraft.mjs';
+import { MAX_DISHES, MAX_HOURS_SEGMENTS } from '../../domain/storeLimits.mjs';
 import { AGENT_CONTRACT_VERSION } from './agentServiceConfig.js';
 import { createAgentTurnError } from './agentTurnError.js';
 
@@ -17,8 +18,6 @@ import { createAgentTurnError } from './agentTurnError.js';
 const AGENT_TURN_V2_CONTRACT_VERSION = 'agent-turn.v2';
 
 const MAX_UTTERANCE = 500;
-const MAX_DISHES = 5;
-const MAX_HOURS_SEGMENTS = 3;
 const TIME_RANGE_SOURCE = '(\\d{1,2})(?::(\\d{2}))?\\s*(?:点|时)?\\s*(半)?\\s*(?:到|至|~|—|-)\\s*(\\d{1,2})(?::(\\d{2}))?\\s*(?:点|时)?';
 const DISH_SEGMENT = /^(.{1,24}?)\s*(?:¥|￥)?\s*(\d{1,6}(?:\.\d{1,2})?)\s*(?:元|块钱|块)?$/;
 const STORE_NAME_EXPLICIT = /(?:店名|店铺名称|店铺名|名字|名称)\s*(?:是|叫|为|：|:)\s*([^，,。；;\n]{1,20})/;

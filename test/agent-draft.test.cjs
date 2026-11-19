@@ -93,29 +93,36 @@ test('D7 多段营业时间合法且连续时段允许', async () => {
   }
 });
 
-test('D8 起止相同报 HOURS_RANGE', async () => {
+test('D8 起止相同报 HOURS_SAME_TIME（不再当成合法营业 0 分钟）', async () => {
   const draft = await loadDraft();
-  assert.ok(codes(draft.validateAgentDraft(validDraft({ businessHours: '10:00-10:00' }))).includes('HOURS_RANGE'));
+  assert.ok(codes(draft.validateAgentDraft(validDraft({ businessHours: '10:00-10:00' }))).includes('HOURS_SAME_TIME'));
 });
 
-test('D9 倒置与跨午夜报 HOURS_RANGE', async () => {
+test('D9 跨午夜 22:00-02:00 合法，且与午休分段共存', async () => {
   const draft = await loadDraft();
-  assert.ok(codes(draft.validateAgentDraft(validDraft({ businessHours: '21:00-10:00' }))).includes('HOURS_RANGE'));
-  assert.ok(codes(draft.validateAgentDraft(validDraft({ businessHours: '22:00-02:00' }))).includes('HOURS_RANGE'));
-});
-
-test('D10 营业时间格式错误报 HOURS_FORMAT', async () => {
-  const draft = await loadDraft();
-  for (const hours of ['10:00', '10:0-21:00', '24:00-25:00', 'abc', '10:00-']) {
-    assert.ok(codes(draft.validateAgentDraft(validDraft({ businessHours: hours }))).includes('HOURS_FORMAT'), hours);
+  for (const hours of ['21:00-10:00', '22:00-02:00', '10:00-14:00,22:00-02:00']) {
+    const validation = draft.validateAgentDraft(validDraft({ businessHours: hours }));
+    assert.equal(validation.readyForReview, true, hours);
   }
 });
 
-test('D11 多段重叠报 HOURS_OVERLAP', async () => {
+test('D10 时间串非法报 HOURS_FORMAT，未填完报 HOURS_INCOMPLETE', async () => {
   const draft = await loadDraft();
-  assert.ok(codes(draft.validateAgentDraft(validDraft({
-    businessHours: '10:00-14:00,13:00-21:00',
-  }))).includes('HOURS_OVERLAP'));
+  for (const hours of ['十点-二十一点', '24:00-25:00', 'abc-def', '10:0-21:00']) {
+    assert.ok(codes(draft.validateAgentDraft(validDraft({ businessHours: hours }))).includes('HOURS_FORMAT'), hours);
+  }
+  for (const hours of ['10:00', '10:00-']) {
+    assert.ok(codes(draft.validateAgentDraft(validDraft({ businessHours: hours }))).includes('HOURS_INCOMPLETE'), hours);
+  }
+});
+
+test('D11 时段重叠报 HOURS_OVERLAP（含跨午夜时段与早间时段冲突）', async () => {
+  const draft = await loadDraft();
+  for (const hours of ['10:00-14:00,13:00-21:00', '22:00-02:00,01:00-03:00']) {
+    assert.ok(codes(draft.validateAgentDraft(validDraft({ businessHours: hours }))).includes('HOURS_OVERLAP'), hours);
+  }
+  // 首尾相接不算重叠（10:00-14:00 与 14:00-21:00 是连续营业）
+  assert.equal(draft.validateAgentDraft(validDraft({ businessHours: '10:00-14:00,14:00-21:00' })).readyForReview, true);
 });
 
 test('D12 超过 3 段报 HOURS_TOO_MANY', async () => {
@@ -138,17 +145,18 @@ test('D13 取餐方式双 false 缺项、单 true 与双 true 合法', async () 
   }
 });
 
-test('D14 菜品 2 道缺项、3/5 道合法、6 道报 DISHES_TOO_MANY', async () => {
+test('D14 0 道给缺项提示；1/2/5/6 道都合法；9 道报 DISHES_TOO_MANY', async () => {
   const draft = await loadDraft();
-  const two = draft.validateAgentDraft(validDraft({ dishes: [dish('甲', 100), dish('乙', 200)] }));
-  assert.ok(missingFields(two).includes('dishes'));
-  assert.ok(two.missingFields.find((item) => item.field === 'dishes').detail.includes('还差 1 道'));
-  for (const count of [3, 5]) {
+  const none = draft.validateAgentDraft(validDraft({ dishes: [] }));
+  assert.ok(missingFields(none).includes('dishes'));
+  assert.ok(none.missingFields.find((item) => item.field === 'dishes').detail.includes('还没有菜品'));
+  for (const count of [1, 2, 5, 6]) {
     const dishes = Array.from({ length: count }, (_, index) => dish(`菜${index + 1}`, 100 + index));
-    assert.equal(draft.validateAgentDraft(validDraft({ dishes })).readyForReview, true, String(count));
+    const validation = draft.validateAgentDraft(validDraft({ dishes }));
+    assert.equal(validation.readyForReview, true, String(count));
   }
-  const six = Array.from({ length: 6 }, (_, index) => dish(`菜${index + 1}`, 100 + index));
-  assert.ok(codes(draft.validateAgentDraft(validDraft({ dishes: six }))).includes('DISHES_TOO_MANY'));
+  const tooMany = Array.from({ length: 9 }, (_, index) => dish(`菜${index + 1}`, 100 + index));
+  assert.ok(codes(draft.validateAgentDraft(validDraft({ dishes: tooMany }))).includes('DISHES_TOO_MANY'));
 });
 
 test('D15 菜名 1/24 字合法、25 字报 DISH_NAME_TOO_LONG、空菜名缺项', async () => {

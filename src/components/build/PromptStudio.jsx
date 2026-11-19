@@ -1,6 +1,12 @@
 import { useState } from 'react';
-import { Sparkles, Wand2 } from 'lucide-react';
+import { Sparkles, Save } from 'lucide-react';
 
+/**
+ * 视觉偏好步骤（B3 收口）。
+ *
+ * 当前版本没有接入生图服务，所以这里**不承诺**生成图片，也不让用户"先打磨再出图"：
+ * 只记录用户想要的视觉偏好，主流程下一屏是「海报素材（可选）：上传或跳过」。
+ */
 export default function PromptStudio({
   prompt = '',
   tips = [],
@@ -34,11 +40,14 @@ export default function PromptStudio({
           <Sparkles size={16} />
         </span>
         <div className="prompt-heading">
-          <h3>生图提示词</h3>
-          <p>这是我根据店铺信息写的一版提示词，你可以直接改，也可以告诉我要调整的地方。</p>
+          <h3>视觉偏好（不生成图片）</h3>
+          <p>
+            当前版本没有接入生图服务，这一步只记录你想要的视觉风格；
+            下一步是「海报素材（可选）」，可以上传一张图，也可以直接跳过。
+          </p>
         </div>
         {roundList.length ? (
-          <span className="prompt-rounds">已打磨 {roundList.length} 轮</span>
+          <span className="prompt-rounds">已记录 {roundList.length} 次偏好</span>
         ) : null}
       </header>
 
@@ -46,7 +55,7 @@ export default function PromptStudio({
         className="prompt-textarea"
         rows={7}
         value={prompt || ''}
-        placeholder="在这里编辑生图提示词"
+        placeholder="例如：暖色调、木头质感、主图大一点、字少一点"
         onChange={(event) => onPromptChange?.(event.target.value)}
       />
 
@@ -76,7 +85,7 @@ export default function PromptStudio({
           className="prompt-feedback-input"
           type="text"
           value={feedback}
-          placeholder="告诉我要修改的地方"
+          placeholder="还想补充的偏好"
           onChange={(event) => setFeedback(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') handleSubmit();
@@ -88,8 +97,8 @@ export default function PromptStudio({
           onClick={handleSubmit}
           disabled={busy || !feedback.trim()}
         >
-          <Wand2 size={14} />
-          让 AI 再改一版
+          <Save size={14} />
+          保存这段偏好
         </button>
       </div>
 
@@ -100,7 +109,7 @@ export default function PromptStudio({
           onClick={() => onConfirm?.()}
           disabled={busy}
         >
-          这版可以了，开始生成
+          继续（下一步：海报素材，可选）
         </button>
       </div>
     </section>

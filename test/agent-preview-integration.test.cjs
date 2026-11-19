@@ -45,6 +45,14 @@ function createPartialDraft() {
         priceText: '28.85',
         description: '现点现做',
       },
+      // 第 2 道还没填完：collecting 的缺项来自这里，而不是「菜品不足 3 道」。
+      {
+        id: 'dish-unfinished',
+        name: '',
+        priceCents: null,
+        priceText: '',
+        description: '',
+      },
     ],
   };
 }
@@ -91,7 +99,8 @@ test('T3-I1 collecting 部分响应无需 readyForReview，五类字段进入所
   const accepted = acceptTurn(machine, seeded, 'agent-request-partial', createPartialDraft());
 
   assert.equal(accepted.agent.status, 'collecting');
-  assert.ok(accepted.agent.missingFields.some((item) => item.field === 'dishes'));
+  assert.ok(accepted.agent.missingFields.some((item) => item.field === 'dishes[1].name'));
+  assert.ok(!accepted.agent.missingFields.some((item) => item.field === 'dishes'));
   assert.equal(accepted.store, seeded.store);
   assert.equal(accepted.build, seeded.build);
   assert.equal(accepted.visual, seeded.visual);

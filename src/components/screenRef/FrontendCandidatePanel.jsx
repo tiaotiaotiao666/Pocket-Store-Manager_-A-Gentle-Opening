@@ -285,7 +285,7 @@ export default function FrontendCandidatePanel({
                   {page.sections.map((section) => (
                     <li key={`${page.pageId}-${section.order}-${section.id || section.label}`}>
                       {section.order + 1}. {section.label}
-                      {section.confidence ? `（置信度 ${section.confidence}%）` : ''}
+                      {/* B3：识别把握不再以裸百分比展示。 */}
                     </li>
                   ))}
                 </ul>

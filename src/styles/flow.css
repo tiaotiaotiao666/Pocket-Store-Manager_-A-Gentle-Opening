@@ -1090,6 +1090,112 @@
   color: rgba(244, 242, 255, 0.56);
 }
 
+/* B3：一个输入框 + 模式开关；提交后就地显示原话/状态/撤销。 */
+.template-revise-modes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.template-revise-mode {
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-pill, 999px);
+  background: transparent;
+  color: rgba(244, 242, 255, 0.72);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.16s var(--ease-soft), border-color 0.16s var(--ease-soft), color 0.16s var(--ease-soft);
+}
+
+.template-revise-mode:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.template-revise-mode.is-active {
+  background: rgba(109, 94, 252, 0.24);
+  border-color: rgba(109, 94, 252, 0.62);
+  color: #efeaff;
+}
+
+.template-revise-mode:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.template-revise-echo {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(244, 242, 255, 0.86);
+}
+
+.template-revise-echo b {
+  color: rgba(244, 242, 255, 0.62);
+  font-weight: 600;
+}
+
+.template-revise-echo em {
+  font-style: normal;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill, 999px);
+  background: rgba(109, 94, 252, 0.22);
+  color: #cfc6ff;
+}
+
+.template-revise-status {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(244, 242, 255, 0.66);
+}
+
+.template-revise-status.is-failed {
+  color: #f2c789;
+}
+
+.template-revise-error-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #f2c789;
+}
+
+.template-revise-changes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.template-revise-undo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-pill, 999px);
+  background: transparent;
+  color: rgba(244, 242, 255, 0.78);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.template-revise-undo:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #fff;
+}
+
 .template-revise-busy {
   display: flex;
   align-items: center;

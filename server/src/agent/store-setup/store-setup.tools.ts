@@ -60,7 +60,7 @@ export const STORE_DRAFT_PATCH_SCHEMA = {
       type: 'string',
       minLength: 1,
       maxLength: 80,
-      description: '营业时间，格式 HH:MM-HH:MM；最多 3 段，用英文逗号分隔，不跨午夜。',
+      description: '营业时间，格式 HH:MM-HH:MM；最多 3 段，用英文逗号分隔；结束早于开始表示营业到次日（如 22:00-02:00）。',
     },
     fulfillment: {
       type: 'object',

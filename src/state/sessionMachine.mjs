@@ -57,9 +57,9 @@ import {
   createEmptyScreenRefState,
   fromDocument,
 } from '../domain/projectSnapshot.mjs';
+import { MAX_DISHES } from '../domain/storeLimits.mjs';
 
 const REQUIRED_FEATURE_IDS = catalogFeatures.filter((feature) => feature.required).map((feature) => feature.id);
-const MAX_DISHES = 5;
 
 /** 展示修改清单最多保留的条数（plan.md 2.2.3「changes 截断 20」）。 */
 const MAX_PRESENTATION_CHANGES = 20;
@@ -476,7 +476,7 @@ function createStepSession(state, { id, title, summary, payload, phase, intro, f
   const opening = intro ?? (title === '店铺装修' ? STORE_INTRO : DEPLOY_INTRO);
   const after = followUp ?? (
     title === '店铺装修'
-      ? '选好风格后，我们会一起打磨生图提示词。'
+      ? '选好风格后，你写下想要的视觉偏好；这一步不生成图片。'
       : title === '部署小程序'
         ? '这是演示环境，不含真实发布。'
         : ''
@@ -1280,7 +1280,7 @@ function baseReducer(state, action) {
         id: 'session-visual',
         title: '视觉生成',
         intro: PROMPT_INTRO,
-        followUp: '确认提示词后，可以上传一张海报素材，也可以直接跳过。',
+        followUp: '偏好记下后，可以上传一张海报素材，也可以直接跳过。',
         summary: [
           `店铺名称：${state.store.name || NEW_PROJECT_LABEL}`,
           `页面骨架：${chosen?.name ?? '默认骨架'}`,
@@ -1835,7 +1835,7 @@ function baseReducer(state, action) {
 
     case 'CONFIRM_PROMPT': {
       let next = appendMessages(state, state.activeSessionId, [
-        { role: ROLES.USER, text: action.text ?? '这版提示词可以了，继续下一步。', instant: true },
+        { role: ROLES.USER, text: action.text ?? '这版视觉偏好可以了，继续下一步。', instant: true },
         { text: REVIEW_INTRO, staged: true },
       ]);
       return { ...next, phase: PHASES.IMAGE_REVIEW };
@@ -1922,7 +1922,7 @@ function baseReducer(state, action) {
         summary: [
           `店铺名称：${state.store.name || NEW_PROJECT_LABEL}`,
           `装修风格：${deployStyle.name}`,
-          `生图提示词已确认，共 ${state.visual.promptRounds.length + 1} 轮打磨`,
+          `视觉偏好已记录，共 ${state.visual.promptRounds.length + 1} 次`,
           materialLine,
         ],
         payload: { styleId: state.visual.styleId, prompt: state.visual.prompt, material },
@@ -2409,7 +2409,8 @@ export function selectActiveSession(state) {
 /**
  * `C-SESSION-PRESENTATION@1` 选择器（plan.md 2.2.3）。
  *
- * 只暴露渲染层需要的字段，不把 requestId/lastUtterance/templateId 泄露给 UI。
+ * 只暴露渲染层需要的字段：`requestId`/`templateId` 仍然不外泄；
+ * B3 起额外暴露 `lastUtterance`，让修改面板把「你刚才要求：原话」显示在输入框旁边。
  *
  * @param {object} state 会话状态
  * @returns {{canRevise: boolean, patch: object, changes: Array, status: 'idle'|'revising'|'failed',
@@ -2423,6 +2424,8 @@ export function selectPresentationState(state) {
     changes: Array.isArray(presentation.changes) ? presentation.changes : [],
     status: presentation.status ?? 'idle',
     error: presentation.error ?? null,
+    lastUtterance: typeof presentation.lastUtterance === 'string' ? presentation.lastUtterance : '',
+    hasPatch: Object.keys(presentation.patch ?? {}).length > 0,
   };
 }
 

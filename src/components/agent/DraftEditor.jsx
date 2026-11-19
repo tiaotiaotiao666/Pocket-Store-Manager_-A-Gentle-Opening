@@ -1,6 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 
+import {
+  MAX_HOURS_SEGMENTS,
+  describeHoursSegment,
+  formatHoursText,
+  parseHoursText,
+  segmentTimeline,
+  validateHoursSegments,
+} from '../../domain/businessHours.mjs';
+import { MAX_DISHES, MIN_DISHES } from '../../domain/storeLimits.mjs';
+
 function fieldError(validation, field) {
   return validation.errors.find((error) => error.field === field) ?? null;
 }
@@ -23,8 +33,8 @@ export default function DraftEditor({
   draft,
   validation,
   disabled = false,
-  maxDishes = 5,
-  minDishes = 3,
+  maxDishes = MAX_DISHES,
+  minDishes = MIN_DISHES,
   open = false,
   mode = 'all',
   collapsible = true,
@@ -52,11 +62,42 @@ export default function DraftEditor({
 
   const nameError = fieldError(validation, 'storeName');
   const categoryError = fieldError(validation, 'category');
-  const hoursError = fieldError(validation, 'businessHours');
+  const hoursMissing = fieldMissing(validation, 'businessHours');
   const dishesMissing = fieldMissing(validation, 'dishes');
   const fulfillmentMissing = fieldMissing(validation, 'fulfillment');
   const visibleDishCount = draft.dishes.length;
   const label = mode === 'store' ? '门店基本资料编辑' : mode === 'dishes' ? '菜品资料编辑' : '结构化开店资料';
+
+  // 营业时间：主入口是时间范围选择器，文本只是同一份数据的规范序列化（见 businessHours.mjs）。
+  const hoursSegments = parseHoursText(draft.businessHours);
+  const hoursProblems = validateHoursSegments(hoursSegments);
+  const hoursProblemIndexes = new Set(hoursProblems.map((problem) => problem.index).filter((index) => index !== null));
+
+  const applyHoursSegments = (nextSegments) => {
+    onChangeField?.('businessHours', formatHoursText(nextSegments));
+  };
+
+  const updateHoursSegment = (index, part, value) => {
+    const next = hoursSegments.map((segment, position) => (
+      position === index ? { ...segment, [part]: value } : segment
+    ));
+    applyHoursSegments(next);
+  };
+
+  const addHoursSegment = () => {
+    if (hoursSegments.length >= MAX_HOURS_SEGMENTS) return;
+    applyHoursSegments([...hoursSegments, { start: '', end: '' }]);
+  };
+
+  const removeHoursSegment = (index) => {
+    applyHoursSegments(hoursSegments.filter((_, position) => position !== index));
+  };
+
+  const dishTip = visibleDishCount === 0
+    ? `还没有菜品：加 ${minDishes} 道带菜名和价格的菜就能继续（0 道也可以先存草稿）。`
+    : visibleDishCount < minDishes
+      ? `至少 ${minDishes} 道，还差 ${minDishes - visibleDishCount} 道`
+      : null;
 
   return (
     <section className={`agent-editor${embedded ? ' is-embedded' : ''}`} aria-label={label}>
@@ -109,22 +150,84 @@ export default function DraftEditor({
                   />
                   <FieldMessage error={categoryError} missing={fieldMissing(validation, 'category')} />
                 </label>
+              </div>
 
-                <label className="agent-field agent-field-wide" id="agent-field-businessHours">
-                  <span className="agent-field-label">营业时间</span>
-                  <input
-                    className={`agent-input${hoursError ? ' is-invalid' : ''}`}
-                    type="text"
-                    value={draft.businessHours}
-                    placeholder="例如 10:00-21:00"
-                    disabled={disabled}
-                    aria-invalid={hoursError ? 'true' : 'false'}
-                    aria-describedby={hoursError ? 'agent-error-businessHours' : undefined}
-                    onChange={(event) => onChangeField?.('businessHours', event.target.value)}
-                  />
-                  <span className="agent-field-tip">多个时段用英文逗号分隔，例如 10:00-14:00,16:00-21:00</span>
-                  <FieldMessage error={hoursError} missing={fieldMissing(validation, 'businessHours')} />
-                </label>
+              <div className="agent-field agent-field-wide agent-hours" id="agent-field-businessHours" role="group" aria-label="营业时间">
+                <span className="agent-field-label">营业时间</span>
+                {hoursSegments.length === 0 ? (
+                  <p className="agent-field-hint">还没有营业时段，点下面的「增加时段」选开始和结束时间。</p>
+                ) : (
+                  <ul className="agent-hours-list">
+                    {hoursSegments.map((segment, index) => {
+                      const timeline = segmentTimeline(segment);
+                      const crossesMidnight = Boolean(timeline && timeline.crossesMidnight);
+                      const invalid = hoursProblemIndexes.has(index);
+                      return (
+                        <li className={`agent-hours-row${invalid ? ' is-invalid' : ''}`} key={`hours-${index}`}>
+                          <span className="agent-hours-index">第 {index + 1} 段</span>
+                          <label className="agent-hours-point">
+                            <span className="agent-field-label">开始</span>
+                            <input
+                              className={`agent-input${invalid ? ' is-invalid' : ''}`}
+                              type="time"
+                              value={segment.start}
+                              disabled={disabled}
+                              aria-label={`第 ${index + 1} 段开始时间`}
+                              onChange={(event) => updateHoursSegment(index, 'start', event.target.value)}
+                            />
+                          </label>
+                          <span className="agent-hours-arrow" aria-hidden="true">→</span>
+                          <label className="agent-hours-point">
+                            <span className="agent-field-label">结束</span>
+                            <input
+                              className={`agent-input${invalid ? ' is-invalid' : ''}`}
+                              type="time"
+                              value={segment.end}
+                              disabled={disabled}
+                              aria-label={`第 ${index + 1} 段结束时间`}
+                              onChange={(event) => updateHoursSegment(index, 'end', event.target.value)}
+                            />
+                          </label>
+                          {crossesMidnight ? (
+                            <span className="agent-hours-nextday">次日 {segment.end}</span>
+                          ) : null}
+                          <span className="agent-hours-summary">{describeHoursSegment(segment)}</span>
+                          <button
+                            type="button"
+                            className="agent-hours-remove"
+                            aria-label={`删除第 ${index + 1} 个营业时段`}
+                            disabled={disabled}
+                            onClick={() => removeHoursSegment(index)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                <div className="agent-hours-actions">
+                  <button
+                    type="button"
+                    className="agent-dish-add"
+                    disabled={disabled || hoursSegments.length >= MAX_HOURS_SEGMENTS}
+                    onClick={addHoursSegment}
+                  >
+                    <Plus size={14} aria-hidden="true" />
+                    增加时段
+                  </button>
+                  <span className="agent-field-tip">
+                    午休可以加第二段；结束时间早于开始时间表示营业到次日，例如 22:00 → 次日 02:00。
+                  </span>
+                </div>
+
+                {hoursProblems.map((problem) => (
+                  <p className="agent-field-error" key={`${problem.code}-${problem.index ?? 'all'}`}>
+                    {problem.message}
+                  </p>
+                ))}
+                {hoursProblems.length === 0 ? <FieldMessage error={null} missing={hoursMissing} /> : null}
               </div>
 
               <fieldset className="agent-field agent-fulfillment" id="agent-field-fulfillment">
@@ -159,9 +262,7 @@ export default function DraftEditor({
               <div className="agent-dish-head">
                 <div className="agent-dish-head-copy">
                   <span className="agent-field-label">菜品（{visibleDishCount}/{maxDishes}）</span>
-                  {visibleDishCount < minDishes ? (
-                    <span className="agent-dish-tip">至少 {minDishes} 道，还差 {minDishes - visibleDishCount} 道</span>
-                  ) : null}
+                  {dishTip ? <span className="agent-dish-tip">{dishTip}</span> : null}
                 </div>
                 <button
                   type="button"

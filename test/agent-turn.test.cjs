@@ -124,15 +124,25 @@ test('T3 Mock 纯时间句只更新营业时间，不产生菜品或店名', asy
   assert.equal(parsed.draft.storeName, '');
 });
 
-test('T4 Mock 超过 5 道只保留前 5 道，同名菜保留第一次价格', async () => {
+test('T4 Mock 六道菜全部保留（上限 8 道），同名菜保留第一次价格', async () => {
   const mock = await loadModule('../src/services/agentTurn/mockAgentTransport.js');
   const parsed = mock.parseMockUtterance(
     '招牌是甲 1 元、乙 2 元、丙 3 元、丁 4 元、戊 5 元、己 6 元、甲 9 元',
     {},
   );
-  assert.equal(parsed.draft.dishes.length, 5);
+  assert.equal(parsed.draft.dishes.length, 6);
   assert.equal(parsed.draft.dishes[0].name, '甲');
   assert.equal(parsed.draft.dishes[0].priceCents, 100);
+  assert.equal(parsed.notes.extraDishes, false);
+});
+
+test('T4b Mock 超过上限（8 道）时标记 extraDishes，只保留前 8 道', async () => {
+  const mock = await loadModule('../src/services/agentTurn/mockAgentTransport.js');
+  const spoken = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+    .map((name, index) => `${name} ${index + 1} 元`)
+    .join('、');
+  const parsed = mock.parseMockUtterance(`招牌是${spoken}`, {});
+  assert.equal(parsed.draft.dishes.length, 8);
   assert.equal(parsed.notes.extraDishes, true);
 });
 

@@ -40,12 +40,17 @@ describe('营业时间归一化与校验', () => {
     expect(normalizeBusinessHoursText('10:00-14:00，17:00-21:00')).toBe('10:00-14:00,17:00-21:00');
   });
 
-  it('跨午夜明确报 HOURS_RANGE', () => {
-    expect(codes(draft({ businessHours: '22:00-02:00' }))).toContain('HOURS_RANGE');
+  it('跨午夜 22:00-02:00 合法（表示营业到次日）', () => {
+    expect(codes(draft({ businessHours: '22:00-02:00' }))).toEqual([]);
+    expect(codes(draft({ businessHours: '10:00-14:00,22:00-02:00' }))).toEqual([]);
   });
 
-  it('开始等于结束报 HOURS_RANGE', () => {
-    expect(codes(draft({ businessHours: '10:00-10:00' }))).toContain('HOURS_RANGE');
+  it('开始等于结束报 HOURS_SAME_TIME', () => {
+    expect(codes(draft({ businessHours: '10:00-10:00' }))).toContain('HOURS_SAME_TIME');
+  });
+
+  it('跨午夜时段与早间时段重叠报 HOURS_OVERLAP', () => {
+    expect(codes(draft({ businessHours: '22:00-02:00,01:00-03:00' }))).toContain('HOURS_OVERLAP');
   });
 
   it('超过 3 段报 HOURS_TOO_MANY', () => {
@@ -90,15 +95,28 @@ describe('字段长度与缺项', () => {
 });
 
 describe('菜品校验', () => {
-  it('少于 3 道进入 missingFields，不进 errors', () => {
-    const value = draft({ dishes: [{ id: 'dish-1', name: '米饭', priceCents: 300, description: '' }] });
-    const result = validateInternalDraft(value);
-    expect(result.missingFields.map((item) => item.field)).toContain('dishes');
-    expect(result.errors.map((item) => item.code)).not.toContain('DISHES_TOO_MANY');
+  it('0 道进入 missingFields，不进 errors；1 道即合法', () => {
+    const empty = validateInternalDraft(draft({ dishes: [] }));
+    expect(empty.missingFields.map((item) => item.field)).toContain('dishes');
+    expect(empty.errors.map((item) => item.code)).not.toContain('DISHES_TOO_MANY');
+
+    const one = validateInternalDraft(
+      draft({ dishes: [{ id: 'dish-1', name: '米饭', priceCents: 300, description: '' }] }),
+    );
+    expect(one.missingFields.map((item) => item.field)).not.toContain('dishes');
+    expect(one.errors.map((item) => item.code)).not.toContain('DISHES_TOO_MANY');
   });
 
-  it('超过 5 道报 DISHES_TOO_MANY', () => {
-    const dishes = Array.from({ length: 6 }, (_, index) => ({
+  it('6 道合法、超过 8 道报 DISHES_TOO_MANY', () => {
+    const six = Array.from({ length: 6 }, (_, index) => ({
+      id: `dish-${index + 1}`,
+      name: `菜${index + 1}`,
+      priceCents: 1000 + index,
+      description: '',
+    }));
+    expect(codes(draft({ dishes: six }))).not.toContain('DISHES_TOO_MANY');
+
+    const dishes = Array.from({ length: 9 }, (_, index) => ({
       id: `dish-${index + 1}`,
       name: `菜${index + 1}`,
       priceCents: 1000 + index,

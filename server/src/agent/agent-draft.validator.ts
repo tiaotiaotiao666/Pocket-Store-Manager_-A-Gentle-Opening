@@ -21,8 +21,9 @@ const MAX_STORE_NAME = 48;
 const MAX_CATEGORY = 24;
 const MAX_DISH_NAME = 24;
 const MAX_DESCRIPTION = 60;
-const MIN_DISHES = 3;
-const MAX_DISHES = 5;
+/** B3：至少 1 道有效菜就能继续；上限 8 道且不静默截断（与前端 storeLimits.mjs 同口径）。 */
+const MIN_DISHES = 1;
+const MAX_DISHES = 8;
 const MIN_PRICE_CENTS = 1;
 const MAX_PRICE_CENTS = 999999;
 const MAX_HOURS_SEGMENTS = 3;
@@ -48,7 +49,7 @@ const MISSING_DETAILS: Record<string, string> = {
   category: '例如：社区餐馆、咖啡茶饮、烘焙甜品',
   businessHours: '格式 HH:MM-HH:MM，例如 10:00-21:00',
   fulfillment: '至少选择堂食或到店自取其中一种',
-  dishes: '一共需要 3–5 道菜',
+  dishes: '至少需要 1 道菜（最多 8 道）',
 };
 
 const QUESTION_LABELS: Record<string, string> = {
@@ -64,7 +65,7 @@ const NEXT_QUESTION_TEXT: Record<string, string> = {
   category: '主要做什么品类？例如社区餐馆、咖啡茶饮、烘焙甜品。',
   businessHours: '每天几点到几点营业？例如 10:00-21:00。',
   fulfillment: '顾客可以堂食、到店自取，还是两种都支持？',
-  dishes: '还需要再补充几道菜，一共 3–5 道。',
+  dishes: '还需要至少 1 道菜。',
 };
 
 export const AGENT_DRAFT_LIMITS = Object.freeze({
@@ -329,6 +330,25 @@ function pushError(errors: FieldError[], field: string, code: string, message: s
   errors.push({ field, code, message });
 }
 
+/** 解析 HH:MM，非法返回 null。 */
+function toMinutes(value: string): number | null {
+  const matched = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
+  if (!matched) return null;
+  return Number(matched[1]) * 60 + Number(matched[2]);
+}
+
+/**
+ * 营业时段在一天内的区间；结束时间早于开始时间表示营业到次日。
+ * B3：与前端 businessHours.mjs 用同一套语义（跨午夜合法、按时间轴判重叠）。
+ */
+function toRanges(segment: { start: string; end: string }): Array<[number, number]> {
+  const start = toMinutes(segment.start);
+  const end = toMinutes(segment.end);
+  if (start === null || end === null) return [];
+  if (end < start) return [[start, 24 * 60], [0, end]];
+  return [[start, end]];
+}
+
 function validateBusinessHours(value: string, errors: FieldError[]): void {
   const segments = value.split(',').filter(Boolean);
   if (segments.length > MAX_HOURS_SEGMENTS) {
@@ -360,23 +380,31 @@ function validateBusinessHours(value: string, errors: FieldError[]): void {
   }
 
   for (const segment of parsed) {
-    // start >= end 包含“相等”和“跨午夜”，本轮一律拒绝。
-    if (segment.start >= segment.end) {
+    // 相等 = 营业 0 分钟，按错误处理；跨午夜（end < start）是合法配置。
+    if (segment.start === segment.end) {
       pushError(
         errors,
         'businessHours',
-        'HOURS_RANGE',
-        '营业时间的开始时间必须早于结束时间，跨午夜请拆成两个时段。',
+        'HOURS_SAME_TIME',
+        '开始和结束时间不能相同，请改一下结束时间。',
       );
       break;
     }
   }
 
-  const ordered = [...parsed].sort((left, right) => (left.start < right.start ? -1 : 1));
-  for (let index = 1; index < ordered.length; index += 1) {
-    if (ordered[index].start < ordered[index - 1].end) {
-      pushError(errors, 'businessHours', 'HOURS_OVERLAP', '营业时间的多个时段不能重叠。');
-      break;
+  const ranges = parsed.map(toRanges);
+  for (let left = 0; left < ranges.length; left += 1) {
+    for (let right = left + 1; right < ranges.length; right += 1) {
+      const hit = ranges[left].some((a) => ranges[right].some((b) => a[0] < b[1] && b[0] < a[1]));
+      if (hit) {
+        pushError(
+          errors,
+          'businessHours',
+          'HOURS_OVERLAP',
+          `第 ${left + 1} 段和第 ${right + 1} 段时间重叠了，请调整后再继续。`,
+        );
+        return;
+      }
     }
   }
 }
@@ -387,8 +415,12 @@ function validateDishes(
   errors: FieldError[],
 ): void {
   if (dishes.length < MIN_DISHES) {
-    const gap = MIN_DISHES - dishes.length;
-    pushMissing(missingFields, 'dishes', QUESTION_LABELS.dishes, `还差 ${gap} 道菜，一共需要 3–5 道。`);
+    pushMissing(
+      missingFields,
+      'dishes',
+      QUESTION_LABELS.dishes,
+      dishes.length === 0 ? '还没有菜品：先加 1 道带菜名和价格的菜就能继续（0 道也能先存草稿）。' : '还差 1 道菜。',
+    );
   }
   if (dishes.length > MAX_DISHES) {
     pushError(

@@ -180,7 +180,7 @@ function fulfillmentLabel(fulfillment) {
 
 const COMPOSER_HINTS = {
   [PHASES.ONBOARDING]: '名字不超过 48 个字符，之后随时可以修改。',
-  [PHASES.PROMPT_STUDIO]: '满意后点下方「确认这版提示词」进入海报素材。',
+  [PHASES.PROMPT_STUDIO]: '这一步只记录视觉偏好，不生成图片；下一步是海报素材（可选），可上传也可跳过。',
   [PHASES.IMAGE_REVIEW]: '满意后点下方「效果满意，去部署」。',
 };
 
@@ -302,7 +302,7 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
         tone: 'accent',
         title: state.build.status === 'building' ? '正在按你的描述重新排骨架' : '候选页面骨架',
         body: state.build.status === 'building' ? '这会覆盖当前候选列表，完成后自动刷新。' : undefined,
-        items: state.build.candidates.map((item) => `${item.name} · ${item.score}%`),
+        items: state.build.candidates.map((item) => item.name),
       });
       // UX0-6：中间已经是实时预览，右栏不再重复渲染同一张图。
       break;
@@ -371,8 +371,10 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
         type: 'preview',
         icon: 'sparkles',
         tone: 'accent',
-        title: '生图提示词',
-        body: state.visual.prompt || '正在生成第一版提示词…',
+        title: '视觉偏好（不生成图片）',
+        body: state.visual.prompt
+          ? '当前版本没有接入生图服务，这一步只记录你的视觉偏好；下一步可以上传一张海报素材，也可以直接跳过。'
+          : '当前版本没有接入生图服务：先写下想要的视觉偏好，下一步可以上传海报素材或直接跳过。',
       });
       if (tips.length) {
         cards.push({
@@ -512,7 +514,7 @@ export default function App() {
   const [envGuideChecks, setEnvGuideChecks] = useState([]);
   const [envGuideBusy, setEnvGuideBusy] = useState(false);
   const envGuideNextRef = useRef(null);
-  const [templateRefineText, setTemplateRefineText] = useState('');
+
   // 模板并排对比：只在模板页有效，最多 2 个模板 id。
   const [compareIds, setCompareIds] = useState(null);
   // 多模态上传的本地状态：只存在于内存，随请求透传给 agent turn。
@@ -874,7 +876,6 @@ export default function App() {
 
   useEffect(() => {
     setDraft('');
-    setTemplateRefineText('');
     if (phase !== PHASES.TEMPLATE_PICK) setCompareIds(null);
   }, [phase]);
 
@@ -1530,7 +1531,7 @@ export default function App() {
     dispatch({
       type: 'ADD_PROMPT_ROUND',
       text,
-      reply: `好的，我把「${text}」补充进提示词里了。`,
+      reply: `好的，我把「${text}」补充进视觉偏好里了。`,
       prompt: nextPrompt,
     });
   };
@@ -3175,11 +3176,10 @@ export default function App() {
               onSelect={(id) => dispatch({ type: 'SELECT_TEMPLATE', id })}
               onConfirm={() => dispatch({ type: 'CONFIRM_TEMPLATE' })}
               viewModelsByTemplateId={previewViewModels.byTemplateId}
-              refineText={templateRefineText}
-              onRefineChange={setTemplateRefineText}
+              canUndo={undoState.canUndo}
+              onUndo={() => dispatch({ type: 'UNDO_APPLY' })}
               onRefine={(value) => {
                 dispatch({ type: 'SUBMIT_TEMPLATE_FEEDBACK', value });
-                setTemplateRefineText('');
               }}
               refining={state.build.status === 'building'}
               refineError={state.build.refineError}
@@ -3221,8 +3221,6 @@ export default function App() {
               draft={state.agentDraft}
               validation={validation}
               disabled={draftDisabled}
-              maxDishes={5}
-              minDishes={3}
               open={draftEditorOpen}
               mode="store"
               collapsible={false}
@@ -3255,8 +3253,6 @@ export default function App() {
               draft={state.agentDraft}
               validation={validation}
               disabled={draftDisabled}
-              maxDishes={5}
-              minDishes={3}
               open={draftEditorOpen}
               mode="dishes"
               collapsible={false}
@@ -3508,9 +3504,11 @@ case PHASES.DEPLOY: {
   // UX0a-3：海报素材（可选）阶段没有真实生图服务，不再提供"重新生成"输入区。
   const composerVisible = phase === PHASES.STORE_INFO
     ? agentComposer.visible
-    : (phase === PHASES.IMAGE_REVIEW ? false : COMPOSER_PHASES.includes(phase));
+    : (phase === PHASES.TEMPLATE_PICK || phase === PHASES.IMAGE_REVIEW
+      ? false
+      : COMPOSER_PHASES.includes(phase));
   const skipVisible = phase === PHASES.ONBOARDING && Boolean(state.store.name);
-  // 模板页复用主输入框；文案独立，避免和「重新描述候选」混为一谈。
+  // 模板页不再复用全局输入框：修改面板是唯一入口（模式开关区分改页面/换候选）。
   const composerPlaceholder = phase === PHASES.STORE_INFO
     ? agentComposer.placeholder
     : (phase === PHASES.TEMPLATE_PICK ? TEMPLATE_PICK_COMPOSER.placeholder : (COMPOSER_PLACEHOLDER[phase] ?? ''));
@@ -3670,7 +3668,6 @@ case PHASES.DEPLOY: {
                     <StoreInfoActionBar
                       status={state.agent.status}
                       dishCount={state.agentDraft.dishes.length}
-                      maxDishes={5}
                       missingCount={state.agent.missingFields.length}
                       errorCount={state.agent.errors.length}
 

@@ -82,9 +82,7 @@ export default function TemplateCompare({
               </option>
             ))}
           </select>
-          {meta.score !== null ? (
-            <span className="template-compare-score">{meta.score}%</span>
-          ) : null}
+          {/* B3：对比条不再展示裸百分比。 */}
         </div>
         <div className="template-compare-title">
           <h4>{label}</h4>

@@ -199,8 +199,8 @@ test('C7 非法响应（2 个 ID）→ 降级：3 项本地排序、source 标�
     assert.match(candidates.meta.degradedReason, /降级|本地规则|不合法/);
     assert.equal(candidates.meta.errorCode, 'AGENT_RESPONSE_INVALID');
     for (const candidate of candidates) {
-      assert.equal(candidate.source, '本地规则（模型不可用）');
-      assert.equal(candidate.sourceLabel, '本地规则（模型不可用）');
+      assert.equal(candidate.source, '本地规则（候选推荐未用模型）');
+      assert.equal(candidate.sourceLabel, '本地规则（候选推荐未用模型）');
     }
     assert.deepEqual(
       candidates.map((item) => item.id),
@@ -227,7 +227,7 @@ test('C8 HTTP 503（模型未配置）→ 降级且原因中文可读', async ()
     assert.equal(candidates.meta.degraded, true);
     assert.match(candidates.meta.degradedReason, /未配置模型服务|本地规则/);
     assert.equal(candidates.meta.errorCode, 'DEEPSEEK_NOT_CONFIGURED');
-    assert.equal(candidates[0].source, '本地规则（模型不可用）');
+    assert.equal(candidates[0].source, '本地规则（候选推荐未用模型）');
   });
 });
 

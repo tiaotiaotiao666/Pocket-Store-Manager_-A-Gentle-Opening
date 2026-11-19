@@ -7,13 +7,12 @@
 
 import { BASE_CAPABILITIES } from './capabilities.mjs';
 import { features as catalogFeatures } from './catalog.mjs';
+import { countUsableSegments, parseHoursText, validateHoursSegments } from './businessHours.mjs';
+import { MAX_DISHES, MIN_DISHES } from './storeLimits.mjs';
 
 const MAX_STORE_NAME = 48;
-const MIN_DISHES = 3;
-const MAX_DISHES = 5;
 const MIN_PRICE_CENTS = 1;
 const MAX_PRICE_CENTS = 999999;
-const MAX_HOURS_SEGMENTS = 3;
 const APPID_RE = /^wx[0-9a-f]{16}$/;
 
 /** Base 内置、但属于"可选"的能力：不勾选也不会从导出工程里消失。 */
@@ -70,7 +69,7 @@ export function evaluateLocal(state, options) {
     errors.push(rule(
       'E-PLAN-DISHES',
       'error',
-      `有效菜品只有 ${validDishes.length} 道（需要 ${MIN_DISHES}–${MAX_DISHES} 道，名称与整数价格都要填）。`,
+      `有效菜品只有 ${validDishes.length} 道（至少 ${MIN_DISHES} 道，最多 ${MAX_DISHES} 道；菜名与整数价格都要填）。`,
       'agentDraft.dishes',
       { label: '去补充菜单', phase: 'store-info' },
     ));
@@ -91,11 +90,20 @@ export function evaluateLocal(state, options) {
     }
   });
 
-  const hoursSegments = String(draft.businessHours || '').split(',').filter(Boolean);
-  if (hoursSegments.length === 0) {
-    errors.push(rule('E-PLAN-HOURS', 'error', '还没有营业时间，导出后会显示为空。', 'agentDraft.businessHours', { label: '去填写营业时间', phase: 'store-info' }));
-  } else if (hoursSegments.length > MAX_HOURS_SEGMENTS) {
-    errors.push(rule('E-PLAN-HOURS', 'error', `营业时间超过 ${MAX_HOURS_SEGMENTS} 个时段，请删减。`, 'agentDraft.businessHours', { label: '去删减时段', phase: 'store-info' }));
+  // 营业时间与编辑器、领域校验共用一套口径（businessHours.mjs）：跨午夜算一个时段。
+  const hoursSegments = parseHoursText(String(draft.businessHours || ''));
+  if (countUsableSegments(hoursSegments) === 0) {
+    errors.push(rule('E-PLAN-HOURS', 'error', '还没有可用的营业时间（需要开始和结束时间），导出后会显示为空。', 'agentDraft.businessHours', { label: '去填写营业时间', phase: 'store-info' }));
+  } else {
+    for (const problem of validateHoursSegments(hoursSegments)) {
+      errors.push(rule(
+        'E-PLAN-HOURS',
+        'error',
+        problem.message,
+        'agentDraft.businessHours',
+        { label: '去修改营业时间', phase: 'store-info' },
+      ));
+    }
   }
 
   if (!draft.fulfillment || (!draft.fulfillment.dineIn && !draft.fulfillment.takeaway)) {

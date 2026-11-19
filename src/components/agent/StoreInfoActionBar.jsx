@@ -1,5 +1,7 @@
 import { CheckCircle2 } from 'lucide-react';
 
+import { MAX_DISHES } from '../../domain/storeLimits.mjs';
+
 function summaryText(status, pendingCount, canConfirm) {
   if (status === 'requesting') return '正在整理资料，请稍候';
   if (status === 'failed') return `请求失败，还有 ${pendingCount} 项待处理`;
@@ -11,7 +13,7 @@ function summaryText(status, pendingCount, canConfirm) {
 export default function StoreInfoActionBar({
   status = 'idle',
   dishCount = 0,
-  maxDishes = 5,
+  maxDishes = MAX_DISHES,
   missingCount = 0,
   errorCount = 0,
   onConfirm,

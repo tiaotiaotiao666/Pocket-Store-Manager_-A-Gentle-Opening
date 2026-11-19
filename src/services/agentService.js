@@ -19,7 +19,7 @@ const DEFAULT_IMAGE_DELAY_MS = 1400;
 const DEFAULT_REVISE_IMAGE_DELAY_MS = 1100;
 
 /** 降级时的候选来源标签（plan.md 2.2.9 语义 3，必须可见）。 */
-const SOURCE_DEGRADED = '本地规则（模型不可用）';
+const SOURCE_DEGRADED = '本地规则（候选推荐未用模型）';
 const SOURCE_MOCK = '本地规则（Mock）';
 
 function hash(value) {
@@ -153,9 +153,10 @@ function localSources(brief, rulesLabel) {
  * - HTTP 模式：`POST /api/v1/agent/template-candidates` 只决定**排序与理由**；
  * - `score` 永远由前端按功能覆盖率 + 关键词命中确定性计算（见 `explainTemplateScore`），
  *   不使用模型返回的任何数字，也不再使用 `topScore - index*9` 这类编造递减；
- * - 模型不可用 / 超时 / 响应非法：降级为本地确定性排序，
- *   候选 `source` 标为 `本地规则（模型不可用）`，并在返回数组上标注
+ * - 候选排序模型不可用 / 超时 / 响应非法：只有**这次候选推荐**降级为本地确定性排序，
+ *   候选 `source` 标为 `本地规则（候选推荐未用模型）`，并在返回数组上标注
  *   `meta.degraded = true` 与 `meta.degradedReason`（中文可读），绝不伪装成模型结果；
+ *   注意措辞只限定「这次候选推荐」，不得写成整个资料助手的模型不可用（B3）。
  * - 未配置 HTTP 的后端（Mock 模式）：候选 `source` 保持既有语义标签，
  *   数组 `meta` 标 `transport:'mock'` / `mock:true` / `source:'本地规则（Mock）'`。
  *

@@ -194,9 +194,9 @@ function buildBusinessHoursText(businessHours) {
       if (!isRecord(segment)) return null;
       const start = readText(segment.start);
       const end = readText(segment.end);
-      return HOURS_POINT_PATTERN.test(start) && HOURS_POINT_PATTERN.test(end)
-        ? `${start}-${end}`
-        : null;
+      if (!HOURS_POINT_PATTERN.test(start) || !HOURS_POINT_PATTERN.test(end)) return null;
+      // 结束早于开始 = 营业到次日，与编辑器 businessHours.mjs 的展示口径一致。
+      return end < start ? `${start}-次日 ${end}` : `${start}-${end}`;
     })
     .filter(Boolean);
   return segments.length > 0 ? segments.join('，') : '营业时间待完善';

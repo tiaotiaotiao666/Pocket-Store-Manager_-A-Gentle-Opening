@@ -446,6 +446,9 @@ test('selectPresentationState：返回 2.2.3 定义字段，canRevise 跟随阶�
     changes: [],
     status: 'idle',
     error: null,
+    // B3：修改面板要把「你刚才要求：原话」显示在输入框旁边，所以选择器额外暴露它。
+    lastUtterance: '',
+    hasPatch: false,
   });
 
   const { PHASES } = await import('../src/state/constants.mjs');

@@ -136,29 +136,38 @@ test('F3 修改价格为非法文本后重新校验为 PRICE_INVALID，状态回
   assert.equal(legal.agent.status, 'reviewing');
 });
 
-test('F4 删除菜品至 2 道回到缺项，第 6 道被拒绝', async () => {
+test('F4 删到 0 道才回到缺项；加到 8 道后第 9 道被拒绝', async () => {
   const machine = await loadMachine();
   const serviceModule = await loadService();
   const { state } = await seededStoreInfo();
   const service = serviceModule.createAgentTurnService();
   const reviewing = (await runTurn(machine, state, service, FULL_UTTERANCE)).state;
 
-  const removed = machine.reducer(reviewing, {
+  // 1 道有效菜就够：删到 2 道仍然可以继续（不再要求 3–5 道）。
+  const two = machine.reducer(reviewing, {
     type: 'REMOVE_AGENT_DISH',
     id: reviewing.agentDraft.dishes[2].id,
   });
-  assert.equal(removed.agentDraft.dishes.length, 2);
+  assert.equal(two.agentDraft.dishes.length, 2);
+  assert.ok(!two.agent.missingFields.some((item) => item.field === 'dishes'));
+  assert.equal(two.agent.status, 'reviewing');
+
+  let removed = two;
+  for (const dish of [...two.agentDraft.dishes]) {
+    removed = machine.reducer(removed, { type: 'REMOVE_AGENT_DISH', id: dish.id });
+  }
+  assert.equal(removed.agentDraft.dishes.length, 0);
   assert.ok(removed.agent.missingFields.some((item) => item.field === 'dishes'));
   assert.equal(removed.agent.status, 'collecting');
 
-  let five = removed;
-  for (let index = 0; index < 3; index += 1) {
-    five = machine.reducer(five, { type: 'ADD_AGENT_DISH' });
+  let eight = removed;
+  for (let index = 0; index < 8; index += 1) {
+    eight = machine.reducer(eight, { type: 'ADD_AGENT_DISH' });
   }
-  assert.equal(five.agentDraft.dishes.length, 5);
-  const rejected = machine.reducer(five, { type: 'ADD_AGENT_DISH' });
-  assert.equal(rejected, five);
-  assert.equal(rejected.agentDraft.dishes.length, 5);
+  assert.equal(eight.agentDraft.dishes.length, 8);
+  const rejected = machine.reducer(eight, { type: 'ADD_AGENT_DISH' });
+  assert.equal(rejected, eight);
+  assert.equal(rejected.agentDraft.dishes.length, 8);
 });
 
 test('F5 确认后再次编辑回到 reviewing，重新确认后 store 同步', async () => {

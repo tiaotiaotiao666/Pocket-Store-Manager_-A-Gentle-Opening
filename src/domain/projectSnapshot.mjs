@@ -336,7 +336,7 @@ function pickAgentDraft(draft) {
     category: text(normalized.category, 24),
     businessHours: text(normalized.businessHours, 120),
     fulfillment: { dineIn: Boolean(normalized.fulfillment.dineIn), takeaway: Boolean(normalized.fulfillment.takeaway) },
-    dishes: normalized.dishes.slice(0, 5).map((dish) => ({
+    dishes: normalized.dishes.map((dish) => ({
       id: text(dish.id, 24),
       name: text(dish.name, 24),
       priceCents: Number.isInteger(dish.priceCents) ? dish.priceCents : null,

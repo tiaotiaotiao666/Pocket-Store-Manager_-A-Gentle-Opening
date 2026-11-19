@@ -36,7 +36,7 @@ export const FLOW_STAGES = Object.freeze([
   Object.freeze({
     key: 'material',
     label: '装修与视觉',
-    hint: '风格、提示词与效果图',
+    hint: '风格偏好与海报素材',
     entryPhase: PHASES.PROMPT_STUDIO,
     backPhase: PHASES.TEMPLATE_PICK,
     backLabel: '返回换骨架',

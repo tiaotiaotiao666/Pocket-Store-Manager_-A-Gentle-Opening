@@ -798,6 +798,99 @@
   color: var(--faint);
 }
 
+/* 营业时间：时间范围选择器（B3）。 */
+.agent-hours {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-hours-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-hours-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-elev);
+}
+
+.agent-hours-row.is-invalid {
+  border-color: #d9a19a;
+  background: #fdf6f5;
+}
+
+.agent-hours-index {
+  font-size: 11px;
+  color: var(--faint);
+  min-width: 44px;
+  padding-bottom: 9px;
+}
+
+.agent-hours-point {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agent-hours-point .agent-input {
+  width: 108px;
+}
+
+.agent-hours-arrow {
+  color: var(--faint);
+  font-size: 12px;
+  padding-bottom: 9px;
+}
+
+.agent-hours-nextday {
+  font-size: 11px;
+  color: var(--accent);
+  padding-bottom: 9px;
+}
+
+.agent-hours-summary {
+  font-size: 11px;
+  color: var(--ink-soft);
+  padding-bottom: 9px;
+}
+
+.agent-hours-remove {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-elev);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.agent-hours-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-hours-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .agent-fulfillment {
   margin: 0;
   padding: 0;

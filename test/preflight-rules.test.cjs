@@ -58,11 +58,16 @@ test('店名为空与超长命中 E-PLAN-NAME', async () => {
   assert.ok(ids(long.errors).includes('E-PLAN-NAME'));
 });
 
-test('菜品少于 3 道与价格非法分别命中 E-PLAN-DISHES / E-PLAN-PRICE', async () => {
+test('0 道菜与价格非法分别命中 E-PLAN-DISHES / E-PLAN-PRICE', async () => {
   const { machine, rules } = await load();
-  const few = baseState(machine);
-  few.agentDraft = { ...few.agentDraft, dishes: few.agentDraft.dishes.slice(0, 2) };
-  assert.ok(ids(rules.evaluateLocal(few).errors).includes('E-PLAN-DISHES'));
+  const none = baseState(machine);
+  none.agentDraft = { ...none.agentDraft, dishes: [] };
+  assert.ok(ids(rules.evaluateLocal(none).errors).includes('E-PLAN-DISHES'));
+
+  // 1 道有效菜就够，不再要求 3 道。
+  const one = baseState(machine);
+  one.agentDraft = { ...one.agentDraft, dishes: one.agentDraft.dishes.slice(0, 1) };
+  assert.ok(!ids(rules.evaluateLocal(one).errors).includes('E-PLAN-DISHES'));
 
   const badPrice = baseState(machine);
   badPrice.agentDraft = {

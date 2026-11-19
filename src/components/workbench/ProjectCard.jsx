@@ -8,7 +8,7 @@ const PHASE_LABELS = {
   building: '构建中',
   'template-pick': '选骨架',
   'store-info': '装修',
-  'prompt-studio': '提示词',
+  'prompt-studio': '视觉偏好',
   'image-review': '审核',
   deploy: '部署',
 };

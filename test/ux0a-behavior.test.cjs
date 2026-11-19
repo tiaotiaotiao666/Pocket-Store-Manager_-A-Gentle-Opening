@@ -151,8 +151,13 @@ test('UX0a-3 没有真实生图服务时不会发起 generateImage', async () =>
   assert.ok(guardAt > -1, 'App 必须用 shouldAutoGenerateImage 守卫自动生成');
   assert.ok(callAt > -1, '保留调用点以便未来接入服务');
   assert.ok(guardAt < callAt, '守卫必须在调用之前生效');
-  assert.match(appSource, /phase === PHASES\.IMAGE_REVIEW \? false : COMPOSER_PHASES\.includes\(phase\)/,
-    '海报素材阶段不得显示"重新生成"输入区');
+  // B3：模板页与海报素材页都不再复用全局输入区（模板页改用唯一的修改面板）。
+  assert.match(
+    appSource,
+    /phase === PHASES\.TEMPLATE_PICK \|\| phase === PHASES\.IMAGE_REVIEW/
+    ,
+    '海报素材阶段不得显示"重新生成"输入区',
+  );
 });
 
 test('UX0a-4 上传素材与跳过素材分别进入正确的导出状态', async () => {

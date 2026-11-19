@@ -27,6 +27,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
+/** ID/路径校验与契约同源（这里沿用窄控制字符集合：只禁 C0 与 DEL，不改变既有落盘行为）。 */
+const {
+  PROJECT_ID_PATTERN,
+  RUN_ID_PATTERN,
+  CONTROL_CHAR_NARROW_PATTERN: CONTROL_CHAR_PATTERN,
+} = require('./contract.generated.cjs');
+
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 const PROJECTS_DIR = 'projects';
@@ -36,11 +43,7 @@ const RUN_FILE = 'run.json';
 const ATTEMPT_FILE = 'attempt.json';
 const ATTEMPT_DIR_PATTERN = /^attempt-([1-9][0-9]{0,3})$/;
 const STAGING_PATTERN = /^\.staging-[0-9a-f]{8}$/;
-const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const RUN_ID_PATTERN = /^frun-[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
 const DRIVE_PATTERN = /^[A-Za-z]:/;
-// eslint-disable-next-line no-control-regex
-const CONTROL_CHAR_PATTERN = /[\u0000-\u001f\u007f]/;
 
 const CODES = Object.freeze({
   ROOT_INVALID: 'WORKSPACE_ROOT_INVALID',

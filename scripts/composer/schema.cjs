@@ -26,15 +26,9 @@ const SIZE_STEPS = Object.freeze(['sm', 'md', 'lg']);
 /** FrontendPack 的页面文件白名单：只允许视图三件套，不允许 js。 */
 const FRONTEND_PACK_PAGE_FILE = /^pages\/([a-z][a-z0-9-]*)\/index\.(wxml|wxss|json)$/;
 
-/** FrontendPack 页面 JSON 允许覆盖的键；usingComponents 仍受 Base 页面白名单约束。 */
-const FRONTEND_PACK_PAGE_JSON_KEYS = Object.freeze([
-  'navigationBarTitleText',
-  'enablePullDownRefresh',
-  'disableScroll',
-  'backgroundColor',
-  'backgroundTextStyle',
-  'usingComponents',
-]);
+/** FrontendPack 页面 JSON 允许覆盖的键；唯一来源是 contracts/frontend-reconstruct.v1.json。 */
+const FRONTEND_PACK_PAGE_JSON_KEYS = require('../../desktop/frontend-reconstruct/contract.generated.cjs')
+  .PACK_PAGE_JSON_KEYS;
 
 /**
  * Plan 顶层 `presentationTokens` 的允许键（C-PLAN-PRESENTATION@1）。

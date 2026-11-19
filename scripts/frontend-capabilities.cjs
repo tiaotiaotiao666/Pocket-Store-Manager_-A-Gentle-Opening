@@ -39,28 +39,22 @@ const SNAPSHOT_TS = path.join(SNAPSHOT_DIR, 'capabilities.snapshot.ts');
 const PAGE_SNAPSHOT_JSON = path.join(SNAPSHOT_DIR, 'page-capabilities.snapshot.json');
 const PAGE_SNAPSHOT_TS = path.join(SNAPSHOT_DIR, 'page-capabilities.snapshot.ts');
 
-/** 必须与 server/src/agent/frontend-reconstruct/types.ts 保持一致；测试会断言相等。 */
-const TARGET_PAGES = Object.freeze(['home', 'menu']);
-const THEME_TOKEN_KEYS = Object.freeze([
-  'pageBackground',
-  'primaryColor',
-  'accentColor',
-  'textColor',
-  'tabBarBackground',
-  'tabBarColor',
-  'tabBarSelectedColor',
-]);
-const SIZE_KEYS = Object.freeze(['homeHero', 'productCard', 'carousel']);
-const FACTS_VERSION = 'frontend-facts.v1';
-const PAGE_FACTS_VERSION = 'frontend-page-facts.v1';
+/** 契约常量（页面/主题 token/尺寸键/版本/正则）全部来自生成模块，本文件不再复制一份。 */
+const contract = require(path.join(REPO_ROOT, 'desktop', 'frontend-reconstruct', 'contract.generated.cjs'));
 
-const LOWERCASE_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
-const PROP_ID_PATTERN = /^[A-Za-z][A-Za-z0-9-]{0,63}$/;
-const EVENT_ID_PATTERN = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
-const ACTION_PATTERN = /^[a-z][a-z0-9-]*\.[A-Za-z][A-Za-z0-9]{0,31}$/;
-const DATA_PATH_PATTERN = /^[A-Za-z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*){1,7}$/;
+const TARGET_PAGES = contract.TARGET_PAGES;
+const THEME_TOKEN_KEYS = contract.THEME_TOKEN_KEYS;
+const SIZE_KEYS = contract.SIZE_KEYS;
+const FACTS_VERSION = contract.FACTS_VERSION;
+const PAGE_FACTS_VERSION = contract.PAGE_FACTS_VERSION;
 
-const MAX_FACTS_ENTRIES = 128;
+const LOWERCASE_ID_PATTERN = contract.LOWERCASE_ID_PATTERN;
+const PROP_ID_PATTERN = contract.PROP_ID_PATTERN;
+const EVENT_ID_PATTERN = contract.EVENT_ID_PATTERN;
+const ACTION_PATTERN = contract.ACTION_PATTERN;
+const DATA_PATH_PATTERN = contract.DATA_PATH_PATTERN;
+
+const MAX_FACTS_ENTRIES = contract.LIMITS.maxFactsEntries;
 
 /** WXML 条件/循环属性表达的是页面状态，不作为可绑定数据 token。 */
 const STATE_ATTRIBUTE_PATTERN = /\s(?:wx:if|wx:elif|wx:else|wx:for|wx:for-item|wx:for-index|wx:key)\s*=\s*"[^"]*"/g;

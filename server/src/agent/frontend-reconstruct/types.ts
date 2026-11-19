@@ -12,178 +12,84 @@
  * - 本文件只有类型/常量，不含运行时逻辑，也不 import Nest。
  */
 
-/** 契约版本；不兼容变更必须升 v2，不得静默改语义。 */
-export const FRONTEND_RECONSTRUCT_CONTRACT_VERSION = 'frontend-reconstruct.v1';
+/**
+ * 枚举/上限/正则的唯一事实源：`contracts/frontend-reconstruct.v1.json`
+ * （经 `scripts/frontend-contract.cjs` 生成 `contract.generated.ts`）。
+ * 本文件只做类型投影与再导出，不再重复声明同义常量。
+ */
+import {
+  FRONTEND_CLIENT_PHASES,
+  FRONTEND_DRAFT_NODE_TYPES,
+  FRONTEND_FACTS_VERSION,
+  FRONTEND_LAYOUT_KINDS,
+  FRONTEND_PACK_DRAFT_SCHEMA_VERSION,
+  FRONTEND_RECONSTRUCT_CONTRACT_VERSION,
+  FRONTEND_REGION_TYPES,
+  FRONTEND_REPAIR_ISSUE_CODES,
+  FRONTEND_RESPONSE_STATUSES,
+  FRONTEND_SIZE_STEPS,
+  FRONTEND_STATES,
+  FRONTEND_STOP_REASONS,
+  FRONTEND_TARGET_PAGES,
+  FRONTEND_THEME_TOKEN_KEYS,
+  FRONTEND_TOOL_NAMES,
+} from './contract.generated';
 
-/** FrontendPackDraft DSL 版本。 */
-export const FRONTEND_PACK_DRAFT_SCHEMA_VERSION = 'frontend-pack-draft.v1';
-
-/** 服务端注入事实快照的版本。 */
-export const FRONTEND_FACTS_VERSION = 'frontend-facts.v1';
+export {
+  FRONTEND_CLIENT_PHASES,
+  FRONTEND_CLIENT_SURFACES,
+  FRONTEND_DRAFT_NODE_TYPES,
+  FRONTEND_FACTS_VERSION,
+  FRONTEND_LAYOUT_KINDS,
+  FRONTEND_LIMITS,
+  FRONTEND_PACK_DRAFT_SCHEMA_VERSION,
+  FRONTEND_RECONSTRUCT_CONTRACT_VERSION,
+  FRONTEND_REGION_TYPES,
+  FRONTEND_REPAIR_ISSUE_CODES,
+  FRONTEND_RESPONSE_STATUSES,
+  FRONTEND_SIZE_KEYS,
+  FRONTEND_SIZE_STEPS,
+  FRONTEND_STATES,
+  FRONTEND_STOP_REASONS,
+  FRONTEND_TARGET_PAGES,
+  FRONTEND_THEME_TOKEN_KEYS,
+  FRONTEND_TOOL_NAMES,
+} from './contract.generated';
 
 /** 首期仅支持 Base 的 home/menu 两页；扩页必须补页面卡、布局卡与运行时测试。 */
-export const FRONTEND_TARGET_PAGES = ['home', 'menu'] as const;
 export type FrontendTargetPageId = (typeof FRONTEND_TARGET_PAGES)[number];
 
-/** 允许的客户端调用面与阶段（严格枚举，不做模糊匹配）。 */
-export const FRONTEND_CLIENT_SURFACES = ['desktop'] as const;
-export const FRONTEND_CLIENT_PHASES = ['template-pick', 'frontend-reconstruct'] as const;
-
 /** Base `theme.tokens.json` 的七类颜色 token：只允许这些键。 */
-export const FRONTEND_THEME_TOKEN_KEYS = [
-  'pageBackground',
-  'primaryColor',
-  'accentColor',
-  'textColor',
-  'tabBarBackground',
-  'tabBarColor',
-  'tabBarSelectedColor',
-] as const;
 export type FrontendThemeTokenKey = (typeof FRONTEND_THEME_TOKEN_KEYS)[number];
 
 /** 现有尺寸档位；不接受 px/rem 等自由值。 */
-export const FRONTEND_SIZE_STEPS = ['sm', 'md', 'lg'] as const;
 export type FrontendSizeStep = (typeof FRONTEND_SIZE_STEPS)[number];
 
-/** 现有尺寸键（与 screen-reference.v1 保持一致）。 */
-export const FRONTEND_SIZE_KEYS = ['homeHero', 'productCard', 'carousel'] as const;
-
 /** 分区类型：只表达近似布局，不推断业务含义。 */
-export const FRONTEND_REGION_TYPES = [
-  'header',
-  'hero',
-  'nav',
-  'list',
-  'grid',
-  'card',
-  'form',
-  'banner',
-  'footer',
-  'other',
-] as const;
 export type FrontendRegionType = (typeof FRONTEND_REGION_TYPES)[number];
 
 /** 近似布局：只允许离线渲染器能确定性表达的形状。 */
-export const FRONTEND_LAYOUT_KINDS = [
-  'single-column',
-  'two-column',
-  'grid',
-  'list',
-  'poster',
-] as const;
 export type FrontendLayoutKind = (typeof FRONTEND_LAYOUT_KINDS)[number];
 
 /** DSL 节点类型：仅五类。 */
-export const FRONTEND_DRAFT_NODE_TYPES = [
-  'component',
-  'slot',
-  'container',
-  'text',
-  'button',
-] as const;
 export type FrontendDraftNodeType = (typeof FRONTEND_DRAFT_NODE_TYPES)[number];
 
 /** 允许模型调用的四个前端重构工具（trace 只允许这些名字）。 */
-export const FRONTEND_TOOL_NAMES = [
-  'get_frontend_capabilities',
-  'check_frontend_coverage',
-  'propose_frontend_draft',
-  'repair_frontend_draft',
-] as const;
 export type FrontendToolName = (typeof FRONTEND_TOOL_NAMES)[number];
 
 /** 响应 trace.stopReason 白名单（沿用 runtime 语义 + 本链路业务终止原因）。 */
-export const FRONTEND_STOP_REASONS = [
-  'final_answer',
-  'needs_input',
-  'rejected',
-  'max_model_calls',
-  'max_tool_calls',
-  'loop_detected',
-  'time_limit',
-  'aborted',
-] as const;
 export type FrontendStopReason = (typeof FRONTEND_STOP_REASONS)[number];
 
 /** 响应状态：与服务端计划 §3.1 完全一致。 */
-export const FRONTEND_RESPONSE_STATUSES = ['planned', 'needs-input', 'rejected'] as const;
 export type FrontendResponseStatus = (typeof FRONTEND_RESPONSE_STATUSES)[number];
 
 /** 全链路状态机状态（P0 冻结；`partial` 不等于验收通过）。 */
-export const FRONTEND_STATES = [
-  'idle',
-  'analyzing',
-  'planning',
-  'awaiting-capability-confirmation',
-  'generating',
-  'validating',
-  'verifying-runtime',
-  'ready',
-  'partial',
-  'rejected',
-  'failed',
-  'adopted',
-  'cancelled',
-] as const;
 export type FrontendState = (typeof FRONTEND_STATES)[number];
 
 /** 结构化 repair issue 的 code 白名单：只允许本地门禁产生的固定错误。 */
-export const FRONTEND_REPAIR_ISSUE_CODES = [
-  'DRAFT_SCHEMA_INVALID',
-  'DRAFT_UNKNOWN_COMPONENT',
-  'DRAFT_UNKNOWN_EVENT',
-  'DRAFT_UNKNOWN_DATA_PATH',
-  'DRAFT_STYLE_INVALID',
-  'DRAFT_PAGE_JSON_INVALID',
-  'SLOT_ANCHOR_MISSING',
-  'DRY_RUN_FAILED',
-  'MINI_CHECK_FAILED',
-  'CONSISTENCY_FAILED',
-] as const;
 export type FrontendRepairIssueCode = (typeof FRONTEND_REPAIR_ISSUE_CODES)[number];
 
-/** 所有硬边界集中在这里，测试与文档共用同一组数字。 */
-export const FRONTEND_LIMITS = Object.freeze({
-  /** 请求体（JSON 文本）上限，与既有 Agent 图片通路同量级。 */
-  maxBodyBytes: 2 * 1024 * 1024,
-  maxUtteranceChars: 500,
-  maxPresentationPatchBytes: 16 * 1024,
-  maxPages: 2,
-  maxRegionsPerPage: 32,
-  maxRegionDepth: 3,
-  maxRegionChildren: 12,
-  maxMustKeep: 32,
-  maxBindings: 64,
-  maxUnknownRegions: 24,
-  maxLowConfidence: 24,
-  maxInferredInteractions: 16,
-  maxUnsupported: 16,
-  maxDegradations: 16,
-  maxQuestions: 8,
-  maxQuestionChars: 200,
-  maxSummaryChars: 240,
-  maxReasonChars: 200,
-  maxLabelChars: 64,
-  maxDraftPages: 2,
-  maxDraftNodesPerPage: 48,
-  maxDraftDepth: 4,
-  maxContainerChildren: 12,
-  maxComponentProps: 8,
-  maxComponentEvents: 8,
-  maxDraftStringChars: 120,
-  maxDisplayNameChars: 40,
-  maxButtonLabelChars: 16,
-  maxNavTitleChars: 20,
-  maxRepairRounds: 2,
-  maxRepairIssues: 8,
-  maxModelCalls: 8,
-  maxToolCalls: 16,
-  maxWallClockMs: 120000,
-  maxTraceToolCalls: 16,
-  maxRequiredCapabilities: 32,
-  maxCoverageRisks: 16,
-  maxFactsEntries: 128,
-});
+/** 所有硬边界集中在契约 `limits`；测试与文档共用同一组数字。 */
 
 /** 服务端注入的只读能力事实（能力快照的最小投影）。 */
 export interface FrontendFactsComponent {

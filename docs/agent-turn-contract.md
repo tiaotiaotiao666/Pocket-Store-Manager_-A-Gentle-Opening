@@ -77,10 +77,10 @@ Authorization: Bearer <未来由宿主注入的短期 Token，本轮不发>
 | --- | --- | --- | --- |
 | `storeName` | string | 是 | 空串或 1–48 个 Unicode 码点 |
 | `category` | string | 是 | 空串或 1–24 个码点；自由文本，不限定枚举 |
-| `businessHours` | string | 是 | 空串或 1–3 段 `HH:MM-HH:MM`，多段英文逗号分隔；不支持跨午夜 |
+| `businessHours` | string | 是 | 空串或 1–3 段 `HH:MM-HH:MM`，多段用中英文逗号/顿号分隔；结束早于开始表示营业到次日（如 `22:00-02:00`） |
 | `fulfillment.dineIn` | boolean | 是 | 是否堂食 |
 | `fulfillment.takeaway` | boolean | 是 | 是否到店自取 |
-| `dishes` | `ContractDish[]` | 是 | 0–5 个；少于 3 个由校验报缺项 |
+| `dishes` | `ContractDish[]` | 是 | 0–8 个（`MIN_DISHES`=1 / `MAX_DISHES`=8）；0 个由校验报缺项，空草稿仍可保存 |
 | `dishes[].id` | string | 是 | 1–32 个可见字符，本地稳定引用，不是数据库主键 |
 | `dishes[].name` | string | 是 | 空串或 1–24 个码点 |
 | `dishes[].priceCents` | integer \| null | 是 | `null` 或 1–999999；禁止浮点与字符串 |
@@ -198,15 +198,15 @@ Authorization: Bearer <未来由宿主注入的短期 Token，本轮不发>
 | --- | --- | --- | --- |
 | `storeName` | 1–48 码点 | 空 → `REQUIRED` | `NAME_TOO_LONG` |
 | `category` | 1–24 码点，自由文本 | 空 → `REQUIRED` | `CATEGORY_TOO_LONG` |
-| `businessHours` | 1–3 段 `HH:MM-HH:MM`，start < end，多段不重叠 | 空 → `REQUIRED` | `HOURS_FORMAT` / `HOURS_RANGE` / `HOURS_OVERLAP` / `HOURS_TOO_MANY` |
+| `businessHours` | 1–3 段 `HH:MM-HH:MM`，start ≠ end，多段不重叠；结束早于开始表示营业到次日 | 空 → `REQUIRED` | `HOURS_FORMAT` / `HOURS_RANGE` / `HOURS_OVERLAP` / `HOURS_TOO_MANY` |
 | `fulfillment` | 至少一个 true | 双 false → `FULFILLMENT_REQUIRED` | — |
-| `dishes` 数量 | 3–5 | 0–2 → `DISHES_TOO_FEW` | `DISHES_TOO_MANY` |
+| `dishes` 数量 | 1–8（`MIN_DISHES`/`MAX_DISHES`） | 0 → `DISHES_TOO_FEW` | `DISHES_TOO_MANY` |
 | `dishes[].name` | 1–24 码点 | 空 → `DISH_NAME_REQUIRED` | `DISH_NAME_TOO_LONG` |
 | `dishes[].priceCents` | 整数 1–999999 | `null` → `PRICE_REQUIRED` | `PRICE_INVALID` / `PRICE_RANGE` |
 | `dishes[].description` | ≤60 码点，可空 | — | `DESCRIPTION_TOO_LONG` |
 | `dishes[].id` | 1–32 字符且唯一 | 内部自动补齐 | `DISH_ID_INVALID`（内部防御） |
 
-营业时间归一化支持全角符号、中文逗号/顿号、`~` / `—` / `到` / `至`、`10点` / `10点半`；跨午夜（如 `22:00-02:00`）明确报 `HOURS_RANGE`，本轮不引入跨天字段。
+营业时间归一化支持全角符号、中文逗号/顿号、`~` / `—` / `到` / `至`、`10点` / `10点半`；跨午夜（如 `22:00-02:00`）按「营业到次日」的**单段**处理，界面显示为「22:00–次日 02:00」，不再要求用户拆成两段。菜品数量与营业时段上限的唯一口径是 `src/domain/storeLimits.mjs` 与 `src/domain/businessHours.mjs`。
 
 `readyForReview = missingFields.length === 0 && errors.length === 0`。
 

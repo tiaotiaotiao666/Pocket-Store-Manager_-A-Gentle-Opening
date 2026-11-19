@@ -20,27 +20,17 @@
 
 const { validateDraft } = require('./schema.cjs');
 const { draftDigest } = require('./render.cjs');
-
-/** 与服务端 `FRONTEND_REPAIR_ISSUE_CODES` / 契约文档同源的白名单（测试会读 service 源码对齐）。 */
-const REPAIR_ISSUE_CODES = Object.freeze([
-  'DRAFT_SCHEMA_INVALID',
-  'DRAFT_UNKNOWN_COMPONENT',
-  'DRAFT_UNKNOWN_EVENT',
-  'DRAFT_UNKNOWN_DATA_PATH',
-  'DRAFT_STYLE_INVALID',
-  'DRAFT_PAGE_JSON_INVALID',
-  'SLOT_ANCHOR_MISSING',
-  'DRY_RUN_FAILED',
-  'MINI_CHECK_FAILED',
-  'CONSISTENCY_FAILED',
-]);
+const {
+  LIMITS,
+  REPAIR_ISSUE_CODES,
+  RUN_ID_PATTERN,
+} = require('./contract.generated.cjs');
 
 const CONTRACT_VERSION = 'frontend-repair.v1';
-const MAX_REPAIR_ROUNDS = 2;
-const MAX_ISSUES = 8;
+const MAX_REPAIR_ROUNDS = LIMITS.maxRepairRounds;
+const MAX_ISSUES = LIMITS.maxRepairIssues;
 const MAX_PREVIOUS_DRAFT_BYTES = 32 * 1024;
 const DSL_ISSUE_PATH_PATTERN = /^\$(?:\.[A-Za-z][A-Za-z0-9]*|\[\d{1,3}\]){1,12}$/;
-const RUN_ID_PATTERN = /^frun-[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
 const FORBIDDEN_PAYLOAD_PATTERNS = Object.freeze([
   { code: 'REPAIR_PAYLOAD_UNSAFE', pattern: /[A-Za-z]:[\\/]/ },
   { code: 'REPAIR_PAYLOAD_UNSAFE', pattern: /\\\\/ },

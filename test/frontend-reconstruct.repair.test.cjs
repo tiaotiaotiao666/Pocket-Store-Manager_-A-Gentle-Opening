@@ -418,19 +418,32 @@ test('previousDraft 仍受 P2 schema 与体积约束', () => {
   assert.strictEqual(rejected.code, CODES.DRAFT_INVALID);
 });
 
-test('issue code 白名单与服务端契约同源（只读解析 types.ts）', () => {
-  const typesFile = path.join(REPO, 'server', 'src', 'agent', 'frontend-reconstruct', 'types.ts');
-  const source = fs.readFileSync(typesFile, 'utf8');
-  const matched = source.match(/FRONTEND_REPAIR_ISSUE_CODES\s*=\s*\[([\s\S]*?)\]\s*as\s*const/);
-  assert.ok(matched, 'types.ts 必须声明 FRONTEND_REPAIR_ISSUE_CODES');
-  const serverCodes = [...matched[1].matchAll(/'([A-Z_]+)'/g)].map((item) => item[1]);
-  assert.ok(serverCodes.length >= 9, JSON.stringify(serverCodes));
-  assert.deepStrictEqual([...REPAIR_ISSUE_CODES].sort(), [...serverCodes].sort());
+test('issue code 白名单与契约同源（只读 contracts/ + 生成模块）', () => {
+  const contractFile = path.join(REPO, 'contracts', 'frontend-reconstruct.v1.json');
+  const contract = JSON.parse(fs.readFileSync(contractFile, 'utf8'));
+  const contractCodes = contract.enums.repairIssueCodes;
+  assert.ok(Array.isArray(contractCodes) && contractCodes.length >= 9, JSON.stringify(contractCodes));
+  assert.deepStrictEqual([...REPAIR_ISSUE_CODES].sort(), [...contractCodes].sort());
   assert.deepStrictEqual([...REPAIR_ISSUE_CODES].sort(), [
     'CONSISTENCY_FAILED', 'DRAFT_PAGE_JSON_INVALID', 'DRAFT_SCHEMA_INVALID', 'DRAFT_STYLE_INVALID',
     'DRAFT_UNKNOWN_COMPONENT', 'DRAFT_UNKNOWN_DATA_PATH', 'DRAFT_UNKNOWN_EVENT', 'DRY_RUN_FAILED',
     'MINI_CHECK_FAILED', 'SLOT_ANCHOR_MISSING',
   ]);
+
+  // 服务端不再自己维护第二份：types.ts 只做类型投影，常量来自生成模块。
+  const typesSource = fs.readFileSync(
+    path.join(REPO, 'server', 'src', 'agent', 'frontend-reconstruct', 'types.ts'),
+    'utf8',
+  );
+  assert.match(typesSource, /from '\.\/contract\.generated'/);
+  assert.doesNotMatch(typesSource, /'CONSISTENCY_FAILED'/);
+  const generatedSource = fs.readFileSync(
+    path.join(REPO, 'server', 'src', 'agent', 'frontend-reconstruct', 'contract.generated.ts'),
+    'utf8',
+  );
+  for (const code of contractCodes) {
+    assert.ok(generatedSource.includes(code), '生成模块缺少 issue code：' + code);
+  }
 });
 
 test('同一份失败 Draft 反复返回也不会突破 2 轮预算', async () => {

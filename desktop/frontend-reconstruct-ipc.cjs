@@ -29,15 +29,23 @@ const { isTrustedSender } = require('./composer-ipc.cjs');
 const { createDesktopCredentialProvider } = require('./desktop-session.cjs');
 const defaultReconstruct = require('./frontend-reconstruct/index.cjs');
 
-const CONTRACT_VERSION = 'frontend-reconstruct.v1';
-const TARGET_PAGES = Object.freeze(['home', 'menu']);
+/** 契约既有常量（版本/目标页/上限/ID 正则）只从生成模块取，不再本地复制。 */
+const {
+  CONTRACT_VERSION,
+  TARGET_PAGES,
+  LIMITS: CONTRACT_LIMITS,
+  RUN_ID_PATTERN,
+  PROJECT_ID_PATTERN,
+  CONTROL_CHAR_NARROW_PATTERN: CONTROL_CHAR_PATTERN,
+} = require('./frontend-reconstruct/contract.generated.cjs');
+
 const IMAGE_MEDIA_TYPES = Object.freeze(['image/jpeg', 'image/png', 'image/webp']);
 
 const MAX_PAYLOAD_BYTES = 1024 * 1024;
 const MAX_IMAGE_BYTES = 400 * 1024;
 const MAX_IMAGE_BASE64_CHARS = Math.ceil((MAX_IMAGE_BYTES / 3) * 4) + 8;
-const MAX_UTTERANCE_CHARS = 500;
-const MAX_TARGET_PAGES = 2;
+const MAX_UTTERANCE_CHARS = CONTRACT_LIMITS.maxUtteranceChars;
+const MAX_TARGET_PAGES = CONTRACT_LIMITS.maxDraftPages;
 const MAX_DRAFT_BYTES = 64 * 1024;
 const MAX_RESPONSE_BYTES = 512 * 1024;
 const MAX_ATTEMPT_META_BYTES = 128 * 1024;
@@ -52,8 +60,6 @@ const MAX_CANDIDATE_FILES = 48;
 const MAX_CANDIDATE_FILE_BYTES = 128 * 1024;
 const MAX_CANDIDATE_TOTAL_BYTES = 512 * 1024;
 
-const RUN_ID_PATTERN = /^frun-[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
-const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const ATTEMPT_PATTERN = /^attempt-([1-9][0-9]{0,3})$/;
 const ATTEMPT_SCHEMA_VERSION = 'frontend-attempt.v1';
 const RUN_SCHEMA_VERSION = 'frontend-run.v1';
@@ -69,7 +75,6 @@ const IMAGE_DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const DRY_RUN_RESULT_FILE = 'frontend-dry-run.json';
 const RUNTIME_WRAPPER_FILE = 'frontend-runtime.json';
 const DRY_RUN_DIR_PATTERN = /^dry-run(?:-([1-9][0-9]?))?$/;
-const CONTROL_CHAR_PATTERN = /[\u0000-\u001f\u007f]/;
 const BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/;
 
 const CODES = Object.freeze({

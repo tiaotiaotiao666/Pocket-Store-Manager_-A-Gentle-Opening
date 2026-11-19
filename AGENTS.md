@@ -17,12 +17,15 @@ npm run mirror:sync     # 用 templates/base/ordering-base/1.0.0/src 覆盖同�
 npm run frontend:capabilities:check  # 校验图片驱动重构的能力快照与 Catalog/Base 同源
 npm run frontend:verify -- --attempt <attemptDir> [--runtime]  # 候选 dry-run（可选真实微信验证）
 node scripts/frontend-verify.cjs --attempt <attemptDir> [--runtime]  # 同上，直接入口
+node scripts/frontend-contract.cjs --check   # 前端重构契约漂移检查（改 contracts/ 后必须 --write 再生成）
 ```
 
 ## 图片驱动前端重构：用户私有候选链
 
 单张参考图 → 受控 `FrontendPack` 候选 → 私有 workspace/Registry overlay → Composer dry-run 与微信验证 → 用户采用/撤销。
-契约见 [`docs/frontend-reconstruct-contract.md`](docs/frontend-reconstruct-contract.md)，本地执行侧见
+契约**说明**见 [`docs/frontend-reconstruct-contract.md`](docs/frontend-reconstruct-contract.md)，契约**机器可读事实源**是
+[`contracts/frontend-reconstruct.v1.json`](contracts/frontend-reconstruct.v1.json)（生成 server/desktop 两份
+`contract.generated.*`，不要手改生成物，也不要另写同义常量）。本地执行侧见
 [`desktop/frontend-reconstruct/README.md`](desktop/frontend-reconstruct/README.md)，操作规范见
 [`.codeartsdoer/skills/README.md`](.codeartsdoer/skills/README.md)。
 

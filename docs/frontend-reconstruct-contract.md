@@ -1,8 +1,13 @@
 # 图片驱动前端重构契约（frontend-reconstruct.v1）
 
-> 状态：**P0 契约已冻结（2026-11-17）**。本文是唯一权威说明；`server/src/agent/frontend-reconstruct/`
-> 下的类型、校验器、错误码与状态机必须与本文一致。
-> 基线：`main@e2eb16ac2ce81f1975d8dccfc1a3c36ebda2d126`。
+> 状态：**P0 契约已冻结（2026-11-17）**。本文是唯一权威**说明**；机器可读的唯一**事实源**是
+> [`contracts/frontend-reconstruct.v1.json`](../contracts/frontend-reconstruct.v1.json)。
+> 枚举、上限、正则、键白名单与 `FRONTEND_*` 错误码一旦改动，必须改契约源并运行
+> `node scripts/frontend-contract.cjs --write` 重新生成服务端/桌面端两份 `contract.generated.*`；
+> 漂移由 `node scripts/frontend-contract.cjs --check` 与 `test/frontend-contract.test.cjs` 拦截。
+> 服务端 `server/src/agent/frontend-reconstruct/` 与桌面端 `desktop/frontend-reconstruct/`
+> 都只从生成模块取值，不再各自维护同义常量。
+> 基线：`main@7ad9434`（B6 收敛契约单一源）。
 > 端点 `POST /api/v1/agent/frontend-reconstruct` 的 Controller/Service 注册在 **P1**；P0 只冻结
 > 请求/响应、UiRequirement/VisualSpec、CapabilityCoverageReport、FrontendPackDraft DSL、
 > `FRONTEND_*` 错误码、状态机与 repair 上限，并先红后绿落测试。P0 **没有**修改既有端点、

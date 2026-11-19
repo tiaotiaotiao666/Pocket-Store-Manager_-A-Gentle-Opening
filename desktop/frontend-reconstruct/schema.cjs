@@ -19,117 +19,48 @@
  * 本文件不做任何 IO，也不依赖 Electron；`facts` 由调用方（P1 能力快照）注入。
  */
 
-const DRAFT_SCHEMA_VERSION = 'frontend-pack-draft.v1';
-const FACTS_VERSION = 'frontend-facts.v1';
-
-/** 首期仅支持 Base 的 home/menu；与 P0 契约一致。 */
-const TARGET_PAGES = Object.freeze(['home', 'menu']);
-
-/** DSL 只允许 5 类节点。 */
-const DRAFT_NODE_TYPES = Object.freeze(['component', 'slot', 'container', 'text', 'button']);
-
-/** Base `theme.tokens.json` 的七类颜色 token。 */
-const THEME_TOKEN_KEYS = Object.freeze([
-  'pageBackground',
-  'primaryColor',
-  'accentColor',
-  'textColor',
-  'tabBarBackground',
-  'tabBarColor',
-  'tabBarSelectedColor',
-]);
-
-const SIZE_STEPS = Object.freeze(['sm', 'md', 'lg']);
-
-const SIZE_KEYS = Object.freeze(['homeHero', 'productCard', 'carousel']);
-
-/** 与 P0 `FRONTEND_LIMITS` 中 Draft 相关部分逐项一致。 */
-const LIMITS = Object.freeze({
-  maxDraftPages: 2,
-  maxDraftNodesPerPage: 48,
-  maxDraftDepth: 4,
-  maxContainerChildren: 12,
-  maxComponentProps: 8,
-  maxComponentEvents: 8,
-  maxDraftStringChars: 120,
-  maxDisplayNameChars: 40,
-  maxButtonLabelChars: 16,
-  maxNavTitleChars: 20,
-  maxFactsEntries: 128,
-});
-
 /**
- * 本地结构化 issue code（与 P0 `FRONTEND_REPAIR_ISSUE_CODES` 对齐）。
- * P3 的 repair 只接受这些 code + 精确 DSL path，因此这里不产生自由文本错误码。
+ * 所有 DSL 常量都来自 `contracts/frontend-reconstruct.v1.json` 的生成模块；
+ * 本文件不再维护任何同义常量（白名单、上限、正则、错误码都只有一份）。
  */
-const DRAFT_ERROR_CODES = Object.freeze({
-  SCHEMA: 'DRAFT_SCHEMA_INVALID',
-  COMPONENT: 'DRAFT_UNKNOWN_COMPONENT',
-  EVENT: 'DRAFT_UNKNOWN_EVENT',
-  DATA_PATH: 'DRAFT_UNKNOWN_DATA_PATH',
-  STYLE: 'DRAFT_STYLE_INVALID',
-  PAGE_JSON: 'DRAFT_PAGE_JSON_INVALID',
-});
+const contract = require('./contract.generated.cjs');
 
-const COMPONENT_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
-const PROP_ID_PATTERN = /^[A-Za-z][A-Za-z0-9-]{0,63}$/;
-const EVENT_ID_PATTERN = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
-const ACTION_PATTERN = /^[a-z][a-z0-9-]*\.[A-Za-z][A-Za-z0-9]{0,31}$/;
-const DATA_PATH_PATTERN = /^[A-Za-z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*){1,7}$/;
-const PAGE_ID_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
-const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
-// eslint-disable-next-line no-control-regex
-const CONTROL_CHAR_PATTERN = /[\u0000-\u001f\u007f]/;
+const {
+  DRAFT_SCHEMA_VERSION,
+  FACTS_VERSION,
+  TARGET_PAGES,
+  DRAFT_NODE_TYPES,
+  THEME_TOKEN_KEYS,
+  SIZE_STEPS,
+  SIZE_KEYS,
+  LIMITS,
+  DRAFT_ERROR_CODES,
+  FORBIDDEN_TEXT_PATTERNS,
+  LAYOUT_STYLE_KEYS,
+  TEXT_STYLE_KEYS,
+  PAGE_JSON_KEYS,
+  DRAFT_KEYS,
+  DRAFT_PAGE_KEYS,
+  COMPONENT_KEYS,
+  SLOT_KEYS,
+  CONTAINER_KEYS,
+  TEXT_KEYS,
+  BUTTON_KEYS,
+  DATA_PROP_KEYS,
+  LITERAL_PROP_KEYS,
+  LOWERCASE_ID_PATTERN,
+  PROP_ID_PATTERN,
+  EVENT_ID_PATTERN,
+  ACTION_PATTERN,
+  DATA_PATH_PATTERN,
+  REGION_ID_PATTERN,
+  HEX_COLOR_PATTERN,
+  CONTROL_CHAR_PATTERN,
+} = contract;
 
-/**
- * 纯文本黑名单：模板/标签/脚本 scheme/URL/绝对路径/反斜杠/路径穿越。
- * 命中任意一条即拒绝，不做“清洗后继续”。
- */
-const FORBIDDEN_TEXT_PATTERNS = Object.freeze([
-  /[<>]/,
-  /\{\{|\}\}/,
-  /javascript:/i,
-  /vbscript:/i,
-  /data:/i,
-  /https?:\/\//i,
-  /^\/\//,
-  /^\//,
-  /\\/,
-  /\.\./,
-]);
-
-const LAYOUT_STYLE_KEYS = Object.freeze([
-  'direction',
-  'align',
-  'justify',
-  'gap',
-  'padding',
-  'radius',
-  'width',
-  'minHeight',
-  'backgroundColorToken',
-  'borderColorToken',
-]);
-
-const TEXT_STYLE_KEYS = Object.freeze(['size', 'weight', 'colorToken']);
-
-const PAGE_JSON_KEYS = Object.freeze([
-  'navigationBarTitleText',
-  'navigationBarBackgroundColor',
-  'navigationBarTextStyle',
-  'backgroundColor',
-  'enablePullDownRefresh',
-]);
-
-const DRAFT_KEYS = Object.freeze(['schemaVersion', 'displayName', 'pages']);
-const DRAFT_PAGE_KEYS = Object.freeze(['pageId', 'nodes', 'styles', 'pageJson']);
-const COMPONENT_KEYS = Object.freeze(['type', 'componentId', 'props', 'events']);
-const SLOT_KEYS = Object.freeze(['type', 'slotId']);
-const CONTAINER_KEYS = Object.freeze(['type', 'style', 'children']);
-const TEXT_KEYS = Object.freeze(['type', 'textToken', 'style']);
-const BUTTON_KEYS = Object.freeze(['type', 'label', 'action', 'style']);
-const DATA_PROP_KEYS = Object.freeze(['kind', 'dataPath']);
-const LITERAL_PROP_KEYS = Object.freeze(['kind', 'value']);
+/** 组件 ID / 页面 ID 在契约里分别叫 lowercaseId / regionId，保留本地语义化命名。 */
+const COMPONENT_ID_PATTERN = LOWERCASE_ID_PATTERN;
+const PAGE_ID_PATTERN = REGION_ID_PATTERN;
 
 class DraftValidationError extends Error {
   constructor(code, path, message) {

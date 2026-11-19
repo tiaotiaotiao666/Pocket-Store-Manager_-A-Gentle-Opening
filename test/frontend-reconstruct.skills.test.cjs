@@ -288,14 +288,20 @@ test('skill 引用的固定脚本/文档/测试入口都真实存在', () => {
 });
 
 test('skill 中的硬边界数字与真实契约常量一致', () => {
-  const types = fs.readFileSync(
+  // 唯一事实源是 contracts/frontend-reconstruct.v1.json（types.ts 只做类型投影）。
+  const contract = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'contracts', 'frontend-reconstruct.v1.json'), 'utf8'),
+  );
+  assert.strictEqual(contract.limits.maxBodyBytes, 2 * 1024 * 1024);
+  assert.strictEqual(contract.limits.maxUtteranceChars, 500);
+  assert.strictEqual(contract.limits.maxDraftNodesPerPage, 48);
+  assert.strictEqual(contract.limits.maxRepairRounds, 2);
+
+  const typesSource = fs.readFileSync(
     path.join(ROOT, 'server', 'src', 'agent', 'frontend-reconstruct', 'types.ts'),
     'utf8',
   );
-  assert.match(types, /maxBodyBytes: 2 \* 1024 \* 1024/);
-  assert.match(types, /maxUtteranceChars: 500/);
-  assert.match(types, /maxDraftNodesPerPage: 48/);
-  assert.match(types, /maxRepairRounds: 2/);
+  assert.doesNotMatch(typesSource, /maxBodyBytes: 2 \* 1024 \* 1024/);
 
   const imageValidator = fs.readFileSync(
     path.join(ROOT, 'server', 'src', 'agent', 'agent-image.validator.ts'),

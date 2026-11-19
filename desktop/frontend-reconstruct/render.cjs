@@ -23,18 +23,20 @@
  */
 
 const { sha256, normalizedText } = require('../../scripts/composer/digest.cjs');
+const { validateDraft } = require('./schema.cjs');
 const {
-  validateDraft,
   LIMITS,
   SIZE_STEPS,
   LAYOUT_STYLE_KEYS,
   TEXT_STYLE_KEYS,
-} = require('./schema.cjs');
+  PACK_PAGE_JSON_EMIT_KEYS,
+  PACK_ID_PATTERN,
+  VERSION_PATTERN,
+} = require('./contract.generated.cjs');
 
 const MANIFEST_SCHEMA_VERSION = 'frontend-pack.v1';
 const PREVIEW_KINDS = Object.freeze(['normal', 'empty', 'error', 'long']);
-const CANDIDATE_ID_PATTERN = /^[a-z][a-z0-9-]{1,63}$/;
-const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
+const CANDIDATE_ID_PATTERN = PACK_ID_PATTERN;
 
 /** Base 已声明插槽；超出的插槽 Composer 会拒绝，renderer 提前失败。 */
 const BASE_SLOT_IDS = Object.freeze(['home-hero', 'home-marketing', 'menu-aside', 'menu-hero']);
@@ -73,12 +75,8 @@ const JUSTIFY_VALUES = Object.freeze({
   around: 'space-around',
 });
 
-/** FrontendPack 页面 JSON 允许的键（与 `scripts/composer/schema.cjs` 白名单一致）。 */
-const PACK_PAGE_JSON_KEYS = Object.freeze([
-  'navigationBarTitleText',
-  'enablePullDownRefresh',
-  'backgroundColor',
-]);
+/** 渲染器只写契约 `keys.packPageJsonEmitted`（Composer 允许集合的子集）；不再本地维护。 */
+const PACK_PAGE_JSON_KEYS = PACK_PAGE_JSON_EMIT_KEYS;
 
 const FORBIDDEN_OUTPUT_PATTERNS = Object.freeze([
   { code: 'RENDER_SCRIPT_FORBIDDEN', pattern: /<(script|wxs|import|include)[\s>]/i },

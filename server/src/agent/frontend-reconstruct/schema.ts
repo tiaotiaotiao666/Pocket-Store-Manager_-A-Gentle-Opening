@@ -85,44 +85,40 @@ import type {
  * - 能力覆盖由服务端事实判定，模型无法伪造 `covered`。
  */
 
-const REQUEST_ID_PATTERN = /^fr-[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
-const RUN_ID_PATTERN = /^frun-[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/;
-const PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const PACK_ID_PATTERN = /^[a-z][a-z0-9-]{1,63}$/;
-const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
-const REGION_ID_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
-const LOWERCASE_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
-const PROP_ID_PATTERN = /^[A-Za-z][A-Za-z0-9-]{0,63}$/;
-const EVENT_ID_PATTERN = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
-const ACTION_PATTERN = /^[a-z][a-z0-9-]*\.[A-Za-z][A-Za-z0-9]{0,31}$/;
-const DATA_PATH_PATTERN = /^[A-Za-z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*){1,7}$/;
-const CAPABILITY_PATTERN = /^(page|component|slot|action|data):[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const QUESTION_FIELD_PATTERN = /^[a-z][A-Za-z0-9.]{0,63}$/;
-const PROVIDER_PATTERN = /^[a-z][a-z0-9-]{0,39}$/;
-const MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/;
-const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
-// C0（含 DEL）与 C1 控制字符都禁止；U+0080–U+009F 不能被当成普通文本带进 DSL/响应。
-// eslint-disable-next-line no-control-regex
-const CONTROL_CHAR_PATTERN = /[\u0000-\u001f\u007f-\u009f]/;
-/** inferredInteractions 只描述可观察交互，不得携带动作/路由能力名。 */
-const INFERRED_FORBIDDEN_TOKENS: readonly string[] = Object.freeze([
-  'action:',
-  'page:',
-  'route:',
-  '/pages/',
-]);
-const FORBIDDEN_TEXT_PATTERNS: ReadonlyArray<RegExp> = [
-  /[<>]/,
-  /\{\{|\}\}/,
-  /javascript:/i,
-  /vbscript:/i,
-  /data:/i,
-  /https?:\/\//i,
-  /^\/\//,
-  /^\//,
-  /\\/,
-  /\.\./,
-];
+// 标识符正则、文本黑名单与键白名单只允许来自契约生成模块（与桌面执行侧同源）。
+import {
+  ACTION_PATTERN,
+  CAPABILITY_PATTERN,
+  CONTROL_CHAR_PATTERN,
+  DATA_PATH_PATTERN,
+  EVENT_ID_PATTERN,
+  FORBIDDEN_TEXT_PATTERNS,
+  FRONTEND_BUTTON_KEYS as BUTTON_KEYS,
+  FRONTEND_COMPONENT_KEYS as COMPONENT_KEYS,
+  FRONTEND_CONTAINER_KEYS as CONTAINER_KEYS,
+  FRONTEND_DATA_PROP_KEYS as DATA_PROP_KEYS,
+  FRONTEND_DRAFT_KEYS as DRAFT_KEYS,
+  FRONTEND_DRAFT_PAGE_JSON_KEYS as PAGE_JSON_KEYS,
+  FRONTEND_DRAFT_PAGE_KEYS as DRAFT_PAGE_KEYS,
+  FRONTEND_LAYOUT_STYLE_KEYS as LAYOUT_STYLE_KEYS,
+  FRONTEND_LITERAL_PROP_KEYS as LITERAL_PROP_KEYS,
+  FRONTEND_SLOT_KEYS as SLOT_KEYS,
+  FRONTEND_TEXT_KEYS as TEXT_KEYS,
+  FRONTEND_TEXT_STYLE_KEYS as TEXT_STYLE_KEYS,
+  HEX_COLOR_PATTERN,
+  INFERRED_FORBIDDEN_TOKENS,
+  LOWERCASE_ID_PATTERN,
+  MODEL_PATTERN,
+  PACK_ID_PATTERN,
+  PROJECT_ID_PATTERN,
+  PROP_ID_PATTERN,
+  PROVIDER_PATTERN,
+  QUESTION_FIELD_PATTERN,
+  REGION_ID_PATTERN,
+  REQUEST_ID_PATTERN,
+  RUN_ID_PATTERN,
+  VERSION_PATTERN,
+} from './contract.generated';
 
 /** 0–1 rect 的浮点容差。 */
 const RECT_EPSILON = 1e-6;
@@ -1218,36 +1214,6 @@ export function validateCapabilityCoverageReport(
 // ---------------------------------------------------------------------------
 // FrontendPackDraft DSL
 // ---------------------------------------------------------------------------
-
-const DRAFT_KEYS = ['schemaVersion', 'displayName', 'pages'] as const;
-const DRAFT_PAGE_KEYS = ['pageId', 'nodes', 'styles', 'pageJson'] as const;
-const COMPONENT_KEYS = ['type', 'componentId', 'props', 'events'] as const;
-const SLOT_KEYS = ['type', 'slotId'] as const;
-const CONTAINER_KEYS = ['type', 'style', 'children'] as const;
-const TEXT_KEYS = ['type', 'textToken', 'style'] as const;
-const BUTTON_KEYS = ['type', 'label', 'action', 'style'] as const;
-const DATA_PROP_KEYS = ['kind', 'dataPath'] as const;
-const LITERAL_PROP_KEYS = ['kind', 'value'] as const;
-const LAYOUT_STYLE_KEYS = [
-  'direction',
-  'align',
-  'justify',
-  'gap',
-  'padding',
-  'radius',
-  'width',
-  'minHeight',
-  'backgroundColorToken',
-  'borderColorToken',
-] as const;
-const TEXT_STYLE_KEYS = ['size', 'weight', 'colorToken'] as const;
-const PAGE_JSON_KEYS = [
-  'navigationBarTitleText',
-  'navigationBarBackgroundColor',
-  'navigationBarTextStyle',
-  'backgroundColor',
-  'enablePullDownRefresh',
-] as const;
 
 interface DraftParseContext {
   facts: FrontendFacts;

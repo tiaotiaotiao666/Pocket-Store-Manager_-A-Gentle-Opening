@@ -1,0 +1,337 @@
+{
+  "$comment": [
+    "frontend-reconstruct.v1 契约 fixture（单一组合法/非法/边界用例）。",
+    "同一批 Draft 会被服务端（server/src/agent/frontend-reconstruct/schema.ts）与桌面端",
+    "(desktop/frontend-reconstruct/schema.cjs) 各跑一次，两侧结论必须一致：",
+    "test/frontend-contract.test.cjs（桌面侧 + 漂移检查）与",
+    "server/test/frontend-reconstruct.parity.test.ts（双侧双跑）。",
+    "expect 记录的就是当前语义；改契约时两侧必须同步变化，任何单侧放宽都会被 parity 测试打回。"
+  ],
+  "version": "frontend-reconstruct.v1",
+  "factsSnapshot": "server/src/agent/frontend-reconstruct/capabilities.snapshot.json",
+  "baseDraft": {
+    "schemaVersion": "frontend-pack-draft.v1",
+    "displayName": "契约基线候选",
+    "pages": [
+      {
+        "pageId": "home",
+        "nodes": [
+          {
+            "type": "component",
+            "componentId": "store-header",
+            "props": {
+              "storeName": { "kind": "data", "dataPath": "store.name" }
+            },
+            "events": {}
+          },
+          { "type": "slot", "slotId": "home-hero" },
+          {
+            "type": "container",
+            "style": {
+              "direction": "column",
+              "gap": "md",
+              "padding": "md",
+              "backgroundColorToken": "pageBackground"
+            },
+            "children": [
+              {
+                "type": "text",
+                "textToken": "store.businessHours",
+                "style": { "size": "md", "weight": 500, "colorToken": "textColor" }
+              },
+              { "type": "button", "label": "开始点餐", "action": "home.goMenu", "style": { "size": "md" } }
+            ]
+          }
+        ],
+        "styles": [],
+        "pageJson": { "navigationBarTitleText": "首页", "enablePullDownRefresh": false }
+      }
+    ]
+  },
+  "cases": [
+    { "name": "valid.home", "expect": { "ok": true } },
+    {
+      "name": "valid.home-menu",
+      "expect": { "ok": true },
+      "ops": [
+        {
+          "op": "addPage",
+          "page": {
+            "pageId": "menu",
+            "nodes": [{ "type": "slot", "slotId": "menu-hero" }],
+            "styles": [],
+            "pageJson": {}
+          }
+        }
+      ]
+    },
+    {
+      "name": "valid.boundary-nodes-48",
+      "expect": { "ok": true },
+      "ops": [
+        { "op": "repeatNode", "count": 48, "node": { "type": "text", "textToken": "store.name" } }
+      ]
+    },
+    {
+      "name": "valid.boundary-depth-4",
+      "expect": { "ok": true },
+      "ops": [{ "op": "nestDepth", "depth": 4 }]
+    },
+    {
+      "name": "valid.boundary-children-12",
+      "expect": { "ok": true },
+      "ops": [{ "op": "repeatChildren", "count": 12 }]
+    },
+    {
+      "name": "valid.boundary-string-120",
+      "expect": { "ok": true },
+      "ops": [{ "op": "setStringProp", "chars": 120 }]
+    },
+    {
+      "name": "valid.boundary-label-16",
+      "expect": { "ok": true },
+      "ops": [
+        { "op": "set", "path": ["pages", 0, "nodes", 2, "children", 1, "label"], "value": "开始点餐开始点餐开始点餐开始点餐" }
+      ]
+    },
+    {
+      "name": "valid.boundary-navtitle-20",
+      "expect": { "ok": true },
+      "ops": [
+        {
+          "op": "set",
+          "path": ["pages", 0, "pageJson", "navigationBarTitleText"],
+          "value": "一二三四五六七八九十一二三四五六七八九十"
+        }
+      ]
+    },
+    {
+      "name": "invalid.extra-root-key",
+      "expect": { "ok": false, "path": "$.styles" },
+      "ops": [{ "op": "set", "path": ["styles"], "value": [] }]
+    },
+    {
+      "name": "invalid.bad-schema-version",
+      "expect": { "ok": false, "path": "$.schemaVersion" },
+      "ops": [{ "op": "set", "path": ["schemaVersion"], "value": "frontend-pack-draft.v2" }]
+    },
+    {
+      "name": "invalid.empty-pages",
+      "expect": { "ok": false, "path": "$.pages" },
+      "ops": [{ "op": "set", "path": ["pages"], "value": [] }]
+    },
+    {
+      "name": "invalid.duplicate-page",
+      "expect": { "ok": false, "path": "$.pages[1].pageId" },
+      "ops": [
+        {
+          "op": "addPage",
+          "page": {
+            "pageId": "home",
+            "nodes": [{ "type": "slot", "slotId": "home-hero" }],
+            "styles": [],
+            "pageJson": {}
+          }
+        }
+      ]
+    },
+    {
+      "name": "invalid.unknown-page-id",
+      "expect": { "ok": false, "path": "$.pages[0].pageId" },
+      "ops": [{ "op": "set", "path": ["pages", 0, "pageId"], "value": "cart" }]
+    },
+    {
+      "name": "invalid.raw-node",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[0].type" },
+      "ops": [
+        {
+          "op": "nodes",
+          "nodes": [{ "type": "raw", "wxml": "<view bindtap=\"evil\">{{store.name}}</view>" }]
+        }
+      ]
+    },
+    {
+      "name": "invalid.unknown-node-key",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[0].wxml" },
+      "ops": [{ "op": "set", "path": ["pages", 0, "nodes", 0, "wxml"], "value": "<view/>" }]
+    },
+    {
+      "name": "invalid.unknown-component",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[0].componentId" },
+      "ops": [{ "op": "set", "path": ["pages", 0, "nodes", 0, "componentId"], "value": "evil-widget" }]
+    },
+    {
+      "name": "invalid.unknown-event",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[0].events.nuke" },
+      "ops": [
+        {
+          "op": "set",
+          "path": ["pages", 0, "nodes", 0, "events"],
+          "value": { "nuke": "home.onModeChange" }
+        }
+      ]
+    },
+    {
+      "name": "invalid.cross-page-action",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[0].events.change" },
+      "ops": [
+        {
+          "op": "set",
+          "path": ["pages", 0, "nodes", 0, "events"],
+          "value": { "change": "menu.onModeChange" }
+        }
+      ]
+    },
+    {
+      "name": "invalid.bad-action-format",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[2].children[1].action" },
+      "ops": [
+        { "op": "set", "path": ["pages", 0, "nodes", 2, "children", 1, "action"], "value": "goMenu" }
+      ]
+    },
+    {
+      "name": "invalid.unknown-action",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[2].children[1].action" },
+      "ops": [
+        { "op": "set", "path": ["pages", 0, "nodes", 2, "children", 1, "action"], "value": "home.goNowhere" }
+      ]
+    },
+    {
+      "name": "invalid.bad-data-path",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[0].props.storeName.dataPath" },
+      "ops": [
+        {
+          "op": "set",
+          "path": ["pages", 0, "nodes", 0, "props", "storeName", "dataPath"],
+          "value": "store.__evil"
+        }
+      ]
+    },
+    {
+      "name": "invalid.unknown-prop",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[0].props.evil" },
+      "ops": [
+        {
+          "op": "set",
+          "path": ["pages", 0, "nodes", 0, "props", "evil"],
+          "value": { "kind": "literal", "value": "x" }
+        }
+      ]
+    },
+    {
+      "name": "invalid.style-unknown-key",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[2].style.position" },
+      "ops": [{ "op": "set", "path": ["pages", 0, "nodes", 2, "style", "position"], "value": "fixed" }]
+    },
+    {
+      "name": "invalid.bad-theme-token",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[2].style.backgroundColorToken" },
+      "ops": [
+        {
+          "op": "set",
+          "path": ["pages", 0, "nodes", 2, "style", "backgroundColorToken"],
+          "value": "pageBackgroundEvil"
+        }
+      ]
+    },
+    {
+      "name": "invalid.pagejson-unknown-key",
+      "expect": { "ok": false, "path": "$.pages[0].pageJson.usingComponents" },
+      "ops": [
+        {
+          "op": "set",
+          "path": ["pages", 0, "pageJson", "usingComponents"],
+          "value": { "evil": "/tmp/evil" }
+        }
+      ]
+    },
+    {
+      "name": "invalid.pagejson-bad-color",
+      "expect": { "ok": false, "path": "$.pages[0].pageJson.backgroundColor" },
+      "ops": [{ "op": "set", "path": ["pages", 0, "pageJson", "backgroundColor"], "value": "#FFF" }]
+    },
+    {
+      "name": "invalid.text-c1-char",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[2].children[0].textToken" },
+      "ops": [
+        {
+          "op": "set",
+          "path": ["pages", 0, "nodes", 2, "children", 0, "textToken"],
+          "value": "store.businessHours\u0085"
+        }
+      ]
+    },
+    {
+      "name": "invalid.text-backslash",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[2].children[0].textToken" },
+      "ops": [
+        { "op": "set", "path": ["pages", 0, "nodes", 2, "children", 0, "textToken"], "value": "store\\name" }
+      ]
+    },
+    {
+      "name": "invalid.display-name-41",
+      "expect": { "ok": false, "path": "$.displayName" },
+      "ops": [{ "op": "set", "path": ["displayName"], "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }]
+    },
+    {
+      "name": "invalid.nodes-49",
+      "expect": { "ok": false, "path": "$.pages[0].nodes" },
+      "ops": [
+        { "op": "repeatNode", "count": 49, "node": { "type": "text", "textToken": "store.name" } }
+      ]
+    },
+    {
+      "name": "invalid.depth-too-deep",
+      "expect": { "ok": false },
+      "ops": [{ "op": "nestDepth", "depth": 6 }]
+    },
+    {
+      "name": "invalid.children-13",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[2].children" },
+      "ops": [{ "op": "repeatChildren", "count": 13 }]
+    },
+    {
+      "name": "invalid.label-17",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[2].children[1].label" },
+      "ops": [
+        { "op": "set", "path": ["pages", 0, "nodes", 2, "children", 1, "label"], "value": "开始点餐开始点餐开始点餐开始点餐开" }
+      ]
+    },
+    {
+      "name": "invalid.navtitle-21",
+      "expect": { "ok": false, "path": "$.pages[0].pageJson.navigationBarTitleText" },
+      "ops": [
+        {
+          "op": "set",
+          "path": ["pages", 0, "pageJson", "navigationBarTitleText"],
+          "value": "一二三四五六七八九十一二三四五六七八九十一"
+        }
+      ]
+    },
+    {
+      "name": "invalid.string-121",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[0].props.storeName.value" },
+      "ops": [{ "op": "setStringProp", "chars": 121 }]
+    },
+    {
+      "name": "invalid.empty-nodes",
+      "expect": { "ok": false, "path": "$.pages[0].nodes" },
+      "ops": [{ "op": "nodes", "nodes": [] }]
+    },
+    {
+      "name": "invalid.slot-unknown",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[1].slotId" },
+      "ops": [{ "op": "set", "path": ["pages", 0, "nodes", 1, "slotId"], "value": "home-evil" }]
+    },
+    {
+      "name": "invalid.empty-container",
+      "expect": { "ok": false, "path": "$.pages[0].nodes[2].children" },
+      "ops": [{ "op": "set", "path": ["pages", 0, "nodes", 2, "children"], "value": [] }]
+    },
+    {
+      "name": "invalid.page-styles-nonempty",
+      "expect": { "ok": false, "path": "$.pages[0].styles" },
+      "ops": [{ "op": "set", "path": ["pages", 0, "styles"], "value": ["position:fixed;top:0"] }]
+    }
+  ]
+}

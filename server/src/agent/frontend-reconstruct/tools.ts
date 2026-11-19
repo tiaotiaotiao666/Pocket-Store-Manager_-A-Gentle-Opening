@@ -22,6 +22,7 @@ import {
   projectFrontendCapabilities,
 } from './capabilities';
 import { FrontendReconstructError, frontendError, sanitizeFrontendLogDetails } from './errors';
+import { CAPABILITY_PATTERN, FRONTEND_DRAFT_ERROR_CODES } from './contract.generated';
 import type { FrontendPageFactsMap } from './page-facts';
 import {
   assertFrontendPlannedConsistency,
@@ -60,8 +61,7 @@ export const REPAIR_FRONTEND_DRAFT_TOOL = 'repair_frontend_draft';
 
 export const FRONTEND_RECONSTRUCT_TOOL_NAMES = FRONTEND_TOOL_NAMES;
 
-const CAPABILITY_ID_PATTERN_SOURCE = '^(page|component|slot|action|data):[A-Za-z0-9][A-Za-z0-9._-]{0,63}$';
-const CAPABILITY_ID_PATTERN = new RegExp(CAPABILITY_ID_PATTERN_SOURCE);
+const CAPABILITY_ID_PATTERN = CAPABILITY_PATTERN;
 const MAX_PATCH_VALUE_CHARS = 2_000;
 const MAX_PATCH_BYTES = 4 * 1024;
 const MAX_SAFE_PROPERTY_CHARS = 200;
@@ -158,14 +158,14 @@ function toToolError(
 /** 把一次门禁错误映射成最小结构化 issue（path 必须能用于 repair 补丁定位）。 */
 function repairIssueCodeFromError(error: FrontendReconstructError, path: string): FrontendRepairIssueCode {
   if (error.code === 'FRONTEND_DRAFT_INVALID') {
-    if (/\.componentId$/.test(path)) return 'DRAFT_UNKNOWN_COMPONENT';
-    if (/\.(action)$/.test(path) || /\.events\.[A-Za-z]/.test(path)) return 'DRAFT_UNKNOWN_EVENT';
-    if (/\.(textToken|dataPath)$/.test(path)) return 'DRAFT_UNKNOWN_DATA_PATH';
-    if (/\.style(\.|$)/.test(path)) return 'DRAFT_STYLE_INVALID';
-    if (/\.pageJson(\.|$)/.test(path)) return 'DRAFT_PAGE_JSON_INVALID';
-    return 'DRAFT_SCHEMA_INVALID';
+    if (/\.componentId$/.test(path)) return FRONTEND_DRAFT_ERROR_CODES.component;
+    if (/\.(action)$/.test(path) || /\.events\.[A-Za-z]/.test(path)) return FRONTEND_DRAFT_ERROR_CODES.event;
+    if (/\.(textToken|dataPath)$/.test(path)) return FRONTEND_DRAFT_ERROR_CODES.dataPath;
+    if (/\.style(\.|$)/.test(path)) return FRONTEND_DRAFT_ERROR_CODES.style;
+    if (/\.pageJson(\.|$)/.test(path)) return FRONTEND_DRAFT_ERROR_CODES.pageJson;
+    return FRONTEND_DRAFT_ERROR_CODES.schema;
   }
-  return 'DRAFT_SCHEMA_INVALID';
+  return FRONTEND_DRAFT_ERROR_CODES.schema;
 }
 
 export function gateIssuesFromError(error: unknown): FrontendRepairIssue[] {
@@ -175,7 +175,7 @@ export function gateIssuesFromError(error: unknown): FrontendRepairIssue[] {
       : '$.draft';
     return [{ path: rawPath, code: repairIssueCodeFromError(error, rawPath) }];
   }
-  return [{ path: '$.draft', code: 'DRAFT_SCHEMA_INVALID' }];
+  return [{ path: '$.draft', code: FRONTEND_DRAFT_ERROR_CODES.schema }];
 }
 
 function issueKey(issue: FrontendRepairIssue): string {
@@ -367,7 +367,7 @@ export const CHECK_FRONTEND_COVERAGE_SCHEMA: JsonSchema = {
     requestedCapabilities: {
       type: 'array',
       maxItems: 32,
-      items: { type: 'string', pattern: CAPABILITY_ID_PATTERN_SOURCE },
+      items: { type: 'string', pattern: CAPABILITY_PATTERN.source },
       description:
         '模型认为必需的能力 id（page:/component:/slot:/action:/data:）。服务端据此判定缺失；不存在的能力会使覆盖结论为 rejected。',
     },

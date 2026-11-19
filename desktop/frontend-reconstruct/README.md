@@ -5,6 +5,13 @@
 再完成 dry-run、最多两轮受控修复与微信运行时验证包装。
 桌面主进程/UI（IPC、preload、React）在 P4 接入，本目录不依赖 Electron API。
 
+> 契约常量不在这里手写：枚举/上限/正则/键白名单的唯一事实源是
+> [`contracts/frontend-reconstruct.v1.json`](../../contracts/frontend-reconstruct.v1.json)，
+> 本目录的 `contract.generated.cjs` 由 `node scripts/frontend-contract.cjs --write` 生成。
+> 改契约后必须重新生成；`node scripts/frontend-contract.cjs --check` 与
+> `test/frontend-contract.test.cjs` 会拦截漂移，服务端对应物是
+> `server/src/agent/frontend-reconstruct/contract.generated.ts`。
+
 ## 模块
 
 | 文件 | 职责 | 是否 IO |

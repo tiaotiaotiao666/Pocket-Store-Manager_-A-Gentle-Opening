@@ -77,6 +77,12 @@ $RECYCLE.BIN/
 # 注意：generated-projects-test/ 是仓库内回归样例，不受此规则影响，继续提交
 generated-projects/
 
+# ---------- 验收走查的临时生成工程 ----------
+# 只保留已入库的回归样本；走查/试跑新产出的工程目录留在本机，不入库
+generated-projects-test/a2-*/
+generated-projects-test/a3-*/
+generated-projects-test/c1-*/
+
 # ---------- 本机环境缓存 ----------
 # 本地 WSL / 依赖快照，供一键恢复，不入库
 .local-env-cache/
@@ -98,6 +104,16 @@ generated-projects/
 # ---------- 本机权限修复备份 ----------
 # diagnose-windows-sandbox-acl 生成的 ACL 备份，只属于本机，不入库
 .dsh-acl-recovery/
+
+# ---------- Agent 过程产物 ----------
+# 计划/走查草稿、临时导出与本地 dev 数据只属于本机；需要长期留存的结论写进 docs/
+.arts/
+.dev-data/
+# 子代理信箱与任务流水是运行时状态（每轮都在长），不入库；架构摘要仍提交
+.agent-teams/**/inbox/
+.agent-teams/**/team.json
+# 依赖修补时的临时备份
+package.json.bak-*
 
 # ---------- 本地历史归档 ----------
 # 大体积二进制归档不进入仓库（本地文件保留）

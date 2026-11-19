@@ -16,9 +16,10 @@
 
 import { FrontendReconstructError, frontendError } from './errors';
 import { FRONTEND_CAPABILITIES_SNAPSHOT } from './capabilities.snapshot';
+import { ACTION_PATTERN, DATA_PATH_PATTERN, FRONTEND_PAGE_FACTS_VERSION, LOWERCASE_ID_PATTERN } from './contract.generated';
 import { FRONTEND_LIMITS, FRONTEND_TARGET_PAGES } from './types';
 
-export const FRONTEND_PAGE_FACTS_VERSION = 'frontend-page-facts.v1';
+export { FRONTEND_PAGE_FACTS_VERSION };
 
 export interface FrontendPageFacts {
   components: string[];
@@ -35,10 +36,6 @@ export interface FrontendFactsBundle {
   pages: FrontendPageFactsMap;
   keyActions: FrontendKeyActionsMap;
 }
-
-const LOWERCASE_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
-const DATA_PATH_PATTERN = /^[A-Za-z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*){1,7}$/;
-const ACTION_PATTERN = /^[a-z][a-z0-9-]*\.[A-Za-z][A-Za-z0-9]{0,31}$/;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);

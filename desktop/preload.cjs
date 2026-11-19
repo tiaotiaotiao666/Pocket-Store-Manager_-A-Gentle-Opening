@@ -65,6 +65,7 @@ contextBridge.exposeInMainWorld('smartStore', Object.freeze({
   projectReveal: (payload) => ipcRenderer.invoke('project:reveal', payload),
   pickImages: (payload) => ipcRenderer.invoke('project:pick-images', payload),
   attachImages: (payload) => ipcRenderer.invoke('project:attach-images', payload),
+  saveGeneratedImage: (payload) => ipcRenderer.invoke('project:save-generated-image', payload),
   readAsset: (payload) => ipcRenderer.invoke('project:read-asset', payload),
   removeAsset: (payload) => ipcRenderer.invoke('project:remove-asset', payload),
   settingsLoad: () => ipcRenderer.invoke('settings:load'),

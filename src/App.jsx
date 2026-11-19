@@ -99,6 +99,13 @@ import {
   shouldAutoGenerateImage,
   IMAGE_GENERATION_BLOCKED_REASON,
 } from './services/imageCapability.js';
+// G1：真实 AI 生图（第三方服务，经本地后端适配）。
+import {
+  fetchPosterStatus,
+  fetchPosterPrompt,
+  generatePoster,
+  describePosterError,
+} from './services/posterService.js';
 
 import AppShell from './components/layout/AppShell.jsx';
 import ConfirmDialog from './components/common/ConfirmDialog.jsx';
@@ -190,7 +197,7 @@ function fulfillmentLabel(fulfillment) {
 
 const COMPOSER_HINTS = {
   [PHASES.ONBOARDING]: '名字不超过 48 个字符，之后随时可以修改。',
-  [PHASES.PROMPT_STUDIO]: '这一步只记录视觉偏好，不生成图片；下一步是海报素材（可选），可上传也可跳过。',
+  [PHASES.PROMPT_STUDIO]: '这一步只记录视觉偏好，不生成图片；下一步是海报素材（可选），可以真实生成一张、上传自己的图，也可以跳过。',
   [PHASES.IMAGE_REVIEW]: '满意后点下方「效果满意，去部署」。',
 };
 
@@ -383,8 +390,8 @@ function buildPanelCards(state, tips, imageBusy, previewViewModel) {
         tone: 'accent',
         title: '视觉偏好（不生成图片）',
         body: state.visual.prompt
-          ? '当前版本没有接入生图服务，这一步只记录你的视觉偏好；下一步可以上传一张海报素材，也可以直接跳过。'
-          : '当前版本没有接入生图服务：先写下想要的视觉偏好，下一步可以上传海报素材或直接跳过。',
+          ? '这一步只记录你的视觉偏好；下一步是海报素材，可以真实生成一张、上传自己的图，也可以跳过。'
+          : '先写下想要的视觉偏好；下一步是海报素材，可以真实生成一张、上传自己的图，也可以跳过。',
       });
       if (tips.length) {
         cards.push({
@@ -507,6 +514,19 @@ export default function App() {
   const [imageBusy, setImageBusy] = useState(false);
   // UX0b：海报素材落盘/回读进行中（避免重复上传）。
   const [posterBusy, setPosterBusy] = useState(false);
+  // G1：真实 AI 生图（第三方生图服务）。默认只生成 1 张以控制费用。
+  const [posterGen, setPosterGen] = useState({
+    status: 'idle',
+    configured: false,
+    model: '',
+    disclosure: '',
+    prompt: '',
+    busy: false,
+    error: '',
+    success: null,
+  });
+  const posterGenSeq = useRef(0);
+  const posterPromptLoaded = useRef('');
   const [draftEditorOpen, setDraftEditorOpen] = useState(false);
   const [thumbnails, setThumbnails] = useState({});
   const [storeImageBusy, setStoreImageBusy] = useState(false);
@@ -1219,7 +1239,7 @@ export default function App() {
       // UX0b：按已保存的资产 ID 回读预览；读取失败要明确提示，不静默变成"已选好"。
       const asset = await service.readAsset(projectId, posterAssetId, 720).catch(() => null);
       if (asset && asset.status === 'ok' && asset.asset && asset.asset.dataUrl) {
-        dispatch({ type: 'SET_POSTER_PREVIEW', dataUrl: asset.asset.dataUrl });
+        dispatch({ type: 'SET_POSTER_PREVIEW', dataUrl: asset.asset.dataUrl, provider: asset.asset.source });
       } else {
         setNotice('海报素材预览读取失败，可以重新选择图片或跳过这一步');
       }
@@ -2625,6 +2645,144 @@ export default function App() {
     }
   };
 
+  // G1：海报阶段的真实生图提示词与能力探测。
+  // 只读服务端状态，不触发任何上游调用；提示词由服务端按已确认资料生成一次，用户可改。
+  useEffect(() => {
+    if (state.phase !== PHASES.IMAGE_REVIEW) return undefined;
+    const baseUrl = state.settings.config?.apiBaseUrl;
+    const styleLabel = (STYLE_PRESETS.find((item) => item.id === state.visual.styleId) ?? STYLE_PRESETS[0])?.name || '';
+    const storeName = state.store.name || state.agentDraft.storeName || '';
+    const promptKey = [storeName, state.agentDraft.category, styleLabel, state.agentDraft.dishes.length].join('|');
+    let alive = true;
+    (async () => {
+      const status = await fetchPosterStatus(baseUrl).catch(() => null);
+      if (!alive) return;
+      setPosterGen((previous) => ({
+        ...previous,
+        status: !status
+          ? 'unavailable'
+          : (status.ok ? (status.configured ? 'ready' : 'unconfigured') : 'unavailable'),
+        configured: Boolean(status && status.ok && status.configured),
+        provider: status && status.ok ? status.provider : '',
+        model: status && status.ok ? status.model : '',
+        disclosure: status && status.ok ? status.disclosure : '',
+      }));
+      if (!status || !status.ok || !status.configured) return;
+      if (posterPromptLoaded.current === promptKey) return;
+      const built = await fetchPosterPrompt(baseUrl, {
+        storeName,
+        storeType: state.agentDraft.category || state.store.type,
+        styleLabel,
+        dishes: state.agentDraft.dishes.map((dish) => dish.name),
+      }).catch(() => null);
+      if (!alive || !built || !built.ok) return;
+      posterPromptLoaded.current = promptKey;
+      setPosterGen((previous) => (previous.prompt ? previous : { ...previous, prompt: built.prompt }));
+    })();
+    return () => { alive = false; };
+  }, [
+    state.phase,
+    state.settings.config?.apiBaseUrl,
+    state.store.name,
+    state.store.type,
+    state.agentDraft.storeName,
+    state.agentDraft.category,
+    state.agentDraft.dishes,
+    state.visual.styleId,
+  ]);
+
+  /**
+   * G1：真实生成一张海报。
+   * - 只有服务端确认返回合法 PNG，才会落盘、才会显示「AI 生成成功」；
+   * - 落盘走主进程受控资产链路（saveGeneratedImage），来源记 ai-generated；
+   * - 晚到的响应不覆盖更新的选择：每次请求带自增序号，只有最新那次能写状态。
+   */
+  const handleGeneratePoster = async () => {
+    if (posterGen.busy || posterBusy) return;
+    const service = projectServiceRef.current;
+    const projectId = state.project.activeId;
+    if (service.mode !== 'desktop') {
+      setNotice('浏览器模式不会把图片写进项目，请在桌面应用中生成海报');
+      return;
+    }
+    if (!projectId) {
+      setNotice('请先在工作台新建或打开项目，再生成海报');
+      return;
+    }
+    const prompt = String(posterGen.prompt || '').trim();
+    if (!prompt) {
+      setPosterGen((previous) => ({ ...previous, error: '请先写一段海报提示词' }));
+      return;
+    }
+    posterGenSeq.current += 1;
+    const seq = posterGenSeq.current;
+    setPosterGen((previous) => ({ ...previous, busy: true, error: '', success: null }));
+    try {
+      const result = await generatePoster(state.settings.config?.apiBaseUrl, { prompt });
+      if (seq !== posterGenSeq.current) return;
+      if (!result.ok) {
+        setPosterGen((previous) => ({ ...previous, busy: false, error: describePosterError(result.code, result.message) }));
+        return;
+      }
+      const saved = await service.saveGeneratedImage(projectId, {
+        dataUrl: result.dataUrl,
+        source: 'ai-generated',
+        provider: result.provider,
+        model: result.model,
+      });
+      if (seq !== posterGenSeq.current) return;
+      if (saved.status !== 'ok' || !saved.asset || !saved.asset.assetId) {
+        setPosterGen((previous) => ({
+          ...previous,
+          busy: false,
+          error: saved.message || '图片已生成，但保存到项目失败，请重试',
+        }));
+        return;
+      }
+      const preview = await service.readAsset(projectId, saved.asset.assetId, 720).catch(() => null);
+      if (seq !== posterGenSeq.current) return;
+      if (!preview || preview.status !== 'ok' || !preview.asset || !preview.asset.dataUrl) {
+        setPosterGen((previous) => ({ ...previous, busy: false, error: '图片已保存，但预览读取失败，请重新生成' }));
+        return;
+      }
+      // 资产元数据必须同步进渲染进程的项目文档：否则下一次自动保存会把主进程刚写的
+      // assets.images 覆盖成空列表，导出时会报 MEDIA_ASSET_NOT_IN_PROJECT。
+      dispatch({ type: 'ADD_PROJECT_IMAGES', images: [saved.asset] });
+      dispatch({
+        type: 'SET_POSTER_ASSET',
+        assetId: saved.asset.assetId,
+        meta: {
+          provider: 'ai-generated',
+          width: saved.asset.width,
+          height: saved.asset.height,
+          model: result.model,
+          note: '这张图由第三方生图服务真实生成',
+        },
+        preview: preview.asset.dataUrl,
+      });
+      setPosterGen((previous) => ({
+        ...previous,
+        busy: false,
+        error: '',
+        success: {
+          width: result.width,
+          height: result.height,
+          bytes: result.bytes,
+          latencyMs: result.latencyMs,
+          model: result.model,
+        },
+      }));
+      setNotice('AI 生成的海报已保存到项目');
+    } catch (error) {
+      if (seq !== posterGenSeq.current) return;
+      setPosterGen((previous) => ({
+        ...previous,
+        busy: false,
+        error: error instanceof Error ? error.message : '生成海报失败，请重试',
+      }));
+    }
+  };
+
   const handleStoreSubmit = () => {
     const summary = [
       `店铺：${state.store.name || '未命名'}`,
@@ -3559,11 +3717,26 @@ export default function App() {
                 setNotice('图片还没有保存到项目，请重新选择图片');
                 return;
               }
-              dispatch({ type: 'APPROVE_IMAGE', material: 'uploaded' });
+              dispatch({
+                type: 'APPROVE_IMAGE',
+                material: state.visual.image && state.visual.image.provider === 'ai-generated'
+                  ? 'ai-generated'
+                  : 'uploaded',
+              });
             }}
             onSkip={() => dispatch({ type: 'APPROVE_IMAGE', material: 'skipped' })}
-            canGenerate={canGenerateImage()}
+            canGenerate={posterGen.configured || canGenerateImage()}
             generateBlockedReason={IMAGE_GENERATION_BLOCKED_REASON}
+            generator={posterGen.configured ? {
+              prompt: posterGen.prompt,
+              onPromptChange: (value) => setPosterGen((previous) => ({ ...previous, prompt: value, error: '' })),
+              onGenerate: handleGeneratePoster,
+              busy: posterGen.busy,
+              error: posterGen.error,
+              success: posterGen.success,
+              providerLabel: [posterGen.provider, posterGen.model].filter(Boolean).join(' / '),
+              model: posterGen.model,
+            } : null}
           />
         );
 case PHASES.DEPLOY: {

@@ -127,3 +127,62 @@
   font-size: 12px;
   color: #94a3b8;
 }
+
+/* G1：真实 AI 生图面板 */
+.poster-generator {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.poster-generator-label {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.poster-generator-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 84px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.45);
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.poster-generator-disclosure {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.6;
+}
+
+.poster-generator-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.poster-generator-model {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.poster-generator-error {
+  margin: 0;
+  font-size: 12px;
+  color: #fca5a5;
+}
+
+.poster-generator-success {
+  margin: 0;
+  font-size: 12px;
+  color: #86efac;
+}

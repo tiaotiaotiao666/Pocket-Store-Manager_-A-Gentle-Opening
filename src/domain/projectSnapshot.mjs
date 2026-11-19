@@ -418,6 +418,10 @@ function pickImages(images) {
       height: Number.isFinite(item.height) ? item.height : undefined,
       sha256: text(item.sha256, 80),
       createdAt: text(item.createdAt, 40),
+      // G1：素材来源要跟着资产走，重开项目 / 导出时才不会把 AI 生成图误标成用户上传。
+      source: item.source === 'ai-generated' ? 'ai-generated' : (item.source === 'user-upload' ? 'user-upload' : undefined),
+      provider: text(item.provider, 60) || undefined,
+      model: text(item.model, 60) || undefined,
     }));
 }
 

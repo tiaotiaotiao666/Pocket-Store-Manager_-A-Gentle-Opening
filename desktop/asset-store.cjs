@@ -23,6 +23,13 @@ const MAX_ASSETS_PER_ATTACH = 6;
 const MAX_READ_BYTES = 1.5 * 1024 * 1024;
 const PICK_TOKEN_TTL_MS = 300 * 1000;
 const ASSET_ID_RE = /^a_[0-9a-f]{16}$/;
+/** G1：AI 生成图直接由渲染进程交字节上来，只接受受控的 PNG data URL。 */
+const GENERATED_DATA_URL_RE = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/;
+const MAX_GENERATED_INPUT_BYTES = 10 * 1024 * 1024;
+/** 与 poster-media 的产品口径一致：导出用的海报素材 ≤2 MB。 */
+const MAX_GENERATED_POSTER_BYTES = 2 * 1024 * 1024;
+const MAX_GENERATED_POSTER_EDGE = 1024;
+const GENERATED_SOURCES = Object.freeze(['ai-generated', 'user-upload']);
 const MIME_BY_EXTENSION = Object.freeze({
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -347,6 +354,10 @@ function createAssetStore(options) {
       height: meta.height,
       bytes: output.length,
       dataUrl: `data:${mime};base64,${output.toString('base64')}`,
+      // G1：把来源一起回给渲染进程，重开项目时仍能标注「AI 生成 / 用户上传」。
+      source: typeof meta.source === 'string' ? meta.source : 'user-upload',
+      provider: typeof meta.provider === 'string' ? meta.provider : '',
+      model: typeof meta.model === 'string' ? meta.model : '',
     };
   }
 
@@ -411,15 +422,114 @@ function createAssetStore(options) {
     return { removed: true, affectedRefs: [] };
   }
 
+  /**
+   * G1：把「真实第三方生图接口」返回的 PNG 落进同一套受控资产目录。
+   *
+   * 边界：
+   * - 只接受 `data:image/png;base64,...`；其他 MIME、超限字节、非 PNG magic 一律拒绝。
+   * - 生成图通常有 1.5~2.4 MB，超过海报产品上限（2 MB）时先用 imageAdapter 无损缩到
+   *   最长边 ≤1024 的 PNG；缩不下来就明确报错，不静默交付一张超限图。
+   * - 素材来源写进资产元数据：AI 生成记 `ai-generated`，用户上传记 `user-upload`，
+   *   导出时由 poster-media 依据这份元数据标注来源。
+   */
+  async function saveGeneratedImage(projectId, payload) {
+    assertProjectId(projectId);
+    const input = payload && typeof payload === 'object' ? payload : {};
+    const source = GENERATED_SOURCES.includes(input.source) ? input.source : 'ai-generated';
+    if (typeof input.dataUrl !== 'string') {
+      throw new ProjectStoreError('ASSET_DATA_INVALID', '生成的图片数据无效');
+    }
+    const match = GENERATED_DATA_URL_RE.exec(input.dataUrl);
+    if (!match) {
+      throw new ProjectStoreError('ASSET_UNSUPPORTED_TYPE', '生成的图片必须是 PNG');
+    }
+    let buffer = Buffer.from(match[1], 'base64');
+    if (buffer.length === 0 || buffer.length > MAX_GENERATED_INPUT_BYTES) {
+      throw new ProjectStoreError('ASSET_TOO_LARGE', '生成的图片超过 10 MB');
+    }
+    if (detectMime(buffer) !== 'image/png') {
+      throw new ProjectStoreError('ASSET_TYPE_MISMATCH', '生成的图片内容不是有效 PNG');
+    }
+
+    buffer = shrinkGeneratedPoster(buffer, imageAdapter);
+    if (buffer.length > MAX_GENERATED_POSTER_BYTES) {
+      throw new ProjectStoreError('ASSET_TOO_LARGE', '生成的图片超过 2 MB，无法作为海报素材');
+    }
+    const size = readImageSize(buffer) || {};
+    if (!Number.isInteger(size.width) || !Number.isInteger(size.height)) {
+      throw new ProjectStoreError('ASSET_DIMENSION_INVALID', '无法识别生成的图片尺寸');
+    }
+
+    const doc = await readProjectDocument(projectId);
+    const known = Array.isArray(doc.assets && doc.assets.images) ? doc.assets.images : [];
+    const directory = assetsDirectory(projectId);
+    await fsp.mkdir(directory, { recursive: true });
+
+    const digest = sha256Prefix(buffer);
+    const sameBytes = known.filter((item) => item && item.sha256 === `sha256:${digest}`);
+    const reusable = sameBytes.find((item) => (item.source || 'user-upload') === source);
+    if (reusable) return { asset: reusable };
+
+    // 同一份字节可能既是用户上传又是 AI 生成：来源不同就各自留一条元数据，文件名不冲突。
+    const idSeed = sameBytes.length > 0 ? `${digest}:${source}` : digest;
+    const assetId = `a_${sha256Prefix(Buffer.from(idSeed, 'utf8')).slice(0, 16)}`;
+    const fileName = `${assetId.slice(2)}.png`;
+    const target = path.join(directory, fileName);
+    try {
+      await fsp.writeFile(target, buffer, { flag: 'wx' });
+    } catch (error) {
+      if (error.code !== 'EEXIST') {
+        throw new ProjectStoreError('ASSET_WRITE_FAILED', '保存生成的图片失败', { cause: error.code });
+      }
+    }
+
+    const meta = {
+      assetId,
+      fileName,
+      originalName: source === 'ai-generated' ? 'ai-poster.png' : 'uploaded-poster.png',
+      mime: 'image/png',
+      bytes: buffer.length,
+      width: size.width,
+      height: size.height,
+      sha256: `sha256:${digest}`,
+      createdAt: new Date(now()).toISOString().replace(/\.\d{3}Z$/, 'Z'),
+      source,
+      provider: typeof input.provider === 'string' ? input.provider.slice(0, 60) : '',
+      model: typeof input.model === 'string' ? input.model.slice(0, 60) : '',
+    };
+    known.push(meta);
+    doc.assets = { ...(doc.assets || {}), images: known };
+    await writeProjectDocument(projectId, doc);
+    return { asset: meta };
+  }
+
   return {
     pickImages,
     attachImages,
     readAsset,
     readAssetBytes,
+    saveGeneratedImage,
     removeAsset,
     assetsDirectory,
     pendingCount: () => pendingTokens.size,
   };
+}
+
+/** 逐档缩小直到满足海报产品上限；没有可用适配器时原样返回（交由上层报错）。 */
+function shrinkGeneratedPoster(buffer, imageAdapter) {
+  const edges = [MAX_GENERATED_POSTER_EDGE, 896, 768, 640];
+  let current = buffer;
+  for (const edge of edges) {
+    const size = readImageSize(current) || {};
+    const tooBytes = current.length > MAX_GENERATED_POSTER_BYTES;
+    const tooWide = Number.isInteger(size.width) ? size.width > MAX_GENERATED_POSTER_EDGE : true;
+    if (!tooBytes && !tooWide) return current;
+    if (!imageAdapter || typeof imageAdapter.resizePng !== 'function') return current;
+    const resized = imageAdapter.resizePng(current, edge);
+    if (!resized || !resized.buffer || resized.buffer.length === 0) return current;
+    current = resized.buffer;
+  }
+  return current;
 }
 
 module.exports = {

@@ -59,6 +59,26 @@ function composeInNode(options, tempRoot) {
         fs.writeFileSync(versionsFile, JSON.stringify(options.backendVersions), 'utf8');
         args.push('--backend-versions', versionsFile);
       }
+      // G1：带海报素材的导出走同一条 CLI 的 --media 通道：
+      // 主进程已经把字节校验过一遍，这里只把图片落到子进程临时目录，
+      // 由 Composer 的 loadMedia 再校验一次（大小 / 摘要 / 来源），不做任何放宽。
+      if (options.media && options.media.homeBackground && Buffer.isBuffer(options.media.homeBackground.data)) {
+        const home = options.media.homeBackground;
+        const posterFile = path.join(tmpDir, 'poster.png');
+        fs.writeFileSync(posterFile, home.data);
+        const manifestFile = path.join(tmpDir, 'media.json');
+        fs.writeFileSync(manifestFile, JSON.stringify({
+          homeBackground: {
+            file: 'poster.png',
+            mime: home.mime,
+            sha256: home.sha256,
+            width: home.width,
+            height: home.height,
+            source: home.source,
+          },
+        }), 'utf8');
+        args.push('--media', manifestFile);
+      }
       // 用文件而不是管道接子进程输出：受限环境下管道 stdio 会直接 EPERM。
       outFd = fs.openSync(outFile, 'w');
       child = spawn(process.execPath, args, {
@@ -408,8 +428,9 @@ function createComposerIpc(options) {
         // 子进程跑同一个 Composer CLI：校验、门禁、产物都与主进程路径一致，
         // 只是换了一个能拿到目录改名权限的进程。
         // 候选 overlay 不走这条兜底：CLI 没有 overlay 参数，回落会变成 Base 冒充候选。
-        if (enableCommitFallback && !media && !resolvedCandidate) {
-          console.warn('[composer] 主进程提交失败，改用 node 子进程重跑 Composer');
+        // 海报素材可以走：字节由主进程落进子进程临时目录，再由 Composer 的 --media 重新校验。
+        if (enableCommitFallback && !resolvedCandidate) {
+          console.warn('[composer] 主进程提交失败，改用 node 子进程重跑 Composer' + (media ? '（带海报素材）' : ''));
           const fallback = await runComposeInNode({
             plan: payload.plan,
             parentDir,
@@ -418,6 +439,7 @@ function createComposerIpc(options) {
             storeId: payload.storeId,
             backendVersions: payload.backendVersions,
             role: payload.role,
+            ...(media ? { media } : {}),
           });
           if (fallback && fallback.ok) {
             console.warn('[composer] node 子进程导出成功 path=' + fallback.outputPath);

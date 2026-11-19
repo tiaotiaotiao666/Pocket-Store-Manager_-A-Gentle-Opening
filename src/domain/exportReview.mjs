@@ -199,7 +199,7 @@ export function buildExportReview(input) {
         unmapped.length > 0 ? `你勾选但本版不会生成的：${unmapped.map((item) => (typeof item === 'string' ? capabilityLabel(item) : capabilityLabel(item && item.id))).join('、')}` : null,
         '真实支付与交易（仅演示支付）',
         '自动上传、发布与提交审核',
-        'AI 生成海报图（未接入生图服务）',
+        'AI 生成整站前端（当前只有海报素材走第三方生图服务）',
       ].filter(Boolean).join('；'),
       tone: unmapped.length > 0 ? 'warn' : null,
     },

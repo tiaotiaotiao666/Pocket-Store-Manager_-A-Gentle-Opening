@@ -362,6 +362,27 @@ export function createProjectService(options) {
     return { status: 'ok', assets: result.data?.assets || [] };
   }
 
+  /**
+   * G1：把真实生图结果落进项目资产目录。
+   * 渲染进程只交 PNG data URL 与来源标记；目录、文件名、体积收敛都在主进程完成。
+   */
+  async function saveGeneratedImage(projectId, payload = {}) {
+    if (mode !== 'desktop') return failure('DESKTOP_REQUIRED', '浏览器模式不支持图片落盘');
+    const api = bridge();
+    if (!api || typeof api.saveGeneratedImage !== 'function') {
+      return failure('DESKTOP_REQUIRED', '当前版本不支持保存生成的图片');
+    }
+    const result = await api.saveGeneratedImage({
+      projectId,
+      dataUrl: payload.dataUrl,
+      source: payload.source === 'user-upload' ? 'user-upload' : 'ai-generated',
+      provider: payload.provider,
+      model: payload.model,
+    });
+    if (!result || result.ok !== true) return desktopFailure(result, '保存生成的图片失败');
+    return { status: 'ok', asset: result.data?.asset || null };
+  }
+
   async function readAsset(projectId, assetId, maxWidth) {
     if (mode !== 'desktop') return failure('DESKTOP_REQUIRED', '浏览器模式不支持图片落盘');
     const result = await bridge().readAsset({ projectId, assetId, maxWidth });
@@ -392,6 +413,7 @@ export function createProjectService(options) {
     reveal,
     pickImages,
     attachImages,
+    saveGeneratedImage,
     readAsset,
     removeAsset,
     setDebounce,

@@ -177,6 +177,24 @@ const imageAdapter = {
       return null;
     }
   },
+  /**
+   * G1：AI 生成图必须保持 PNG（海报位只收 PNG），这里用 nativeImage 无损重采样，
+   * 不引入 sharp 等原生依赖。
+   */
+  resizePng(buffer, maxWidth) {
+    try {
+      const image = nativeImage.createFromBuffer(buffer);
+      if (image.isEmpty()) return null;
+      const size = image.getSize();
+      if (!size.width || !size.height) return null;
+      const output = size.width <= maxWidth
+        ? image.toPNG()
+        : image.resize({ width: maxWidth, quality: 'good' }).toPNG();
+      return output.length > 0 ? { buffer: output, mime: 'image/png' } : null;
+    } catch (error) {
+      return null;
+    }
+  },
 };
 
 const projectStore = createProjectStore({ userDataDir });

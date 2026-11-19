@@ -98,6 +98,15 @@ function createPosterMediaResolver(options) {
 
     // 5) 摘要以真实字节为准，不从渲染进程接收。
     const digest = sha256(buffer);
+    // 6) 来源以资产元数据为准：AI 生成的那张标成 ai-generated，用户上传的仍是 user-provided。
+    const assetSource = typeof meta.source === 'string' ? meta.source : 'user-upload';
+    const source = assetSource === 'ai-generated'
+      ? {
+        kind: 'ai-generated',
+        provider: (typeof meta.provider === 'string' && meta.provider.trim()) ? meta.provider.trim().slice(0, 60) : 'third-party-image-api',
+        ...(typeof meta.model === 'string' && meta.model.trim() ? { model: meta.model.trim().slice(0, 60) } : {}),
+      }
+      : { kind: 'user-provided', provider: 'user-upload' };
     return {
       ok: true,
       media: {
@@ -106,7 +115,7 @@ function createPosterMediaResolver(options) {
           sha256: digest,
           width: size.width,
           height: size.height,
-          source: { kind: 'user-provided', provider: 'user-upload' },
+          source,
           data: buffer,
         },
       },

@@ -1858,19 +1858,26 @@ function baseReducer(state, action) {
       const assetId = typeof action.assetId === 'string' && action.assetId ? action.assetId : null;
       if (!assetId) return state;
       const meta = action.meta && typeof action.meta === 'object' ? action.meta : {};
+      // G1：素材来源由主进程资产元数据决定，AI 生成与用户上传必须区分开。
+      const provider = meta.provider === 'ai-generated' ? 'ai-generated' : 'user-upload';
+      const defaultNote = provider === 'ai-generated'
+        ? '这张图由第三方生图服务真实生成'
+        : '你上传的图片，不是模型生成结果';
+      const note = typeof meta.note === 'string' && meta.note ? meta.note : defaultNote;
       return {
         ...state,
         visual: {
           ...state.visual,
           imageAssetId: assetId,
           imageMeta: {
-            provider: 'user-upload',
-            note: typeof meta.note === 'string' ? meta.note : '你上传的图片，不是模型生成结果',
+            provider,
+            note,
             width: Number.isFinite(meta.width) ? meta.width : undefined,
             height: Number.isFinite(meta.height) ? meta.height : undefined,
+            ...(typeof meta.model === 'string' && meta.model ? { model: meta.model } : {}),
           },
           image: typeof action.preview === 'string' && action.preview
-            ? { dataUrl: action.preview, provider: 'user-upload', note: '你上传的图片，不是模型生成结果' }
+            ? { dataUrl: action.preview, provider, note }
             : state.visual.image,
         },
       };
@@ -1880,13 +1887,20 @@ function baseReducer(state, action) {
       // 重开项目后按已保存的 imageAssetId 回读预览；不改动资产引用本身。
       if (!state.visual.imageAssetId) return state;
       if (typeof action.dataUrl !== 'string' || !action.dataUrl) return state;
-      return {
-        ...state,
-        visual: {
-          ...state.visual,
-          image: { dataUrl: action.dataUrl, provider: 'user-upload', note: '你上传的图片，不是模型生成结果' },
-        },
-      };
+      {
+        const provider = action.provider === 'ai-generated' ? 'ai-generated' : 'user-upload';
+        const note = action.provider === 'ai-generated'
+          ? '这张图由第三方生图服务真实生成'
+          : '你上传的图片，不是模型生成结果';
+        return {
+          ...state,
+          visual: {
+            ...state.visual,
+            imageMeta: state.visual.imageMeta ? { ...state.visual.imageMeta, provider } : state.visual.imageMeta,
+            image: { dataUrl: action.dataUrl, provider, note },
+          },
+        };
+      }
 
     case 'ADD_IMAGE_ROUND': {
       let next = appendMessages(state, state.activeSessionId, [
@@ -1908,15 +1922,17 @@ function baseReducer(state, action) {
       // UX0a-3 / UX0b：区分「已选用上传图片」与「未添加海报素材」。
       // 只有资产已真实落盘（imageAssetId）且预览来源为 user-upload 才算已选用；
       // 单凭一段 dataUrl 不足以声称素材已选用。
-      const uploaded = Boolean(
-        state.visual.imageAssetId
-        && state.visual.image
-        && state.visual.image.provider === 'user-upload',
-      );
-      const material = action.material === 'uploaded' && uploaded ? 'uploaded' : 'skipped';
-      const materialLine = material === 'uploaded'
-        ? '海报素材：已选用上传图片（用户提供，不是模型生成结果）'
-        : '海报素材：未添加（已跳过，不影响小程序生成）';
+      const provider = state.visual.image && state.visual.image.provider ? state.visual.image.provider : null;
+      const chosen = Boolean(state.visual.imageAssetId && provider);
+      const wanted = action.material === 'uploaded' || action.material === 'ai-generated';
+      const material = !wanted || !chosen
+        ? 'skipped'
+        : (provider === 'ai-generated' ? 'ai-generated' : 'uploaded');
+      const materialLine = material === 'ai-generated'
+        ? '海报素材：已选用 AI 生成图片（第三方生图服务真实生成）'
+        : (material === 'uploaded'
+          ? '海报素材：已选用上传图片（用户提供，不是模型生成结果）'
+          : '海报素材：未添加（已跳过，不影响小程序生成）');
       const entered = createStepSession(state, {
         phase: PHASES.DEPLOY,
         id: 'session-deploy',
@@ -1936,9 +1952,9 @@ function baseReducer(state, action) {
       return {
         ...entered,
         // 跳过海报就明确解除引用：导出不会偷偷带上用户没选用的图片。
-        visual: material === 'uploaded'
-          ? entered.visual
-          : { ...entered.visual, image: null, imageAssetId: null, imageMeta: null },
+        visual: material === 'skipped'
+          ? { ...entered.visual, image: null, imageAssetId: null, imageMeta: null }
+          : entered.visual,
         deploy: createInitialDeploySlice(),
       };
     }

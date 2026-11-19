@@ -189,6 +189,18 @@ function createProjectIpc(options) {
       }
     },
 
+    // G1：真实生图结果的受控落盘入口。渲染进程只交 PNG data URL 与来源标记，
+    // 目录、文件名、去重、体积收敛都在主进程完成。
+    'project:save-generated-image': async (_event, payload) => {
+      if (payloadBytes(payload) > 14 * 1024 * 1024) return fail('PAYLOAD_TOO_LARGE', '参数过大');
+      const projectId = payload && payload.projectId;
+      try {
+        return ok(await assets.saveGeneratedImage(projectId, payload));
+      } catch (error) {
+        return toResult(error, 'ASSET_WRITE_FAILED', '保存生成的图片失败');
+      }
+    },
+
     'project:read-asset': async (_event, payload) => {
       if (payloadBytes(payload) > 1024) return fail('PAYLOAD_TOO_LARGE', '参数过大');
       try {

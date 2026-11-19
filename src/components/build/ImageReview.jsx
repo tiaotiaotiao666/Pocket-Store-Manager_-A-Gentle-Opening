@@ -25,14 +25,17 @@ export default function ImageReview({
   onSkip,
   canGenerate = false,
   generateBlockedReason,
+  generator = null,
 }) {
   const material = resolveMaterial(image);
-  const saved = Boolean(assetId) && material?.provider === 'user-upload';
-  const sourceLabel = material
-    ? (material.provider === 'user-upload'
-      ? (saved ? '你上传的图片（已保存到项目）' : '你上传的图片（预览）')
-      : (material.note || material.provider || '已选素材'))
-    : '';
+  const provider = material?.provider || null;
+  const isAi = provider === 'ai-generated';
+  const saved = Boolean(assetId) && (provider === 'user-upload' || isAi);
+  const sourceLabel = provider === 'user-upload'
+    ? (saved ? '你上传的图片（已保存到项目）' : '你上传的图片（预览）')
+    : (isAi
+      ? (saved ? 'AI 生成（第三方生图服务，已保存到项目）' : 'AI 生成（预览，未保存）')
+      : (material ? (material.note || provider || '已选素材') : ''));
 
   return (
     <section className="review-panel">
@@ -55,6 +58,9 @@ export default function ImageReview({
                 <span className="review-provider">{sourceLabel}</span>
               </figcaption>
             </figure>
+            {isAi && saved ? (
+              <p className="poster-generator-success" role="status">AI 生成成功 · 已保存到项目</p>
+            ) : null}
             <div className="material-empty-actions">
               <button
                 type="button"
@@ -65,6 +71,17 @@ export default function ImageReview({
               >
                 使用此图并继续
               </button>
+              {generator ? (
+                <button
+                  type="button"
+                  className="agent-btn agent-btn-ghost"
+                  onClick={() => generator.onGenerate?.()}
+                  disabled={busy || generator.busy}
+                >
+                  <RefreshCw size={15} />
+                  {generator.busy ? '正在重新生成（约 30 秒）' : '重新生成'}
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="agent-btn agent-btn-ghost"
@@ -83,6 +100,9 @@ export default function ImageReview({
                 暂时跳过
               </button>
             </div>
+            {generator && generator.error ? (
+              <p className="poster-generator-error" role="alert">{generator.error}</p>
+            ) : null}
             {saved ? null : (
               <p className="material-empty-reason">这张图只做了预览，还没有保存到项目；请重新选择图片。</p>
             )}
@@ -94,6 +114,7 @@ export default function ImageReview({
             canGenerate={canGenerate}
             generateBlockedReason={generateBlockedReason}
             uploadDisabled={busy}
+            generator={generator}
           />
         )}
 

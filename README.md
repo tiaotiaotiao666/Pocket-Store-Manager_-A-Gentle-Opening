@@ -138,3 +138,17 @@ docs/        概览、交接、交付文档（含 P5 证据索引）
 - 华为云相关能力**未开通、未验证，非本次演示依赖**。
 - 支付为演示模拟（`DEMO_PAID`），没有真实支付通道。
 - 窗口最小 1120×740；当前分辨率下长面板需要滚动。
+
+## F1 最终验收状态（2026-11-19）
+
+- 主线可演示：真实模型整理资料（含跨夜营业时间 22:00–次日 02:00）→ 两套真实独立模板（点卡预览 / 就用这套采用）→ 一句话改模板并撤销 → 海报只上传或跳过 → 导出前体检与摘要 → 真实导出本地工程 → AppID 后处理 → 交付向导。
+- 明确不可演示：微信开发者工具真实编译与运行、真机预览、体验版发布、真实支付（本机无工具，BLOCKED/NOT_RUN）；参考截图识别链路本轮未执行（入口是主进程原生文件对话框）。
+- 本机环境限制：工作区默认导出目录 rename 必 `EPERM`（P5c 已记录），验收改用 `SMARTSTORE_EXPORT_DIR` 指向可写目录；`%TEMP%` 受限时 vite build 需临时改 `TEMP`/`TMP`。
+- 报告与证据：`docs/交付/F1-最终验收报告.md`、`docs/交付/evidence/f1-acceptance.json`、`docs/交付/evidence/f1-export-tree.txt`、`docs/交付/evidence/f1-shots/`。
+
+```powershell
+# 最短演示启动
+cd server; npx prisma migrate deploy; npm run build; node dist/main.js   # 另一个窗口
+cd ..; Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+$env:SMARTSTORE_EXPORT_DIR = "$PWD\node_modules\.cache\f1-exports"; npm run agent:app
+```

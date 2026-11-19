@@ -1,0 +1,166 @@
+{
+  "batch": "F1",
+  "title": "最终真实主线验收（不再新增功能，只修阻断问题）",
+  "baselineCommit": "07a19fc",
+  "executedAt": "2026-11-19T15:20+08:00~15:47+08:00",
+  "env": {
+    "os": "Windows 11",
+    "app": "Electron 33.4.11 / Node 20.18.3 / 智能开店 0.2.0",
+    "backend": "NestJS dist/main.js，http://127.0.0.1:3000/api/v1",
+    "readyz": "200 {\"status\":\"ok\",\"database\":\"ok\",\"cache\":\"memory\"}",
+    "mysql": "phpStudy MySQL 5.7.26（3306，smart_store / smart_store_test 迁移已部署）",
+    "modelChannel": "Deepseek-V4.1-Flash，transport=http，provider=deepseek，mock=false，单轮 8.3s 左右",
+    "agentBaseUrlChanged": "应用设置里由 https://kirnefp4-3000.devbridge-s2.hwtunnel.com/api/v1 改为本机 http://127.0.0.1:3000/api/v1（原隧道已不可用，非产品缺陷）",
+    "exportDir": "SMARTSTORE_EXPORT_DIR=node_modules/.cache/f1-exports（工作区默认位置受本机看守，见 item10）",
+    "driveMethod": "scripts/desktop-cdp.cjs（CDP 真实点击 + 截图），端口 9222"
+  },
+  "items": [
+    {
+      "id": 1,
+      "requirement": "正常启动 MySQL、后端与 Electron，readyz 必须 database=ok",
+      "status": "PASS",
+      "observation": "MySQL 5.7.26 起来后 npx prisma migrate deploy 全部迁移通过；node dist/main.js 起后端，readyz 返回 database=ok；Electron 启动后设置页「重新自检」全部通过：运行环境 / 本地数据目录 / Composer 资源完整性（注册表 2026.11.0、资产 10 项、已冻结）/ 后端服务（health 200、readyz 200、7 ms）/ 模型通道。",
+      "artifacts": [
+        "docs/交付/evidence/f1-shots/03-settings.png",
+        "docs/交付/evidence/f1-shots/04-selfcheck.png"
+      ]
+    },
+    {
+      "id": 2,
+      "requirement": "新建门店：1 道菜、午休两段营业；再验证 22:00–次日 02:00",
+      "status": "PASS",
+      "observation": "真实模型按「10:00-14:00、17:00-21:00 营业，堂食和到店自取，招牌雪菜肉丝面 22 元」回填：营业时间 10:00-14:00,17:00-21:00（两段）、取餐方式 堂食 + 自取、菜品 1 道；表单渲染为「第 1 段 10:00–14:00 / 第 2 段 17:00–21:00」。再说「营业时间改成 22:00 到次日 02:00，只留这一段」，数据变成单段 22:00-02:00，表单显示「22:00–次日 02:00」，模型回复「营业到次日凌晨 2 点，原来的两段已清除」；随后「恢复成两段」再回到 10:00-14:00,17:00-21:00。",
+      "artifacts": [
+        "docs/交付/evidence/f1-shots/05-store-filled.png",
+        "docs/交付/evidence/f1-shots/06-crossmidnight.png"
+      ]
+    },
+    {
+      "id": 3,
+      "requirement": "真实模型整理/修改资料，状态准确；失败不得伪装成功",
+      "status": "PASS",
+      "observation": "三轮真实模型轮次（新建回填、改跨夜、恢复两段）都由 Deepseek provider 返回，meta.mock=false；配置错误时（指向已失效的云隧道）界面如实报「请求失败，还有 4 项待处理」，不伪造成功；改好后重试才落地。",
+      "artifacts": []
+    },
+    {
+      "id": 4,
+      "requirement": "查看两套真实独立模板；点卡只预览，「就用这套」才采用",
+      "status": "PASS",
+      "observation": "页面明示「真实独立结构 2 套：经典点餐、海报点餐；街巷食集与一杯日常是经典点餐的两种配色，不算额外模板」。点「主厨推荐」卡后状态为「预览中（还没换掉当前版本）」「这只是预览，当前使用仍是街巷食集」，当前使用徽标不动；点「就用这套」后当前使用变为主厨推荐，并提示「预览与导出都用这一套」。",
+      "artifacts": [
+        "docs/交付/evidence/f1-shots/08-template-candidates.png",
+        "docs/交付/evidence/f1-shots/09-card-preview.png",
+        "docs/交付/evidence/f1-shots/10-template-adopted.png"
+      ]
+    },
+    {
+      "id": 5,
+      "requirement": "用唯一输入框完成一次真实模板修改：原话就近可见、before→after 清单正确、撤销恢复上一版",
+      "status": "PASS",
+      "observation": "在模板修改的唯一输入框写「主色换成暖橙，首页顶部主图矮一点，按钮文案改成「马上点餐」。」→ 清单区显示原话「你刚才要求：『主色换成暖橙，首页顶部主图矮一点，按钮文案改成「马上点餐」』」并列出 before→after：主色 未设置 → #FF8C42、轮播区尺寸 未设置 → sm，共 2 项；模型在会话里明确说明第三项「按钮文案不在允许修改的字段内，未做改动」，未伪装成已改。点「撤销这次修改」后清单与撤销按钮消失，预览回到撤销前版本（轮播文案仍在三张间自动轮换，非撤销失败）。",
+      "artifacts": [
+        "docs/交付/evidence/f1-shots/11-template-revised.png",
+        "docs/交付/evidence/f1-shots/12-revision-undone.png"
+      ]
+    },
+    {
+      "id": 6,
+      "requirement": "海报素材只显示上传/跳过，无虚假生成承诺",
+      "status": "PASS",
+      "observation": "海报素材页文案：「这里不会用占位图冒充生成结果」「尚未接入生图服务，当前版本不会生成海报；可上传自己的图片，或暂时跳过」；「生成海报」按钮 disabled 且 title 同文案；可选路径只有「上传图片（PNG）」与「暂时跳过」，跳过不影响导出（导出摘要写明「没有选海报图，不进工程」）。",
+      "artifacts": [
+        "docs/交付/evidence/f1-shots/14-poster-step.png"
+      ]
+    },
+    {
+      "id": 7,
+      "requirement": "导出前确认摘要与实际 Plan 一致；普通流程无技术码和重复确认",
+      "status": "PASS",
+      "observation": "导出前体检摘要与实际资料一致：店名 云栖小馆 / 营业时段 10:00–14:00，17:00–21:00 / 菜单 1 道：雪菜肉丝面 / 取餐方式 堂食 + 自取 / 页面结构 海报点餐(order-poster@1.0.0) / 配色 温暖家常；改模板后摘要同步变为 经典点餐(order-classic@1.0.0)。体检结论「可以导出」，只有「2 条说明（只是告知，不需要确认）」与「1 条提示（不影响导出）」，没有逐条勾选确认；技术码（lock sha256、composer 版本号）收在「技术详情」折叠里。",
+      "note": "模板修改清单里仍会露出 theme.primaryColor / sizes.carousel 这类字段名，属可读性瑕疵，不阻断。",
+      "artifacts": []
+    },
+    {
+      "id": 8,
+      "requirement": "上传参考截图：取消外发零请求、项目不变；确认后完成真实识别、候选生成、验证、采用与导出",
+      "status": "NOT_RUN",
+      "observation": "本轮未执行。原因：参考截图入口走主进程原生选文件对话框（renderer 无 input[type=file]，window.smartStore.pickImages → project:pick-images），CDP 无法驱动系统对话框；未用脚本伪造上传冒充真实交互。该能力（frontend-analyze / build-candidate / verify-candidate / adopt-candidate 与取消外发开关）仍由单元与契约测试覆盖，P5b 的真实证据不回填到本轮。",
+      "artifacts": []
+    },
+    {
+      "id": 9,
+      "requirement": "若真实模型不可用，保留 FAIL/BLOCKED 证据并继续主线",
+      "status": "PASS",
+      "observation": "本轮真实模型可用（三轮 8 秒级成功轮次）。模型不可用时的分支也真实观察到：base URL 指向失效隧道时界面如实「请求失败」，未产生候选、未冒用历史 P5b 结果。",
+      "artifacts": []
+    },
+    {
+      "id": 10,
+      "requirement": "默认导出流程生成工程，完成有效 AppID 后处理；同名不覆盖，修改 Plan 后旧体检失效",
+      "status": "PARTIAL",
+      "observation": "三段都验证了，但工作区默认位置在本机不可写：\n1) 默认位置（.dev-data/exports/云栖小馆）→ 生成失败，错误码 COMMIT_FAILED，正文「写入目标位置失败（文件可能被占用）」。主进程日志给出 EPERM: rename '...\\.smartstore-tmp-xxx' -> '...\\云栖小馆'；同一操作改用 node 子进程兜底仍 EPERM。用等体量探测目录复现：40 文件/5 子目录在 .dev-data 下 rename 必 EPERM，在 %TEMP% 与 node_modules/.cache 下正常，属本机看守限制（与 P5c 记录的同一限制），非本轮引入。\n2) 改用 SMARTSTORE_EXPORT_DIR=node_modules/.cache/f1-exports（按钮、IPC、Composer、AppID 后处理仍是线上那一套）→ 导出成功：进度四步全「已完成」，产物 142 文件，Lock 摘要 sha256:967e5017…。\n3) 同名不覆盖：再次导出同名目录时既有文件 mtime 不变、探针文件与追加标记全部保留；改 Plan 后重跑体检直接阻断并提示「目标目录已有同名工程，不会覆盖；请更换导出位置或项目名。可试试『云栖小馆-2』」。\n4) 体检失效：AppID 写入与骨架变更后，体检都回到「当前不可导出：请先完成导出前体检」，需重新体检才放行。\n5) AppID 后处理：在第 3 步写入 wx1234567890abcdef（格式合法占位，无真实 AppID）→ project.config.json 变为该值，生成 appid-postprocess.json，界面「已写入并完成自检。改写前 sha256:8fc4e3bb603… → 改写后 sha256:5e87c1a77c0…」。",
+      "note": "导出仍只落在本地目录，不上传、不发布。",
+      "artifacts": [
+        "docs/交付/evidence/f1-export-tree.txt"
+      ]
+    },
+    {
+      "id": 11,
+      "requirement": "对本次新导出工程运行微信开发者工具编译与真实运行",
+      "status": "BLOCKED",
+      "observation": "本机未安装微信开发者工具有效 CLI：%ProgramFiles(x86)%\\Tencent\\微信web开发者工具\\cli.bat、%ProgramFiles%\\Tencent\\…、%LOCALAPPDATA%\\Programs\\wechat-devtools\\cli.bat 均不存在，WX_CLI_PATH 为空；应用自己的启动前检查也报「微信开发者工具 需准备 · 本机未检测到」。因此首页/菜单/菜品/结算/桌号/加购/订单/演示支付的真实微信运行未执行，未用 React 预览截图冒充。",
+      "artifacts": [
+        "docs/交付/evidence/f1-shots/01-preflight.png"
+      ]
+    },
+    {
+      "id": 12,
+      "requirement": "明确区分 React 预览、真实微信运行、真机、发布",
+      "status": "PASS",
+      "observation": "应用内多处主动划线：预览面板「演示数据 · 不产生真实订单与真实支付」；交付页「这是『真实渲染截图回传』，不是应用内实时渲染：应用内预览是 React 复刻的近似效果…以工具内真实渲染为准」；导出摘要「仅生成本地工程：不上传、不发布、不产生真实支付」「不包含：真实支付与交易（仅演示支付）；自动上传、发布与提交审核」。真机、发布、真实支付本轮均未执行。",
+      "artifacts": []
+    },
+    {
+      "id": 13,
+      "requirement": "只修本轮发现的主线阻断缺陷；非阻断问题记录即可",
+      "status": "PASS",
+      "observation": "本轮未改动产品代码。发现并如实记录的阻断项是环境级（工作区导出目录 rename EPERM，P5c 已记录同一限制），不属本轮新引入，改环境（SMARTSTORE_EXPORT_DIR）后主线走通，因此没有为它改产品逻辑。非阻断问题见报告「非阻断问题记录」。",
+      "artifacts": []
+    },
+    {
+      "id": 14,
+      "requirement": "保存最终截图、运行日志与脱敏证据，更新 README、演示脚本、答辩说明与验收矩阵",
+      "status": "PASS",
+      "observation": "截图存 docs/交付/evidence/f1-shots/（10 张）；导出树存 docs/交付/evidence/f1-export-tree.txt；本文件为脱敏证据；F1-最终验收报告.md 含验收矩阵、可演示/不可演示清单、启动命令与推荐演示路径；P5-演示脚本.md 与 P5-答辩说明.md 追加 F1 段落。",
+      "artifacts": [
+        "docs/交付/evidence/f1-acceptance.json"
+      ]
+    },
+    {
+      "id": 15,
+      "requirement": "运行 npm test、build、服务端编译及相关检查；DB 依赖测试如实记录，不用跳过掩盖",
+      "status": "PASS",
+      "observation": "root npm test 1054/1054 通过（0 skipped）；vite build 通过（本机 %TEMP% 受看守，需临时改 TEMP/TMP 到可写目录，否则 esbuild 清理临时文件报 Access is denied）；server npx nest build exit 0；server vitest 32 文件 / 571 用例全部通过——默认 smart 账号无权连 mysql 系统库（User was denied access on the database 'mysql'，会退化成 85 skip），本次用 TEST_DATABASE_URL=root 临时覆盖跑全，未改仓库配置；契约 --check 无漂移、registry/catalog/frontend-capabilities/mini/mirror/mini-dup/packaging 全过；composer verify-cli 对最终导出目录产物校验通过（8 页 14 组件，sha256:8fa798a8…）；git diff --check 无空白错误。未执行 wechat:run（工具缺失）与 frontend:verify（无候选 attempt）。",
+      "artifacts": []
+    },
+    {
+      "id": 16,
+      "requirement": "不追 ACL，不推送，不发布体验版",
+      "status": "PASS",
+      "observation": "未做 ACL 相关改动；未 git push；未发布体验版；未上传或提交审核。",
+      "artifacts": []
+    }
+  ],
+  "nonBlockingIssues": [
+    "模板修改清单里显示 theme.primaryColor / sizes.carousel 等字段名，普通用户不易读。",
+    "门店资料页资料完成度显示 4/5 但同时写「还差 0 项 / 资料已齐全，可以继续」，两处口径不一致。",
+    "导出失败时「生成进度」仍停在『进行中 · 生成工程』，与下方『生成失败』并存，进度条未回滚。",
+    "应用默认 apiBaseUrl 指向已失效的云隧道，用户需自行改成本机地址才能用真实模型（配置项行为，不是缺陷，但首次体验会撞到「请求失败」）。",
+    "同一句用户原话在会话区出现两次（首轮资料整理那条），疑似渲染重复。"
+  ],
+  "environmentLimitations": [
+    "工作区（.dev-data/exports）内多文件目录 rename 必 EPERM，属本机看守；改到 node_modules/.cache 后正常（P5c 已记录同一限制）。",
+    "微信开发者工具未安装，本机无法做真实编译与运行时验收。",
+    "参考截图与海报上传走主进程原生对话框，CDP 走查无法驱动。"
+  ]
+}

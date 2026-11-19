@@ -23,6 +23,13 @@ function serialize(snapshot) {
   return `${JSON.stringify(snapshot, null, 2)}\n`;
 }
 
+// Windows 上 core.autocrlf=true 会把仓库里的 LF 检出成 CRLF，而本快照是逐字节校验的
+// 生成物：不归一化就会出现「提交后 Windows --check 必红、--write 又生成 CRLF 版」的
+// 平台分叉（同类问题见 8adb88c）。比对前统一按 LF 归一化，写入端始终用 LF。
+function normalizeEol(text) {
+  return text.replace(/\r\n/g, '\n');
+}
+
 async function main() {
   const mode = process.argv.includes('--write') ? 'write' : (process.argv.includes('--check') ? 'check' : null);
   if (!mode) {
@@ -45,7 +52,7 @@ async function main() {
     console.error(`[app-capabilities] 缺少快照：${path.relative(ROOT, TARGET)}；先运行 --write`);
     process.exit(1);
   }
-  const actual = fs.readFileSync(TARGET, 'utf8');
+  const actual = normalizeEol(fs.readFileSync(TARGET, 'utf8'));
   if (actual !== expected) {
     let hint = '内容不一致';
     try {

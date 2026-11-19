@@ -1,6 +1,7 @@
 @import './tokens.css';
 @import './layout.css';
 @import './chat.css';
+@import './dev-fixture.css';
 @import './flow.css';
 @import './build.css';
 @import './panel.css';

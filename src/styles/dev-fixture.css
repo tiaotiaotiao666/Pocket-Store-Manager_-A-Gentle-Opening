@@ -1,0 +1,60 @@
+/* 开发者测试夹具条：只在 Vite dev server 下出现，样式刻意做得「不像正式功能」。 */
+.dev-fixture-bar {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border-strong, #c9c9d4);
+  border-radius: 10px;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(120, 120, 140, 0.06) 0 8px,
+    rgba(120, 120, 140, 0.02) 8px 16px
+  );
+}
+
+.dev-fixture-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted, #6b6b7b);
+}
+
+.dev-fixture-tag {
+  font-weight: 600;
+  color: var(--text-strong, #33333f);
+}
+
+.dev-fixture-note {
+  color: var(--text-muted, #6b6b7b);
+}
+
+.dev-fixture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dev-fixture-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border-strong, #c9c9d4);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: var(--text-strong, #33333f);
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+
+.dev-fixture-btn:hover:not(:disabled) {
+  border-color: var(--accent, #6c5ce7);
+  color: var(--accent, #6c5ce7);
+}
+
+.dev-fixture-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

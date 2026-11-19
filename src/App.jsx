@@ -47,6 +47,7 @@ import {
   selectPresentationState,
 } from './state/sessionMachine.mjs';
 import { formatCents } from './domain/agentDraft.mjs';
+import { DEV_STORE_FIXTURES } from './domain/devStoreFixtures.mjs';
 import { analyzeComposerInput, createSubmitGuard } from './domain/composerInput.mjs';
 import { toDocument, fromDocument } from './domain/projectSnapshot.mjs';
 import { evaluateLocal, mergeComposerResult, mergeTargetPreflight } from './domain/preflightRules.mjs';
@@ -115,6 +116,7 @@ import TitleBar from './components/layout/TitleBar.jsx';
 import RightPanel from './components/layout/RightPanel.jsx';
 import ChatStream from './components/chat/ChatStream.jsx';
 import Composer from './components/chat/Composer.jsx';
+import DevFixtureBar from './components/chat/DevFixtureBar.jsx';
 import SkipNotice from './components/chat/SkipNotice.jsx';
 import HomeStage from './components/flow/HomeStage.jsx';
 import FeaturePicker from './components/flow/FeaturePicker.jsx';
@@ -156,6 +158,20 @@ const INTRO_AUTO_ADVANCE_MS = 5200;
 // UX0a-3：海报素材上传的 UI 侧上限；不替代导出链路的媒体校验，只是先挡住明显过大的文件。
 const MAX_POSTER_UPLOAD_BYTES = 2 * 1024 * 1024;
 const COMPOSER_PHASES = [PHASES.ONBOARDING, PHASES.STORE_INFO, PHASES.TEMPLATE_PICK, PHASES.PROMPT_STUDIO, PHASES.IMAGE_REVIEW];
+
+/**
+ * 开发者测试夹具的开关。
+ *
+ * 必须是**可静态折叠**的写法：`vite build` 会把 `import.meta.env.DEV` 替换成字面量
+ * `false`，于是下面这行等价于 `const DEV_FIXTURES_ENABLED = false;`，
+ * 打包时 JSX 分支与夹具语料会被整段摇掉——测试数据不会进正式包。
+ *
+ * 不要改成 `isDevFixtureEnabled(import.meta.env)` 那样把整个 env 对象传进函数：
+ * Vite 折叠不了函数调用，代码只会「运行时关闭」，语料照样留在产物里。
+ * 也刻意不读取 query string / localStorage / 暗号，避免退化成能进生产的旁路。
+ */
+const DEV_FIXTURES_ENABLED = import.meta.env.DEV;
+
 
 /**
  * P6：候选前端「本轮结束」的状态集合。
@@ -4005,6 +4021,14 @@ case PHASES.DEPLOY: {
                 ) : null}
                 {composerVisible ? (
                   <div className="workspace-composer">
+                    {/* 仅 dev：把「测试用户说出完整资料」的一句话填进输入框，发送仍由开发者自己点。 */}
+                    {DEV_FIXTURES_ENABLED && phase === PHASES.STORE_INFO ? (
+                      <DevFixtureBar
+                        fixtures={DEV_STORE_FIXTURES}
+                        disabled={composerDisabled}
+                        onPick={setDraft}
+                      />
+                    ) : null}
                     <Composer
                       value={draft}
                       placeholder={composerPlaceholder}

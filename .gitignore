@@ -104,6 +104,7 @@ generated-projects-test/c1-*/
 # ---------- 本机权限修复备份 ----------
 # diagnose-windows-sandbox-acl 生成的 ACL 备份，只属于本机，不入库
 .dsh-acl-recovery/
+.acl-recovery/
 
 # ---------- Agent 过程产物 ----------
 # 计划/走查草稿、临时导出与本地 dev 数据只属于本机；需要长期留存的结论写进 docs/

@@ -89,7 +89,7 @@
 
 1. **清空店名/品类**：服务端最初按快照 `minChars=1` 拒绝空串，与桌面「清空需确认」不一致。已把 `store.name` / `store.category` 的 `limits.minChars` 改为 `0` 并重生成快照（digest `c6df6763`）；服务端因此接受空串提案，桌面 `buildProposalApplyPlan` 依 `confirmWhenEmpty` 要求确认，`validateAgentDraft` 只在缺项里提示，不硬拒绝。
 2. **`action.request` 位置**：契约允许放在 `changes` 或顶层 `actionRequests`。桌面校验器两者都接受并共用 `opId` 去重；服务端只产出 `changes`。两条链最终形状一致。
-3. **direct 带图**：契约没有「通道不支持附件」专用码，未新增同义错误码；direct 返回既有 `AGENT_REQUEST_INVALID`，并在 `details.reason = 'DIRECT_ATTACHMENTS_UNSUPPORTED'` 说明，不静默丢图。
+3. **direct 带图（2026-11-20 更新）**：早期 direct 通道没有图片片段，带图直接返回 `AGENT_REQUEST_INVALID` + `details.reason = 'DIRECT_ATTACHMENTS_UNSUPPORTED'`。现已在主进程 `modelChat` 放开 OpenAI 多模态 `content` 块：默认模型 `deepseek-flash`（DeepSeek-V4.1-Flash-1017，官方支持图像理解），图片只接受 JPEG/PNG/WebP 内联 data URL，单张 ≤400 KiB、合计 ≤1 MiB、最多 3 张；direct 把附件放进最后一条 user 消息。非法图片、超过上限、以及 `deepseek-v4-pro` 带图仍返回 `AGENT_REQUEST_INVALID`（`details.reason` 为 `DIRECT_ATTACHMENT_*` / `DIRECT_MODEL_NO_VISION`），仍不静默丢图。真实上游带图调用本轮 **NOT_RUN**（未提供 Key，本机代理未启动）。
 4. **trace 形状**：服务端严格只输出 `name/ok/latencyMs`；direct 额外带 `errorCode`。桌面校验器只取 `toolCalls.length`，不影响验收；若要完全一致需在 direct 侧删字段。
 5. **参考图（`reference`）**：本轮侧栏只做「用途识别 + 定位既有候选面板」，未自动发起 `frontend-reconstruct.v1`。原因：候选生成需要 runId/目标页/私有 workspace 等受控参数，自动发起会重复实现专用链。与计划 §5.2「侧栏可发起」存在差距，已登记为遗留项。
 6. **菜单图（`menu`）**：仍走 `agent-turn.v2`（`requireVision` + `analyzed=true` 硬校验），回写由既有 `AGENT_TURN_SUCCESS` 完成，**没有**转换成标准 `field.set/dish.upsert` 批次再进统一 reducer。因此「菜单识别」这一轮不产生 `lastApplied` 变更卡；变更卡只覆盖 `app-assistant.v1` 字段批次。

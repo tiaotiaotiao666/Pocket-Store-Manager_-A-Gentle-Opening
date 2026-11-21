@@ -30,7 +30,7 @@
 | Feature Pack | 1 | `templates/features/poster-carousel/1.0.0` |
 | FrontendPack | 1 | `templates/frontend-packs/warm-home-menu/1.0.0` |
 | Recipe | 4（direct 2） | `templates/recipes/` |
-| 组件库目录 | 15 组件 / 8 页面 / 1 布局 / 61 区块 | `templates/catalog/` |
+| 组件库目录 | 15 组件 / 8 页面 / 1 布局 / 23 区块 | `templates/catalog/` |
 | 注册表 | `2026.11.0` | `templates/registry/registry.v1.json` |
 
 当前正式 Recipe 为 `order-classic@1.0.0`、`order-poster@1.0.0`；`order-classic-candidate@0.1.0` 只作为候选/正式分离的样本；`order-warm-home@1.0.0` 是 FrontendPack 纵向样例，仍为候选。组件库目录是 Base、Manifest、Feature Pack 与 FrontendPack 的确定性投影，不进入注册表，也不改变 Composer 语义。

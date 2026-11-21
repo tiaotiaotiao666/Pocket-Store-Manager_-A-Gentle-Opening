@@ -1,0 +1,121 @@
+<view class="page detail {{payResult ? 'detail--result' : ''}}">
+  <state-view wx:if="{{loading && !payResult}}" state="loading" title="正在读取订单" />
+
+  <view wx:elif="{{error && !order && !payResult}}" class="detail__error">
+    <error-banner message="{{error}}" action="{{errorAction}}" request-id="{{requestId}}" bind:retry="onRetry" bind:close="goOrders" />
+    <view class="ghost-button detail__retry" bind:tap="onRetry">重新加载</view>
+  </view>
+
+  <view wx:elif="{{payResult}}" class="detail__result">
+    <pay-result
+      state="{{payResult.state}}"
+      short-id="{{payResult.shortId}}"
+      total-text="{{payResult.totalText}}"
+      fulfillment-text="{{payResult.fulfillmentText}}"
+      title="{{payResult.title}}"
+      description="{{payResult.description}}"
+      request-id="{{payResult.requestId}}"
+      bind:primary="onResultPrimary"
+      bind:secondary="onResultSecondary"
+      bind:retry="onResultRetry"
+    />
+  </view>
+
+  <block wx:else>
+    <view wx:if="{{order}}" class="detail__hero">
+      <view class="detail__hero-top">
+        <view class="detail__hero-id">
+          <text class="detail__hero-label">订单号</text>
+          <text class="detail__hero-number">#{{order.shortId}}</text>
+        </view>
+        <text class="detail__hero-time">{{order.createdAtFullText}}</text>
+      </view>
+      <order-status status="{{order.status}}" payment-status="{{order.paymentStatus}}" />
+      <view class="detail__hero-foot">
+        <view class="detail__hero-mode">
+          <text>{{order.fulfillmentText}}</text>
+          <text class="detail__hero-dot">·</text>
+          <text>{{order.itemSummary || '无明细'}}</text>
+        </view>
+        <text class="detail__hero-total">{{order.totalText}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{showPayHint}}" class="detail__pay-hint">
+      <text class="detail__pay-hint-title">还差一步：完成演示模拟支付</text>
+      <text class="detail__pay-hint-text">点击下方「演示模拟支付」，订单才会进入店主待接单列表。本演示不产生真实支付。</text>
+    </view>
+
+    <view wx:if="{{error}}" class="detail__error">
+      <error-banner
+        message="{{error}}"
+        action="{{errorAction}}"
+        request-id="{{requestId}}"
+        bind:retry="onRetry"
+        bind:close="onCloseError"
+      />
+    </view>
+
+    <view wx:if="{{order}}" class="surface-card detail__card">
+      <view class="detail__card-head">
+        <text class="detail__card-title">订单进度</text>
+        <text class="detail__card-extra">{{order.hint}}</text>
+      </view>
+      <status-timeline steps="{{order.progressSteps}}" timeline="{{order.timeline}}" status="{{order.status}}" />
+    </view>
+
+    <view wx:if="{{order}}" class="surface-card detail__card">
+      <view class="detail__card-head">
+        <text class="detail__card-title">菜品明细</text>
+        <text class="detail__card-extra">{{order.items.length}} 项</text>
+      </view>
+      <view class="detail__divider"></view>
+      <view wx:for="{{order.itemViews}}" wx:key="productId" class="detail__item">
+        <view class="detail__item-main">
+          <text class="detail__item-name">{{item.name}}</text>
+          <text class="detail__item-unit">{{item.unitPriceText}} × {{item.quantity}}</text>
+        </view>
+        <text class="detail__item-line">{{item.lineTotalText}}</text>
+      </view>
+      <view class="detail__divider"></view>
+      <view class="detail__total">
+        <text class="detail__total-label">合计</text>
+        <text class="detail__total-value">{{order.totalText}}</text>
+      </view>
+      <view wx:if="{{order.noteText}}" class="detail__note">
+        <text class="detail__note-label">备注</text>
+        <text class="detail__note-text">{{order.noteText}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{order && merchantActions.length > 0}}" class="surface-card detail__card detail__merchant">
+      <view class="detail__card-head">
+        <text class="detail__card-title">店主操作</text>
+        <text class="detail__card-extra">当前身份可用</text>
+      </view>
+      <view class="detail__merchant-actions">
+        <view
+          wx:for="{{merchantActions}}"
+          wx:key="toStatus"
+          class="detail__merchant-btn {{item.tone === 'primary' ? 'detail__merchant-btn--primary' : item.tone === 'success' ? 'detail__merchant-btn--success' : 'detail__merchant-btn--danger'}}"
+          data-status="{{item.toStatus}}"
+          bind:tap="onAdvance"
+        >
+          {{acting && actionLabel === item.toStatus ? '处理中…' : item.label}}
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view wx:if="{{!payResult && order && (order.canPay || order.canCancel || merchantActions.length > 0)}}" class="detail__bar">
+    <view wx:if="{{order.canCancel}}" class="detail__bar-ghost" bind:tap="onCancel">
+      {{acting && actionLabel === 'cancel' ? '处理中…' : '取消订单'}}
+    </view>
+    <view wx:if="{{order.canPay}}" class="detail__bar-primary" bind:tap="onPay">
+      {{acting && actionLabel === 'pay' ? '处理中…' : '演示模拟支付'}}
+    </view>
+    <view wx:if="{{role === 'MERCHANT' && merchantActions.length > 0}}" class="detail__bar-primary" bind:tap="onAdvance" data-status="{{merchantActions[0].toStatus}}">
+      {{acting && actionLabel === merchantActions[0].toStatus ? '处理中…' : merchantActions[0].label}}
+    </view>
+  </view>
+</view>

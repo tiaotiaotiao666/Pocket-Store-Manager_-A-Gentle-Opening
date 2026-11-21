@@ -1,0 +1,7 @@
+<store-header
+  store-name="{{store.name}}"
+  table-name="{{tableName}}"
+  business-hours="{{store.businessHours}}"
+  mode="{{mode}}"
+  address="{{store.address}}"
+/>

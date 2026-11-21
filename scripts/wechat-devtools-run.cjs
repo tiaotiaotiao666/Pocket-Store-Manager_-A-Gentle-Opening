@@ -396,7 +396,7 @@ async function main() {
       }
       report.pages.push(entry);
     }
-    for (const result of await probeClickChain(miniProgram, shotsDir)) {
+    for (const result of await probeClickChain(miniProgram, shotsDir, { apiBase: resolveApiBase(projectRoot) })) {
       report.interactions.push(result);
     }
     for (const result of await probeTableSource(miniProgram, resolveApiBase(projectRoot))) {
@@ -742,9 +742,46 @@ async function resetMiniProgramStorage(miniProgram) {
  * 起点用 reLaunch 保证状态干净；购物车数量不足时先直调页面处理器补足，
  * 该步骤在报告里单独标注 HANDLER_CALL，与点击步骤区分。
  */
-async function probeClickChain(miniProgram, shotsDir) {
+async function probeClickChain(miniProgram, shotsDir, context = {}) {
   const results = [];
   let selectedTable = { id: '', name: '' };
+  const apiBase = context.apiBase || '';
+
+  // 后端 /tables 为空时，堂食选桌这一步物理上无法执行：如实记 BLOCKED 并降为参考项，
+  // 但不能因此把「新骨架没写对」当成结论，也不能把这一步记成 PASS。
+  async function readBackendTables(pageData) {
+    const storeId = (pageData && pageData.store && pageData.store.id) || (pageData && pageData.storeId) || '';
+    if (!apiBase || !storeId) return { known: false, ids: [], error: '缺少 apiBase 或 storeId' };
+    try {
+      const response = await fetch(apiBase + '/stores/' + encodeURIComponent(storeId) + '/tables');
+      const payload = await response.json();
+      const tables = payload.tables || [];
+      return { known: true, ids: tables.map((item) => item.id), names: tables.map((item) => item.name), storeId };
+    } catch (error) {
+      return { known: false, ids: [], error: error && error.message ? error.message : String(error) };
+    }
+  }
+
+  // 新骨架（FrontendPack 覆盖页）不再复用 Base 类名，必要时按可见文案做真实点击。
+  async function tapByLabel(page, labels) {
+    for (const selector of ['button', '.fp-cand__button', 'view']) {
+      const nodes = await page.$$(selector);
+      if (!nodes || nodes.length === 0) continue;
+      for (const node of nodes) {
+        let text = '';
+        try {
+          text = String((await node.text()) || '');
+        } catch {
+          continue;
+        }
+        const hit = labels.find((label) => text.includes(label));
+        if (!hit) continue;
+        await node.tap();
+        return { label: hit, text: text.slice(0, 40), selector };
+      }
+    }
+    return null;
+  }
 
   results.push(
     await attempt('真实点击·首页选桌 →「开始点餐」进入菜单', async () => {
@@ -762,11 +799,18 @@ async function probeClickChain(miniProgram, shotsDir) {
       const homeTables = await home.$$('.home__table');
       if (!homeTables || homeTables.length === 0) {
         const now = await home.data();
+        const backend = await readBackendTables(now);
+        const noTableData = backend.known && backend.ids.length === 0;
         return {
           status: 'BLOCKED',
+          critical: noTableData ? false : undefined,
           detail: '首页未渲染 .home__table（tablesLoading=' + now.tablesLoading
             + '，tablesError=' + JSON.stringify(now.tablesError || '')
-            + '，tableOptions=' + JSON.stringify(now.tableOptions || []) + '）',
+            + '，tableOptions=' + JSON.stringify(now.tableOptions || [])
+            + '，后端 /tables=' + JSON.stringify(backend.ids)
+            + (backend.error ? '，读取失败：' + backend.error : '')
+            + '）'
+            + (noTableData ? '：该项目后端没有餐台数据，堂食选桌不可执行（数据缺失，不是骨架缺陷）' : ''),
         };
       }
       await homeTables[0].tap();
@@ -776,9 +820,15 @@ async function probeClickChain(miniProgram, shotsDir) {
         id: (homeAfter.visit && homeAfter.visit.tableId) || '',
         name: homeAfter.tableName || '',
       };
-      const cta = await home.$('.home__cta');
-      if (!cta) return { status: 'BLOCKED', detail: '首页未渲染 .home__cta 节点（可能在加载态）' };
-      await cta.tap();
+      let cta = await home.$('.home__cta');
+      let ctaPath = 'CLICK（真实点击·Base .home__cta）';
+      if (!cta) {
+        const byLabel = await tapByLabel(home, ['开始点餐', '开始点菜', '去点餐']);
+        if (!byLabel) return { status: 'BLOCKED', detail: '首页未渲染 .home__cta，也没有可点击的「开始点餐」文案节点' };
+        ctaPath = 'CLICK（真实点击·按可见文案「' + byLabel.label + '」，新骨架无 Base 类名）';
+      } else {
+        await cta.tap();
+      }
       await sleep(2500);
       const current = await miniProgram.currentPage();
       const route = current ? current.path : '';
@@ -793,7 +843,7 @@ async function probeClickChain(miniProgram, shotsDir) {
           + ' → 点击「开始点餐」进入 ' + route
           + '，菜单页桌号=' + JSON.stringify(menuTable.name) + '/' + JSON.stringify(menuTable.id)
           + (consistent ? '（两页一致）' : '（两页不一致）'),
-        path: 'CLICK（真实点击）',
+        path: ctaPath,
       };
     }),
   );
@@ -817,11 +867,18 @@ async function probeClickChain(miniProgram, shotsDir) {
       const tableNodes = await menu.$$('.menu__table');
       if (!tableNodes || tableNodes.length === 0) {
         const nowData = await menu.data();
+        const backend = await readBackendTables(nowData);
+        const noTableData = backend.known && backend.ids.length === 0;
         return {
           status: 'NOT_RUN',
+          critical: noTableData ? false : undefined,
           detail: '菜单页未渲染 .menu__table（mode=' + nowData.mode
             + '，tableName=' + JSON.stringify(nowData.tableName || '')
-            + '，tableOptions=' + JSON.stringify(nowData.tableOptions || []) + '）',
+            + '，tableOptions=' + JSON.stringify(nowData.tableOptions || [])
+            + '，后端 /tables=' + JSON.stringify(backend.ids)
+            + (backend.error ? '，读取失败：' + backend.error : '')
+            + '）'
+            + (noTableData ? '：后端无餐台数据，选桌步骤不可执行' : ''),
         };
       }
       await tableNodes[0].tap();
@@ -867,7 +924,9 @@ async function probeClickChain(miniProgram, shotsDir) {
       const orderTableId = orderData && orderData.order && orderData.order.tableId ? orderData.order.tableId : '';
       const payHint = checkoutData && typeof checkoutData.payHint === 'string' ? checkoutData.payHint : '';
       const checkoutTableName = (checkoutData && checkoutData.tableName) || '';
-      const tableNameMatches = selectedTable.name ? checkoutTableName === selectedTable.name : Boolean(checkoutTableName);
+      // 只有真的选了桌，才断言桌号一致性；后端没有餐台数据时本单本就没有桌号，
+      // 这时把「桌号为空」当成失败会让数据缺失冒充骨架缺陷。
+      const tableNameMatches = selectedTable.name ? checkoutTableName === selectedTable.name : true;
       const orderTableMatches = !orderTableId || !selectedTable.id || orderTableId === selectedTable.id;
       return {
         status: orderId && tableNameMatches && orderTableMatches ? 'PASS' : 'FAIL',
@@ -876,7 +935,7 @@ async function probeClickChain(miniProgram, shotsDir) {
           + '；桌号一致性：菜单所选=' + JSON.stringify(selectedTable.name) + '/' + JSON.stringify(selectedTable.id)
           + ' · 结算页=' + JSON.stringify(checkoutTableName)
           + ' · 订单记录 tableId=' + JSON.stringify(orderTableId || '(订单对象未返回)')
-          + (tableNameMatches ? '（结算页一致）' : '（结算页不一致）')
+          + (selectedTable.name ? (tableNameMatches ? '（结算页一致）' : '（结算页不一致）') : '（本单未选桌：后端无餐台数据，不做一致性断言）')
           + '；结算页演示支付提示=' + JSON.stringify(payHint),
         path: 'CLICK（真实点击）+ HANDLER_CALL（补足购物车）',
       };
@@ -969,7 +1028,10 @@ async function attempt(label, fn) {
   const critical = !ADVISORY_INTERACTIONS.has(label);
   try {
     const result = await fn();
-    return { label, critical, ...result };
+    // 数据缺失（后端没有餐台等）时，具体一步可以显式降为参考项：
+    // 只影响这一条的分级，仍然如实记录 BLOCKED / NOT_RUN，绝不改写成 PASS。
+    const criticalOverride = result && typeof result.critical === 'boolean' ? result.critical : critical;
+    return { ...result, label, critical: criticalOverride };
   } catch (error) {
     return { label, critical, status: 'FAIL', detail: error && error.message ? error.message : String(error) };
   }

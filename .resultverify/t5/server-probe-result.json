@@ -1,0 +1,150 @@
+{
+  "schemaVersion": "sidebar-preview-store-probe.v1",
+  "port": 3101,
+  "checks": [
+    {
+      "name": "isolated-new-build-ready",
+      "status": "PASS",
+      "url": "http://127.0.0.1:3101/api/v1"
+    },
+    {
+      "name": "endpoint-requires-session",
+      "status": 401,
+      "code": "AUTH_REQUIRED"
+    },
+    {
+      "name": "invalid-binding-422",
+      "status": 422,
+      "code": "VALIDATION_ERROR"
+    },
+    {
+      "name": "ensure-deterministic-and-idempotent",
+      "status": "PASS",
+      "storeId": "store-preview-07f8bf50c22902f47479461e5765a81c",
+      "first": {
+        "storeId": "store-preview-07f8bf50c22902f47479461e5765a81c",
+        "created": true,
+        "configVersion": 0,
+        "catalogVersion": 0
+      },
+      "replay": {
+        "storeId": "store-preview-07f8bf50c22902f47479461e5765a81c",
+        "created": false,
+        "configVersion": 0,
+        "catalogVersion": 0
+      }
+    },
+    {
+      "name": "concurrent-ensure-single-owner",
+      "status": "PASS",
+      "requests": 6,
+      "createdTrue": 1,
+      "ownerMemberships": 1,
+      "storeId": "store-preview-fdf58b7c7cd2a1f4a27f085746d9aa90"
+    },
+    {
+      "name": "foreign-owner-conflict-409",
+      "status": 409,
+      "code": "PREVIEW_STORE_CONFLICT"
+    },
+    {
+      "name": "frontend-helper-invalid-binding-fail-closed",
+      "status": "PASS",
+      "code": "PREVIEW_STORE_BINDING_INVALID"
+    },
+    {
+      "name": "prepare-same-payload-replay-no-version-increase",
+      "status": "PASS",
+      "first": {
+        "status": "ok",
+        "storeId": "store-preview-0c2e83fa3496ec02b1f9e99295a02f2a",
+        "backendVersions": {
+          "storeConfigVersion": 1,
+          "catalogVersion": 1
+        },
+        "importId": "imp_01M7W3M7AYZJHPBNXPYQEP",
+        "replay": false
+      },
+      "replay": {
+        "status": "ok",
+        "storeId": "store-preview-0c2e83fa3496ec02b1f9e99295a02f2a",
+        "backendVersions": {
+          "storeConfigVersion": 1,
+          "catalogVersion": 1
+        },
+        "importId": "imp_01M7W3M7AYZJHPBNXPYQEP",
+        "replay": true
+      }
+    },
+    {
+      "name": "different-binding-isolated-store",
+      "status": "PASS",
+      "projectA": "store-preview-0c2e83fa3496ec02b1f9e99295a02f2a",
+      "projectB": "store-preview-17855e4e5d47d00e07d42e05d6e0fcfe"
+    },
+    {
+      "name": "new-payload-updates-only-current-binding",
+      "status": "PASS",
+      "before": {
+        "storeConfigVersion": 1,
+        "catalogVersion": 1
+      },
+      "after": {
+        "storeConfigVersion": 2,
+        "catalogVersion": 2
+      },
+      "replay": {
+        "storeConfigVersion": 2,
+        "catalogVersion": 2
+      },
+      "productsA": [
+        {
+          "name": "验证面",
+          "priceCents": 3456,
+          "description": "第二版只改 A"
+        },
+        {
+          "name": "验证饭",
+          "priceCents": 1800,
+          "description": "固定对照"
+        },
+        {
+          "name": "验证汤",
+          "priceCents": 1200,
+          "description": "固定对照"
+        }
+      ],
+      "productsB": [
+        {
+          "name": "验证面",
+          "priceCents": 2345,
+          "description": "第一版"
+        },
+        {
+          "name": "验证饭",
+          "priceCents": 1800,
+          "description": "固定对照"
+        },
+        {
+          "name": "验证汤",
+          "priceCents": 1200,
+          "description": "固定对照"
+        }
+      ]
+    },
+    {
+      "name": "ensure-repeat-does-not-overwrite-imported-versions",
+      "status": "PASS",
+      "response": {
+        "storeId": "store-preview-0c2e83fa3496ec02b1f9e99295a02f2a",
+        "created": false,
+        "configVersion": 2,
+        "catalogVersion": 2
+      }
+    }
+  ],
+  "cleanup": {
+    "stores": 5,
+    "users": 2
+  }
+}

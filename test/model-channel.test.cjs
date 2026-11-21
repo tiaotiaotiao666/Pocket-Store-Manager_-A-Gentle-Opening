@@ -49,7 +49,7 @@ function emptyDraft() {
 test('设置默认值：直连 DeepSeek，transport 是派生值', () => {
   assert.equal(DEFAULT_CONFIG.modelChannel, 'deepseek');
   assert.equal(DEFAULT_CONFIG.modelApiBaseUrl, 'https://api.deepseek.com');
-  assert.equal(DEFAULT_CONFIG.modelName, 'deepseek-chat');
+  assert.equal(DEFAULT_CONFIG.modelName, 'deepseek-flash');
   assert.equal(DEFAULT_CONFIG.modelTimeoutMs, 60000);
   assert.equal(DEFAULT_CONFIG.agentTransport, 'direct');
 });
@@ -64,6 +64,10 @@ test('旧配置迁移：agentTransport=http 推断为本机服务，直连与本
 
   const direct = normalizeConfig({ ...DEFAULT_CONFIG, modelChannel: 'deepseek' });
   assert.equal(direct.agentTransport, 'direct');
+
+  // 旧模型名统一迁移：deepseek-chat 是官方别名，实际由 deepseek-flash 承接。
+  const legacyModel = normalizeConfig({ ...DEFAULT_CONFIG, modelName: 'deepseek-chat' });
+  assert.equal(legacyModel.modelName, 'deepseek-flash');
 
   assert.throws(
     () => normalizeConfig({ ...DEFAULT_CONFIG, agentTransport: 'ftp' }),
@@ -135,8 +139,10 @@ test('调用 DeepSeek：地址拼接、鉴权只在主进程、401 映射为可�
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'https://api.deepseek.com/chat/completions');
   assert.equal(calls[0].headers.Authorization, 'Bearer sk-test-0123456789abcdef');
-  assert.equal(calls[0].body.model, 'deepseek-chat');
+  assert.equal(calls[0].body.model, 'deepseek-flash');
   assert.equal(calls[0].body.stream, false);
+  // 思考模式默认关闭：带 tools 时不回传 reasoning_content 会被上游判 400。
+  assert.deepEqual(calls[0].body.thinking, { type: 'disabled' });
 
   const failDir = makeTempDir('model-channel-401-');
   const failing = createModelCredentials({
@@ -149,6 +155,68 @@ test('调用 DeepSeek：地址拼接、鉴权只在主进程、401 映射为可�
   assert.equal(failed.ok, false);
   assert.equal(failed.code, 'DEEPSEEK_AUTH_FAILED');
   assert.match(failed.message, /API Key/);
+});
+
+test('直连多模态：content 块数组按 OpenAI 格式发送，非法图片本地拒绝', async () => {
+  const dir = makeTempDir('model-channel-vision-');
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        model: 'deepseek-flash',
+        choices: [{ message: { content: '看到一张门店照片' } }],
+      }),
+    };
+  };
+  const credentials = createModelCredentials({ userDataDir: dir, safeStorage: fakeSafeStorage(), fetchImpl });
+  await credentials.setKey('sk-test-0123456789abcdef');
+
+  // 1×1 PNG：只验证 wire shape，不依赖真实图片内容。
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const result = await credentials.chat({
+    model: 'deepseek-flash',
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: '这张图里有什么？' },
+        { type: 'image_url', image_url: { url: `data:image/png;base64,${png}` } },
+      ],
+    }],
+  });
+
+  assert.equal(result.content, '看到一张门店照片');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].body.model, 'deepseek-flash');
+  const content = calls[0].body.messages[0].content;
+  assert.equal(Array.isArray(content), true);
+  assert.deepEqual(content[0], { type: 'text', text: '这张图里有什么？' });
+  assert.equal(content[1].type, 'image_url');
+  assert.match(content[1].image_url.url, /^data:image\/png;base64,/);
+
+  // assistant 消息带图会被上游判 400，这里提前 fail closed。
+  await assert.rejects(
+    () => credentials.chat({
+      messages: [{
+        role: 'assistant',
+        content: [{ type: 'image_url', image_url: { url: `data:image/png;base64,${png}` } }],
+      }],
+    }),
+    (error) => error.code === 'MODEL_REQUEST_INVALID',
+  );
+
+  // 只接受内联 data URL，外部链接不交给上游下载。
+  await assert.rejects(
+    () => credentials.chat({
+      messages: [{
+        role: 'user',
+        content: [{ type: 'image_url', image_url: { url: 'https://example.com/a.png' } }],
+      }],
+    }),
+    (error) => error.code === 'MODEL_REQUEST_INVALID',
+  );
 });
 
 test('直连 transport：工具循环 + 同一套 agent-run.v1 外壳', async () => {

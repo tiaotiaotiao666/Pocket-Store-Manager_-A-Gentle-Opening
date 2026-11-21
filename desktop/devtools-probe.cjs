@@ -11,6 +11,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFile } = require('node:child_process');
 
+// 安装发现只保留一份实现：执行链（预览/候选验证）用的就是这个解析器。
+// 这里直接复用，避免「预览能打开、界面却说没装」的第二套候选清单。
+const { resolveDevtoolsCli } = require('./devtools-cli.cjs');
+
 const UNINSTALL_KEYS = [
   'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\微信web开发者工具',
   'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\微信web开发者工具',
@@ -26,18 +30,23 @@ const PROCESSS_NAMES = ['微信开发者工具', 'wechatdevtools'];
  */
 function isDevtoolsRunning() {
   return new Promise((resolve) => {
-    execFile('tasklist.exe', ['/FO', 'CSV', '/NH'], {
-      timeout: 2500,
-      windowsHide: true,
-      maxBuffer: 2 * 1024 * 1024,
-    }, (error, stdout) => {
-      if (error) {
-        resolve(false);
-        return;
-      }
-      const text = String(stdout || '').toLowerCase();
-      resolve(PROCESSS_NAMES.some((name) => text.includes(name.toLowerCase())));
-    });
+    try {
+      execFile('tasklist.exe', ['/FO', 'CSV', '/NH'], {
+        timeout: 2500,
+        windowsHide: true,
+        maxBuffer: 2 * 1024 * 1024,
+      }, (error, stdout) => {
+        if (error) {
+          resolve(false);
+          return;
+        }
+        const text = String(stdout || '').toLowerCase();
+        resolve(PROCESSS_NAMES.some((name) => text.includes(name.toLowerCase())));
+      });
+    } catch (error) {
+      // 受限环境可能直接抛 EPERM/maxBuffer：窗口状态未知就按「未确认」处理，不能拖垮整个探测。
+      resolve(false);
+    }
   });
 }
 
@@ -48,18 +57,22 @@ function isDevtoolsRunning() {
 function getDevtoolsWindowTitle() {
   return new Promise((resolve) => {
     const script = "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-Process | Where-Object { $_.ProcessName -like '*微信*' -and $_.MainWindowTitle } | Select-Object -First 1 -ExpandProperty MainWindowTitle";
-    execFile('powershell.exe', ['-NoProfile', '-Command', script], {
-      timeout: 2500,
-      windowsHide: true,
-      maxBuffer: 64 * 1024,
-      encoding: 'utf8',
-    }, (error, stdout) => {
-      if (error) {
-        resolve('');
-        return;
-      }
-      resolve(String(stdout || '').trim());
-    });
+    try {
+      execFile('powershell.exe', ['-NoProfile', '-Command', script], {
+        timeout: 2500,
+        windowsHide: true,
+        maxBuffer: 64 * 1024,
+        encoding: 'utf8',
+      }, (error, stdout) => {
+        if (error) {
+          resolve('');
+          return;
+        }
+        resolve(String(stdout || '').trim());
+      });
+    } catch (error) {
+      resolve('');
+    }
   });
 }
 
@@ -73,18 +86,22 @@ async function readDevtoolsWindowState() {
 
 function runRegQuery(key) {
   return new Promise((resolve) => {
-    execFile('reg.exe', ['query', key, '/v', 'InstallLocation'], {
-      timeout: 2500,
-      windowsHide: true,
-      maxBuffer: 64 * 1024,
-    }, (error, stdout) => {
-      if (error) {
-        resolve(null);
-        return;
-      }
-      const match = /InstallLocation\s+REG_\w+\s+(.+)/i.exec(String(stdout || ''));
-      resolve(match ? match[1].trim() : null);
-    });
+    try {
+      execFile('reg.exe', ['query', key, '/v', 'InstallLocation'], {
+        timeout: 2500,
+        windowsHide: true,
+        maxBuffer: 64 * 1024,
+      }, (error, stdout) => {
+        if (error) {
+          resolve(null);
+          return;
+        }
+        const match = /InstallLocation\s+REG_\w+\s+(.+)/i.exec(String(stdout || ''));
+        resolve(match ? match[1].trim() : null);
+      });
+    } catch (error) {
+      resolve(null);
+    }
   });
 }
 
@@ -109,7 +126,9 @@ function defaultCandidates() {
   ].filter(Boolean);
 }
 
-async function probeDevtools() {
+async function probeDevtools(options) {
+  const opts = options || {};
+  const resolveCli = typeof opts.resolveDevtoolsCli === 'function' ? opts.resolveDevtoolsCli : resolveDevtoolsCli;
   if (process.platform !== 'win32') {
     return { found: false, path: null, version: null, via: 'none' };
   }
@@ -139,6 +158,25 @@ async function probeDevtools() {
         ...windowState,
       };
     }
+  }
+
+  // 回退到执行链的同一解析器（WX_CLI_PATH → 固定候选 → 固定父目录扫描）。
+  // 命中即可确认「工具已安装」；这里只做只读判断，不执行 cli.bat、不启动工具。
+  let cliPath = null;
+  try {
+    cliPath = resolveCli();
+  } catch (error) {
+    cliPath = null;
+  }
+  if (cliPath) {
+    const windowState = await readDevtoolsWindowState();
+    return {
+      found: true,
+      path: path.dirname(cliPath),
+      version: null,
+      via: 'cli-resolver',
+      ...windowState,
+    };
   }
 
   return { found: false, path: null, version: null, via: 'none', running: false, projectOpen: false, windowTitle: '' };

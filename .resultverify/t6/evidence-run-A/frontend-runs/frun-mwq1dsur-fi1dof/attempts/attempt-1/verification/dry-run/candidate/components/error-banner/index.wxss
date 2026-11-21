@@ -1,0 +1,65 @@
+@import "../../styles/component.wxss";
+
+.error-banner {
+  display: flex;
+  align-items: flex-start;
+  padding: 20rpx 22rpx;
+  border-radius: 18rpx;
+  background: #fdeceb;
+  border: 2rpx solid rgba(178, 58, 47, 0.16);
+}
+
+.error-banner__icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  height: 40rpx;
+  margin-top: 2rpx;
+  border-radius: 999rpx;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.error-banner__body {
+  flex: 1;
+  min-width: 0;
+  margin-left: 14rpx;
+}
+
+.error-banner__message {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: var(--color-danger);
+}
+
+.error-banner__request {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 19rpx;
+  color: rgba(143, 50, 41, 0.6);
+}
+
+.error-banner__action {
+  flex: none;
+  margin-left: 12rpx;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(178, 58, 47, 0.12);
+  color: var(--color-danger);
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.error-banner__close {
+  flex: none;
+  margin-left: 12rpx;
+  padding: 0 4rpx;
+  color: rgba(143, 50, 41, 0.55);
+  font-size: 24rpx;
+  line-height: 40rpx;
+}

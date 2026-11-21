@@ -1,0 +1,32 @@
+<view class="pay-result pay-result--{{state}}">
+  <view class="pay-result__badge">
+    <view wx:if="{{state === 'loading'}}" class="pay-result__spinner"></view>
+    <text wx:elif="{{state === 'success'}}" class="pay-result__mark">✓</text>
+    <text wx:elif="{{state === 'pending'}}" class="pay-result__mark pay-result__mark--pending">···</text>
+    <text wx:else class="pay-result__mark pay-result__mark--error">!</text>
+  </view>
+
+  <text class="pay-result__headline">{{headline}}</text>
+  <text wx:if="{{caption}}" class="pay-result__caption">{{caption}}</text>
+
+  <view wx:if="{{showNumber}}" class="pay-result__card">
+    <text class="pay-result__label">取餐号（演示）</text>
+    <text class="pay-result__number">{{shortId || '------'}}</text>
+    <view class="pay-result__meta">
+      <text wx:if="{{fulfillmentText}}" class="pay-result__mode">{{fulfillmentText}}</text>
+      <text wx:if="{{totalText}}" class="pay-result__amount">{{totalText}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{hasError && requestId}}" class="pay-result__request">
+    <text>requestId：{{requestId}}</text>
+  </view>
+
+  <text wx:if="{{state === 'success'}}" class="pay-result__demo">{{demoNotice}}</text>
+
+  <view class="pay-result__actions">
+    <view wx:if="{{state !== 'loading' && primary}}" class="pay-result__primary" bind:tap="onPrimary">{{primary}}</view>
+    <view wx:if="{{state !== 'loading'}}" class="pay-result__secondary" bind:tap="onSecondary">{{secondary}}</view>
+  </view>
+
+</view>

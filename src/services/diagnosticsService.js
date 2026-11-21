@@ -94,8 +94,8 @@ async function probeBackend(config) {
       return {
         line: backendLine({
           result: DIAGNOSTIC_RESULTS.FAIL,
-          message: '本机模型服务拒绝了这个请求，可能是来源配置不对',
-          action: '检查服务的来源配置（DESKTOP_ORIGIN）后重试',
+          message: '服务在运行但被浏览器跨域策略拦截，请检查 DESKTOP_ORIGIN',
+          action: '把 DESKTOP_ORIGIN 调整为应用来源，或留空以反射来源',
         }),
         json: { baseUrl: base, health: { ok: false, status: 0, failure: 'cors' }, readyz: null },
         reachable: false,
@@ -104,8 +104,8 @@ async function probeBackend(config) {
     return {
       line: backendLine({
         result: DIAGNOSTIC_RESULTS.FAIL,
-        message: '本机模型服务未启动',
-        action: '启动本机服务后重新自检；只用直连 DeepSeek 可以忽略这项',
+        message: '服务未启动，请在工作区根目录运行 npm start（或 npm run server:dev）',
+        action: '启动后端后重新自检',
       }),
       json: { baseUrl: base, health: { ok: false, status: 0, failure: 'network' }, readyz: null },
       reachable: false,
@@ -193,8 +193,21 @@ async function probeBackend(config) {
 }
 
 async function agentLine(config, backend) {
-  const channel = config.modelChannel === 'server' ? 'server' : 'deepseek';
-  if (channel === 'deepseek') {
+  // 设置里的 agentTransport 是派生值；旧配置可能只有 modelChannel，两者都要认。
+  const transport = config.agentTransport === 'direct' || config.modelChannel === 'deepseek'
+    ? 'direct'
+    : (config.agentTransport === 'http' || config.modelChannel === 'server' ? 'http' : 'mock');
+
+  if (transport === 'mock') {
+    return createDiagnosticLine({
+      id: 'agent',
+      title: '模型通道',
+      result: DIAGNOSTIC_RESULTS.PASS,
+      message: '本地 Mock（未接入真实模型）',
+    });
+  }
+
+  if (transport === 'direct') {
     let configured = false;
     try {
       const bridgeApi = bridge();
@@ -210,26 +223,36 @@ async function agentLine(config, backend) {
       title: '模型与 API',
       result: configured ? DIAGNOSTIC_RESULTS.PASS : DIAGNOSTIC_RESULTS.WARN,
       message: configured
-        ? `直连 DeepSeek · ${config.modelName || 'deepseek-chat'}（已保存 API Key，未发起真实调用）`
+        ? `直连 DeepSeek · ${config.modelName || 'deepseek-flash'}（已保存 API Key，未发起真实调用）`
         : '直连 DeepSeek，但还没有保存 API Key',
       action: configured ? undefined : '在「模型与 API」里粘贴 API Key 并保存',
     });
   }
 
+  const endpoint = String(config.agentEndpoint || '');
+  // 空端点交给下游默认值；只有显式填了非法端点才判失败。
+  if (endpoint && !/^\/[A-Za-z0-9/_-]*$/.test(endpoint)) {
+    return createDiagnosticLine({
+      id: 'agent',
+      title: '模型通道',
+      result: DIAGNOSTIC_RESULTS.FAIL,
+      message: 'Agent 端点配置不正确（应为 /api/v1/agent/turn）',
+    });
+  }
   if (!backend.reachable) {
     return createDiagnosticLine({
       id: 'agent',
-      title: '模型与 API',
+      title: '模型通道',
       result: DIAGNOSTIC_RESULTS.FAIL,
-      message: '本机模型服务不可用',
-      action: '先启动本机服务，或改用直连 DeepSeek',
+      message: '后端不可用，Agent 无法工作',
+      action: '先修复后端服务',
     });
   }
   return createDiagnosticLine({
     id: 'agent',
-    title: '模型与 API',
+    title: '模型通道',
     result: DIAGNOSTIC_RESULTS.PASS,
-    message: '本机模型服务可用（未发起真实调用，不消耗额度）',
+    message: '后端可用，Agent 通道已配置（未发起真实调用，不消耗额度）',
   });
 }
 
@@ -294,10 +317,9 @@ export function createDiagnosticsService() {
       ...json,
       backend: backend.json,
       agent: {
-        channel: config.modelChannel === 'server' ? 'server' : 'deepseek',
-        model: String(config.modelName || 'deepseek-chat'),
-        baseUrl: String(config.modelApiBaseUrl || 'https://api.deepseek.com'),
-        timeoutMs: Number(config.modelTimeoutMs) || 60000,
+        transport: config.agentTransport === 'http' ? 'http' : 'mock',
+        endpoint: String(config.agentEndpoint || ''),
+        timeoutMs: Number(config.agentTimeoutMs) || 30000,
         reachable: backend.reachable,
       },
       checks: ordered.map((line) => ({ id: line.id, result: line.result, message: line.message })),

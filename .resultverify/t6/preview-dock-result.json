@@ -1,0 +1,46 @@
+{
+  "status": "PARTIAL",
+  "workDir": "C:\\Users\\leiji\\AppData\\Local\\Temp\\preview-dock-6e2rDL",
+  "steps": [
+    {
+      "name": "project-restored",
+      "state": {
+        "studio": true,
+        "dock": true,
+        "body": "口袋店长·轻启\n会说话的店长，帮你把店开起来\n我的项目\n设置与自检\n开始开店\n会话记录\nT6链路验证店088054\n桌面版 · 数据存在本机\n已保存 14:40\n模型：本机服务\n重置项目\n视觉偏好\n只记录风格，不生成图片\n已保存 14:40\nT6链路验证店088054\n项目\n重置项目\n\n请给你的店铺"
+      }
+    }
+  ],
+  "projectOpened": true,
+  "noticeBefore": "",
+  "guideDismiss": "已准备就绪",
+  "outcome": {
+    "text": "已发起启动请求，正在确认工具窗口…",
+    "tone": "preview-dock-note is-info",
+    "exported": true
+  },
+  "confirmState": {
+    "text": "微信开发者工具已启动。如果窗口里还没显示小程序页面，请稍等或在工具里点一次「编译」（Ctrl+B）。",
+    "tone": "preview-dock-note is-info"
+  },
+  "previewDirs": [
+    "T6链路验证店-预览-208793"
+  ],
+  "exportedProject": {
+    "dirLabel": "T6链路验证店-预览-208793",
+    "pages": 8,
+    "projectAppid": "wx3b1c04f63cf6cfd0",
+    "appidPostprocess": true,
+    "hasLock": true
+  },
+  "verdict": {
+    "export": "PASS",
+    "openDevtools": "BLOCKED",
+    "confirmText": "微信开发者工具已启动。如果窗口里还没显示小程序页面，请稍等或在工具里点一次「编译」（Ctrl+B）。",
+    "confirmTone": "preview-dock-note is-info",
+    "note": "工具已启动，但工程页面未确认（提示需在工具里点一次编译）"
+  },
+  "logTail": [
+    "DevTools listening on ws://127.0.0.1:9361/devtools/browser/9803e24d-fbe8-4560-bcbe-cb0d5a1ee756\r"
+  ]
+}

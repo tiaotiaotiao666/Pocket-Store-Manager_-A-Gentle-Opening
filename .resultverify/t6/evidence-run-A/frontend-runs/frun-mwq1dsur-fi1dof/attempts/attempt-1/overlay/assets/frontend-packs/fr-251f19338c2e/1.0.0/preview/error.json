@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "frontend-preview.v1",
+  "state": "error",
+  "displayName": "参考图首页候选",
+  "note": "错误态：页面级错误由 Base 控制器的 error 状态处理，候选不新增错误源",
+  "pages": [
+    {
+      "pageId": "home",
+      "slotIds": [
+        "home-hero"
+      ]
+    }
+  ]
+}

@@ -1,5 +1,10 @@
 import { AGENT_DRAFT_LIMITS } from '../../domain/agentDraft.mjs';
 import {
+  AGENT_IMAGE_LIMITS,
+  AGENT_IMAGE_MEDIA_TYPES,
+  estimateBase64Bytes,
+} from '../../domain/agentImageInput.mjs';
+import {
   buildAppCapabilityCatalog,
   classifyFieldId,
   findAppCapabilityAction,
@@ -29,8 +34,9 @@ import {
  * - 返回值仍是 `app-assistant.v1` 外壳，交给 `validateAppAssistantResponse` 统一校验。
  *
  * 密钥不进入渲染层：真正的 HTTP 请求由主进程用 safeStorage 里的 Key 发出。
- * 主进程的 `modelChat` 只转发 messages/tools、没有图片通道，因此带图时
- * 直接返回结构化错误，而不是把图片静默丢掉。
+ * 主进程 `modelChat` 支持 OpenAI 多模态 content 块；本轮图片只放在最后一条 user
+ * 消息里，历史消息保持纯文本。思考模式在主进程固定关闭（带 tools 时不回传
+ * `reasoning_content` 会被上游判 400）。
  */
 
 const MAX_REPLY_CHARS = 500;
@@ -228,6 +234,10 @@ function acceptProposedChanges(rawChanges, context) {
       rejected.push({ index, code: 'APP_ASSISTANT_OPERATION_DENIED', message: `单轮最多 ${MAX_ACTION_REQUESTS} 个动作请求。` });
       return;
     }
+    // opId 必须在规范化之前分配：`normalizeProposedChange` 读的就是 nextOpId，
+    // 若等到提交后再自增，同一批里的多条修改会全部拿到同一个 `op_1`，
+    // 桌面端校验就会判「修改项 opId 重复」把整份提案拒掉。
+    context.nextOpId += 1;
     const normalized = normalizeProposedChange(item, context);
     if (!normalized.ok) {
       rejected.push({ index, code: normalized.code, message: normalized.message });
@@ -239,7 +249,6 @@ function acceptProposedChanges(rawChanges, context) {
       return;
     }
     context.signatures.add(signature);
-    context.nextOpId += 1;
     context.proposals.push(normalized.change);
     accepted += 1;
   });
@@ -296,6 +305,8 @@ function executeTool(name, args, context) {
       if (countActionRequests(context) >= MAX_ACTION_REQUESTS) {
         return toolFail('APP_ASSISTANT_OPERATION_DENIED', `单轮最多 ${MAX_ACTION_REQUESTS} 个动作请求。`);
       }
+      // 同上：先分配 opId 再规范化，动作请求也不能与已登记的字段修改撞 id。
+      context.nextOpId += 1;
       const normalized = normalizeProposedChange({
         op: 'action.request',
         actionId: args.actionId,
@@ -309,7 +320,6 @@ function executeTool(name, args, context) {
         return toolFail('APP_ASSISTANT_PROPOSAL_DUPLICATE', '这个动作请求已经登记过。');
       }
       context.signatures.add(signature);
-      context.nextOpId += 1;
       context.proposals.push(normalized.change);
       return { ok: true, actionId: normalized.change.actionId, totalChanges: context.proposals.length };
     }
@@ -352,6 +362,71 @@ function resolveBridgeChat() {
   return (payload) => api.modelChat(payload);
 }
 
+const IMAGE_BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/;
+const EMPTY_UTTERANCE_WITH_IMAGES =
+  '请判断这些图片的用途；不确定时先追问是识别菜单、提取门店氛围，还是参考界面重构。';
+
+/**
+ * 直连图片：只接受 JPEG/PNG/WebP 的内联 base64，上限与 `AGENT_IMAGE_LIMITS` 一致。
+ * 任何一张不合法都整轮拒绝，绝不静默少发一张。
+ */
+function normalizeDirectImages(attachments) {
+  if (!Array.isArray(attachments) || attachments.length === 0) return [];
+  if (attachments.length > AGENT_IMAGE_LIMITS.maxTotalImages) {
+    throw createAgentTurnError('AGENT_REQUEST_INVALID', {
+      message: `最多 ${AGENT_IMAGE_LIMITS.maxTotalImages} 张图片。`,
+      details: { reason: 'DIRECT_ATTACHMENT_LIMIT' },
+    });
+  }
+
+  let totalBytes = 0;
+  return attachments.map((item, index) => {
+    const mediaType = item && typeof item.mediaType === 'string' ? item.mediaType : '';
+    if (!AGENT_IMAGE_MEDIA_TYPES.includes(mediaType)) {
+      throw createAgentTurnError('AGENT_REQUEST_INVALID', {
+        message: `第 ${index + 1} 张图片格式不支持，只接受 JPEG/PNG/WebP。`,
+        details: { reason: 'DIRECT_ATTACHMENT_TYPE' },
+      });
+    }
+    const data = item && typeof item.dataBase64 === 'string' ? item.dataBase64 : '';
+    if (!data || !IMAGE_BASE64_PATTERN.test(data) || data.length % 4 !== 0) {
+      throw createAgentTurnError('AGENT_REQUEST_INVALID', {
+        message: `第 ${index + 1} 张图片内容无效，请重新添加。`,
+        details: { reason: 'DIRECT_ATTACHMENT_INVALID' },
+      });
+    }
+    const bytes = estimateBase64Bytes(data);
+    if (bytes <= 0 || bytes > AGENT_IMAGE_LIMITS.maxDecodedBytesPerImage) {
+      throw createAgentTurnError('AGENT_REQUEST_INVALID', {
+        message: `第 ${index + 1} 张图片超过 ${AGENT_IMAGE_LIMITS.maxDecodedBytesPerImage} 字节。`,
+        details: { reason: 'DIRECT_ATTACHMENT_TOO_LARGE' },
+      });
+    }
+    totalBytes += bytes;
+    if (totalBytes > AGENT_IMAGE_LIMITS.maxDecodedBytesTotal) {
+      throw createAgentTurnError('AGENT_REQUEST_INVALID', {
+        message: `图片合计超过 ${AGENT_IMAGE_LIMITS.maxDecodedBytesTotal} 字节。`,
+        details: { reason: 'DIRECT_ATTACHMENT_TOO_LARGE' },
+      });
+    }
+    return { mediaType, data };
+  });
+}
+
+function buildUserContent(request, images) {
+  const text = typeof request.utterance === 'string' ? request.utterance.trim() : '';
+  if (images.length === 0) return text;
+  const parts = [];
+  parts.push({ type: 'text', text: text || EMPTY_UTTERANCE_WITH_IMAGES });
+  for (const image of images) {
+    parts.push({
+      type: 'image_url',
+      image_url: { url: `data:${image.mediaType};base64,${image.data}` },
+    });
+  }
+  return parts;
+}
+
 function buildModelMessages(request) {
   const context = request.project?.context ?? null;
   const messages = [
@@ -370,8 +445,9 @@ function buildModelMessages(request) {
       messages.push({ role: item.role, content: item.text });
     }
   }
-  messages.push({ role: 'user', content: request.utterance });
-  return { messages };
+  const images = normalizeDirectImages(request.attachments);
+  messages.push({ role: 'user', content: buildUserContent(request, images) });
+  return { messages, imageCount: images.length };
 }
 
 function mapUpstreamError(result) {
@@ -405,23 +481,20 @@ export function createDirectAppAssistantTransport(options = {}) {
         });
       }
 
-      const attachments = Array.isArray(request.attachments) ? request.attachments : [];
-      if (attachments.length > 0) {
-        // 主进程 modelChat 没有图片通道：明确拒绝，绝不把图片从请求里静默删除后继续。
-        throw createAgentTurnError('AGENT_REQUEST_INVALID', {
-          message: '当前直连 DeepSeek 不支持图片输入，请改用本机模型服务后再发送图片。',
-          details: {
-            reason: 'DIRECT_ATTACHMENTS_UNSUPPORTED',
-            attachmentIds: attachments.map((item) => item.id).filter(Boolean),
-          },
-        });
-      }
 
       const model = getModel() || {};
       const startedAt = Date.now();
       const runId = createRunId();
       const projectContext = isPlainObject(request.project?.context) ? request.project.context : null;
-      const { messages } = buildModelMessages(request);
+      const { messages, imageCount } = buildModelMessages(request);
+      // 官方模型里只有 deepseek-flash 支持图像理解；v4-pro 带图会被上游判 400，这里先给出可执行提示。
+      const modelName = typeof model.model === 'string' ? model.model : '';
+      if (imageCount > 0 && /(^|:)deepseek-v4-pro$/i.test(modelName)) {
+        throw createAgentTurnError('AGENT_REQUEST_INVALID', {
+          message: '当前模型 deepseek-v4-pro 不支持看图，请在设置里改用 deepseek-flash。',
+          details: { reason: 'DIRECT_MODEL_NO_VISION' },
+        });
+      }
 
       const context = {
         projectContext,
@@ -429,7 +502,8 @@ export function createDirectAppAssistantTransport(options = {}) {
         proposals: [],
         questions: [],
         signatures: new Set(),
-        nextOpId: 1,
+        // opId 在「分配前自增」，所以计数器从 0 起：同一批第一条才是 op_1。
+        nextOpId: 0,
       };
 
       const toolCalls = [];
@@ -467,6 +541,8 @@ export function createDirectAppAssistantTransport(options = {}) {
             maxTokens: 1200,
             messages,
             tools: APP_ASSISTANT_TOOLS,
+            // 带 tools 时若开启思考，历史轮次必须回传 reasoning_content，本通道没有保存它。
+            thinking: { type: 'disabled' },
           });
         } catch (error) {
           if (isAgentTurnError(error)) throw error;
@@ -604,7 +680,7 @@ export function createDirectAppAssistantTransport(options = {}) {
           transport: 'direct',
           provider: 'deepseek',
           mock: false,
-          model: model.model || 'deepseek-chat',
+          model: model.model || 'deepseek-flash',
           latencyMs: durationMs(startedAt),
           runId,
         },

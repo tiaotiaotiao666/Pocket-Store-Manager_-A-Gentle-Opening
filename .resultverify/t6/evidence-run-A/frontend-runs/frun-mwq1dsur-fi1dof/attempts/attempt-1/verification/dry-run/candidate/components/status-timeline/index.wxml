@@ -1,0 +1,28 @@
+<view class="timeline">
+  <view class="timeline__progress">
+    <view
+      wx:for="{{steps}}"
+      wx:key="status"
+      class="timeline__step timeline__step--{{item.state}}"
+    >
+      <view class="timeline__dot"></view>
+      <text class="timeline__text">{{item.text}}</text>
+    </view>
+  </view>
+
+  <view class="timeline__logs">
+    <view wx:for="{{timeline}}" wx:key="id" class="timeline__log">
+      <view class="timeline__log-rail">
+        <view class="timeline__log-dot timeline__log-dot--{{item.tone}}"></view>
+      </view>
+      <view class="timeline__log-body">
+        <view class="timeline__log-head">
+          <text class="timeline__log-title">{{item.title}}</text>
+          <text class="timeline__log-time">{{item.timeText}}</text>
+        </view>
+        <text class="timeline__log-meta">{{item.actorText}}{{item.reason ? ' · ' + item.reason : ''}}</text>
+      </view>
+    </view>
+    <view wx:if="{{!timeline || timeline.length === 0}}" class="timeline__empty">暂无状态记录</view>
+  </view>
+</view>

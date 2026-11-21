@@ -1,0 +1,10 @@
+<view class="loading-block">
+  <view wx:for="{{bars}}" wx:key="*this" class="loading-block__row">
+    <view class="loading-block__thumb"></view>
+    <view class="loading-block__lines">
+      <view class="loading-block__line loading-block__line--title"></view>
+      <view class="loading-block__line"></view>
+    </view>
+  </view>
+  <text wx:if="{{text}}" class="loading-block__text">{{text}}</text>
+</view>

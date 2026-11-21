@@ -128,6 +128,39 @@ describe('差异计算与确认', () => {
     expect(assertConfirmations(diff, ['product:dish-1', 'profile.name', 'profile.address', 'profile.phone'])).toEqual({ ok: true });
   });
 
+  it('仅描述变化进入冲突并复用产品确认键', () => {
+    const next = payload({
+      profile: {
+        name: '柑橘小馆',
+        category: '社区餐馆',
+        address: '示范市演示路 1 号',
+        phone: '000-0000-0000',
+        notes: '',
+        businessHours: [{ start: '10:00', end: '21:00' }],
+      },
+      categories: [{ draftId: 'cat-1', name: '招牌主食', sortOrder: 1 }],
+      products: [
+        { draftId: 'dish-1', categoryDraftId: 'cat-1', name: '宫保鸡丁', priceCents: 2800, available: true, description: '第二版描述' },
+      ],
+      tables: [{ draftId: 'table-1', name: 'A01', sortOrder: 1 }],
+    });
+    const before = existing({
+      categories: [{
+        id: 'cat_sig',
+        name: '招牌主食',
+        sortOrder: 1,
+        products: [{ id: 'prd_beef', name: '宫保鸡丁', priceCents: 2800, available: true, description: '第一版描述' }],
+      }],
+    });
+    const diff = computeImportDiff(next, before);
+    const matched = diff.products.find((item) => item.name === '宫保鸡丁');
+    expect(matched).toMatchObject({ action: 'conflict', existingId: 'prd_beef' });
+    expect(matched?.reasons).toEqual(['DESCRIPTION_CHANGED']);
+    expect(diff.conflicts).toEqual(['product:dish-1']);
+    expect(assertConfirmations(diff, [])).toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
+    expect(assertConfirmations(diff, ['product:dish-1'])).toEqual({ ok: true });
+  });
+
   it('上架状态变化同样进入冲突，不静默上架/下架', () => {
     const withUnlisted = existing({
       categories: [{

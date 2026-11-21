@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "我的订单",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "error-banner": "/components/error-banner/index",
+    "order-card": "/components/order-card/index",
+    "state-view": "/components/state-view/index"
+  }
+}

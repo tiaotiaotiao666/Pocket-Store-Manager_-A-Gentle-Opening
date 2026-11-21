@@ -1561,6 +1561,9 @@ function baseReducer(state, action) {
         agentChat: {
           ...state.agentChat,
           lastApplied: {
+            // 记下来自哪一轮：侧栏据此把变更卡锚定到那一轮的助手消息后面，
+            // 而不是永远挂在日志末尾。
+            requestId: chatIdText(action.requestId) || chatIdText(state.agentChat?.activeRequestId) || null,
             proposalId,
             appliedRevision: currentRevision + 1,
             entries,
@@ -2073,9 +2076,10 @@ function baseReducer(state, action) {
           requestContextRevision: null,
           lastError: null,
           lastStale: stale,
-          // 待确认项只登记摘要（字段/动作），绝不自动写入。
+          // 待确认项只登记摘要（字段/动作），绝不自动写入；requestId 用于在消息流里定位那一轮。
           lastPending: action.pending && typeof action.pending === 'object'
             ? {
+              requestId: identity.requestId,
               fields: Array.isArray(action.pending.fields) ? action.pending.fields.slice(0, 24) : [],
               actions: Array.isArray(action.pending.actions) ? action.pending.actions.slice(0, 2) : [],
             }

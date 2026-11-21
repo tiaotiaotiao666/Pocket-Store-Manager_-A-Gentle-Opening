@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "frontend-dry-run.v1",
+  "ok": true,
+  "code": "DRY_RUN_OK",
+  "summary": "dry-run 通过；candidate=fr-251f19338c2e@1.0.0；ComposerP0-P6=138 个文件；mini:check=通过；consistency=通过；可观察项 4 项：通过 1，失败 0，未执行 1，未测量 1，不适用 1（不做像素百分比判断）",
+  "candidateId": "fr-251f19338c2e",
+  "candidateVersion": "1.0.0",
+  "revision": 1,
+  "plan": {
+    "source": "provided",
+    "planFile": null,
+    "planDigest": "sha256:2c6ebe935364f1d728924eeb92a55c797b1054039819cac42053960a00994a88",
+    "frontendPack": {
+      "id": "fr-251f19338c2e",
+      "version": "1.0.0"
+    },
+    "overridden": false
+  },
+  "outputRelativePath": "verification/dry-run/candidate",
+  "checks": [
+    {
+      "id": "mini-check",
+      "status": "pass",
+      "message": "小程序静态校验通过（8 页 / 14 组件）"
+    },
+    {
+      "id": "consistency",
+      "status": "pass",
+      "message": "产物与 Lock/报告一致（138 个文件）"
+    },
+    {
+      "id": "observable",
+      "status": "pass",
+      "message": "可观察项 4 项：通过 1，失败 0，未执行 1，未测量 1，不适用 1（不做像素百分比判断）",
+      "counts": {
+        "total": 4,
+        "pass": 1,
+        "fail": 0,
+        "notRun": 1,
+        "notChecked": 1,
+        "notApplicable": 1
+      }
+    },
+    {
+      "id": "sections:home",
+      "status": "pass",
+      "message": "16 个节点按 Draft 顺序渲染",
+      "path": "$.pages[0]"
+    },
+    {
+      "id": "density",
+      "status": "not_applicable",
+      "message": "Draft/DSL 没有密度字段；不做像素级密度判断"
+    },
+    {
+      "id": "overflow",
+      "status": "not_checked",
+      "message": "溢出属于运行时视觉项：静态产物无法判定，本链路不做像素测量（不以百分比冒充结论）",
+      "code": "OBS_OVERFLOW_NOT_MEASURED"
+    },
+    {
+      "id": "runtime-action:home.goMenu",
+      "status": "not_run",
+      "message": "微信运行时未执行，无法确认“首页 →「开始点餐」进入菜单”可点",
+      "code": "OBS_ACTION_CLICK_NOT_RUN",
+      "path": "$.pages[0].nodes[4].nodes[1]"
+    }
+  ],
+  "issues": [],
+  "details": {
+    "stage": "done",
+    "plan": {
+      "source": "provided",
+      "planFile": null,
+      "planDigest": "sha256:2c6ebe935364f1d728924eeb92a55c797b1054039819cac42053960a00994a88",
+      "frontendPack": {
+        "id": "fr-251f19338c2e",
+        "version": "1.0.0"
+      },
+      "overridden": false
+    },
+    "materialize": {
+      "attempt": 1,
+      "candidateId": "fr-251f19338c2e",
+      "candidateVersion": "1.0.0"
+    },
+    "compose": {
+      "outputRelativePath": "verification/dry-run/candidate",
+      "treeSha256": "sha256:0be51af5132b45ebac4896dd95286ee0cc175fa382c648bf73ba91df3f915e9c",
+      "fileCount": 138
+    },
+    "mini": {
+      "pages": 8,
+      "components": 14,
+      "errors": 0
+    },
+    "consistency": {
+      "ok": true,
+      "problems": 0
+    },
+    "observable": {
+      "ok": true,
+      "counts": {
+        "total": 4,
+        "pass": 1,
+        "fail": 0,
+        "notRun": 1,
+        "notChecked": 1,
+        "notApplicable": 1
+      }
+    }
+  },
+  "generatedAt": "2026-11-21T06:38:45.621Z"
+}

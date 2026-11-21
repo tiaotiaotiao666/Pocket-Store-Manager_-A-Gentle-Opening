@@ -308,7 +308,7 @@ function buildProjectConfig(graph, options) {
   }
   config.appid = 'touristappid';
   config.projectname = sanitizeProjectName(options.projectName || graph.plan.planId);
-  config.description = '由「口袋店长·轻启」生成的餐饮扫码点餐小程序（演示付款）';
+  config.description = '由智能开店生成的餐饮扫码点餐小程序（演示付款）';
   return json(config);
 }
 
@@ -456,6 +456,11 @@ function buildEnvModule(graph, options) {
     '',
     "const DEFAULT_IDENTITY = 'customer';",
     '',
+    'const DEMO_TABLES = [',
+    "  { id: 'tbl_A01', name: 'A01' },",
+    "  { id: 'tbl_A02', name: 'A02' },",
+    '];',
+    '',
     'const FULFILLMENT_TYPES = { DINE_IN: \'DINE_IN\', TAKEAWAY: \'TAKEAWAY\' };',
     'const FULFILLMENT_TEXT = { DINE_IN: \'堂食\', TAKEAWAY: \'到店自取\' };',
     '',
@@ -467,6 +472,7 @@ function buildEnvModule(graph, options) {
     '  USE_WECHAT_CODE_LOGIN,',
     '  DEMO_IDENTITIES,',
     '  DEFAULT_IDENTITY,',
+    '  DEMO_TABLES,',
     '  FULFILLMENT_TYPES,',
     '  FULFILLMENT_TEXT,',
     '  STORE_CONFIG: storeConfig,',

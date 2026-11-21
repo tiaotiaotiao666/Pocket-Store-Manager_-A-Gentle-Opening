@@ -1,5 +1,6 @@
 import { validateAgentDraft, buildNextQuestion, toContractDraft } from './agentDraft.mjs';
 import { APP_CAPABILITIES_VERSION } from './appCapabilities.mjs';
+import { utf8ByteLength } from './utf8Bytes.mjs';
 
 /**
  * 安全项目上下文（供统一会话 Agent 与 contentRevision 使用）。
@@ -215,9 +216,12 @@ export function buildProjectContextSnapshot(state) {
 
 /** 序列化后的上下文字节数（用于 fail closed 的大小限制）。 */
 export function measureProjectContextBytes(context) {
+  let json;
   try {
-    return Buffer.byteLength(JSON.stringify(context), 'utf8');
+    json = JSON.stringify(context);
   } catch (error) {
     return Number.MAX_SAFE_INTEGER;
   }
+  if (typeof json !== 'string') return Number.MAX_SAFE_INTEGER;
+  return utf8ByteLength(json);
 }

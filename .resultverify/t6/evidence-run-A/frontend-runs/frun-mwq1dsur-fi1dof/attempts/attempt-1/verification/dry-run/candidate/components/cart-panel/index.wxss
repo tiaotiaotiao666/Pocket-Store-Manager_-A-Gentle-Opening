@@ -1,0 +1,124 @@
+@import "../../styles/component.wxss";
+
+.cart-panel {
+  max-height: 76vh;
+}
+
+.cart-panel__clear {
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  background: rgba(35, 35, 35, 0.06);
+  color: var(--color-muted);
+  font-size: 22rpx;
+}
+
+.cart-panel__list {
+  max-height: 46vh;
+  padding: 8rpx 32rpx;
+  box-sizing: border-box;
+}
+
+.cart-panel__row {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 0;
+  border-bottom: 2rpx solid rgba(230, 222, 210, 0.6);
+}
+
+.cart-panel__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cart-panel__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cart-panel__unit {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: var(--color-muted);
+}
+
+.cart-panel__stepper {
+  display: flex;
+  align-items: center;
+  margin: 0 20rpx;
+}
+
+.cart-panel__step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid var(--color-primary);
+  color: var(--color-primary);
+  font-size: 30rpx;
+  line-height: 1;
+}
+
+.cart-panel__step--add {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.cart-panel__qty {
+  min-width: 44rpx;
+  text-align: center;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.cart-panel__line {
+  min-width: 116rpx;
+  text-align: right;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.cart-panel__empty {
+  padding: 60rpx 0;
+  text-align: center;
+  font-size: 24rpx;
+  color: var(--color-muted);
+}
+
+.cart-panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx 36rpx;
+  border-top: 2rpx solid rgba(230, 222, 210, 0.7);
+}
+
+.cart-panel__total {
+  display: flex;
+  align-items: baseline;
+}
+
+.cart-panel__total-label {
+  font-size: 22rpx;
+  color: var(--color-muted);
+}
+
+.cart-panel__total-value {
+  margin-left: 10rpx;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.cart-panel__checkout {
+  min-width: 220rpx;
+  min-height: 76rpx;
+  font-size: 28rpx;
+}

@@ -24,7 +24,7 @@ const DEFAULT_CONFIG = Object.freeze({
   // server = 使用本机已部署的模型服务。agentTransport 只是派生的内部值，不再暴露给用户。
   modelChannel: 'deepseek',
   modelApiBaseUrl: 'https://api.deepseek.com',
-  modelName: 'deepseek-chat',
+  modelName: 'deepseek-flash',
   modelTimeoutMs: 60000,
   agentTransport: 'direct',
   agentEndpoint: '/api/v1/agent/turn',
@@ -153,6 +153,10 @@ function normalizeConfig(input) {
   }
   // agentTransport 永远是派生值，不信任外部传入，避免通道与 transport 互相矛盾。
   merged.agentTransport = transportForChannel(merged.modelChannel);
+
+  // 旧配置里的 deepseek-chat 是官方别名（实测响应 model 回填为 deepseek-flash），
+  // 统一迁移到带图像理解能力的正式模型名，避免升级后仍停在旧名。
+  if (merged.modelName === 'deepseek-chat') merged.modelName = 'deepseek-flash';
 
   const errors = validateConfig(merged);
   if (errors.length > 0) {

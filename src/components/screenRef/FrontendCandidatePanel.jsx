@@ -6,7 +6,7 @@ import ScreenSendConsent from './ScreenSendConsent.jsx';
  *
  * - 所有门槛（能否分析/构建/验证/采用）都由 `src/domain/frontendReconstruct.mjs`
  *   算好放进 `view`，组件不再重复判断业务规则。
- * - `partial`（静态门禁通过但微信验证未完成）必须单独确认：勾选后「采用候选前端」
+ * - `partial`（静态门禁通过但微信验证未完成）必须单独确认：勾选后「按这个骨架继续制作」
  *   才可用，并把 `partialConfirmed: true` 交给上层写入采用记录。
  * - 新增控件都有唯一可读名称（可见文本或 aria-label）与稳定 id，
  *   便于 `npm run agent:smoke` / `agent:verify` 做 UIA 断言。
@@ -249,7 +249,7 @@ export default function FrontendCandidatePanel({
         ) : null}
         {candidate ? (
           <button type="button" id="frontend-reset-button" className="btn btn-ghost" onClick={onReset} disabled={safe.busy}>
-            清空候选状态
+            修改要求并重新生成
           </button>
         ) : null}
       </div>
@@ -418,7 +418,7 @@ export default function FrontendCandidatePanel({
                 if (typeof onAdopt === 'function') onAdopt(needsPartialConfirm ? partialConfirmed : false);
               }}
             >
-              {safe.adoption ? '重新采用候选前端' : '采用候选前端'}
+              按这个骨架继续制作
             </button>
             {safe.adoptBlockedReason ? <span className="screen-ref-note">{safe.adoptBlockedReason}</span> : null}
           </div>

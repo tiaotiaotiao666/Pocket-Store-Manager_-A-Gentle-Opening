@@ -8,6 +8,7 @@ import {
   CHAT_DRAFT_MAX_CHARS,
   CHAT_STATUS,
   buildAgentChatSubmitPlan,
+  buildAgentChatTimeline,
   isValidChatDraft,
 } from '../../domain/agentSidebar.mjs';
 import '../../styles/agent-sidebar.css';
@@ -22,7 +23,7 @@ import '../../styles/agent-sidebar.css';
  *   不另写第二套规则；
  * - 过程卡只复用 ChatStream 导出的 `ProcessSummary` 与安全视图：没有真实 trace 时
  *   不渲染任何工具步骤，`partial` 显示「部分完成」而不是「全部成功」；
- * - 前端重构/参考图意图只给摘要 + 「查看候选」跳转，绝不暗示「侧栏已直接生成候选」；
+ * - 前端重构/参考图意图展示真实进度与「查看候选」跳转；采用仍只在候选面板确认；
  * - 本轮图片附件只在门店资料/模板展示阶段出现，由 App 传入允许的用途；
  *   附件只随请求发送，不写消息正文、不写项目快照。
  */
@@ -138,12 +139,12 @@ export default function AgentSidebarPanel({
   // 过程卡优先用 App 传入的安全视图；缺省时把领域层 running 视图映射一次，仍不放假步骤。
   const runView = process && typeof process === 'object' ? process : buildAgentChatProcessView(view.lastRun);
   // 参考图重构意图：App 可以显式传摘要；否则取最后一条重构类消息的正文当摘要。
+  const reconstructMessage = candidate && typeof candidate === 'object'
+    ? null
+    : [...messages].reverse().find((message) => message && message.actionKind === 'frontend-reconstruct') || null;
   const reconstruct = candidate && typeof candidate === 'object'
     ? candidate
-    : (() => {
-      const last = [...messages].reverse().find((message) => message && message.actionKind === 'frontend-reconstruct');
-      return last ? { summary: last.text } : null;
-    })();
+    : (reconstructMessage ? { summary: reconstructMessage.text } : null);
 
   // 空白与超 500 字都不可发送：规则只在 domain 里有一份，这里只做引用。
   const draftValid = isValidChatDraft(draft, { maxChars: CHAT_DRAFT_MAX_CHARS });
@@ -169,12 +170,31 @@ export default function AgentSidebarPanel({
   const contentRevision = Number.isInteger(view.contentRevision) ? view.contentRevision : null;
   const canUndoApplied = Boolean(applied && contentRevision !== null && contentRevision === applied.appliedRevision);
 
+  // 消息与「本轮结果」排成一条时间线（domain 只算一次）：
+  // 过程卡 / 变更卡 / 待确认 / stale 挂在产生它的那一轮消息之后，
+  // 新消息追加在下面，下一轮有新结果时才在更下面再出现一份。
+  const timeline = buildAgentChatTimeline({
+    messages,
+    run: view.lastRun,
+    applied,
+    pending,
+    stale,
+    candidate: reconstruct,
+    candidateMessageId: reconstructMessage ? reconstructMessage.id : '',
+  });
+  const timelineTailKey = timeline.length ? timeline[timeline.length - 1].key : '';
+  // 外部显式传入的过程视图若没有对应的 run 条目，就在日志末尾补一次（不丢信息）。
+  const processRendered = process && typeof process === 'object'
+    && timeline.some((item) => item.kind === 'result' && item.run);
+
   const logRef = useRef(null);
+  // 结果块也是日志的一部分，所以「自动滚到底」同时盯着时间线长度与末项身份，
+  // 而不是只看消息条数——否则新结果插到历史位置时用户看不到。
   useEffect(() => {
     const node = logRef.current;
     if (!node) return;
     node.scrollTop = node.scrollHeight;
-  }, [messages.length]);
+  }, [messages.length, timeline.length, timelineTailKey, busy, Boolean(lastError)]);
 
   const jumpToLatest = () => {
     const node = logRef.current;
@@ -213,7 +233,7 @@ export default function AgentSidebarPanel({
         aria-label="项目对话消息"
         ref={logRef}
       >
-        {messages.length === 0 ? (
+        {timeline.length === 0 ? (
           <div className="agent-sidebar-empty">
             <span className="agent-sidebar-empty-icon" aria-hidden="true">
               <MessageSquareText size={16} />
@@ -223,77 +243,104 @@ export default function AgentSidebarPanel({
           </div>
         ) : null}
 
-        {messages.map((message) => (
-          // 会话里的消息只有「用户原话」与「助手回复」两种已落地状态：
-          // 失败不会写进消息列表（失败由 lastError + 重试按钮表达），
-          // 因此这里不做 failed 消息的额外渲染分支。
-          <article
-            key={message.id}
-            className={['agent-sidebar-msg', `is-${message.role}`].filter(Boolean).join(' ')}
-          >
-            <p className="agent-sidebar-msg-role">{ROLE_LABELS[message.role] || '系统'}</p>
-            <p className="agent-sidebar-msg-text">{message.text}</p>
-          </article>
+        {/*
+         * 时间线 = 消息流 + 每轮结果：过程卡 /「本轮已写入」/ 参考图摘要挂在
+         * 产生它的那一轮消息之后，和普通消息一样上下滑动。
+         * 用户再发新消息时它被顶上去，下一轮有新结果时才在更下面再出现一份，
+         * 不会永远停在底部挡住新消息。
+         */}
+        {timeline.map((item) => (
+          item.kind === 'message' ? (
+            // 消息只有「用户原话」与「助手回复」两种已落地状态：失败不会写进消息列表
+            //（失败由 lastError + 重试按钮表达），因此没有 failed 消息的额外分支。
+            <article
+              key={item.key}
+              className={['agent-sidebar-msg', `is-${item.message.role}`].filter(Boolean).join(' ')}
+            >
+              <p className="agent-sidebar-msg-role">{ROLE_LABELS[item.message.role] || '系统'}</p>
+              <p className="agent-sidebar-msg-text">{item.message.text}</p>
+            </article>
+          ) : (
+            <div className="agent-sidebar-turn" key={item.key}>
+              <ProcessSummary process={buildAgentChatProcessView(item.run)} />
+              <AppAssistantChangeCard
+                applied={item.applied}
+                pending={item.pending}
+                stale={item.stale}
+                // 只有仍在应用后版本上的「最新那一轮」才能撤销；
+                // 历史轮次的变更卡只作记录，撤销走全局撤销。
+                canUndo={canUndoApplied && Boolean(item.applied) && item.applied === applied}
+                onUndo={onUndoApplied}
+              />
+              {item.candidate ? (
+                <section className="agent-sidebar-candidate" aria-label="参考图重构摘要">
+                  <h3 className="agent-sidebar-candidate-title">参考图重构</h3>
+                  <p className="agent-sidebar-candidate-summary">
+                    {item.candidate.summary || '这一轮只汇总了参考图意图，没有任何候选产物。'}
+                  </p>
+                  {item.candidate.progress ? (
+                    <div className="agent-sidebar-candidate-progress" role="status" aria-live="polite">
+                      <span>{item.candidate.progress.label || '正在准备候选前端'}</span>
+                      <span>{item.candidate.progress.percent || 0}%</span>
+                      <div
+                        className="agent-sidebar-candidate-progress-bar"
+                        role="progressbar"
+                        aria-label="侧栏自动候选进度"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={item.candidate.progress.percent || 0}
+                      >
+                        <span style={{ width: `${item.candidate.progress.percent || 0}%` }} />
+                      </div>
+                    </div>
+                  ) : null}
+                  <p className="agent-sidebar-candidate-note">
+                    <ShieldCheck size={13} aria-hidden="true" />
+                    候选只写入项目私有工作区；校验完成后由你决定是否采用。
+                  </p>
+                  <button
+                    type="button"
+                    className="agent-sidebar-candidate-open"
+                    onClick={() => onOpenCandidates?.()}
+                  >
+                    查看候选进度
+                  </button>
+                </section>
+              ) : null}
+            </div>
+          )
         ))}
+
+        {processRendered ? null : <ProcessSummary process={runView} />}
+
+        {busy ? (
+          <p className="agent-sidebar-busy" id="project-agent-busy" role="status">
+            <span className="agent-sidebar-busy-dots" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            正在等待模型与工具结果
+          </p>
+        ) : null}
+
+        {lastError ? (
+          <section className="agent-sidebar-error" id="project-agent-error" role="group" aria-label="上一轮失败">
+            <p className="agent-sidebar-error-title">上一轮没有成功</p>
+            <p className="agent-sidebar-error-message">{lastError.message}</p>
+            <p className="agent-sidebar-error-keep">你的原话和草稿都保留了，不用重新输入。</p>
+            <button
+              type="button"
+              className="agent-sidebar-retry"
+              onClick={() => onRetry?.()}
+              disabled={busy || !canRetry}
+            >
+              <RefreshCw size={14} aria-hidden="true" />
+              重试上一轮
+            </button>
+          </section>
+        ) : null}
       </div>
-
-      <AppAssistantChangeCard
-        applied={applied}
-        pending={pending}
-        stale={stale}
-        canUndo={canUndoApplied}
-        onUndo={onUndoApplied}
-      />
-
-      {reconstruct ? (
-        <section className="agent-sidebar-candidate" aria-label="参考图重构摘要">
-          <h3 className="agent-sidebar-candidate-title">参考图重构</h3>
-          <p className="agent-sidebar-candidate-summary">
-            {reconstruct.summary || '这一轮只汇总了参考图意图，没有任何候选产物。'}
-          </p>
-          <p className="agent-sidebar-candidate-note">
-            <ShieldCheck size={13} aria-hidden="true" />
-            侧栏只显示摘要；候选必须在「参考图重构」面板里生成、校验并采用。
-          </p>
-          <button
-            type="button"
-            className="agent-sidebar-candidate-open"
-            onClick={() => onOpenCandidates?.()}
-          >
-            查看候选
-          </button>
-        </section>
-      ) : null}
-
-      <ProcessSummary process={runView} />
-
-      {busy ? (
-        <p className="agent-sidebar-busy" id="project-agent-busy" role="status">
-          <span className="agent-sidebar-busy-dots" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          正在等待模型与工具结果
-        </p>
-      ) : null}
-
-      {lastError ? (
-        <section className="agent-sidebar-error" id="project-agent-error" role="group" aria-label="上一轮失败">
-          <p className="agent-sidebar-error-title">上一轮没有成功</p>
-          <p className="agent-sidebar-error-message">{lastError.message}</p>
-          <p className="agent-sidebar-error-keep">你的原话和草稿都保留了，不用重新输入。</p>
-          <button
-            type="button"
-            className="agent-sidebar-retry"
-            onClick={() => onRetry?.()}
-            disabled={busy || !canRetry}
-          >
-            <RefreshCw size={14} aria-hidden="true" />
-            重试上一轮
-          </button>
-        </section>
-      ) : null}
 
       {attachmentsEnabled ? (
         <AgentChatAttachments
@@ -313,12 +360,16 @@ export default function AgentSidebarPanel({
           value={draft}
           placeholder="说明这一轮要改什么…"
           submitLabel="发送到项目对话"
-          hint={plan.allowed === false
-            ? plan.notice
-            : (blockedReason
-              || (attachments.length
-                ? `已附 ${attachments.length} 张图片，会随本轮一起发送 · Enter 发送`
-                : 'Enter 发送 · Shift+Enter 换行'))}
+          hint={busy
+            ? '上一轮还在处理中：结果回来后会解除发送。'
+            : (imageBusy
+              ? '图片正在压缩，稍等一下就能发送。'
+              : (plan.allowed === false
+                ? plan.notice
+                : (blockedReason
+                  || (attachments.length
+                    ? `已附 ${attachments.length} 张图片，会随本轮一起发送 · Enter 发送`
+                    : 'Enter 发送 · Shift+Enter 换行'))))}
           disabled={busy || imageBusy}
           submitDisabled={submitBlocked}
           maxChars={CHAT_DRAFT_MAX_CHARS}

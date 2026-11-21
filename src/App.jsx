@@ -29,7 +29,7 @@ import {
   describeExportError,
   DESKTOP_REQUIRED_MESSAGE,
 } from './services/exportService.js';
-import { buildImportPayload, previewImport, applyImport, DEFAULT_STORE_ID } from './services/importService.js';
+import { buildImportPayload, previewImport, applyImport, prepareProjectPreview, DEFAULT_STORE_ID } from './services/importService.js';
 import {
   createInitialState,
   reducer,
@@ -82,6 +82,7 @@ import {
   createInitialFrontendReconstructState,
   frontendReducer,
   isFrontendBusy,
+  resolveFrontendGenerationIntent,
 } from './domain/frontendReconstruct.mjs';
 import { buildFrontendProcessView } from './domain/agentRunProcess.mjs';
 // 右侧栏「Agent 对话」的过程卡同样复用既有安全过程视图（工具标签白名单），不另写一份。
@@ -172,6 +173,17 @@ const INTRO_AUTO_ADVANCE_MS = 5200;
 // UX0a-3：海报素材上传的 UI 侧上限；不替代导出链路的媒体校验，只是先挡住明显过大的文件。
 const MAX_POSTER_UPLOAD_BYTES = 2 * 1024 * 1024;
 const COMPOSER_PHASES = [PHASES.ONBOARDING, PHASES.STORE_INFO, PHASES.TEMPLATE_PICK, PHASES.PROMPT_STUDIO, PHASES.IMAGE_REVIEW];
+
+/**
+ * 候选微信验证与最终预览共用同一个「开发 AppID」解析口径：
+ * 项目已有 AppID 就用项目值，否则用本机长期在用的开发测试号；
+ * 只有这一处定义回退值，避免两条链路写入不同身份。
+ */
+const DEFAULT_PREVIEW_APPID = 'wx3b1c04f63cf6cfd0';
+
+function resolvePreviewAppId(project) {
+  return String((project && project.appid) || '').trim() || DEFAULT_PREVIEW_APPID;
+}
 
 
 /**
@@ -532,7 +544,7 @@ function withRuntimeAgentConfig(config) {
 function selectModelLabel(state) {
   const config = state.settings.config || {};
   if (config.modelChannel === 'server') return '模型：本机服务';
-  const name = String(config.modelName || 'deepseek-chat');
+  const name = String(config.modelName || 'deepseek-flash');
   return `模型：DeepSeek · ${name}`;
 }
 
@@ -685,6 +697,8 @@ export default function App() {
   const agentChatBusy = useRef(false);
   // P3：识别请求的并发门禁，避免同一时刻发两次识别。
   const screenRefBusy = useRef(false);
+  // 侧栏自动编排遇到发图确认时保留同一次 run，确认后继续，不重复写回资料。
+  const frontendAutomationPending = useRef(null);
   // W4：连续点击/连按回车只放行一次同一段文字，避免重复请求与重复消息。
   const submitGuardRef = useRef(createSubmitGuard());
   // 在途请求期间用户可能新增图片：用 ref 记录最新数量，避免闭包读到旧 state。
@@ -1689,7 +1703,15 @@ export default function App() {
     ];
 
     try {
-      const response = await globalThis.fetch('/api/v1/readyz', { cache: 'no-store' });
+      // 8 秒硬超时：探测卡住时清单也要给出结论，不能让用户停在「检测中」。
+      const controller = typeof AbortController === 'function' ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), 8000) : null;
+      let response;
+      try {
+        response = await globalThis.fetch('/api/v1/readyz', { cache: 'no-store', signal: controller ? controller.signal : undefined });
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
       const payload = await response.json().catch(() => null);
       const databaseOk = Boolean(payload && payload.database === 'ok');
       checks.push({
@@ -1715,15 +1737,23 @@ export default function App() {
       });
     }
 
-    const probe = await devtoolsService.probe();
+    let probe;
+    try {
+      probe = await devtoolsService.probe();
+    } catch (error) {
+      // 探测失败也要给出结论并结束「检测中」，否则环境清单会永久卡住、连「稍后再做」都点不动。
+      probe = { status: 'failed', found: false, message: (error && error.message) || '探测失败' };
+    }
     checks.push({
       id: 'devtools',
       group: 'local',
       title: '微信开发者工具',
-      status: probe.found ? 'pass' : 'warn',
+      status: probe.found ? 'pass' : (probe.status === 'failed' ? 'fail' : 'warn'),
       detail: probe.found
         ? '已检测到微信开发者工具。'
-        : '本机未检测到，请安装官方开发者工具（见下方详细步骤）。',
+        : (probe.status === 'failed'
+          ? '检测微信开发者工具状态失败（' + (probe.message || '未知原因') + '），可点「重新检测」重试。'
+          : '本机未检测到，请安装官方开发者工具（见下方详细步骤）。'),
     });
     checks.push({
       id: 'devtools-login',
@@ -2073,6 +2103,25 @@ export default function App() {
       return { ok: false, message: previewPlan.message || '候选前端 overlay 未确认，已阻止生成预览工程。' };
     }
     const { plan, warnings } = previewPlan;
+    const projectId = state.project.activeId || 'unscoped-project';
+    const adopted = frontendCandidateRecord && frontendCandidateRecord.status === 'adopted'
+      ? frontendCandidateRecord
+      : null;
+    const bindingKey = adopted ? `${adopted.projectId}:${adopted.runId}` : `${projectId}:base`;
+    const prepared = await prepareProjectPreview({
+      bindingKey,
+      agentDraft: state.agentDraft,
+      store: state.store,
+    });
+    if (prepared.status !== 'ok') {
+      return {
+        ok: false,
+        code: prepared.code || 'PREVIEW_DATA_FAILED',
+        step: 'preview-data',
+        // 上游文案自带句号时不要再叠一个「。。」。
+        message: `准备预览数据失败：${String(prepared.message || '未知原因').replace(/[。！!.\s]+$/, '')}。尚未导出工程。`,
+      };
+    }
     const baseName = String(
       (state.store && state.store.name)
       || (state.agentDraft && state.agentDraft.storeName)
@@ -2085,10 +2134,17 @@ export default function App() {
       plan,
       projectName,
       mode: 'development',
+      storeId: prepared.storeId,
+      backendVersions: prepared.backendVersions,
       candidateOverlay: frontendCandidateOverlay,
     });
     if (result.status !== 'ok') {
-      return { ok: false, message: result.message || '生成预览工程失败。' };
+      return {
+        ok: false,
+        code: result.code || 'EXPORT_FAILED',
+        step: 'export',
+        message: `导出预览工程失败：${result.message || '未知原因'}`,
+      };
     }
 
     const payload = result.result || {};
@@ -2099,11 +2155,13 @@ export default function App() {
 
     // W1 起 AppID 只能通过 appid-postprocess 事务写入；预览工程同样要写正式 AppID，
     // 否则 devtools-launch 会以“仍是测试号 touristappid”拒绝打开。
-    const appid = String((state.project && state.project.appid) || '').trim() || 'wx3b1c04f63cf6cfd0';
+    const appid = resolvePreviewAppId(state.project);
     const applied = await appidService.apply(outputPath, appid);
     if (applied.status !== 'ok') {
       return {
         ok: false,
+        code: applied.code || 'APPID_WRITE_FAILED',
+        step: 'appid',
         message: applied.message || 'AppID 写入失败，预览工程仍是测试号，无法用微信开发者工具打开。',
       };
     }
@@ -2113,7 +2171,7 @@ export default function App() {
       path: outputPath,
       warnings: [...(warnings || []), ...(payload.warnings || [])],
     };
-  }, [state, frontendStateWithCandidate, frontendCandidateOverlay, appidService]);
+  }, [state, frontendStateWithCandidate, frontendCandidateRecord, frontendCandidateOverlay, appidService]);
 
   const continuePreviewExport = useCallback(async () => {
     const result = await runPreviewExport();
@@ -2158,6 +2216,18 @@ export default function App() {
     // 只在工具尚未启动、或工具已启动但还没有打开小程序页面时弹清单；
 // 已经展示了小程序页面就直接按当前需求导出。
     const probe = await devtoolsService.probe();
+    // 「探测失败」要和「工具没装」分开说：否则一次权限/执行限制就会被说成未安装。
+    if (probe.status === 'failed') {
+      openEnvGuide('preview', async () => {
+        const outcome = await continuePreviewExport();
+        if (typeof options.onContinueResult === 'function') options.onContinueResult(outcome);
+      });
+      return {
+        ok: false,
+        code: 'ENV_GUIDE_OPENED',
+        message: '检测微信开发者工具状态失败，已打开检查清单；可在清单里点「重新检测」后再试。',
+      };
+    }
     if (!probe.found || probe.running === false || probe.projectOpen === false) {
       // 底部常驻按钮与模板页共用这条入口：勾选「已准备就绪」后继续导出并打开。
       openEnvGuide('preview', async () => {
@@ -2175,7 +2245,7 @@ export default function App() {
       };
     }
 
-    return runPreviewExport();
+    return continuePreviewExport();
   }, [devtoolsService, openEnvGuide, continuePreviewExport, runPreviewExport]);
 
   const handlePickPreviewScreenshot = async () => {
@@ -2249,11 +2319,29 @@ export default function App() {
     allowAnyPhase = false,
   } = {}) => {
     const fromSidebar = origin === AGENT_CHAT_ORIGINS.SIDEBAR;
-    if (agentBusy.current) return null;
-    if (!allowAnyPhase && phase !== PHASES.STORE_INFO) return null;
-    if (fromSidebar && (agentChatBusy.current || agentChatState.status === CHAT_STATUS.REQUESTING)) return null;
+    if (agentBusy.current) {
+      if (fromSidebar) {
+        setNotice('另一个 Agent 请求正在处理中：等它结束后再发送，避免两轮结果互相覆盖。');
+        setAgentChatImageError({
+          code: 'AGENT_BUSY',
+          message: '另一个 Agent 请求正在处理中，等它结束后再发送这一轮。',
+        });
+      }
+      return null;
+    }
+    if (!allowAnyPhase && phase !== PHASES.STORE_INFO) {
+      if (fromSidebar) setNotice('当前阶段不走资料整理：请切到「门店资料」阶段，或直接说页面要改什么。');
+      return null;
+    }
+    if (fromSidebar && (agentChatBusy.current || agentChatState.status === CHAT_STATUS.REQUESTING)) {
+      setNotice('上一轮还在处理中：等结果回来再发送。');
+      return null;
+    }
     const text = String(utterance ?? '').trim();
-    if (!text) return null;
+    if (!text) {
+      if (fromSidebar) setNotice('这一轮没有可发送的文字或图片，请先输入内容。');
+      return null;
+    }
     agentBusy.current = true;
     // 只由侧栏请求自己持有/释放这道同步守卫，主输入框（origin='main'）不受影响。
     if (fromSidebar) agentChatBusy.current = true;
@@ -2450,7 +2538,16 @@ export default function App() {
     const body = String(frontendView.body ?? '').trim();
     const summary = [title, body].filter(Boolean).join('：');
     return {
-      summary: summary || '这个项目已有参考图重构材料；候选只能在「参考图重构」面板里生成、校验并采用。',
+      summary: summary || '这个项目已有参考图重构材料；候选会在私有工作区生成，校验后由你决定是否采用。',
+      status: frontendState.status,
+      runId: frontendState.runId,
+      attempt: frontendState.candidate?.attempt ?? null,
+      progress: frontendView.progress
+        ? {
+          label: frontendView.progress.label,
+          percent: frontendView.progress.percent,
+        }
+        : null,
     };
   })();
 
@@ -2458,7 +2555,9 @@ export default function App() {
    * 统一会话没有「当前阶段前置条件」：只要项目打开就能发。
    * 需要确认的动作由结果里的 actionRequest 走各自原入口，不在发送前拦截。
    */
-  const agentChatSendBlockedReason = null;
+  const agentChatSendBlockedReason = isFrontendBusy(frontendState)
+    ? '参考图候选正在自动构建或验证，等本轮结束后再发送新的修改。'
+    : null;
 
   // 统一会话在每个项目阶段都可以带图片；具体用途由附件用途与 Agent 判断。
   const agentChatImageKinds = (() => {
@@ -2501,60 +2600,14 @@ export default function App() {
   };
 
   /**
-   * 本地指引：不调用模型、不发请求，但仍走同一条会话记账路径
-   * （REQUEST_START → SUCCESS），保证用户消息只追加一次、状态归一为 idle。
-   *
-   * @param {string} text 用户原话
-   * @param {{retry?: boolean}} options 重试只重放，不重复追加用户消息
-   */
-  const appendAgentChatGuide = (text, { retry = false } = {}) => {
-    const projectId = state.project.activeId || null;
-    if (!projectId) return;
-    const requestId = createAgentChatRequestId();
-    const reply = agentChatCandidate
-      ? '本轮不调用模型：参考图重构与候选生成只在「参考图重构」面板里进行，点下面的「查看候选」可以过去。'
-      : '本轮不调用模型：只在本地说明这一轮该去哪里做，不会修改项目内容。';
-    dispatch(retry
-      ? { type: 'AGENT_CHAT_RETRY_PREPARE', projectId, requestId, phase }
-      : {
-        type: 'AGENT_CHAT_REQUEST_START',
-        projectId,
-        requestId,
-        utterance: text,
-        actionKind: 'guide',
-        phase,
-      });
-    dispatch({
-      type: 'AGENT_CHAT_SUCCESS',
-      projectId,
-      requestId,
-      phase,
-      actionKind: 'guide',
-      reply,
-      // 本地指引没有真实运行：过程卡只写「没有调用模型」，不编造任何工具步骤。
-      run: normalizeChatRun({
-        requestId,
-        actionKind: 'guide',
-        status: 'done',
-        durationMs: 0,
-        toolLabels: [],
-        note: '本轮没有调用模型，也没有运行任何工具，只给出本地入口指引。',
-      }),
-    });
-    dispatch({ type: 'AGENT_CHAT_DRAFT_SET', value: '' });
-    setAgentChatImages([]);
-    setAgentChatImageError(null);
-    setAgentChatImageBusy(false);
-  };
 
-  /**
    * 统一会话（`app-assistant.v1`）的一轮：任意阶段同一个入口。
    *
    * - 冻结 projectId / requestId / contextRevision；阶段只作上下文，不参与拒收；
    * - 服务端/direct 只给提案，这里用桌面校验器再验一次，再按能力目录拆批；
    * - 字段批次原子写入；高风险项只登记为「待确认」，不与低风险字段混成半批。
    */
-  const runAppAssistantTurn = async ({ text, images = [], retry = false }) => {
+  const runAppAssistantTurn = async ({ text, images = [], retry = false, preserveAttachments = false }) => {
     const projectId = state.project.activeId || null;
     if (!projectId) return null;
     const attachedImages = Array.isArray(images) ? images : [];
@@ -2604,14 +2657,19 @@ export default function App() {
       });
       const proposal = result.proposal;
       const applyPlan = buildProposalApplyPlan(proposal, frozenState);
-      if (applyPlan.autoChanges.length) {
-        dispatch({
+      const applyAction = applyPlan.autoChanges.length
+        ? {
           type: 'APP_ASSISTANT_CHANGES_APPLY',
           proposalId: proposal.proposalId,
+          // 带上本轮 requestId：变更卡要锚定到这一轮的助手消息后面。
+          requestId,
           baseContextRevision: frozenRevision,
           changes: applyPlan.autoChanges,
-        });
-      }
+        }
+        : null;
+      // 候选 Plan 只能使用这次字段批次写回后的状态，不能回读发起请求前的旧 state。
+      const projectState = applyAction ? reducer(frozenState, applyAction) : frozenState;
+      if (applyAction) dispatch(applyAction);
       dispatch({
         type: 'AGENT_CHAT_SUCCESS',
         projectId,
@@ -2640,11 +2698,12 @@ export default function App() {
           note: proposal.trace?.degraded ? '这一轮有步骤没有正常完成，结果可能不完整。' : null,
         }),
       });
-      dispatch({ type: 'AGENT_CHAT_DRAFT_SET', value: '' });
-      setAgentChatImages([]);
+      const keepInput = proposal.status === 'needs-input' || proposal.status === 'rejected';
+      if (!keepInput) dispatch({ type: 'AGENT_CHAT_DRAFT_SET', value: '' });
+      if (!preserveAttachments && !keepInput) setAgentChatImages([]);
       setAgentChatImageError(null);
       setAgentChatImageBusy(false);
-      return result;
+      return { ...result, projectState };
     } catch (error) {
       dispatch({
         type: 'AGENT_CHAT_FAILURE',
@@ -2663,33 +2722,56 @@ export default function App() {
   /**
    * 附件分流（T7）：不重复实现专用链。
    *
+   * - `reference`：送入「参考图重构」输入（侧栏只投递，不生成/采用候选）；
    * - `menu`：走 `agent-turn.v2`，只有真实 `vision.analyzed=true` 才回写；
-   * - `reference`：只进「参考图重构」候选链，侧栏不直接生成/采用；
    * - `auto` / `store`：走 app-assistant 视觉判断（不确定先追问）。
    */
-  const dispatchAgentChatTurn = (text, images = []) => {
+  const dispatchAgentChatTurn = (text, images = [], { retry = false } = {}) => {
     const list = Array.isArray(images) ? images : [];
     const menuImages = list.filter((item) => item && item.kind === 'menu');
     const referenceImages = list.filter((item) => item && item.kind === 'reference');
-    if (referenceImages.length) {
+    if (referenceImages.length && list.some((item) => item && item.kind !== 'reference')) {
       setAgentChatImageError({
-        code: 'APP_ASSISTANT_ATTACHMENT_PURPOSE_UNKNOWN',
-        message: '参考图只进入「参考图重构」候选链：请在该面板上传并生成候选；侧栏不直接生成或采用。',
+        code: 'AGENT_IMAGE_KIND_MIXED',
+        message: '参考截图不能和菜单照、环境照一起发：请只保留参考截图，或分开各发一轮。',
       });
-      setNotice('参考图已保留在本轮附件里；请到「参考图重构」面板完成候选生成与采用。');
-      handleAgentChatOpenCandidates();
       return;
     }
+
+    const intent = resolveFrontendGenerationIntent({ text, images: list });
+    if (intent !== 'none') {
+      const draft = list[0];
+      const image = {
+        assetId: null,
+        name: draft.name || '参考截图',
+        mediaType: draft.mediaType,
+        bytes: draft.bytes,
+        dataBase64: draft.dataBase64,
+        previewUrl: draft.previewDataUrl || '',
+      };
+      const checked = validateReferenceImage(image);
+      if (!checked.ok) {
+        setAgentChatImageError({ code: checked.code, message: checked.message });
+        return;
+      }
+      return runSidebarFrontendAutomation({
+        text: String(text ?? '').trim() || '请按这张参考图生成首页骨架。',
+        image,
+        retry,
+      });
+    }
+
     if (menuImages.length) {
       handleAgentTurn(text || '请只识别这张菜单图片，把菜名、价格与描述回写到菜品资料；不要修改页面布局。', {
         origin: AGENT_CHAT_ORIGINS.SIDEBAR,
         images: menuImages,
         requireVision: true,
         allowAnyPhase: true,
+        retry,
       });
       return;
     }
-    runAppAssistantTurn({ text, images: list });
+    runAppAssistantTurn({ text, images: list, retry });
   };
 
   /**
@@ -2707,22 +2789,37 @@ export default function App() {
       setNotice(plan.notice);
       return;
     }
-    if (agentChatBusy.current || agentChatState.status === CHAT_STATUS.REQUESTING) return;
-    if (!isValidChatDraft(text) && !images.length) return;
+    // 这里原来三处都是静默 return：按钮可点却什么都没发生，用户只能反复点击。
+    // 统一改成「就地给出原因」，并且把原因同时写进附件区/提示条，避免再出现“没反应”。
+    if (agentChatBusy.current || agentChatState.status === CHAT_STATUS.REQUESTING || isFrontendBusy(frontendState)) {
+      setNotice(isFrontendBusy(frontendState)
+        ? '参考图候选正在自动构建或验证，等本轮结束后再发送。'
+        : '上一轮还在处理中：等结果回来（或失败后点「重试上一轮」）再发送。');
+      return;
+    }
+    if (!isValidChatDraft(text) && !images.length) {
+      setNotice('先输入要改的内容，或点「添加图片」附一张图，再发送。');
+      return;
+    }
     if (!isValidChatDraft(text) && images.length) {
       setNotice('已发送图片：用途交给项目 Agent 判断，不确定时会先追问。');
     }
     dispatchAgentChatTurn(text, images);
   };
 
-  /** 侧栏「重试上一轮」：重放上一轮原话，不重复追加用户消息。 */
+  /**
+   * 侧栏「重试上一轮」：重放上一轮原话，不重复追加用户消息。
+   *
+   * 必须按附件用途重新分流：上一轮如果是菜单照（agent-turn.v2），重试仍走 v2；
+   * 固定走 app-assistant 会把菜单照当成普通附件发过去，等于换了一条链路。
+   */
   const handleAgentChatRetry = () => {
     if (!state.project.activeId) return;
     if (agentChatState.status !== CHAT_STATUS.FAILED) return;
     if (agentChatBusy.current) return;
     const text = String(agentChatState.lastUtterance ?? '').trim();
     if (!text) return;
-    runAppAssistantTurn({ text, images: agentChatImagesRef.current, retry: true });
+    dispatchAgentChatTurn(text, agentChatImagesRef.current, { retry: true });
   };
 
   /**
@@ -2741,16 +2838,19 @@ export default function App() {
     dispatch({ type: 'UNDO_APPLY' });
   };
 
-  /** 侧栏「查看候选」：只跳到既有的参考图重构面板，不在侧栏生成或采用候选。 */
+  /** 侧栏统一先进入门店资料阶段，再定位同一个候选面板。 */
   const handleAgentChatOpenCandidates = () => {
+    dispatch({ type: 'PHASE_GOTO', phase: PHASES.STORE_INFO });
     if (typeof document === 'undefined') return;
-    const node = document.getElementById('frontend-reconstruct-panel');
-    if (!node) {
-      setNotice('还没有候选方案：先在「参考截图」区上传截图并生成候选；侧栏不会直接生成候选。');
-      return;
-    }
-    if (typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'center' });
-    setNotice('已定位到「参考图重构」候选面板。');
+    setTimeout(() => {
+      const node = document.getElementById('frontend-reconstruct-panel');
+      if (!node) {
+        setNotice('已进入「门店资料」阶段，请在参考图区域查看候选进度。');
+        return;
+      }
+      if (typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'center' });
+      setNotice('已定位到「参考图重构」候选面板。');
+    }, 0);
   };
 
   // ---- P3：参考截图 → 识别 → 确认 → 候选模板 ----
@@ -3018,30 +3118,85 @@ export default function App() {
       return;
     }
     setScreenConsentGrant(consent);
+    const pending = frontendAutomationPending.current;
+    frontendAutomationPending.current = null;
+    if (pending) {
+      if (pending.runId !== frontendState.runId) {
+        setScreenConsentNotice('这次确认属于旧候选任务，已丢弃；不会取消当前新任务。');
+        return;
+      }
+      if (pending.revision !== frontendState.revision) {
+        frontendDispatch({
+          type: 'FRONTEND_CANCELLED',
+          runId: frontendState.runId,
+          revision: frontendState.revision,
+        });
+        setScreenConsentNotice('自动候选的输入版本已变化，已取消这次失效任务；请核对输入后重新生成。');
+        return;
+      }
+      await continueSidebarFrontendAutomation({ ...pending, consent });
+      return;
+    }
     await runFrontendAnalyze({ consent });
   };
 
   const handleScreenSendCancel = () => {
+    const pending = frontendAutomationPending.current;
+    frontendAutomationPending.current = null;
     setScreenConsentPrompt(null);
     setScreenConsentGrant(null);
+    if (pending) frontendDispatch({ type: 'FRONTEND_CANCELLED', runId: pending.runId, revision: pending.revision });
     setScreenConsentNotice('已取消：这张截图没有发出去，当前项目和模板都没有变化。');
   };
 
-  const handleFrontendBuild = async () => {
-    if (isFrontendBusy(frontendState)) return;
-    const draft = frontendState.analysis && frontendState.analysis.draft ? frontendState.analysis.draft : null;
-    if (!draft || !frontendState.runId) {
-      setFrontendLocalError('没有可构建的草稿，请先重新生成候选前端。');
-      return;
+  async function prepareFrontendCandidateContext({ projectState, projectId, runId }) {
+    let plan = null;
+    try {
+      plan = buildPlanFromSession(projectState).plan;
+    } catch (error) {
+      return { ok: false, code: 'FRONTEND_PLAN_INVALID', message: error?.message || '当前项目 Plan 无法用于候选构建。' };
     }
-    setFrontendLocalError(null);
-    const runId = frontendState.runId;
-    const revision = frontendState.revision;
+    if (!plan) return { ok: false, code: 'FRONTEND_PLAN_INVALID', message: '当前项目 Plan 为空，已停止候选构建。' };
+    const prepared = await prepareProjectPreview({
+      bindingKey: `${projectId}:${runId}`,
+      agentDraft: projectState.agentDraft,
+      store: projectState.store,
+    });
+    if (prepared.status !== 'ok') {
+      return {
+        ok: false,
+        code: prepared.code || 'PREVIEW_DATA_FAILED',
+        message: `准备独立预览数据失败：${prepared.message || '未知原因'}`,
+      };
+    }
+    return {
+      ok: true,
+      plan,
+      storeId: prepared.storeId,
+      backendVersions: prepared.backendVersions,
+    };
+  }
+
+  async function runFrontendBuildPipeline({ projectState, projectId, runId, revision, draft, verify = false }) {
     frontendDispatch({ type: 'FRONTEND_BUILD_REQUEST' });
+    const context = await prepareFrontendCandidateContext({ projectState, projectId, runId });
+    if (!context.ok) {
+      frontendDispatch({
+        type: 'FRONTEND_BUILD_FAILURE',
+        runId,
+        revision,
+        error: { code: context.code, message: context.message },
+      });
+      return context;
+    }
+
     const result = await frontendService.buildCandidate({
-      projectId: frontendProjectId(),
+      projectId,
       runId,
       draft,
+      plan: context.plan,
+      storeId: context.storeId,
+      backendVersions: context.backendVersions,
     });
     if (!result.ok) {
       if (result.code === 'FRONTEND_CANCELLED') {
@@ -3054,10 +3209,208 @@ export default function App() {
           error: { code: result.code, message: result.message },
         });
       }
-      return;
+      return result;
     }
     frontendDispatch({ type: 'FRONTEND_BUILD_SUCCESS', runId, revision, result });
+    if (!verify || !result.candidate || result.verification?.static?.ok !== true) return result;
+
+    const candidate = result.candidate;
+    const identity = { runId, revision, candidateId: candidate.candidateId, attempt: candidate.attempt };
+    frontendDispatch({ type: 'FRONTEND_VERIFY_REQUEST', ...identity });
+    const verified = await frontendService.verifyCandidate({
+      projectId,
+      runId,
+      attempt: candidate.attempt,
+      appId: resolvePreviewAppId(projectState.project),
+    });
+    if (!verified.ok) {
+      if (verified.code === 'FRONTEND_CANCELLED') {
+        frontendDispatch({ type: 'FRONTEND_CANCELLED', runId, revision });
+      } else {
+        frontendDispatch({
+          type: 'FRONTEND_VERIFY_FAILURE',
+          ...identity,
+          error: { code: verified.code, message: verified.message },
+        });
+      }
+      return verified;
+    }
+    frontendDispatch({ type: 'FRONTEND_VERIFY_SUCCESS', ...identity, result: verified });
+    return verified;
+  }
+
+  const handleFrontendBuild = async () => {
+    if (isFrontendBusy(frontendState)) return;
+    const draft = frontendState.analysis && frontendState.analysis.draft ? frontendState.analysis.draft : null;
+    if (!draft || !frontendState.runId) {
+      setFrontendLocalError('没有可构建的草稿，请先重新生成候选前端。');
+      return;
+    }
+    setFrontendLocalError(null);
+    await runFrontendBuildPipeline({
+      projectState: frontendStateWithCandidate,
+      projectId: frontendProjectId(),
+      runId: frontendState.runId,
+      revision: frontendState.revision,
+      draft,
+    });
   };
+
+  async function continueSidebarFrontendAutomation({
+    projectId,
+    runId,
+    revision,
+    image,
+    text,
+    targetPages,
+    baseTemplate,
+    projectState,
+    consent,
+  }) {
+    const analyzed = await frontendService.analyze({
+      runId,
+      projectId,
+      utterance: text,
+      image,
+      targetPages,
+      baseTemplate,
+      consent,
+    });
+    if (!analyzed.ok) {
+      if (analyzed.code === 'FRONTEND_CANCELLED') {
+        frontendDispatch({ type: 'FRONTEND_CANCELLED', runId, revision });
+      } else {
+        if (typeof analyzed.code === 'string' && analyzed.code.startsWith('FRONTEND_CONSENT_')) {
+          setScreenConsentGrant(null);
+        }
+        frontendDispatch({
+          type: 'FRONTEND_ANALYZE_FAILURE',
+          runId,
+          revision,
+          error: { code: analyzed.code, message: analyzed.message },
+        });
+      }
+      return analyzed;
+    }
+
+    frontendDispatch({ type: 'FRONTEND_ANALYZE_SUCCESS', runId, revision, response: analyzed.response });
+    if (analyzed.response?.status !== 'planned' || !analyzed.response?.draft) return analyzed;
+
+    const completed = await runFrontendBuildPipeline({
+      projectState,
+      projectId,
+      runId,
+      revision,
+      draft: analyzed.response.draft,
+      verify: true,
+    });
+    if (completed?.ok && completed?.status === 'PASS') {
+      setAgentChatImages([]);
+      setAgentChatImageError(null);
+    }
+    return completed;
+  }
+
+  async function runSidebarFrontendAutomation({ text, image, retry = false }) {
+    const projectId = state.project.activeId || null;
+    if (!projectId || isFrontendBusy(frontendState) || agentChatBusy.current) {
+      setAgentChatImageError({
+        code: 'FRONTEND_BUSY',
+        message: '已有一轮项目或候选任务在处理中，请等它结束后再发送。',
+      });
+      return null;
+    }
+
+    const runId = createFrontendRunId();
+    const revision = frontendState.revision + 1;
+    const targetPages = frontendState.request.targetPages;
+    const baseTemplate = frontendState.request.baseTemplate;
+    frontendDispatch({
+      type: 'FRONTEND_AUTO_REQUEST',
+      runId,
+      image,
+      utterance: text,
+      targetPages,
+      baseTemplate,
+    });
+    await commitScreenRefImage(image);
+    handleAgentChatOpenCandidates();
+
+    const assistant = await runAppAssistantTurn({
+      text,
+      images: [],
+      retry,
+      preserveAttachments: true,
+    });
+    if (!assistant) {
+      frontendDispatch({
+        type: 'FRONTEND_ANALYZE_FAILURE',
+        runId,
+        revision,
+        error: { code: 'APP_ASSISTANT_FAILED', message: '文字资料没有写回成功，已停止自动候选；图片和文字均已保留。' },
+      });
+      return null;
+    }
+    const proposal = assistant.proposal || {};
+    if (proposal.status === 'needs-input' || proposal.status === 'rejected') {
+      frontendDispatch({
+        type: 'FRONTEND_ANALYZE_FAILURE',
+        runId,
+        revision,
+        error: {
+          code: proposal.status === 'needs-input' ? 'APP_ASSISTANT_NEEDS_INPUT' : 'APP_ASSISTANT_REJECTED',
+          message: proposal.reply || '需要先补充或调整文字要求，再生成候选。',
+        },
+      });
+      return assistant;
+    }
+    const projectState = assistant.projectState;
+    if (!projectState) {
+      frontendDispatch({
+        type: 'FRONTEND_ANALYZE_FAILURE',
+        runId,
+        revision,
+        error: { code: 'APP_ASSISTANT_STATE_MISSING', message: '没有取得资料写回后的项目状态，已停止候选构建。' },
+      });
+      return assistant;
+    }
+
+    const host = endpointHostOf(state.settings.config && state.settings.config.apiBaseUrl);
+    let imageDigest = '';
+    try {
+      imageDigest = await imageDigestOf(image.dataBase64);
+    } catch (error) {
+      frontendDispatch({
+        type: 'FRONTEND_ANALYZE_FAILURE',
+        runId,
+        revision,
+        error: { code: 'FRONTEND_IMAGE_INVALID', message: error?.message || '参考图摘要计算失败，请重新选择图片。' },
+      });
+      return assistant;
+    }
+    const usable = isScreenConsentUsable(screenConsentGrant, { imageDigest, host });
+    const continuation = {
+      projectId,
+      runId,
+      revision,
+      image,
+      text,
+      targetPages,
+      baseTemplate,
+      projectState,
+    };
+    if (!usable.ok) {
+      frontendAutomationPending.current = continuation;
+      setScreenConsentPrompt({
+        host,
+        imageDigest,
+        notice: describeScreenSendNotice({ image, host }),
+      });
+      setScreenConsentNotice('确认发送参考图后，会自动继续构建与验证候选，不会自动采用。');
+      return assistant;
+    }
+    return continueSidebarFrontendAutomation({ ...continuation, consent: screenConsentGrant });
+  }
 
   const handleFrontendVerify = async () => {
     if (isFrontendBusy(frontendState) || !frontendState.candidate) return;
@@ -3068,6 +3421,7 @@ export default function App() {
       projectId: frontendProjectId(),
       runId,
       attempt: candidate.attempt,
+      appId: resolvePreviewAppId(state.project),
     });
     if (!result.ok) {
       if (result.code === 'FRONTEND_CANCELLED') {
@@ -3178,10 +3532,14 @@ export default function App() {
       previous: frontendCandidateRecord,
     });
     if (record) setFrontendCandidateRecord(record);
+    const canContinue = Boolean(record && record.status === 'adopted') && runtimeStatus !== 'FAIL';
     setNotice(record && record.status === 'adopted'
-      ? '已采用候选前端，项目快照已更新；重开项目会自动校验 overlay 摘要。'
+      ? (canContinue
+        ? '已采用这个骨架并进入继续制作；最终微信预览需另行点击。'
+        : '候选已记录，但微信运行时 FAIL，已阻止进入继续制作。')
       : '已采用候选前端，但快照记录不完整（缺少 overlay 引用或摘要），导出会被阻断；请重新构建/采用一次。');
     frontendDispatch({ type: 'FRONTEND_ADOPT_SUCCESS', ...identity, adoption: result.adoption });
+    if (canContinue) dispatch({ type: 'PHASE_GOTO', phase: PHASES.PROMPT_STUDIO });
   };
 
   const handleFrontendDiscard = async () => {

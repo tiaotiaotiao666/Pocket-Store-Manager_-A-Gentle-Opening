@@ -367,8 +367,7 @@
     {
       "id": "response-duplicate-op-id",
       "kind": "response",
-      "expect": "reject",
-      "code": "APP_ASSISTANT_PROPOSAL_DUPLICATE",
+      "expect": "accept",
       "covers": "重复 opId",
       "payload": {
         "contractVersion": "app-assistant.v1",

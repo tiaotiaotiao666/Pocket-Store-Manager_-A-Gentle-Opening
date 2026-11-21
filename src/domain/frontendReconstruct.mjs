@@ -208,6 +208,20 @@ export function isFrontendBusy(state) {
   return Boolean(state && FRONTEND_BUSY_STATUSES.includes(state.status));
 }
 
+const FRONTEND_PAGE_INTENT = /(首页|菜单页|页面|骨架|界面|前端|小程序|home|menu|page|layout)/i;
+const FRONTEND_GENERATION_INTENT = /(按(照|着)?[^，。；]{0,12}图|根据[^，。；]{0,12}图|参考图|截图|重构|生成|制作|复刻|重建|rebuild|recreate|generate|reference|screenshot)/i;
+
+/** 只有明确的单图重构意图才进入自动编排，普通多模态问答仍走统一会话。 */
+export function resolveFrontendGenerationIntent({ text, images } = {}) {
+  const list = Array.isArray(images) ? images.filter(Boolean) : [];
+  if (list.length === 1 && list[0].kind === 'reference') return 'explicit';
+  if (list.length === 1 && list[0].kind === 'auto') {
+    const utterance = typeof text === 'string' ? text.trim() : '';
+    if (FRONTEND_PAGE_INTENT.test(utterance) && FRONTEND_GENERATION_INTENT.test(utterance)) return 'implicit';
+  }
+  return 'none';
+}
+
 /** 生成本地 runId；格式必须与主进程 workspace 的 RUN_ID_PATTERN 一致。 */
 export function createFrontendRunId(now = Date.now(), random = Math.random) {
   const tail = Math.floor((Number.isFinite(random()) ? random() : 0.5) * 1e9).toString(36).replace(/[^a-z0-9]/g, '') || '0';
@@ -702,6 +716,43 @@ export function frontendReducer(state, action) {
       patch.cancelRequested = false;
       patch.status = FRONTEND_STATUS.IDLE;
       return withViewState(current, patch);
+    }
+
+    // ---- 侧栏一键编排：资料写回前先固定本次图片、文字与 run 身份 ----
+    case 'FRONTEND_AUTO_REQUEST': {
+      if (requestInFlight(current)) return sameState(current);
+      const runId = cleanText(act.runId, 80);
+      if (!runId) return sameState(current);
+      const checked = validateFrontendRequest({
+        utterance: act.utterance,
+        image: act.image,
+        targetPages: act.targetPages,
+        baseTemplate: act.baseTemplate,
+      });
+      if (!checked.ok) {
+        return withViewState(current, {
+          status: FRONTEND_STATUS.FAILED,
+          error: { code: checked.code, message: checked.message },
+        });
+      }
+      return withViewState(current, {
+        status: FRONTEND_STATUS.ANALYZING,
+        runId,
+        revision: current.revision + 1,
+        request: checked.value,
+        analysis: null,
+        candidate: null,
+        staticVerification: null,
+        runtimeVerification: null,
+        pendingOp: null,
+        adoption: null,
+        progress: { stage: 'analyze', label: '正在写回资料并准备参考图分析' },
+        error: null,
+        notice: null,
+        cancelRequested: false,
+        discardedAt: null,
+        history: pushHistory(current, { at: Date.now(), stage: 'analyze', status: 'running' }),
+      });
     }
 
     // ---- 分析（服务端视觉 + 能力覆盖 + DSL） ----

@@ -27,6 +27,7 @@ const crypto = require('node:crypto');
 
 const { isTrustedSender } = require('./composer-ipc.cjs');
 const { createDesktopCredentialProvider } = require('./desktop-session.cjs');
+const { applyAppid: defaultApplyAppid } = require('./appid-postprocess.cjs');
 const defaultReconstruct = require('./frontend-reconstruct/index.cjs');
 
 /** 契约既有常量（版本/目标页/上限/ID 正则）只从生成模块取，不再本地复制。 */
@@ -47,6 +48,9 @@ const MAX_IMAGE_BASE64_CHARS = Math.ceil((MAX_IMAGE_BYTES / 3) * 4) + 8;
 const MAX_UTTERANCE_CHARS = CONTRACT_LIMITS.maxUtteranceChars;
 const MAX_TARGET_PAGES = CONTRACT_LIMITS.maxDraftPages;
 const MAX_DRAFT_BYTES = 64 * 1024;
+const MAX_PLAN_BYTES = 256 * 1024;
+const STORE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+const APPID_PATTERN = /^wx[0-9a-f]{16}$/;
 const MAX_RESPONSE_BYTES = 512 * 1024;
 const MAX_ATTEMPT_META_BYTES = 128 * 1024;
 const MAX_EVIDENCE_BYTES = 512 * 1024;
@@ -125,6 +129,7 @@ const CODES = Object.freeze({
   CANCELLED: 'FRONTEND_CANCELLED',
   BUILD_FAILED: 'FRONTEND_BUILD_FAILED',
   VERIFY_FAILED: 'FRONTEND_VERIFY_FAILED',
+  APPID_WRITE_FAILED: 'FRONTEND_APPID_WRITE_FAILED',
   ADOPT_FAILED: 'FRONTEND_ADOPT_FAILED',
   DISCARD_FAILED: 'FRONTEND_DISCARD_FAILED',
   // B5：截图外发确认
@@ -158,9 +163,9 @@ const ALLOWED_KEYS = Object.freeze({
     'runId', 'projectId', 'requestId', 'utterance', 'image', 'targetPages', 'current', 'client', 'contractVersion',
     'consent',
   ]),
-  'frontend:build-candidate': Object.freeze(['projectId', 'runId', 'draft']),
+  'frontend:build-candidate': Object.freeze(['projectId', 'runId', 'draft', 'plan', 'storeId', 'backendVersions']),
   'frontend:validate-candidate': Object.freeze(['projectId', 'runId', 'attempt']),
-  'frontend:verify-candidate': Object.freeze(['projectId', 'runId', 'attempt', 'timeoutMs']),
+  'frontend:verify-candidate': Object.freeze(['projectId', 'runId', 'attempt', 'appId', 'timeoutMs']),
   'frontend:adopt-candidate': Object.freeze(['projectId', 'runId', 'attempt', 'partialConfirmed']),
   'frontend:discard-candidate': Object.freeze(['projectId', 'runId', 'attempt']),
   'frontend:cancel-run': Object.freeze(['projectId', 'runId']),
@@ -760,6 +765,7 @@ function createFrontendReconstructIpc(options) {
     resolveConfig: typeof opts.resolveConfig === 'function' ? opts.resolveConfig : defaultResolveConfig,
     repairTransport: typeof opts.repairTransport === 'function' ? opts.repairTransport : null,
     spawnImpl: typeof opts.spawnImpl === 'function' ? opts.spawnImpl : undefined,
+    applyAppid: typeof opts.applyAppid === 'function' ? opts.applyAppid : defaultApplyAppid,
     planFile: typeof opts.planFile === 'string' ? opts.planFile : undefined,
     getActive: () => ({ projects: [...state.activeByProject.keys()], runs: [...state.activeByRun.keys()] }),
   };
@@ -975,6 +981,29 @@ function createFrontendReconstructIpc(options) {
     if (payloadBytes(payload.draft) > MAX_DRAFT_BYTES) {
       return fail(CODES.PAYLOAD_TOO_LARGE, '草稿超过 64 KB，已拒绝');
     }
+    const hasPlan = Object.prototype.hasOwnProperty.call(payload, 'plan');
+    if (hasPlan) {
+      if (!isPlainObject(payload.plan)) return fail(CODES.PAYLOAD_INVALID, 'plan 必须是对象');
+      if (payloadBytes(payload.plan) > MAX_PLAN_BYTES) {
+        return fail(CODES.PAYLOAD_INVALID, 'plan 无法序列化或超过 256 KiB，已拒绝');
+      }
+    }
+    const hasStoreId = Object.prototype.hasOwnProperty.call(payload, 'storeId');
+    if (hasStoreId && (typeof payload.storeId !== 'string' || !STORE_ID_PATTERN.test(payload.storeId))) {
+      return fail(CODES.PAYLOAD_INVALID, 'storeId 格式不正确');
+    }
+    const hasBackendVersions = Object.prototype.hasOwnProperty.call(payload, 'backendVersions');
+    if (hasBackendVersions) {
+      const versions = payload.backendVersions;
+      const keys = isPlainObject(versions) ? Object.keys(versions) : [];
+      const validKeys = keys.length === 2 && keys.every((key) => ['storeConfigVersion', 'catalogVersion'].includes(key));
+      const validValues = validKeys
+        && ['storeConfigVersion', 'catalogVersion'].every((key) => versions[key] === null
+          || (Number.isInteger(versions[key]) && versions[key] >= 0));
+      if (!validValues) {
+        return fail(CODES.PAYLOAD_INVALID, 'backendVersions 必须只含非负整数或 null 的 storeConfigVersion/catalogVersion');
+      }
+    }
     const slot = acquireSlot(state, event, projectId, runId);
     if (slot.error) return slot.error;
     const session = slot.session;
@@ -1012,7 +1041,10 @@ function createFrontendReconstructIpc(options) {
             draft,
             revision: attemptHint,
             signal: session.signal,
-            ...(state.planFile ? { planFile: state.planFile } : {}),
+            ...(hasPlan ? { plan: payload.plan } : {}),
+            ...(hasStoreId ? { storeId: payload.storeId } : {}),
+            ...(hasBackendVersions ? { backendVersions: payload.backendVersions } : {}),
+            ...(!hasPlan && state.planFile ? { planFile: state.planFile } : {}),
             onStage: (stage) => emitProgress(state, session, stage, attemptHint),
           });
         } catch (error) {
@@ -1158,6 +1190,11 @@ function createFrontendReconstructIpc(options) {
     if (payload.timeoutMs !== undefined && (!Number.isInteger(payload.timeoutMs) || payload.timeoutMs < 1000 || payload.timeoutMs > 1800000)) {
       return fail(CODES.PAYLOAD_INVALID, 'timeoutMs 必须是 1000–1800000 的整数');
     }
+    const hasAppId = Object.prototype.hasOwnProperty.call(payload, 'appId');
+    const appId = hasAppId && typeof payload.appId === 'string' ? payload.appId.trim().toLowerCase() : '';
+    if (hasAppId && !APPID_PATTERN.test(appId)) {
+      return fail(CODES.PAYLOAD_INVALID, 'appId 必须是 wx 加 16 位小写十六进制');
+    }
     const resolved = resolveAttempt(state, payload);
     if (resolved.error) return resolved.error;
     const dry = latestDryRun(resolved.attemptDir);
@@ -1177,6 +1214,15 @@ function createFrontendReconstructIpc(options) {
     const session = slot.session;
     emitProgress(state, session, 'verify', resolved.attempt);
     try {
+      if (session.signal.cancelled) return fail(CODES.CANCELLED, '微信验证已取消');
+      if (hasAppId) {
+        try {
+          state.applyAppid({ outputPath: projectDir, appid: appId });
+        } catch (error) {
+          return fail(CODES.APPID_WRITE_FAILED, '候选 AppID 写入或自检失败：' + boundedDetail(error));
+        }
+        if (session.signal.cancelled) return fail(CODES.CANCELLED, '微信验证已取消');
+      }
       let result;
       try {
         result = await reconstruct.verifyRuntimeCandidate({

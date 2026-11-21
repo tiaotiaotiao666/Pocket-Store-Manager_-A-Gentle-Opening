@@ -1,0 +1,16 @@
+{
+  "recordVersion": "appid-postprocess.v1",
+  "appliedAt": "2026-11-21T06:38:45Z",
+  "target": "project.config.json",
+  "appidMasked": "wx3b****f6cfd0",
+  "appidSha256": "sha256:19147ffd2e996fa1252ab3a30b4b02dfe6070f38b62df494bc5ba59cf218c3c9",
+  "fileDigestBefore": "sha256:9a506d87c1ced24e673853c875e4f783a471fb17c2a582f643844ccc92a48978",
+  "fileDigestAfter": "sha256:bdb797c935b04d8a888f5db9c619db2e535d5190e1a8c898b8adf37e0045d5a6",
+  "treeDigestBefore": "sha256:0be51af5132b45ebac4896dd95286ee0cc175fa382c648bf73ba91df3f915e9c",
+  "treeDigestAfter": "sha256:901a669ae2bf4aae3217d3fbb756655e6ecd0a8cb14f1d13b80c7983bef73cf6",
+  "lockDigestBefore": "sha256:16322bd0808b9f53716f5245b20cd69ecdf192efff5d154e32b07c8413a1e403",
+  "lockDigestAfter": "sha256:d1f708d90fc6ef2d2a873747683ab3a5e20e4d1bb76e7f280e72ce6819370d7e",
+  "scope": "composer-outputDigest-files",
+  "note": "AppID 由口袋店长·轻启写入；本文件不属于 Composer 产物，不参与摘要。",
+  "revisions": []
+}

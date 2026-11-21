@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "frontend-preview.v1",
+  "state": "long",
+  "displayName": "参考图首页候选",
+  "note": "长内容态：文本 token 变长时按 Base 行高换行，不引入固定高度裁剪",
+  "pages": [
+    {
+      "pageId": "home",
+      "slotIds": [
+        "home-hero"
+      ]
+    }
+  ]
+}

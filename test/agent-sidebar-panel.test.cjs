@@ -89,17 +89,18 @@ test('T3 AgentSidebarPanel：本轮附件区只在允许的阶段出现，且支
   assert.match(source, /<AgentChatAttachments[\s\S]{0,400}kinds=\{imageKindList\}/, '附件组件只能带 App 允许的图片用途');
   const attachments = readSource(path.join(__dirname, '..', 'src', 'components', 'agent', 'AgentChatAttachments.jsx'));
   assert.match(attachments, /onDrop=\{\(event\) => \{[\s\S]{0,200}ingestFiles\(event\.dataTransfer\?\.files\)/, '拖拽图片必须直接进入同一套压缩/校验链路');
-  assert.match(attachments, /prepareImageFile\(file, \{ kind: activeKind \}\)/, '附件压缩必须复用既有 prepareImageFile');
+  assert.match(attachments, /prepareImageFile\(file, \{ kind: COMPRESS_KIND\[activeKind\] \|\| 'menu' \}\)/, '附件压缩必须复用既有 prepareImageFile，且只传压缩标签');
+  assert.match(attachments, /drafts\.push\(\{ \.\.\.draft, kind: activeKind \}\)/, '业务用途必须在 draft 上回写，不能让参考图/自动判断被压缩层拒掉');
   assert.ok(!/localStorage|sessionStorage|project\.json/.test(attachments), '附件不得落盘');
   assert.ok(!/appendChatMessage|createChatMessage/.test(attachments), '附件不得写消息正文');
 });
 
-test('T3 AgentSidebarPanel：重构意图只给摘要 +「查看候选」，不放图片上传入口', () => {
+test('T3 AgentSidebarPanel：重构意图展示候选与自动进度，不另放图片上传入口', () => {
   const source = readSource(AGENT_PANEL);
   assert.ok(source.includes('查看候选'));
-  assert.ok(source.includes('侧栏只显示摘要'));
+  assert.match(source, /candidate/, '候选与自动执行状态必须由 App 视图模型传入');
+  assert.ok(!source.includes('侧栏只显示摘要'), '参考图发送后必须展示自动构建与验证进度，不能停留在旧摘要口径');
   assert.ok(!/type="file"|type='file'/.test(source), '侧栏不得出现图片上传控件');
-  assert.ok(!/已生成候选|已生成前端/.test(source), '不得声称侧栏已生成候选');
 });
 
 test('T3 AgentSidebarPanel：发送校验复用 domain/agentSidebar.mjs', () => {
@@ -123,8 +124,8 @@ test('T8 AgentSidebarPanel：阶段动作不可执行时禁用发送并把原因
   );
   assert.match(
     source,
-    /hint=\{plan\.allowed === false\s*\? plan\.notice\s*:\s*\(blockedReason\s*\|\|/,
-    '输入框提示必须优先显示不可执行原因，不能仍显示 Enter 发送',
+    /hint=\{busy\s*\?[\s\S]{0,200}:\s*\(imageBusy\s*\?[\s\S]{0,200}:\s*\(plan\.allowed === false\s*\? plan\.notice\s*:\s*\(blockedReason\s*\|\|/,
+    '输入框提示必须优先显示忙态与不可执行原因，不能仍显示 Enter 发送',
   );
   assert.match(source, /Enter 发送 · Shift\+Enter 换行/, '没有原因与附件时仍提示正常发送快捷键',
   );
@@ -139,7 +140,7 @@ test('T8 AgentSidebarPanel：消息列表不再渲染不可达的 failed 分支'
   assert.ok(!source.includes("message.status === 'failed'"), '死分支已删除，不得保留');
   assert.ok(!source.includes('这一条没有落地'), '死分支文案已删除，不得保留');
   assert.match(source, /失败不会写进消息列表/, '必须用注释说明失败不走消息列表');
-  assert.match(source, /className=\{\['agent-sidebar-msg', `is-\$\{message\.role\}`\]/, '消息 class 只由角色决定');
+  assert.match(source, /className=\{\['agent-sidebar-msg', `is-\$\{item\.message\.role\}`\]/, '消息 class 只由角色决定');
 });
 
 test('T3 样式：新增 agent-sidebar.css 并在 panel.css 追加双视图样式', () => {

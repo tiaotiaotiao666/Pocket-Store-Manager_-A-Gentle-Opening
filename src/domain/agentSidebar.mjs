@@ -394,3 +394,88 @@ export function normalizeChatRun(raw) {
     runId: trimText(raw.runId, RUN_ID_MAX_CHARS) || null,
   };
 }
+/** 结果所属轮次的 requestId；没有 id 的结果无法锚定到具体消息。 */
+function timelineRequestId(source) {
+  if (!isPlainObject(source)) return null;
+  return trimText(source.requestId, ID_MAX_CHARS) || null;
+}
+
+/**
+ * 把「消息」与「本轮结果」排成一条时间线，结果锚定在产生它的那一轮之后。
+ *
+ * 侧栏日志 = 消息流 + 每轮的结果块（过程卡 / 变更卡 / 待确认 / stale）：
+ * - 结果块挂在对应那轮的助手消息之后，用户再发新消息时它会被自然顶上去，
+ *   而不是永远吊在日志末尾把新消息和输入框挡住；
+ * - 下一轮产生新结果时，新块落在新消息下面，看起来就是「又弹出来一份」；
+ * - 找不到对应消息（旧快照、消息被裁掉、没有 requestId）时回退到末尾。
+ *
+ * @param {{messages?: Array<object>, run?: object|null, applied?: object|null,
+ *   pending?: object|null, stale?: object|null, candidate?: object|null,
+ *   candidateMessageId?: string}} input
+ * @returns {Array<object>} `{kind:'message'|'result', key: string, ...}`
+ */
+export function buildAgentChatTimeline(input = {}) {
+  const source = isPlainObject(input) ? input : {};
+  const messages = Array.isArray(source.messages)
+    ? source.messages.filter((item) => isPlainObject(item) && typeof item.id === 'string')
+    : [];
+  const messageIds = new Set(messages.map((item) => item.id));
+  const groups = new Map();
+
+  const attach = (result, part) => {
+    if (!isPlainObject(result)) return;
+    const requestId = timelineRequestId(result);
+    const assistantId = requestId ? chatAssistantMessageId(requestId) : '';
+    const userId = requestId ? chatUserMessageId(requestId) : '';
+    const anchorId = assistantId && messageIds.has(assistantId)
+      ? assistantId
+      : (userId && messageIds.has(userId) ? userId : null);
+    const key = anchorId ?? '__tail__';
+    const group = groups.get(key) ?? {
+      anchorId,
+      run: null,
+      applied: null,
+      pending: null,
+      stale: null,
+      candidate: null,
+    };
+    group[part] = result;
+    groups.set(key, group);
+  };
+
+  attach(source.run, 'run');
+  attach(source.applied, 'applied');
+  attach(source.pending, 'pending');
+  attach(source.stale, 'stale');
+
+  // 参考图重构摘要挂在触发它的那条消息后面（只有拿到消息 id 才能定位）。
+  const candidateMessageId = typeof source.candidateMessageId === 'string' ? source.candidateMessageId : '';
+  if (isPlainObject(source.candidate) && candidateMessageId && messageIds.has(candidateMessageId)) {
+    const group = groups.get(candidateMessageId) ?? {
+      anchorId: candidateMessageId,
+      run: null,
+      applied: null,
+      pending: null,
+      stale: null,
+      candidate: null,
+    };
+    group.candidate = source.candidate;
+    groups.set(candidateMessageId, group);
+  }
+
+  const items = [];
+  for (const message of messages) {
+    items.push({ kind: 'message', key: `message:${message.id}`, message });
+    const group = groups.get(message.id);
+    if (!group) continue;
+    groups.delete(message.id);
+    items.push({ kind: 'result', key: `result:${group.anchorId}`, ...group });
+  }
+  // 没有锚点（或锚点消息已被裁掉）的结果统一落在末尾，行为与旧版一致。
+  let orphan = 0;
+  for (const group of groups.values()) {
+    orphan += 1;
+    items.push({ kind: 'result', key: `result:tail:${orphan}`, ...group });
+  }
+  return items;
+}

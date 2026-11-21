@@ -199,6 +199,20 @@ function toolFailure(result: { code: string; message: string }): never {
   throw new AgentToolError(result.code, result.message);
 }
 
+/**
+ * 变更内容签名（不含 opId）：用来识别「同一条修改被重复提交」。
+ *
+ * opId 只是内部唯一键，模型少有不复用的；内容才是用户真正在意的东西。
+ */
+function appChangeSignature(change: AppAssistantChange): string {
+  const record = change as unknown as Record<string, unknown>;
+  return JSON.stringify([
+    record.op,
+    record.fieldId ?? record.dishId ?? record.actionId ?? record.name ?? '',
+    record.value ?? record.priceCents ?? record.params ?? '',
+  ]);
+}
+
 function snapshot(session: AppAssistantSession): JsonValue {
   return {
     proposal: {
@@ -316,14 +330,27 @@ export function createAppAssistantTools(session: AppAssistantSession): AgentTool
 
       const existing = new Set(session.changes.map((change) => change.opId));
       const seen = new Set<string>();
+      // 已被登记过的内容签名：容纳「模型把同一条修改再交一次」的幂等场景。
+      const contentSignatures = new Set(session.changes.map((change) => appChangeSignature(change)));
       const accepted: AppAssistantChange[] = [];
       for (const raw of rawChanges) {
         const normalized = normalizeChange(raw, session.attachmentIds);
         if (!normalized.ok) toolFailure(normalized);
-        const change = normalized.value;
+        let change = normalized.value;
+        const signature = appChangeSignature(change);
+        // 内容完全相同才是真重复：跳过这一条，其余修改照常登记。
+        if (contentSignatures.has(signature)) continue;
         if (existing.has(change.opId) || seen.has(change.opId)) {
-          throw new AgentToolError('APP_ASSISTANT_PROPOSAL_DUPLICATE', 'opId 不能重复。');
+          // opId 撞号只是内部 id 唯一性约束。重新编号后继续登记，绝不因此丢掉整批修改，
+          // 否则模型复用 op_1 就会让桌面端把整份提案判成「重复」而拒收。
+          let nextOpId = '';
+          do {
+            session.nextOperationNumber += 1;
+            nextOpId = `op_auto_${session.nextOperationNumber}`;
+          } while (existing.has(nextOpId) || seen.has(nextOpId));
+          change = { ...change, opId: nextOpId };
         }
+        contentSignatures.add(signature);
         seen.add(change.opId);
         accepted.push(change);
       }
@@ -347,10 +374,16 @@ export function createAppAssistantTools(session: AppAssistantSession): AgentTool
           `单轮最多 ${APP_ASSISTANT_LIMITS.maxActionRequests} 个动作请求。`,
         );
       }
-      session.nextOperationNumber += 1;
+      // 动作请求的 opId 由服务端生成：先避让已登记的字段修改，避免跨列表撞号。
+      const usedOpIds = new Set(session.changes.map((change) => change.opId));
+      let actionOpId = '';
+      do {
+        session.nextOperationNumber += 1;
+        actionOpId = `op_action_${session.nextOperationNumber}`;
+      } while (usedOpIds.has(actionOpId));
       const normalized = normalizeActionRequest(
         {
-          opId: `op_action_${session.nextOperationNumber}`,
+          opId: actionOpId,
           op: 'action.request',
           actionId: args.actionId,
           ...(args.params === undefined ? {} : { params: args.params }),

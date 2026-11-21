@@ -359,3 +359,24 @@ test('重复执行不覆盖上一次证据（runtime / runtime-2）', async (t) 
   assert.ok(fs.existsSync(path.join(first.artifacts.evidenceDir, 'wechat-devtools-run.json')));
   assert.ok(fs.existsSync(path.join(second.artifacts.evidenceDir, 'wechat-devtools-run.json')));
 });
+
+test('运行时点击链不把「后端无餐台」判成骨架缺陷：显式读 /tables 并降级为参考项', () => {
+  const script = fs.readFileSync(path.join(REPO, 'scripts', 'wechat-devtools-run.cjs'), 'utf8');
+  // 1) 必须真的去后端核对 /tables，而不是只看页面有没有渲染出 Base 类名。
+  assert.match(script, /async function readBackendTables\(/);
+  assert.match(script, /\/tables'\)/);
+  // 2) 数据缺失时该步降为参考项（critical:false），但仍如实记 BLOCKED / NOT_RUN。
+  assert.match(script, /critical: noTableData \? false : undefined/);
+  assert.match(script, /数据缺失，不是骨架缺陷/);
+  // 3) 新骨架没有 Base 类名时按可见文案做真实点击，报告里写清实际路径。
+  assert.match(script, /async function tapByLabel\(/);
+  assert.match(script, /新骨架无 Base 类名/);
+  // 4) 没选桌时不得再断言「结算页桌号一致」，否则空数据会把下单判成 FAIL。
+  assert.ok(
+    !/const tableNameMatches = selectedTable\.name \? checkoutTableName === selectedTable\.name : Boolean\(checkoutTableName\);/.test(script),
+    '未选桌时不应强行断言结算页桌号一致',
+  );
+  assert.match(script, /本单未选桌：后端无餐台数据，不做一致性断言/);
+  // 5) attempt() 允许单条结果覆盖 critical，但不会把状态改写成 PASS。
+  assert.match(script, /typeof result\.critical === 'boolean' \? result\.critical : critical/);
+});

@@ -41,6 +41,19 @@ test('微信工具未就绪时区分未安装、未启动与未显示小程序�
   assert.equal(describeDevtoolsGate({ found: true, running: true, projectOpen: true }).ready, true);
 });
 
+test('探测失败不能说成未安装：gate 走 PROBE_FAILED，预览前分支单独处理 failed', async () => {
+  const { describeDevtoolsGate } = await loadDomain();
+  const failed = describeDevtoolsGate({ status: 'failed', found: false, running: false });
+  assert.equal(failed.ready, false);
+  assert.equal(failed.code, 'PROBE_FAILED');
+  assert.match(failed.reason, /检测/);
+  assert.doesNotMatch(failed.reason, /未检测到微信开发者工具/);
+
+  const app = read('src/App.jsx');
+  assert.match(app, /probe\.status === 'failed'/);
+  assert.match(app, /检测微信开发者工具状态失败/);
+});
+
 test('启动结果如实区分已显示页面、已启动与未确认窗口', async () => {
   const { describeProbeConfirmation } = await loadDomain();
 

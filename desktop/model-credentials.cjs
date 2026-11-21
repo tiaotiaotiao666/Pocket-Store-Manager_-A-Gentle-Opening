@@ -20,13 +20,22 @@ const KEY_MAX_LENGTH = 200;
 const KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{15,199}$/;
 const BASE_URL_MAX_LENGTH = 200;
 const MAX_MESSAGES = 40;
-const MAX_MESSAGE_CHARS = 16000;
-const MAX_BODY_BYTES = 256 * 1024;
+// 工具结果由 app-assistant 截到 20000 字符，这里必须不小于它，否则会产生只在本机失败的死角。
+const MAX_MESSAGE_CHARS = 24000;
+const MAX_TEXT_PART_CHARS = 16000;
+// 3 张 400 KiB 图片转 base64 约 1.6 MiB；官方请求体上限 48 MiB，这里收敛到 8 MiB。
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_PARTS = 3;
+const MAX_IMAGE_BYTES_PER_IMAGE = 409600;
+const MAX_IMAGE_BYTES_TOTAL = 1048576;
 const MAX_TOOLS = 8;
 const DEFAULT_TIMEOUT_MS = 60000;
 const MAX_TIMEOUT_MS = 120000;
-const DEFAULT_MODEL = 'deepseek-chat';
+/** DeepSeek 官方模型名：DeepSeek-V4.1-Flash-1017，支持图像理解与 Tool Calls。 */
+const DEFAULT_MODEL = 'deepseek-flash';
 const MODEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+/** 只接受内联 JPEG/PNG/WebP，拒绝外部 URL 与任意协议。 */
+const IMAGE_DATA_URL_PATTERN = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 
 class ModelCredentialError extends Error {
   constructor(code, message, details) {
@@ -89,6 +98,101 @@ function normalizeTimeout(raw) {
   return value;
 }
 
+/** 纯算术估算 base64 解码后的字节数；调用前应先通过格式校验。 */
+function estimateBase64Bytes(data) {
+  if (typeof data !== 'string' || data.length === 0) return 0;
+  let padding = 0;
+  if (data[data.length - 1] === '=') padding += 1;
+  if (data.length > 1 && data[data.length - 2] === '=') padding += 1;
+  return Math.floor((data.length * 3) / 4) - padding;
+}
+
+/**
+ * 消息内容：纯文本，或 OpenAI 多模态内容块数组（`text` + `image_url`）。
+ *
+ * 边界（与 DeepSeek 官方「图像理解」文档一致）：
+ * - 只有 user / system 可以携带图片，assistant 带图会被上游判 400；
+ * - tool 结果必须是字符串；
+ * - 图片只接受内联 data URL（JPEG/PNG/WebP），不接受外部链接与其它协议；
+ * - 单张 ≤ 400 KiB、合计 ≤ 1 MiB、最多 3 张，与 `AGENT_IMAGE_LIMITS` 对齐。
+ */
+function normalizeMessageContent(content, role) {
+  if (typeof content === 'string') {
+    if (content.length > MAX_MESSAGE_CHARS) {
+      throw new ModelCredentialError('MODEL_REQUEST_INVALID', '单条对话内容过长。');
+    }
+    return content;
+  }
+  if (!Array.isArray(content) || content.length === 0) {
+    throw new ModelCredentialError('MODEL_REQUEST_INVALID', '对话内容格式不正确。');
+  }
+  if (role !== 'user' && role !== 'system') {
+    throw new ModelCredentialError('MODEL_REQUEST_INVALID', '只有用户或系统消息可以携带图片。');
+  }
+
+  let imageCount = 0;
+  let imageBytesTotal = 0;
+  return content.map((part) => {
+    if (!isPlainObject(part)) {
+      throw new ModelCredentialError('MODEL_REQUEST_INVALID', '图片内容块格式不正确。');
+    }
+    if (part.type === 'text') {
+      const text = typeof part.text === 'string' ? part.text : '';
+      if (!text || text.length > MAX_TEXT_PART_CHARS) {
+        throw new ModelCredentialError('MODEL_REQUEST_INVALID', '文本内容块为空或过长。');
+      }
+      return { type: 'text', text };
+    }
+    if (part.type !== 'image_url') {
+      throw new ModelCredentialError('MODEL_REQUEST_INVALID', '只支持 text / image_url 两种内容块。');
+    }
+
+    const imageUrl = isPlainObject(part.image_url) ? part.image_url : null;
+    const url = imageUrl && typeof imageUrl.url === 'string' ? imageUrl.url : '';
+    if (!IMAGE_DATA_URL_PATTERN.test(url)) {
+      throw new ModelCredentialError('MODEL_REQUEST_INVALID', '图片只接受内联 JPEG/PNG/WebP 的 data URL。');
+    }
+    const base64 = url.slice(url.indexOf(',') + 1);
+    const bytes = estimateBase64Bytes(base64);
+    imageCount += 1;
+    imageBytesTotal += bytes;
+    if (imageCount > MAX_IMAGE_PARTS) {
+      throw new ModelCredentialError('MODEL_REQUEST_INVALID', `最多 ${MAX_IMAGE_PARTS} 张图片。`);
+    }
+    if (bytes <= 0 || bytes > MAX_IMAGE_BYTES_PER_IMAGE) {
+      throw new ModelCredentialError('MODEL_REQUEST_INVALID', '单张图片超过 400 KiB 或内容为空。');
+    }
+    if (imageBytesTotal > MAX_IMAGE_BYTES_TOTAL) {
+      throw new ModelCredentialError('MODEL_REQUEST_INVALID', '图片合计超过 1 MiB。');
+    }
+
+    const normalizedUrl = { url };
+    if (['low', 'high', 'original', 'auto'].includes(imageUrl.detail)) {
+      normalizedUrl.detail = imageUrl.detail;
+    }
+    return { type: 'image_url', image_url: normalizedUrl };
+  });
+}
+
+/**
+ * 思考模式开关：默认关闭。
+ *
+ * `enabled` 被拒绝是刻意的：官方要求携带 tools 的请求在后续轮次完整回传
+ * `reasoning_content`，而本通道只保存 `content` 与 `tool_calls`，开启后必然 400。
+ */
+function normalizeThinking(raw) {
+  if (raw === null) return null;
+  if (raw === undefined) return { type: 'disabled' };
+  if (!isPlainObject(raw)) {
+    throw new ModelCredentialError('MODEL_REQUEST_INVALID', 'thinking 字段格式不正确。');
+  }
+  if (raw.type === 'disabled') return { type: 'disabled' };
+  if (raw.type === 'enabled') {
+    throw new ModelCredentialError('MODEL_REQUEST_INVALID', '这条通道暂不支持思考模式。');
+  }
+  throw new ModelCredentialError('MODEL_REQUEST_INVALID', 'thinking.type 只能是 enabled / disabled。');
+}
+
 /** 只接受 DeepSeek/OpenAI 兼容的 messages + tools 形状，拒绝任意 JSON 透传。 */
 function normalizeChatPayload(payload) {
   if (!isPlainObject(payload)) {
@@ -106,10 +210,7 @@ function normalizeChatPayload(payload) {
     if (!['system', 'user', 'assistant', 'tool'].includes(role)) {
       throw new ModelCredentialError('MODEL_REQUEST_INVALID', '对话角色不受支持。');
     }
-    const content = typeof message.content === 'string' ? message.content : '';
-    if (content.length > MAX_MESSAGE_CHARS) {
-      throw new ModelCredentialError('MODEL_REQUEST_INVALID', '单条对话内容过长。');
-    }
+    const content = normalizeMessageContent(message.content, role);
     const normalized = { role, content };
     if (role === 'tool') {
       const toolCallId = typeof message.tool_call_id === 'string' ? message.tool_call_id : '';
@@ -171,6 +272,10 @@ function normalizeChatPayload(payload) {
     max_tokens: maxTokens,
     temperature,
   };
+  // DeepSeek 思考模式默认开启，且带 tools 时必须回传 reasoning_content（否则 400）。
+  // 本通道没有回传思维链，所以默认显式关闭；传 null 表示完全不发这个字段（兼容第三方网关）。
+  const thinking = normalizeThinking(payload.thinking);
+  if (thinking) body.thinking = thinking;
   if (tools) {
     body.tools = tools;
     body.tool_choice = 'auto';

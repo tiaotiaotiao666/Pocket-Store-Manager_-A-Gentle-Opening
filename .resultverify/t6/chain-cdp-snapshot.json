@@ -1,0 +1,51 @@
+{
+  "title": "口袋店长·轻启",
+  "url": "http://127.0.0.1:5173/",
+  "bodyText": "口袋店长·轻启\n我的项目\n\n每个门店一个项目：资料、图片、会话与导出进度都在本机保存。\n\n设置与自检\n新建项目\n创建你的第一家门店小程序\n\n从一个店名开始，跟着「轻启」把菜单、装修、效果图和小程序工程一步步做出来。\n\n新建项目\n项目会保存在本机，关掉应用也不会丢。\n桌面模式 · 项目与图片写入本机数据目录\n不会上传、发布或提交审核。",
+  "controls": [
+    {
+      "index": 0,
+      "tag": "INPUT",
+      "id": "",
+      "type": "search",
+      "name": "搜索项目",
+      "text": "",
+      "placeholder": "搜索项目名或阶段，例如「部署」",
+      "accept": "",
+      "disabled": false
+    },
+    {
+      "index": 1,
+      "tag": "BUTTON",
+      "id": "",
+      "type": "button",
+      "name": "",
+      "text": "设置与自检",
+      "placeholder": "",
+      "accept": "",
+      "disabled": false
+    },
+    {
+      "index": 2,
+      "tag": "BUTTON",
+      "id": "",
+      "type": "button",
+      "name": "新建项目：创建空白门店项目",
+      "text": "新建项目",
+      "placeholder": "",
+      "accept": "",
+      "disabled": false
+    },
+    {
+      "index": 3,
+      "tag": "BUTTON",
+      "id": "",
+      "type": "button",
+      "name": "",
+      "text": "新建项目",
+      "placeholder": "",
+      "accept": "",
+      "disabled": false
+    }
+  ]
+}

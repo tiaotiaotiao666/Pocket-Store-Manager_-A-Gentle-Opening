@@ -45,11 +45,11 @@ function createModelIpc(options) {
       const config = loaded && loaded.config ? loaded.config : {};
       return {
         baseUrl: config.modelApiBaseUrl || 'https://api.deepseek.com',
-        model: config.modelName || 'deepseek-chat',
+        model: config.modelName || 'deepseek-flash',
         timeoutMs: Number.isInteger(config.modelTimeoutMs) ? config.modelTimeoutMs : 60000,
       };
     } catch (error) {
-      return { baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat', timeoutMs: 60000 };
+      return { baseUrl: 'https://api.deepseek.com', model: 'deepseek-flash', timeoutMs: 60000 };
     }
   }
 
@@ -101,6 +101,7 @@ function createModelIpc(options) {
           temperature: source.temperature,
           messages: source.messages,
           tools: source.tools,
+          thinking: source.thinking,
         });
         return ok(result);
       } catch (error) {

@@ -547,29 +547,7 @@ describe('AppAssistantService：提案校验与工具错误码', () => {
       expectedCode: 'APP_ASSISTANT_OPERATION_DENIED',
     },
     {
-      name: '重复 opId',
-      tool: 'propose_project_changes',
-      args: {
-        changes: [
-          {
-            opId: 'op_1',
-            op: 'field.set',
-            fieldId: 'store.name',
-            value: '松月食堂',
-            evidence: { source: 'utterance', excerpt: '店名' },
-          },
-          {
-            opId: 'op_1',
-            op: 'field.set',
-            fieldId: 'store.category',
-            value: '社区餐馆',
-            evidence: { source: 'utterance', excerpt: '品类' },
-          },
-        ],
-      },
-      expectedCode: 'APP_ASSISTANT_PROPOSAL_DUPLICATE',
-    },
-    {
+
       name: '菜品缺少 dishId',
       tool: 'propose_project_changes',
       args: {
@@ -614,6 +592,37 @@ describe('AppAssistantService：提案校验与工具错误码', () => {
       expect(response.trace.degraded).toBe(true);
     });
   }
+
+  it('重复 opId 不再整轮失败：内容不同的修改重新编号后都会登记', async () => {
+    const { model } = scriptedModel([
+      toolResult('propose_project_changes', {
+        changes: [
+          {
+            opId: 'op_1',
+            op: 'field.set',
+            fieldId: 'store.name',
+            value: '松月食堂',
+            evidence: { source: 'utterance', excerpt: '店名' },
+          },
+          {
+            opId: 'op_1',
+            op: 'field.set',
+            fieldId: 'store.category',
+            value: '社区餐馆',
+            evidence: { source: 'utterance', excerpt: '品类' },
+          },
+        ],
+      }),
+      textResult('收到。'),
+    ]);
+    const service = createService(model);
+
+    const response = await service.run(createRequest(), { requestId: 'chat_req_test_1' });
+
+    expect(response.changes.map((item) => item.fieldId)).toEqual(['store.name', 'store.category']);
+    expect(new Set(response.changes.map((item) => item.opId)).size).toBe(2);
+    expect(response.trace.toolCalls[0].ok).toBe(true);
+  });
 
   it('菜品价格必须是整数分或 null', async () => {
     const { model } = scriptedModel([

@@ -1,0 +1,12 @@
+<scroll-view class="category-nav" scroll-y enable-flex>
+  <view
+    wx:for="{{categories}}"
+    wx:key="id"
+    class="category-nav__item {{item.id === activeId ? 'category-nav__item--active' : ''}}"
+    data-id="{{item.id}}"
+    bind:tap="onSelect"
+  >
+    <text class="category-nav__label">{{item.name}}</text>
+  </view>
+  <view wx:if="{{!categories || categories.length === 0}}" class="category-nav__empty">暂无分类</view>
+</scroll-view>

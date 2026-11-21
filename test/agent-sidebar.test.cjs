@@ -675,3 +675,76 @@ test('selectAgentChatState 暴露侧栏视图模型且不外泄请求身份', as
   assert.equal(emptyView.plan.allowed, false);
   assert.equal(emptyView.canSend, false);
 });
+test('时间线：本轮结果锚在那一轮之后，新发的消息排在它下面', async () => {
+  const { buildAgentChatTimeline } = await loadSidebar();
+  const messages = [
+    message({ id: 'chat-user-req1', role: 'user', text: '店名改成松月食堂' }),
+    message({ id: 'chat-assistant-req1', role: 'assistant', text: '已按你的话整理成提案。' }),
+    message({ id: 'chat-user-req2', role: 'user', text: '再把配色换暖一点' }),
+  ];
+  const timeline = buildAgentChatTimeline({
+    messages,
+    run: { requestId: 'req1', status: 'done', toolLabels: ['读取项目上下文'] },
+    applied: {
+      requestId: 'req1',
+      appliedRevision: 2,
+      entries: [{ fieldId: 'store.name', label: '店名', before: '旧名字', after: '松月食堂' }],
+    },
+    pending: null,
+    stale: null,
+  });
+
+  assert.deepEqual(
+    timeline.map((item) => item.kind),
+    ['message', 'message', 'result', 'message'],
+    '结果块必须紧跟那一轮的助手消息，后续新消息排在它下面',
+  );
+  assert.equal(timeline[2].key, 'result:chat-assistant-req1');
+  assert.equal(timeline[2].run.requestId, 'req1');
+  assert.equal(timeline[2].applied.requestId, 'req1');
+  assert.equal(timeline[3].message.text, '再把配色换暖一点');
+
+  // 再补一轮：新一轮结果落在最新那条消息之后；上一轮的结果是运行态，只保留最近一份。
+  const next = buildAgentChatTimeline({
+    messages: [...messages, message({ id: 'chat-assistant-req2', role: 'assistant', text: '配色已调整。' })],
+    run: { requestId: 'req2', status: 'done', toolLabels: [] },
+    applied: { requestId: 'req2', appliedRevision: 3, entries: [] },
+    stale: null,
+    pending: null,
+  });
+  assert.deepEqual(
+    next.map((item) => item.kind),
+    ['message', 'message', 'message', 'message', 'result'],
+  );
+  assert.equal(next[4].key, 'result:chat-assistant-req2');
+});
+
+test('时间线：拿不到 requestId 的结果退回末尾，不丢展示', async () => {
+  const { buildAgentChatTimeline } = await loadSidebar();
+  const timeline = buildAgentChatTimeline({
+    messages: [message({ id: 'chat-user-old', role: 'user', text: '旧消息' })],
+    run: null,
+    applied: { proposalId: 'proposal_old', appliedRevision: 1, entries: [] },
+    pending: { fields: [{ opId: 'op_1', fieldId: 'store.name' }], actions: [] },
+    stale: null,
+  });
+  assert.equal(timeline.length, 2);
+  assert.equal(timeline[1].kind, 'result');
+  assert.equal(timeline[1].anchorId, null);
+});
+
+test('时间线：参考图摘要挂在触发它的那条消息后面', async () => {
+  const { buildAgentChatTimeline } = await loadSidebar();
+  const timeline = buildAgentChatTimeline({
+    messages: [
+      message({ id: 'chat-user-req9', role: 'user', text: '照这张图改首页' }),
+      message({ id: 'chat-assistant-req9', role: 'assistant', text: '收到，先进候选面板。' }),
+    ],
+    candidate: { summary: '参考图意图：首页三卡并排' },
+    candidateMessageId: 'chat-assistant-req9',
+  });
+  assert.equal(timeline.length, 3);
+  assert.equal(timeline[2].kind, 'result');
+  assert.equal(timeline[2].candidate.summary, '参考图意图：首页三卡并排');
+  assert.equal(timeline[2].anchorId, 'chat-assistant-req9');
+});

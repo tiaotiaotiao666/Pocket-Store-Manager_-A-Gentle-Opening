@@ -42,6 +42,33 @@ test('P0-1 预览与候选验证用同一个 resolveDevtoolsCli 实现', () => {
   assert.doesNotMatch(runnerSource, /const CLI_CANDIDATES/);
 });
 
+test('P0-1 界面安装探测必须复用执行链的 resolveDevtoolsCli（不得自带第二套候选清单）', () => {
+  const probeSource = fs.readFileSync(path.join(REPO, 'desktop', 'devtools-probe.cjs'), 'utf8');
+  assert.match(probeSource, /require\('\.\/devtools-cli\.cjs'\)/);
+  assert.match(probeSource, /resolveDevtoolsCli/);
+  assert.doesNotMatch(probeSource, /CLI_CANDIDATES/);
+});
+
+test('P0-1 工具已安装但不在注册表/默认目录时，probeDevtools 仍必须 found:true', async () => {
+  const { probeDevtools } = require(path.join(REPO, 'desktop', 'devtools-probe.cjs'));
+  const fakeCli = 'Z:\\微信web开发者工具\\cli.bat';
+  const probe = await probeDevtools({ resolveDevtoolsCli: () => fakeCli });
+  if (process.platform !== 'win32') {
+    assert.equal(probe.found, false);
+    return;
+  }
+  assert.equal(probe.found, true, JSON.stringify(probe));
+  assert.equal(probe.via, 'cli-resolver');
+  assert.equal(probe.path, path.dirname(fakeCli));
+});
+
+test('P0-1 解析器返回空时 probeDevtools 保持 found:false，不编造路径', async () => {
+  const { probeDevtools } = require(path.join(REPO, 'desktop', 'devtools-probe.cjs'));
+  const probe = await probeDevtools({ resolveDevtoolsCli: () => null });
+  assert.equal(probe.found, false);
+  assert.equal(probe.path, null);
+});
+
 test('P0-1 WX_CLI_PATH 优先，固定候选与安装目录扫描兜底', () => {
   const seen = [];
   const resolved = shared.resolveDevtoolsCli({

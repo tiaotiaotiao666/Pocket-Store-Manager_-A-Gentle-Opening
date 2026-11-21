@@ -1,0 +1,78 @@
+@import "../../styles/component.wxss";
+
+.order-status {
+  display: flex;
+  align-items: center;
+}
+
+.order-status__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(35, 35, 35, 0.06);
+}
+
+.order-status__label {
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.order-status--warning .order-status__badge {
+  background: #fdf0e4;
+  color: #a8691f;
+}
+
+.order-status--info .order-status__badge {
+  background: #e8eefb;
+  color: #33518f;
+}
+
+.order-status--primary .order-status__badge {
+  background: var(--color-primary-soft);
+  color: #b5530f;
+}
+
+.order-status--success .order-status__badge {
+  background: #e6f2ea;
+  color: var(--color-success);
+}
+
+.order-status--neutral .order-status__badge {
+  background: rgba(35, 35, 35, 0.06);
+  color: #6b665f;
+}
+
+.order-status--muted .order-status__badge {
+  background: rgba(35, 35, 35, 0.05);
+  color: #9a948c;
+}
+
+.order-status__detail {
+  margin-left: 16rpx;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.order-status__hint {
+  font-size: 22rpx;
+  color: var(--color-muted);
+}
+
+.order-status__payment {
+  margin-left: 12rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(47, 125, 79, 0.1);
+  color: var(--color-success);
+  font-size: 20rpx;
+}
+
+.order-status--compact .order-status__badge {
+  padding: 4rpx 14rpx;
+}
+
+.order-status--compact .order-status__label {
+  font-size: 22rpx;
+}

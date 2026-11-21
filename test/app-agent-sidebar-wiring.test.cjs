@@ -136,22 +136,20 @@ test('侧栏入口统一走 app-assistant，任意阶段同一路径', () => {
   assert.doesNotMatch(turn, /fetch\(/, '侧栏入口不能自己发 HTTP 请求');
 });
 
-test('本地指引不调用模型，也不伪造工具步骤', () => {
+test('参考图使用资料写回后的 projectState 自动构建，不再以本地指引结束', () => {
   const source = readApp();
-  const guide = sliceBlock(source, 'const appendAgentChatGuide = (text, { retry = false } = {}) => {');
-  assert.match(guide, /actionKind: 'guide'/, '指引消息的 actionKind 必须是 guide');
-  assert.doesNotMatch(
-    guide,
-    /requestAgentTurn\(|requestAgentRun\(|requestTemplateRevise\(|fetch\(/,
-    '本地指引不调用模型、不发请求',
-  );
-  assert.match(guide, /toolLabels: \[\]/, '本地指引没有工具步骤就不写步骤');
-  assert.match(guide, /本轮没有调用模型/, '过程卡必须说明本轮没有调用模型');
-  assert.match(source, /const agentChatCandidate = \(\(\) => \{/, '参考图重构摘要只从既有视图派生');
+  const turn = sliceBlock(source, 'const runAppAssistantTurn = async ({');
+  assert.match(turn, /projectState/, '统一会话必须返回同一 apply action 计算出的最新项目状态');
+  assert.match(source, /resolveFrontendGenerationIntent\(\{[\s\S]{0,160}text,[\s\S]{0,160}images/, '参考图与文字必须先生成唯一自动请求意图');
+  assert.match(source, /type:\s*'FRONTEND_AUTO_REQUEST'/, '自动链必须原子设置请求并清理上一未采用结果');
+  assert.match(source, /prepareProjectPreview\(\{/, '分析后必须准备当前项目与 run 的预览数据');
+  assert.match(source, /frontendService\.buildCandidate\(\{[\s\S]{0,900}\bplan,/, '候选 Plan 必须来自资料写回后的 projectState');
+  assert.match(source, /frontendService\.verifyCandidate\(/, '构建完成后必须继续微信验证，不能只显示本地摘要');
+  assert.match(source, /type:\s*'PHASE_GOTO'/, '自动链开始前必须切到可展示候选的项目阶段');
   assert.match(
     source,
     /document\.getElementById\('frontend-reconstruct-panel'\)/,
-    '「查看候选」只跳既有候选面板，不在侧栏生成候选',
+    '候选展示继续复用既有面板',
   );
 });
 
@@ -164,10 +162,16 @@ test('防重：在途时忽略重复提交（状态 + 同步守卫）', () => {
     '同一帧连点与在途请求都要被拦住',
   );
   assert.match(source, /const agentChatBusy = useRef\(false\);/, '必须有同步 ref 守卫（state 更新晚一帧）');
+  // 空白且无附件必须被 App 层拦住，而且要给可见原因 —— 不允许静默 return 造成“点按钮没反应”。
   assert.match(
-    source,
+    submit,
+    /if \(!isValidChatDraft\(text\) && !images\.length\) \{[\s\S]{0,200}setNotice\([\s\S]{0,80}return;/,
+    '空白且无附件必须被 App 层拦住并给出可见原因；只发图片是允许的',
+  );
+  assert.doesNotMatch(
+    submit,
     /if \(!isValidChatDraft\(text\) && !images\.length\)\s*return;/,
-    '空白且无附件必须被 App 层拦住；只发图片是允许的',
+    '不允许静默吞掉空输入',
   );
   const retry = sliceBlock(source, 'const handleAgentChatRetry = () => {');
   assert.match(retry, /CHAT_STATUS\.FAILED/, '只有失败态才允许重试');
@@ -246,11 +250,17 @@ test('项目级会话按项目持久化：整片交给 toDocument，消息变化
   assert.match(source, /fromDocument\(result\.doc/, '打开项目必须走 fromDocument 恢复会话');
 });
 
-test('统一入口没有阶段前置条件，图片入口全阶段开放', () => {
+test('统一入口图片全阶段开放，候选生成忙碌时给出动态阻断原因', () => {
   const source = readApp();
-  assert.match(source, /const agentChatSendBlockedReason = null;/, '统一入口不被模板阶段前置条件拦住');
+  assert.doesNotMatch(source, /const agentChatSendBlockedReason = null;/, '忙碌原因不能固定为 null');
+  assert.match(source, /const agentChatSendBlockedReason =/, 'App 必须统一计算当前生成链的忙碌原因');
+  assert.match(source, /sendBlockedReason: agentChatSendBlockedReason/, '动态原因必须传给侧栏显示并禁用发送');
   const submit = sliceBlock(source, 'const handleAgentChatSubmit = (value) => {');
-  assert.doesNotMatch(submit, /if (agentChatSendBlockedReason)/, '提交路径不再有阶段前置拦截');
+  assert.match(
+    submit,
+    /agentChatBusy\.current \|\| agentChatState\.status === CHAT_STATUS\.REQUESTING/,
+    '提交路径必须用同步 ref 与请求状态直接拦截双击',
+  );
   assert.match(source, /const agentChatImageKinds = \(\(\) => \{[\s\S]{0,200}return \['auto', 'menu', 'store', 'reference'\]/, '有项目即可带图片');
   // 旧 handler 的兜底守卫仍保留（只影响主输入框）。
   const revise = sliceBlock(source, 'const handleTemplateReviseSubmit = async (utterance, {');

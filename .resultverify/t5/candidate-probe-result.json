@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "sidebar-candidate-probe.v1",
+  "checks": [
+    {
+      "name": "provided-plan-store-versions-same-attempt",
+      "status": "PASS",
+      "attempt": 1,
+      "planSource": "provided",
+      "planDigest": "sha256:5f09fc0b50b0aabd5572efe9d1ef8187ab35b9290585fba5b558f969ad60a3d7",
+      "frontendPack": {
+        "id": "fr-603f5d3aa820",
+        "version": "1.0.0"
+      },
+      "outputRelativePath": "verification/dry-run/candidate",
+      "storeId": "store-preview-candidate-probe",
+      "backendVersions": {
+        "storeConfigVersion": 2,
+        "catalogVersion": 3
+      }
+    },
+    {
+      "name": "explicit-invalid-plan-fail-closed",
+      "status": "PASS",
+      "code": "DRY_RUN_INPUT_INVALID",
+      "summary": "候选 Plan 不可用：Plan 必须是对象"
+    },
+    {
+      "name": "renderer-payload-validation-and-forwarding",
+      "status": "PASS",
+      "invalidStoreCode": "FRONTEND_PAYLOAD_INVALID",
+      "invalidVersionsCode": "FRONTEND_PAYLOAD_INVALID",
+      "oversizedPlanCode": "FRONTEND_PAYLOAD_INVALID",
+      "validForwarded": true
+    }
+  ]
+}

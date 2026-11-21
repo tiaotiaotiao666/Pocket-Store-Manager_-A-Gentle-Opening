@@ -26,6 +26,7 @@ const {
   isInsideOrEqual,
 } = require('./workspace.cjs');
 const { compose } = require('../../scripts/composer/index.cjs');
+const { planDigest } = require('../../scripts/composer/digest.cjs');
 const { runChecks } = require('../../scripts/validate-miniprogram.cjs');
 const { inspectOutput } = require('../output-consistency.cjs');
 
@@ -414,6 +415,8 @@ function writeResultFile(dir, value) {
  * @param {string} [options.runId]             draft 模式必填
  * @param {object} [options.plan]              候选 CompositionPlan；缺省读 Base Recipe Plan 并覆盖 frontendPack
  * @param {string} [options.planFile]          Plan 绝对路径（仅 plan 缺省时使用）
+ * @param {string} [options.storeId]           本次预览门店 id，原样交给 Composer
+ * @param {object} [options.backendVersions]   本次预览数据版本，原样交给 Composer
  * @param {'development'|'production'} [options.mode]
  * @param {string} [options.projectName]       产物目录名（默认 candidate）
  * @param {number} [options.revision]          回传用的 revision（缺省=attempt）
@@ -499,6 +502,7 @@ async function dryRun(options) {
   const planDetails = {
     source: planResult.source,
     planFile: planResult.planFile,
+    planDigest: planDigest(plan),
     frontendPack: plan.frontendPack,
     overridden: planResult.overridden,
   };
@@ -541,6 +545,8 @@ async function dryRun(options) {
       mode,
       registryRoot: materialized.overlayRegistryRoot,
       assetRoots: materialized.assetRoots,
+      storeId: opts.storeId,
+      backendVersions: opts.backendVersions,
       signal,
     });
   } catch (error) {

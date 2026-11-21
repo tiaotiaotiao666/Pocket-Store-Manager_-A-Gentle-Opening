@@ -1,0 +1,32 @@
+<view wx:if="{{visible}}" class="ss-mask" bind:tap="onClose"></view>
+<view wx:if="{{visible}}" class="ss-sheet product-detail">
+  <view class="product-detail__hero">
+    <image wx:if="{{product.imageUrl}}" class="product-detail__image" src="{{product.imageUrl}}" mode="aspectFill" />
+    <view wx:else class="product-detail__initial">{{display.initial}}</view>
+  </view>
+  <view class="ss-sheet__header">
+    <view>
+      <view class="ss-sheet__title">{{product.name || '商品详情'}}</view>
+      <view class="product-detail__desc">{{product.description || '暂无描述'}}</view>
+    </view>
+    <view class="ss-sheet__close" bind:tap="onClose">✕</view>
+  </view>
+  <view class="product-detail__price">
+    <text class="product-detail__currency">¥</text>
+    <text class="product-detail__amount">{{display.amount}}</text>
+    <text wx:if="{{product.available === false}}" class="product-detail__soldout">已售罄</text>
+  </view>
+  <view class="product-detail__footer">
+    <view class="product-detail__stepper">
+      <view class="product-detail__step {{quantity > 0 ? '' : 'product-detail__step--off'}}" bind:tap="onRemove">−</view>
+      <text class="product-detail__qty">{{quantity}}</text>
+      <view class="product-detail__step product-detail__step--add" bind:tap="onAdd">+</view>
+    </view>
+    <view
+      class="ss-btn ss-btn--primary product-detail__add {{product.available === false ? 'ss-btn--disabled' : ''}}"
+      bind:tap="onAdd"
+    >
+      {{product.available === false ? '暂不可售' : '加入购物车'}}
+    </view>
+  </view>
+</view>

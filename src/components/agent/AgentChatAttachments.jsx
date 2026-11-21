@@ -21,7 +21,7 @@ const KIND_CONFIG = Object.freeze({
   },
   reference: {
     label: '参考界面',
-    hint: '只进入「参考图重构」候选链，不会直接改动模板或采用候选。',
+    hint: '发送后会先写回文字资料，再自动构建并验证候选前端；现有模板只在你明确采用后才更新。',
     limit: 1,
   },
   menu: {
@@ -37,6 +37,21 @@ const KIND_CONFIG = Object.freeze({
 });
 
 const ACCEPT = 'image/jpeg,image/png,image/webp';
+
+/**
+ * 压缩标签与业务用途分离。
+ *
+ * `prepareImageFile` 只认 `menu` / `store` 两种压缩标签（它描述的是“这张图怎么压”，
+ * 不是“这张图用来干什么”）。侧栏允许 `auto` / `reference`，如果直接把业务用途传进去，
+ * 上传参考界面截图会立刻被判成 `AGENT_IMAGE_INVALID`，看起来就是“选了图却没反应”。
+ * 因此这里只按“人像/门店环境”选压缩参数，真正的业务 kind 在 draft 上覆盖。
+ */
+const COMPRESS_KIND = Object.freeze({
+  auto: 'menu',
+  menu: 'menu',
+  store: 'store',
+  reference: 'menu',
+});
 
 function formatBytes(bytes) {
   const value = Number(bytes);
@@ -96,9 +111,7 @@ export default function AgentChatAttachments({
     if (room === 0) {
       setLocalError({
         code: AGENT_IMAGE_ERROR_CODES.count,
-        message: activeKind === 'menu'
-          ? `本轮最多再带 ${AGENT_IMAGE_LIMITS.maxMenuImages} 张菜单照。`
-          : '本轮最多再带 1 张环境照。',
+        message: `本轮「${config.label}」最多 ${config.limit} 张，已选 ${activeCount} 张；先移除一张再添加。`,
       });
       return;
     }
@@ -111,8 +124,10 @@ export default function AgentChatAttachments({
     let firstError = null;
     for (const file of accepted) {
       try {
-        const draft = await prepareImageFile(file, { kind: activeKind });
-        drafts.push(draft);
+        const draft = await prepareImageFile(file, { kind: COMPRESS_KIND[activeKind] || 'menu' });
+        // draft.kind 始终是真实业务用途：auto / reference 也按用户选择传下去，
+        // 由 App 的附件分流决定它走参考图重构还是统一会话。
+        drafts.push({ ...draft, kind: activeKind });
       } catch (caught) {
         if (!firstError) firstError = toReadableError(caught, '图片处理失败，请换一张图片重试。');
       }

@@ -24,8 +24,16 @@ function read(file) {
 test('面板渲染变更卡，并把 applied / pending / stale / 撤销回调传进去', () => {
   const panel = read(PANEL_PATH);
   assert.match(panel, /import AppAssistantChangeCard from '\.\/AppAssistantChangeCard\.jsx'/, '必须引用变更卡组件');
-  assert.match(panel, /<AppAssistantChangeCard[\s\S]{0,220}applied=\{applied\}[\s\S]{0,120}pending=\{pending\}[\s\S]{0,120}stale=\{stale\}/, '三类结果分区传入');
-  assert.match(panel, /canUndo=\{canUndoApplied\}/, '撤销可用性由内容版本一致性决定');
+  assert.match(
+    panel,
+    /<AppAssistantChangeCard[\s\S]{0,260}applied=\{item\.applied\}[\s\S]{0,120}pending=\{item\.pending\}[\s\S]{0,120}stale=\{item\.stale\}/,
+    '三类结果分区传入（按轮次锚定后来自时间线条目）',
+  );
+  assert.match(
+    panel,
+    /canUndo=\{canUndoApplied && Boolean\(item\.applied\) && item\.applied === applied\}/,
+    '只有仍在应用后版本上的最新那一轮才可撤销',
+  );
   assert.match(panel, /onUndo=\{onUndoApplied\}/, '撤销回调由 App 注入');
 });
 

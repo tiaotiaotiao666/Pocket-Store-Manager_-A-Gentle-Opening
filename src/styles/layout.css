@@ -326,3 +326,42 @@
   color: var(--accent);
   background: var(--accent-soft);
 }
+/* 两栏宽度可拖：窄命中条 + 拖动/悬停时显形，不改变原有视觉分隔线。 */
+.shell-resizer {
+  flex: none;
+  width: 8px;
+  margin: 0 -4px;
+  position: relative;
+  z-index: 6;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.shell-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.18s var(--ease-soft);
+}
+
+.shell-resizer:hover::after,
+.shell-resizer:focus-visible::after {
+  background: var(--accent-ring);
+}
+
+.shell-resizer:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+  border-radius: 3px;
+}
+
+body.is-resizing-layout,
+body.is-resizing-layout * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}

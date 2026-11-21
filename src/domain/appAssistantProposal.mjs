@@ -113,6 +113,21 @@ function normalizeEvidence(raw) {
 }
 
 /**
+ * 变更内容签名（不含 opId）：内容完全相同的修改只保留一条。
+ *
+ * 与 `directAppAssistantTransport` 的去重口径一致，避免「同一批里重复提交同一条修改」
+ * 变成用户可见的失败。
+ */
+function changeContentSignature(raw) {
+  if (!isPlainObject(raw)) return '';
+  return JSON.stringify([
+    raw.op,
+    raw.fieldId ?? raw.dishId ?? raw.actionId ?? raw.name ?? '',
+    raw.value ?? raw.priceCents ?? raw.params ?? '',
+  ]);
+}
+
+/**
  * 校验一条 change，返回 { ok, change } 或 { ok:false, code, message }。
  * 规范化后的 change 只保留契约允许的键。
  */
@@ -127,9 +142,7 @@ function validateChange(raw, context) {
   if (!opId || opId.length > APP_ASSISTANT_LIMITS.maxOpIdChars) {
     return fail(APP_ASSISTANT_ERROR_CODES.RESPONSE_INVALID, '修改项缺少合法 opId。');
   }
-  if (context.opIds.has(opId)) {
-    return fail(APP_ASSISTANT_ERROR_CODES.PROPOSAL_DUPLICATE, `修改项 opId 重复：${opId}。`);
-  }
+
   context.opIds.add(opId);
 
   const op = raw.op;
@@ -326,8 +339,29 @@ export function validateAppAssistantResponse(raw, options = {}) {
     state: isPlainObject(options.state) ? options.state : null,
   };
   const changes = [];
+  const seenSignatures = new Set();
+  let autoOpNumber = 0;
   for (const item of inlineChanges) {
-    const checked = validateChange(item, changeContext);
+    let candidate = item;
+    if (isPlainObject(item)) {
+      const signature = changeContentSignature(item);
+      // 只有「内容完全相同」才是真重复：跳过这一条，不让它把整份提案毁掉。
+      if (seenSignatures.has(signature)) continue;
+      seenSignatures.add(signature);
+      const rawOpId = typeof item.opId === 'string' ? item.opId.trim() : '';
+      if (rawOpId && changeContext.opIds.has(rawOpId)) {
+        // opId 撞号但内容不同的修改：重新编号后照常应用，不整份拒收，
+        // 否则模型/服务端只要求「id 唯一」这一条内部约束就会让用户发不出消息。
+        autoOpNumber += 1;
+        let nextOpId = `op_auto_${autoOpNumber}`;
+        while (changeContext.opIds.has(nextOpId)) {
+          autoOpNumber += 1;
+          nextOpId = `op_auto_${autoOpNumber}`;
+        }
+        candidate = { ...item, opId: nextOpId };
+      }
+    }
+    const checked = validateChange(candidate, changeContext);
     if (!checked.ok) return checked;
     changes.push(checked.change);
   }

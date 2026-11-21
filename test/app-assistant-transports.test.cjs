@@ -242,16 +242,49 @@ test('D1 direct 无主进程桥 → AGENT_TRANSPORT_UNKNOWN', async () => {
   await assert.rejects(transport.send(requestPayload()), expectCode('AGENT_TRANSPORT_UNKNOWN'));
 });
 
-test('D2 direct 带图返回结构化错误且不静默丢图', async () => {
+test('D2 direct 带图：图片进入最后一条 user 消息，不做静默丢弃', async () => {
   const { createDirectAppAssistantTransport } = await load('../src/services/appAssistant/directAppAssistantTransport.js');
   const request = await buildRequest({
-    utterance: '',
+    utterance: '这张是门店环境照',
     attachments: [{
       id: 'att_1',
       kind: 'store',
       mediaType: 'image/png',
       dataBase64: 'AAAA',
       name: 'shop.png',
+      bytes: 4,
+    }],
+  });
+  const seen = [];
+  const transport = createDirectAppAssistantTransport({
+    chat: async (payload) => {
+      seen.push(payload);
+      return { ok: true, data: { content: '看到门店照片了。', toolCalls: [] } };
+    },
+    getModel: () => ({ baseUrl: 'https://api.deepseek.com', model: 'deepseek-flash', timeoutMs: 60000 }),
+  });
+
+  await transport.send(request);
+  assert.equal(seen.length, 1);
+  assert.deepEqual(seen[0].thinking, { type: 'disabled' });
+  const lastUser = seen[0].messages[seen[0].messages.length - 1];
+  assert.equal(lastUser.role, 'user');
+  assert.equal(Array.isArray(lastUser.content), true);
+  assert.deepEqual(lastUser.content[0], { type: 'text', text: '这张是门店环境照' });
+  assert.equal(lastUser.content[1].type, 'image_url');
+  assert.equal(lastUser.content[1].image_url.url, 'data:image/png;base64,AAAA');
+});
+
+test('D2b direct 带图：非法图片整轮拒绝，不静默少发一张', async () => {
+  const { createDirectAppAssistantTransport } = await load('../src/services/appAssistant/directAppAssistantTransport.js');
+  const request = await buildRequest({
+    utterance: '',
+    attachments: [{
+      id: 'att_bad',
+      kind: 'store',
+      mediaType: 'image/gif',
+      dataBase64: 'AAAA',
+      name: 'x.gif',
       bytes: 4,
     }],
   });
@@ -265,9 +298,38 @@ test('D2 direct 带图返回结构化错误且不静默丢图', async () => {
 
   await assert.rejects(transport.send(request), (error) => {
     assert.equal(error.code, 'AGENT_REQUEST_INVALID');
-    assert.equal(error.details.reason, 'DIRECT_ATTACHMENTS_UNSUPPORTED');
-    assert.deepEqual(error.details.attachmentIds, ['att_1']);
-    assert.ok(error.message.includes('本机模型服务'));
+    assert.equal(error.details.reason, 'DIRECT_ATTACHMENT_TYPE');
+    return true;
+  });
+  assert.equal(called, false);
+});
+
+test('D2c direct 带图 + 不支持看图的模型 → 可执行提示，不发起调用', async () => {
+  const { createDirectAppAssistantTransport } = await load('../src/services/appAssistant/directAppAssistantTransport.js');
+  const request = await buildRequest({
+    utterance: '看看这张店照',
+    attachments: [{
+      id: 'att_1',
+      kind: 'store',
+      mediaType: 'image/png',
+      dataBase64: 'AAAA',
+      name: 'shop.png',
+      bytes: 4,
+    }],
+  });
+  let called = false;
+  const transport = createDirectAppAssistantTransport({
+    chat: async () => {
+      called = true;
+      return { ok: true, data: { content: '', toolCalls: [] } };
+    },
+    getModel: () => ({ baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-pro', timeoutMs: 60000 }),
+  });
+
+  await assert.rejects(transport.send(request), (error) => {
+    assert.equal(error.code, 'AGENT_REQUEST_INVALID');
+    assert.equal(error.details.reason, 'DIRECT_MODEL_NO_VISION');
+    assert.match(error.message, /deepseek-flash/);
     return true;
   });
   assert.equal(called, false);

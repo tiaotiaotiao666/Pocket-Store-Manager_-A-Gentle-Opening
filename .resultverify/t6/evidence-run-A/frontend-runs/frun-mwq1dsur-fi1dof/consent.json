@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "frontend-consent.v1",
+  "projectId": "p_mwq1dhcf645ae8",
+  "runId": "frun-mwq1dsur-fi1dof",
+  "purpose": "frontend-reconstruct",
+  "consentAt": "2026-11-21T06:38:13.711Z",
+  "host": "127.0.0.1:3101",
+  "imageDigest": "sha256:3a853409efacfba9597c486f53e713ecfa5642efe5b4dcd1ff1a9037a7b4753c",
+  "imageMediaType": "image/jpeg",
+  "scope": {
+    "kind": "one-image-one-recipient",
+    "imageDigest": "sha256:3a853409efacfba9597c486f53e713ecfa5642efe5b4dcd1ff1a9037a7b4753c",
+    "host": "127.0.0.1:3101",
+    "contractVersion": "frontend-reconstruct.v1"
+  },
+  "recordedAt": "2026-11-21T06:38:13.820Z"
+}

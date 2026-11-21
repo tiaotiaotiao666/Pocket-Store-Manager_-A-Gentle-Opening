@@ -633,6 +633,88 @@ test('微信 CLI 不可用时 verify 如实 BLOCKED，绝不伪造 PASS', async 
   assert.ok(!JSON.stringify(verified).includes(userDataDir));
 });
 
+test('verify-candidate 的 appId：先原子写入再跑微信验证，失败不进入验证', async (t) => {
+  const userDataDir = tempUserData(t, 'appid');
+  const APPID = 'wx0123456789abcdef';
+  const order = [];
+  const appidCalls = [];
+  const applied = [];
+
+  const created = createFrontendReconstructIpc({
+    userDataDir,
+    reconstruct: {
+      ...reconstruct,
+      verifyRuntimeCandidate: async (input) => {
+        order.push('verify');
+        applied.push(input);
+        return { status: 'PASS', code: null, summary: 'stub pass', pages: [], interactions: [], artifacts: { screenshots: [] } };
+      },
+    },
+    applyAppid: (input) => {
+      order.push('appid');
+      appidCalls.push(input);
+      if (input.appid === 'wxffffffffffffffff') {
+        const error = new Error('产物摘要自检未通过');
+        error.code = 'APPID_VERIFY_FAILED';
+        throw error;
+      }
+      return { applied: true, unchanged: false };
+    },
+  });
+  const event = trustedEvent();
+
+  async function build(projectId, runId) {
+    const built = await created.handlers['frontend:build-candidate'](event, { projectId, runId, draft: draftFixture() });
+    assert.strictEqual(built.ok, true, JSON.stringify(built));
+    return built;
+  }
+
+  // 1) 合法 appId：写入发生在验证之前，且 outputPath 指向该 attempt 的产物目录。
+  await build('p_appid_ok1', 'frun-appid-ok1');
+  const okVerified = await created.handlers['frontend:verify-candidate'](event, {
+    projectId: 'p_appid_ok1', runId: 'frun-appid-ok1', attempt: 1, appId: APPID.toUpperCase(),
+  });
+  assert.strictEqual(okVerified.ok, true, JSON.stringify(okVerified));
+  assert.strictEqual(okVerified.status, 'PASS');
+  assert.deepStrictEqual(order, ['appid', 'verify']);
+  assert.strictEqual(appidCalls.length, 1);
+  assert.strictEqual(appidCalls[0].appid, APPID, '必须规范成小写再写入');
+  assert.match(String(appidCalls[0].outputPath).replace(/\\/g, '/'), /p_appid_ok1\/frontend-runs\/frun-appid-ok1\/attempts\/attempt-1\//);
+  assert.ok(fs.existsSync(path.join(appidCalls[0].outputPath, 'app.json')));
+
+  // 2) 写入失败：整次验证失败，且绝不调用微信验证。
+  order.length = 0;
+  await build('p_appid_ok2', 'frun-appid-ok2');
+  const writeFailed = await created.handlers['frontend:verify-candidate'](event, {
+    projectId: 'p_appid_ok2', runId: 'frun-appid-ok2', attempt: 1, appId: 'wxffffffffffffffff',
+  });
+  assert.strictEqual(writeFailed.ok, false, JSON.stringify(writeFailed));
+  assert.strictEqual(writeFailed.code, CODES.APPID_WRITE_FAILED);
+  assert.deepStrictEqual(order, ['appid'], '写入失败后不得再调微信验证');
+  assert.doesNotMatch(JSON.stringify(writeFailed), /wxffffffffffffffff/);
+
+  // 3) 非法 appId：参数层就拒绝，两个动作都不发生。
+  order.length = 0;
+  await build('p_appid_ok3', 'frun-appid-ok3');
+  for (const bad of ['wx123', 'touristappid', 'wx0123456789abcdeZ', 'wx0123456789abcde', 'wx0123456789abcdef0']) {
+    const refused = await created.handlers['frontend:verify-candidate'](event, {
+      projectId: 'p_appid_ok3', runId: 'frun-appid-ok3', attempt: 1, appId: bad,
+    });
+    assert.strictEqual(refused.ok, false, bad);
+    assert.strictEqual(refused.code, CODES.PAYLOAD_INVALID, bad);
+  }
+  assert.deepStrictEqual(order, []);
+
+  // 4) 不传 appId：保持旧行为（不写盘，仍可验证）。
+  order.length = 0;
+  await build('p_appid_ok4', 'frun-appid-ok4');
+  const legacy = await created.handlers['frontend:verify-candidate'](event, {
+    projectId: 'p_appid_ok4', runId: 'frun-appid-ok4', attempt: 1,
+  });
+  assert.strictEqual(legacy.ok, true, JSON.stringify(legacy));
+  assert.deepStrictEqual(order, ['verify']);
+});
+
 test('写操作只允许本应用创建的 workspace：伪造 attempt 一律拒绝', async (t) => {
   const userDataDir = tempUserData(t, 'owned');
   const created = createFrontendReconstructIpc({ userDataDir });

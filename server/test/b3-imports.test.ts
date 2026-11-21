@@ -226,6 +226,53 @@ describe('B3 受控导入', () => {
     }
   });
 
+  it('仅修改商品描述也必须确认，apply 后持久化并递增版本', async () => {
+    const body = importPayload({
+      categories: [{ draftId: 'cat-description', name: '描述分类', sortOrder: 5 }],
+      products: [
+        { draftId: 'desc-1', categoryDraftId: 'cat-description', name: '描述菜', priceCents: 2000, available: true, description: '第一版描述' },
+        { draftId: 'desc-2', categoryDraftId: 'cat-description', name: '稳定描述菜', priceCents: 1500, available: true, description: '保持不变' },
+        { draftId: 'desc-3', categoryDraftId: 'cat-description', name: '描述例汤', priceCents: 500, available: true },
+      ],
+      tables: [{ draftId: 'table-description', name: 'D01', sortOrder: 5 }],
+    });
+    const previewed = await preview(body);
+    const applied = await apply(body, previewed.body.previewToken, uniqueKey('b3-description'));
+    expect(applied.status).toBe(201);
+
+    const changed = {
+      ...body,
+      sourceDraftDigest: 'b'.repeat(64),
+      products: body.products.map((item: Record<string, unknown>) => (
+        item.name === '描述菜' ? { ...item, description: '第二版描述' } : item
+      )),
+    };
+    const changedPreview = await preview(changed);
+    const productDiff = changedPreview.body.diff.products.find((item: { draftId: string }) => item.draftId === 'desc-1');
+    expect(productDiff.action).toBe('conflict');
+    expect(productDiff.reasons).toContain('DESCRIPTION_CHANGED');
+    expect(productDiff.reasons).not.toContain('PRICE_CHANGED');
+    expect(changedPreview.body.conflicts).toContain('product:desc-1');
+
+    const key = uniqueKey('b3-description-update');
+    const unconfirmed = await apply(changed, changedPreview.body.previewToken, key);
+    expect(unconfirmed.status).toBe(422);
+    expect(unconfirmed.body.code).toBe('CONFIRMATION_REQUIRED');
+
+    const confirmed = await apply(changed, changedPreview.body.previewToken, key, ownerToken, ['product:desc-1']);
+    expect(confirmed.status).toBe(201);
+    expect(confirmed.body.catalogVersion).toBe(applied.body.catalogVersion + 1);
+
+    const prisma = createTestPrisma();
+    try {
+      const product = await prisma.product.findUnique({ where: { id: confirmed.body.mapping.products['desc-1'] } });
+      expect(product?.description).toBe('第二版描述');
+      expect(product?.priceCents).toBe(2000);
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+
   it('权限：STAFF、顾客、跨店店主一律 403', async () => {
     for (const token of [staffToken, customerToken, otherOwnerToken]) {
       const response = await preview(importPayload(), token);

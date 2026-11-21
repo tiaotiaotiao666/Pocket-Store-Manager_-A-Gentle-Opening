@@ -201,6 +201,95 @@ export async function applyImport({ storeId, payload, previewToken, confirmation
   return { status: 'ok', data: result.data, idempotencyKey: key };
 }
 
+export async function prepareProjectPreview({ bindingKey, agentDraft, store }) {
+  const key = String(bindingKey || '').trim();
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/.test(key)) {
+    return {
+      status: 'failed',
+      code: 'PREVIEW_STORE_BINDING_INVALID',
+      message: '预览绑定标识不合法，已停止准备预览数据。',
+    };
+  }
+
+  const auth = await ensureToken();
+  if (!auth.ok) {
+    return {
+      status: auth.code === 'DEMO_LOGIN_DISABLED' ? 'auth-unavailable' : 'failed',
+      code: auth.code,
+      message: auth.message,
+    };
+  }
+
+  try {
+    const ensured = await request('/merchant/preview-stores', {
+      method: 'POST',
+      token: auth.token,
+      body: { bindingKey: key },
+    });
+    if (!ensured.ok) {
+      if (ensured.status === 401 || ensured.code === 'DEMO_LOGIN_DISABLED') {
+        resetImportSession();
+        return { status: 'auth-unavailable', code: ensured.code, message: ensured.message };
+      }
+      return { status: 'failed', code: ensured.code, message: ensured.message };
+    }
+
+    const storeId = ensured.data && ensured.data.storeId;
+    if (typeof storeId !== 'string' || !storeId.startsWith('store-preview-')) {
+      return { status: 'failed', code: 'PREVIEW_STORE_INVALID', message: '预览门店分配结果不完整或不是项目私有门店，已停止准备预览数据。' };
+    }
+
+    const payload = await buildImportPayload(agentDraft, store);
+    const preview = await previewImport({ storeId, payload });
+    if (preview.status !== 'ok') return preview;
+    const previewData = preview.data || {};
+    if (typeof previewData.previewToken !== 'string' || !previewData.previewToken) {
+      return { status: 'failed', code: 'PREVIEW_STALE', message: '资料预览缺少有效凭证，已停止写入预览门店。' };
+    }
+
+    // 固定表达“将这个私有门店完整对齐本轮 payload”，避免 confirmations 随 diff 改变而破坏幂等。
+    const confirmations = [...new Set([
+      'profile.name',
+      'profile.category',
+      'profile.address',
+      'profile.phone',
+      'profile.businessHours',
+      ...payload.products.map((product) => `product:${product.draftId}`),
+      ...(Array.isArray(previewData.conflicts) ? previewData.conflicts : []),
+    ])].sort();
+    const idempotencyKey = 'preview-' + (await sha256Hex(key)).slice(0, 16) + '-' + payload.sourceDraftDigest;
+    const applied = await applyImport({
+      storeId,
+      payload,
+      previewToken: previewData.previewToken,
+      confirmations,
+      idempotencyKey,
+    });
+    if (applied.status !== 'ok') return applied;
+
+    const result = applied.data || {};
+    if (!Number.isInteger(result.configVersion) || !Number.isInteger(result.catalogVersion)) {
+      return { status: 'failed', code: 'PREVIEW_VERSION_INVALID', message: '预览资料已提交，但返回的数据版本不完整，已停止后续导出。' };
+    }
+    return {
+      status: 'ok',
+      storeId,
+      backendVersions: {
+        storeConfigVersion: result.configVersion,
+        catalogVersion: result.catalogVersion,
+      },
+      importId: result.importId || previewData.importId || null,
+      replay: result.replay === true,
+    };
+  } catch (error) {
+    return {
+      status: 'failed',
+      code: 'PREVIEW_DATA_FAILED',
+      message: (error && error.message) || '准备项目预览资料失败，请稍后重试。',
+    };
+  }
+}
+
 export async function getImport({ storeId, importId }) {
   const auth = await ensureToken();
   if (!auth.ok) return { status: 'auth-unavailable', code: auth.code, message: auth.message };

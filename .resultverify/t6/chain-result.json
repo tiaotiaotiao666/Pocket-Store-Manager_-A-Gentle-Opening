@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "sidebar-chain-probe.v1",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "reuse-vite-hmr-confirmed",
+      "status": "PASS",
+      "port": 5173
+    },
+    {
+      "name": "isolated-server",
+      "status": "PASS",
+      "port": 3000
+    },
+    {
+      "name": "electron-cdp-snapshot",
+      "status": "PASS",
+      "windowId": "w-88674480",
+      "controls": 4
+    },
+    {
+      "name": "isolated-project-created",
+      "status": "PASS"
+    },
+    {
+      "name": "sidebar-reference-sent",
+      "status": "PASS",
+      "attachmentCount": 1
+    }
+  ],
+  "uiaStatus": "BLOCKED",
+  "uiaBlockedReason": "agent-desktop: INTERNAL private file DACL grants an untrusted principal；此处只使用 Electron CDP，不冒充 UIA",
+  "userDataDir": "C:\\Users\\leiji\\AppData\\Local\\Temp\\sidebar-t6-electron-fHxsP8",
+  "guideDismissals": [
+    "none",
+    "稍后再做",
+    "none",
+    "none"
+  ],
+  "homeStartClicks": 1,
+  "reachNaming": {
+    "rounds": 3,
+    "trace": [
+      {
+        "composer": false,
+        "start": true,
+        "guide": false,
+        "guideButton": "",
+        "refresh": ""
+      },
+      {
+        "composer": false,
+        "start": true,
+        "guide": true,
+        "guideButton": "重新检测",
+        "refresh": "重新检测"
+      }
+    ]
+  },
+  "sidebarWriteback": {
+    "sidebar": "项目会话\n\nT6链路验证店762581\n\n当前阶段：店铺装修\n\n项目 Agent\n\n每个阶段都可以直接说要改什么：模型只提出字段修改，写入前由桌面再次校验，并显示变更卡与撤销。\n\n我\n\n店名是T6链路验证店，品类是社区餐馆，每天09:00-21:00，堂食和自取。菜品有验证炒饭23.45元、番茄炒蛋16元、米饭3元。首页按图生成新骨架。订单列表保留现有首页数据与order-card，底部导航使用Base原生tabBar，不需要从图片推断数据或实现；其它区域按参考图结构生成，保留门店与点餐能力。\n\n上一轮没有成功\n\n服务暂时不可用，请重试。\n\n你的原话和草稿都保留了，不用重新输入。\n\n重试上一轮\n本轮图片\n自动判断\n菜单照\n环境照\n参考界面\n\n发送后会先写回文字资料，再自动构建并验证候选前端；现有模板只在你明确采用后才更新。 可以点击添加，也可以把图片直接拖进来；图片不会写进项目文件。\n\norder-classic-home.png\n参考界面 · 27 KiB\n添加图片\n已选 1/3 张\n\n已附 1 张图片，会随本轮一起发送 · Enter 发送\n\n发送到项目对话",
+    "changes": [],
+    "panel": "候选前端方案\n\n这次没有成功：输入都保留着，可以直接重试；当前版本没有被覆盖。\n\n候选只在桌面应用的私有工作区生成；这里不做像素级复刻承诺，也不复制对方的品牌素材。\n\n候选状态只保留在本次应用会话里；重开项目后需要重新生成（采用记录由项目快照负责）。\n\n上传参考截图\n\n支持 JPG / PNG / WebP，选择后自动压缩。只参考布局、组件与风格，不提取菜品、地址或电话。\n\n不会复制对方源码或品牌素材，也不会直接覆盖当前版本。\n\n换一张截图\n删除截图\n\n浏览器模式：截图只保存在内存中，重开项目后需要重新上传。\n\norder-classic-home.png · 27 KB · 识别失败\n\n文字资料没有写回成功，已停止自动候选；图片和文字均已保留。\n\n补充要求（可选，500 字以内）\n目标页（首页或菜单页）\n首页\n菜单页\n识别并生成候选方案\n重试候选前端"
+  },
+  "error": {
+    "message": "侧栏未进入外发确认：上一轮没有成功\n\n服务暂时不可用，请重试。\n\n你的原话和草稿都保留了，不用重新输入。\n\n重试上一轮",
+    "stack": "Error: 侧栏未进入外发确认：上一轮没有成功\n\n服务暂时不可用，请重试。\n\n你的原话和草稿都保留了，不用重新输入。\n\n重试上一轮\n    at main (file:///E:/%E6%99%BA%E8%83%BD%E5%BC%80%E5%BA%97app/.resultverify/t6/chain.mjs:437:36)\n    at async file:///E:/%E6%99%BA%E8%83%BD%E5%BC%80%E5%BA%97app/.resultverify/t6/chain.mjs:585:3"
+  }
+}

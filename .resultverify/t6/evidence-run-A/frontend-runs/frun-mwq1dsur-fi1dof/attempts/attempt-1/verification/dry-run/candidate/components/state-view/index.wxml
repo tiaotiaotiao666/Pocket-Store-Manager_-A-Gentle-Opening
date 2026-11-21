@@ -1,0 +1,25 @@
+<view class="state-view">
+  <block wx:if="{{state === 'loading'}}">
+    <view class="state-view__skeleton">
+      <view class="state-view__bar state-view__bar--wide"></view>
+      <view class="state-view__bar"></view>
+      <view class="state-view__bar state-view__bar--short"></view>
+    </view>
+    <text class="state-view__title">{{title || '正在加载'}}</text>
+    <text wx:if="{{description}}" class="state-view__desc">{{description}}</text>
+  </block>
+
+  <block wx:elif="{{state === 'error'}}">
+    <view class="state-view__icon state-view__icon--error">!</view>
+    <text class="state-view__title">{{title || '加载失败'}}</text>
+    <text wx:if="{{description}}" class="state-view__desc">{{description}}</text>
+    <view wx:if="{{actionText}}" class="ss-btn ss-btn--primary state-view__action" bind:tap="onAction">{{actionText}}</view>
+  </block>
+
+  <block wx:else>
+    <view class="state-view__icon">◌</view>
+    <text class="state-view__title">{{title || '这里还是空的'}}</text>
+    <text wx:if="{{description}}" class="state-view__desc">{{description}}</text>
+    <view wx:if="{{actionText}}" class="ss-btn ss-btn--ghost state-view__action" bind:tap="onAction">{{actionText}}</view>
+  </block>
+</view>

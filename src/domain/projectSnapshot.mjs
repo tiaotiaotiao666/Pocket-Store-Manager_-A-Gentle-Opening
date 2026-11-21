@@ -16,6 +16,7 @@ import { normalizeAgentDraft, validateAgentDraft, buildNextQuestion } from './ag
 import { validatePresentationPatch } from './presentationPatch.mjs';
 import { resolveRecipe } from './recipeCatalog.mjs';
 import { buildScreenRefView } from './screenReference.mjs';
+import { utf8ByteLength } from './utf8Bytes.mjs';
 import {
   CHAT_MESSAGE_LIMIT,
   CHAT_MESSAGE_MAX_CHARS,
@@ -1046,11 +1047,13 @@ function docTitle(store, agentDraft) {
 }
 
 export function estimateBytes(doc) {
+  let json;
   try {
-    return Buffer.byteLength(`${JSON.stringify(doc, null, 2)}\n`, 'utf8');
+    json = `${JSON.stringify(doc, null, 2)}\n`;
   } catch (error) {
     return Number.MAX_SAFE_INTEGER;
   }
+  return utf8ByteLength(json);
 }
 
 /** 收集文档中所有未知的顶层键。 */

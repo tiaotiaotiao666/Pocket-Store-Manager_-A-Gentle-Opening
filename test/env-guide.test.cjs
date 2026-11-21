@@ -56,7 +56,18 @@ test('预览前使用微信工具勾选清单，全部勾选后才能继续', ()
   assert.match(app, /probe\.running === false/);
   assert.match(app, /probe\.projectOpen === false/);
   assert.match(app, /还没有打开小程序页面/);
-  assert.match(app, /return runPreviewExport\(\)/);
+  const previewExportAt = app.indexOf('const runPreviewExport = useCallback');
+  assert.ok(previewExportAt >= 0, '最终预览必须复用 runPreviewExport 的异步导出链');
+  assert.match(app.slice(previewExportAt, previewExportAt + 160), /\basync\b/, 'runPreviewExport 必须支持异步准备预览数据');
+  const preparePreviewAt = app.indexOf('await prepareProjectPreview({', previewExportAt);
+  assert.ok(preparePreviewAt > previewExportAt, 'runPreviewExport 内必须先准备当前版本的私有门店数据');
+  const exportAt = app.indexOf('exportProject(', preparePreviewAt);
+  assert.ok(exportAt > preparePreviewAt, '数据准备成功后才能进入工程导出');
+  assert.match(
+    app.slice(preparePreviewAt, exportAt),
+    /status !== 'ok'[\s\S]{0,300}return(?:\s+\{[^;]*\bok:\s*false\b[^;]*\})?\s*;/,
+    '数据准备失败必须裸返回或返回 { ok:false, ... }，不得继续导出',
+  );
 
   const probe = read('desktop/devtools-probe.cjs');
   assert.match(probe, /getDevtoolsWindowTitle/);
@@ -93,4 +104,28 @@ test('环境引导样式已接入全局样式且使用统一卡片风格', () =>
   assert.match(css, /\.env-guide-card/);
   assert.match(css, /background: var\(--bg-elev\)/);
   assert.match(css, /border-radius: 20px/);
+});
+
+test('探测失败不会让环境清单永久停在「检测中」', () => {
+  // 1) 服务层：IPC 自身 reject 也必须收敛成 status:'failed'，不能把异常抛给界面。
+  const serviceModule = read('src/services/devtoolsService.js');
+  assert.match(serviceModule, /let result;\s*try \{\s*result = await api\.probeDevtools\(\);\s*\} catch \(error\) \{/);
+  assert.match(serviceModule, /status: 'failed',[\s\S]{0,240}探测通道失败/);
+  assert.ok(
+    !/(^|\n)\s*const result = await api\.probeDevtools\(\);/.test(serviceModule),
+    'probeDevtools 必须被 try/catch 包住（裸 await 会让上层永远停在检测中）',
+  );
+
+  // 2) 界面层：readyz 探测带硬超时，devtools 探测被 try/catch 包住，且失败也走同一个 busy 收尾。
+  const app = read('src/App.jsx');
+  assert.match(app, /new AbortController\(\)/);
+  assert.match(app, /setTimeout\(\(\) => controller\.abort\(\), 8000\)/);
+  assert.match(app, /let probe;\s*try \{\s*probe = await devtoolsService\.probe\(\);/);
+  assert.match(app, /检测微信开发者工具状态失败/);
+  assert.match(app, /setEnvGuideBusy\(false\)/);
+  const busySetIndex = app.indexOf('setEnvGuideBusy(true)');
+  const busyClearIndex = app.indexOf('setEnvGuideBusy(false)');
+  assert.ok(busySetIndex > 0 && busyClearIndex > busySetIndex, 'runEnvChecks 必须先置忙、再收尾');
+  const probeGuardIndex = app.indexOf('probe = await devtoolsService.probe()');
+  assert.ok(probeGuardIndex > busySetIndex && probeGuardIndex < busyClearIndex, '探测必须在置忙与收尾之间被保护');
 });

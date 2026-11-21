@@ -1,0 +1,43 @@
+@import "../../styles/component.wxss";
+
+.category-nav {
+  width: 184rpx;
+  height: 100%;
+  background: rgba(247, 243, 236, 0.72);
+}
+
+.category-nav__item {
+  position: relative;
+  padding: 30rpx 18rpx 30rpx 24rpx;
+  font-size: 26rpx;
+  color: var(--color-muted);
+}
+
+.category-nav__item--active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.category-nav__item--active::before {
+  content: "";
+  position: absolute;
+  top: 26rpx;
+  bottom: 26rpx;
+  left: 0;
+  width: 8rpx;
+  border-radius: 999rpx;
+  background: var(--color-primary);
+}
+
+.category-nav__label {
+  display: block;
+  line-height: 1.4;
+}
+
+.category-nav__empty {
+  padding: 40rpx 20rpx;
+  font-size: 22rpx;
+  color: var(--color-muted);
+  text-align: center;
+}

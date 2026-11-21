@@ -1,0 +1,150 @@
+{
+  "schemaVersion": "electron-uia-probe.v1",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "reuse-vite-hmr-confirmed",
+      "status": "PASS",
+      "port": 5173
+    },
+    {
+      "name": "isolated-server",
+      "status": "PASS",
+      "port": 3000
+    },
+    {
+      "name": "electron-cdp-snapshot",
+      "status": "PASS",
+      "windowId": "w-11079442",
+      "controls": 4
+    },
+    {
+      "name": "isolated-project-created",
+      "status": "PASS"
+    },
+    {
+      "name": "sidebar-reference-sent",
+      "status": "PASS",
+      "attachmentCount": 1
+    },
+    {
+      "name": "sidebar-writeback-and-consent",
+      "status": "PASS",
+      "changeCards": 1
+    },
+    {
+      "name": "consent-request-or-terminal-within-180s",
+      "status": "PASS",
+      "elapsedMs": 34193,
+      "requestCount": 0,
+      "terminal": true
+    },
+    {
+      "name": "sidebar-auto-analyze-build-verify",
+      "status": "PASS",
+      "runId": "frun-mwotgxc3-epgwbz",
+      "attempt": "attempt-1",
+      "planSource": "provided",
+      "runtimeStatus": "BLOCKED"
+    },
+    {
+      "name": "adopt-current-candidate-continue",
+      "status": "PASS",
+      "devtoolsBeforeAdopt": 1,
+      "devtoolsAfterAdopt": 1
+    }
+  ],
+  "uiaStatus": "BLOCKED",
+  "uiaBlockedReason": "agent-desktop: INTERNAL private file DACL grants an untrusted principal；此处只使用 Electron CDP，不冒充 UIA",
+  "userDataDir": "C:\\Users\\leiji\\AppData\\Local\\Temp\\sidebar-t9-electron-OHlhDk",
+  "sidebarWriteback": {
+    "sidebar": "项目会话\n\nT9链路验证店\n\n当前阶段：店铺装修\n\n项目 Agent\n\n每个阶段都可以直接说要改什么：模型只提出字段修改，写入前由桌面再次校验，并显示变更卡与撤销。\n\n我\n\n店名是T9链路验证店，品类是社区餐馆，每天09:00-21:00，堂食和自取。菜品有验证炒饭23.45元、番茄炒蛋16元、米饭3元。首页按图生成新骨架。订单列表保留现有首页数据与order-card，底部导航使用Base原生tabBar，不需要从图片推断数据或实现；其它区域按参考图结构生成，保留门店与点餐能力。\n\n轻启\n\n已整理成提案，请核对：店名、品类、营业时间、堂食+自取，以及验证炒饭23.45元、番茄炒蛋16元、米饭3元三道菜；首页按参考图生成新骨架的请求也已登记，订单列表保留现有数据与order-card、底部导航用Base原生tabBar，这些保留要求请在生成时一并核对。\n\n本轮已完成\n\n用时 5.1 秒\n\n本轮已写入\n店名\nT9链路验证店330815\n→\nT9链路验证店\n品类\n社区餐馆\n→\n社区餐馆\n营业时间\n（空）\n→\n09:00-21:00\n取餐方式\n未设置\n→\n堂食、到店自取\n菜品\n（新增前不存在）\n→\n验证炒饭 ¥23.45\n菜品\n（新增前不存在）\n→\n番茄炒蛋 ¥16.00\n菜品\n（新增前不存在）\n→\n米饭 ¥3.00\n撤销本轮\n\n有 1 项需要你确认，尚未写入\n\n涉及清空已有值、删除菜品、素材、AppID、模板或导出等高风险操作；确认入口仍走原有业务面板。\n\n项目在此期间已变化，这次结果没有写入，请重试。\n\n本轮已完成\n\n用时 5.1 秒\n\n本轮图片\n自动判断\n菜单照\n环境照\n参考界面\n\n发送后会先写回文字资料，再自动构建并验证候选前端；现有模板只在你明确采用后才更新。 可以点击添加，也可以把图片直接拖进来；图片不会写进项目文件。\n\norder-classic-home.png\n参考界面 · 27 KiB\n添加图片\n已选 1/3 张\n\n参考图候选正在自动构建或验证，等本轮结束后再发送新的修改。\n\n发送到项目对话",
+    "changes": [
+      "本轮已写入\n店名\nT9链路验证店330815\n→\nT9链路验证店\n品类\n社区餐馆\n→\n社区餐馆\n营业时间\n（空）\n→\n09:00-21:00\n取餐方式\n未设置\n→\n堂食、到店自取\n菜品\n（新增前不存在）\n→\n验证炒饭 ¥23.45\n菜品\n（新增前不存在）\n→\n番茄炒蛋 ¥16.00\n菜品\n（新增前不存在）\n→\n米饭 ¥3.00\n撤销本轮\n\n有 1 项需要你确认，尚未写入\n\n涉及清空已有值、删除菜品、素材、AppID、模板或导出等高风险操作；确认入口仍走原有业务面板。\n\n项目在此期间已变化，这次结果没有写入，请重试。"
+    ],
+    "panel": "候选前端方案\n\n正在识别截图：正在做视觉分析与能力覆盖；识别完成前不会写任何候选文件。\n\n候选只在桌面应用的私有工作区生成；这里不做像素级复刻承诺，也不复制对方的品牌素材。\n\n候选状态只保留在本次应用会话里；重开项目后需要重新生成（采用记录由项目快照负责）。\n\n上传参考截图\n\n支持 JPG / PNG / WebP，选择后自动压缩。只参考布局、组件与风格，不提取菜品、地址或电话。\n\n不会复制对方源码或品牌素材，也不会直接覆盖当前版本。\n\n换一张截图\n删除截图\n\n浏览器模式：截图只保存在内存中，重开项目后需要重新上传。\n\norder-classic-home.png · 27 KB · 识别中\n\n要把这张截图发给模型识别吗？\n图片：order-classic-home.png（27 KB）\n用途：读懂截图里的页面结构，生成可预览的候选页面（FrontendPack 草稿），不会写进正式模板\n接收接口：127.0.0.1:3000（本机后端会把它转给模型）\n不点确认就不会有任何请求；取消不影响当前项目和普通模板流程\n取消，不发\n确认发送\n\n确认只对这张图、这个接收方有效；换图或换后端地址会重新问你。\n\n确认发送参考图后，会自动继续构建与验证候选，不会自动采用。\n\n补充要求（可选，500 字以内）\n目标页（首页或菜单页）\n首页\n菜单页\n正在识别并生成…\n取消候选前端任务\n\n正在写回资料并准备参考图分析（第 1/9 步）"
+  },
+  "frontendRequests": [],
+  "candidatePanel": "候选前端方案\n\n静态门禁通过，微信验证未完成：候选可以构建，但微信真实编译/截图还没有 PASS；采用前需要你单独确认。\n\n候选只在桌面应用的私有工作区生成；这里不做像素级复刻承诺，也不复制对方的品牌素材。\n\n候选状态只保留在本次应用会话里；重开项目后需要重新生成（采用记录由项目快照负责）。\n\n上传参考截图\n\n支持 JPG / PNG / WebP，选择后自动压缩。只参考布局、组件与风格，不提取菜品、地址或电话。\n\n不会复制对方源码或品牌素材，也不会直接覆盖当前版本。\n\n换一张截图\n删除截图\n\n浏览器模式：截图只保存在内存中，重开项目后需要重新上传。\n\norder-classic-home.png · 27 KB · 已分析\n\n确认发送参考图后，会自动继续构建与验证候选，不会自动采用。\n\n微信验证未完成（工具/证据不可用）\n\n微信验证没有拿到 PASS：候选仍可查看，但采用前需要你单独确认。\n\n补充要求（可选，500 字以内）\n目标页（首页或菜单页）\n首页\n菜单页\n识别并生成候选方案\n构建候选工程\n验证候选工程（微信）\n复核候选前端（只读）\n放弃此候选前端\n修改要求并重新生成\n识别结果与能力覆盖\n\n可以生成候选：共 7 个分区，覆盖 24 项必需能力，没有缺项。摘要：扫码点餐首页：顶部标题与身份提示、门店卡片、用餐方式切换、开始点餐主按钮、进行中订单卡片列表，底部沿用 Base 原生 tabBar。\n\n首页（单列，7 个分区）\n2. 首屏主视觉\n3. 卡片\n4. 表单\n5. 表单\n6. 列表\n7. 导航\n8. 其它区域\n只能近似（0）\n\n没有需要近似的部分。\n\n暂不支持（1）\n进行中订单列表：截图中的订单号、时间、状态徽标与金额没有对应的 Base dataPath，需由运行时订单数据填充\n\n样式：密度 紧凑，3 个主题色、1 个尺寸档位。\n\n候选前端：候选 fr-7cc4650bc7e1（v1.0.0）\n\n页面：home；生成 8 个文件；私有 attempt-1；摘要 867e957642c4\n\n候选只在应用私有工作区里，不会写正式 templates，也不会改小程序的镜像目录。\n\n验证报告\n\n静态门禁：通过（dry-run 通过；candidate=fr-7cc4650bc7e1@1.0.0；ComposerP0-P6=138 个文件；mini:check=通过；consistency=通过；可观察项 4 项：通过 1，失败 0，未执行 1，未测量 1，不适用 1（不做像素百分比判断））\n\nmini-check：pass — 小程序静态校验通过（8 页 / 14 组件）\nconsistency：pass — 产物与 Lock/报告一致（138 个文件）\nobservable：pass — 可观察项 4 项：通过 1，失败 0，未执行 1，未测量 1，不适用 1（不做像素百分比判断）\nsections:home：pass — 17 个节点按 Draft 顺序渲染\ndensity：not_applicable — Draft/DSL 没有密度字段；不做像素级密度判断\noverflow：not_checked — 溢出属于运行时视觉项：静态产物无法判定，本链路不做像素测量（不以百分比冒充结论）\nruntime-action:home.goMenu：not_run — 微信运行时未执行，无法确认“首页 →「开始点餐」进入菜单”可点\n\n自动修复 0 轮，上限 2 轮。\n\n微信运行时：微信验证未完成（工具/证据不可用） — 微信运行时 BLOCKED：页面 0/0 通过，关键交互 0/0 通过，交互合计 0/0 通过，截图 0 张；判定：工具层阻塞：APPIDERROR：导出工程使用 touristappid 占位，开发者工具拒绝打开；请先在应用内完成 AppID 写入与校验。；阻塞：APPIDERROR：导出工程使用 touristappid 占位，开发者工具拒绝打开；请先在应用内完成 AppID 写入与校验。\n\n微信验证未完成：静态门禁已通过，但真实编译/截图没有 PASS。采用这个候选需要你单独确认。\n\n我已知悉「微信验证未完成」，仍要采用此候选\n按这个骨架继续制作",
+  "candidateArtifacts": [
+    {
+      "projectId": "p_mwotgv3o571bb2",
+      "runId": "frun-mwotgxc3-epgwbz",
+      "attempt": "attempt-1",
+      "dryRun": {
+        "ok": true,
+        "code": "DRY_RUN_OK",
+        "plan": {
+          "source": "provided",
+          "planFile": null,
+          "planDigest": "sha256:63da0a8dc7beb7e3a74c9d200a89c55d54477fb5486fd66a611c0495b957745a",
+          "frontendPack": {
+            "id": "fr-7cc4650bc7e1",
+            "version": "1.0.0"
+          },
+          "overridden": false
+        }
+      },
+      "storeGenerated": "// 由 Composer 生成，勿手改。\nmodule.exports = {\n  \"schemaVersion\": 2,\n  \"meta\": {\n    \"configSchemaVersion\": 2,\n    \"storeConfigVersion\": 1,\n    \"catalogVersion\": 1,\n    \"apiContractVersion\": \"storefront.v1\",\n    \"recipeId\": \"order-classic\",\n    \"recipeVersion\": \"1.0.0\",\n    \"lockDigest\": \"sha256:47d7c8c113b9afb46712a5f877959c0c30e7b85b24f86115975ad152949604db\",\n    \"generatedAt\": \"1970-01-01T00:00:00Z\",\n    \"generatorVersion\": \"0.1.0\",\n    \"planDigest\": \"sha256:63da0a8dc7beb7e3a74c9d200a89c55d54477fb5486fd66a611c0495b957745a\",\n    \"mode\": \"development\",\n    \"versionGaps\": {\n      \"storeConfigVersion\": 1,\n      \"catalogVersion\": 1\n    },\n    \"frontendPackId\": \"fr-7cc4650bc7e1\",\n    \"frontendPackVersion\": \"1.0.0\"\n  },\n  \"store\": {\n    \"name\": \"T9链路验证店\",\n    \"category\": \"社区餐馆\",\n    \"address\": \"\",\n    \"phone\": \"\",\n    \"notes\": \"\",\n    \"businessHours\": [\n      {\n        \"start\": \"09:00\",\n        \"end\": \"21:00\"\n      }\n    ],\n    \"id\": \"store-preview-b670a02d9b4e8653c11f5a95a1b001ce\"\n  },\n  \"api\": {\n    \"baseUrl\": \"http://127.0.0.1:3000/api/v1\",\n    \"contract\": \"storefront.v1\",\n    \"timeoutMs\": 10000\n  },\n  \"catalog\": {\n    \"mode\": \"remote\",\n    \"version\": 1,\n    \"categories\": [],\n    \"products\": []\n  },\n  \"fulfillmentOptions\": {\n    \"dineIn\": true,\n    \"takeaway\": true,\n    \"delivery\": false\n  },\n  \"theme\": {\n    \"pageBackground\": \"#F7F3EC\",\n    \"primaryColor\": \"#B34A0F\",\n    \"accentColor\": \"#9C2E12\",\n    \"textColor\": \"#232323\",\n    \"tabBarBackground\": \"#FFFDF9\",\n    \"tabBarColor\": \"#8A8178\",\n    \"tabBarSelectedColor\": \"#B34A0F\"\n  },\n  \"capabilities\": {\n    \"onlineReady\": [],\n    \"previewOnly\": []\n  },\n  \"demoPaymentDisclaimer\": \"演示付款，不产生真实扣款\"\n};\n",
+      "runtime": {
+        "status": "BLOCKED",
+        "code": "RUNTIME_BLOCKED",
+        "summary": "微信运行时 BLOCKED：页面 0/0 通过，关键交互 0/0 通过，交互合计 0/0 通过，截图 0 张；判定：工具层阻塞：APPID_ERROR：导出工程使用 touristappid 占位，开发者工具拒绝打开；请先在应用内完成 AppID 写入与校验。；阻塞：APPID_ERROR：导出工程使用 touristappid 占位，开发者工具拒绝打开；请先在应用内完成 AppID 写入与校验。",
+        "screenshots": [],
+        "details": {
+          "privateRootRelative": "verification/runtime",
+          "cli": "cli.bat",
+          "pages": {
+            "total": 0,
+            "PASS": 0,
+            "FAIL": 0,
+            "BLOCKED": 0,
+            "NOT_RUN": 0
+          },
+          "interactions": {
+            "total": 0,
+            "PASS": 0,
+            "FAIL": 0,
+            "BLOCKED": 0,
+            "NOT_RUN": 0
+          },
+          "steps": {
+            "total": 2,
+            "PASS": 1,
+            "FAIL": 0,
+            "BLOCKED": 1,
+            "NOT_RUN": 0
+          },
+          "criticalInteractions": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "blocked": 0,
+            "notRun": 0
+          },
+          "verdict": {
+            "status": "BLOCKED",
+            "reason": "工具层阻塞：APPID_ERROR：导出工程使用 touristappid 占位，开发者工具拒绝打开；请先在应用内完成 AppID 写入与校验。",
+            "degraded": []
+          },
+          "identity": {
+            "composer": true,
+            "appidKind": "tourist"
+          },
+          "reportBytes": 3194,
+          "blockedReason": "APPID_ERROR：导出工程使用 touristappid 占位，开发者工具拒绝打开；请先在应用内完成 AppID 写入与校验。",
+          "reportStatus": "BLOCKED",
+          "exitCode": 0
+        }
+      }
+    }
+  ],
+  "finalPreviewDock": {
+    "text": "未检测到微信开发者工具，已打开检查清单。 请逐条勾选并按「已准备就绪」，之后会自动继续生成并打开预览。",
+    "tone": "preview-dock-note is-info"
+  },
+  "error": {
+    "message": "最终预览没有生成工程目录",
+    "stack": "AssertionError [ERR_ASSERTION]: 最终预览没有生成工程目录\n    at main (file:///E:/%E6%99%BA%E8%83%BD%E5%BC%80%E5%BA%97app/.resultverify/t5/electron-uia-probe.mjs:466:10)\n    at async file:///E:/%E6%99%BA%E8%83%BD%E5%BC%80%E5%BA%97app/.resultverify/t5/electron-uia-probe.mjs:486:3"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "task_id": 4,
+  "feature": "sidebar-image-build-preview",
+  "project_root": "E:\\智能开店app",
+  "platform": "win32",
+  "detected_os": "MINGW64_NT-10.0-26200",
+  "available_shell": "bash (/usr/bin/bash)",
+  "script_extension": ".sh",
+  "npm_executable": "npm.cmd",
+  "dynamic_verification_feasibility": "full",
+  "build": {
+    "available": true,
+    "root_command": "npm.cmd run build",
+    "server_command": "npm.cmd run build (working directory: server)",
+    "script": ".resultverify/build.sh",
+    "dependencies": {
+      "node_modules/.bin/vite": "PRESENT",
+      "server/node_modules/.bin/nest": "PRESENT",
+      "server/node_modules/.bin/tsc": "PRESENT"
+    }
+  },
+  "tests": {
+    "available": true,
+    "root_framework": "node:test (test/*.test.cjs)",
+    "root_command": "npm.cmd test",
+    "server_framework": "vitest (server/test/**/*.test.ts)",
+    "server_command": "npm.cmd --prefix server test",
+    "note": "测试可用性来自 package.json、测试目录与本地可执行依赖探测；准备阶段未运行测试。"
+  },
+  "runtime": {
+    "database": {
+      "status": "REACHABLE",
+      "probe": "服务端 PrismaClient 执行只读 SELECT 1",
+      "exit_code": 0
+    },
+    "wechat_devtools_cli": {
+      "status": "PRESENT",
+      "probe": "desktop/devtools-cli.cjs resolveDevtoolsCli()",
+      "exit_code": 0,
+      "note": "CLI 存在不等于已登录、已开服务端口或微信运行时 PASS。"
+    },
+    "docker": "MISSING",
+    "mysql_client": "MISSING",
+    "isolated_services_started_by_preparation": false,
+    "note": "数据库与微信 CLI 条件可用；执行阶段仍需按实际结果启动/使用服务并如实记录真实模型、UIA、微信运行时或外网限制。"
+  },
+  "scripts": {
+    "build": ".resultverify/build.sh",
+    "contract_checks": ".resultverify/contract_checks.sh",
+    "syntax_self_test": "PASS",
+    "syntax_self_test_commands": [
+      "bash -n .resultverify/build.sh (exit 0)",
+      "bash -n .resultverify/contract_checks.sh (exit 0)"
+    ],
+    "json_parse_self_test": "PASS (verification_scenario.json and env_check.json, exit 0)"
+  },
+  "inputs": {
+    "design": ".codeartsdoer/plans/sidebar-image-build-preview/design.md",
+    "tasks": ".codeartsdoer/plans/sidebar-image-build-preview/task.md",
+    "real_m1_evidence": "docs/evidence/frontend-reconstruct/sidebar-m1-real-analysis.md",
+    "real_m1_evidence_boundary": "仅证明真实 HTTP 分析 planned 与 DSL 结构差异；dry-run、侧栏自动编排和微信页面复核在原证据中为 NOT_RUN。"
+  },
+  "behavioral_verification_required": [
+    "R1 侧栏一次发送的资料写回、追问、附件保留与旧响应隔离",
+    "R2 当前 Plan/预览绑定进入同 attempt，非法输入 fail closed",
+    "R3 预览门店重复准备幂等、跨绑定隔离与新资料版本更新",
+    "R4 planned 自动构建/静态门禁/微信验证及真实非 PASS 状态",
+    "R5 当前候选采用、重生成、partial 确认和已采用版本保护",
+    "R6 已采用版本同源导出、AppID、工具调起与运行时状态分离",
+    "真实双样例 dry-run/微信结构复核、真实模型、Electron UIA 与微信编译/截图/加购"
+  ]
+}

@@ -69,3 +69,16 @@ test('上下文大小受控', () => {
   const bytes = measureProjectContextBytes(buildProjectAgentContext(state));
   assert.ok(bytes < PROJECT_CONTEXT_MAX_BYTES, `上下文 ${bytes} 字节超过上限`);
 });
+test('渲染进程没有 Buffer 时也能测量上下文大小（回归：曾恒判超限）', () => {
+  const originalBuffer = globalThis.Buffer;
+  try {
+    globalThis.Buffer = undefined;
+    const context = buildProjectAgentContext(baseState());
+    const bytes = measureProjectContextBytes(context);
+    assert.ok(Number.isFinite(bytes) && bytes > 0, `上下文大小测量异常：${bytes}`);
+    assert.ok(bytes < PROJECT_CONTEXT_MAX_BYTES, `上下文 ${bytes} 字节超过上限`);
+    assert.equal(bytes, new TextEncoder().encode(JSON.stringify(context)).length);
+  } finally {
+    globalThis.Buffer = originalBuffer;
+  }
+});

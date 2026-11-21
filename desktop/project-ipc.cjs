@@ -33,6 +33,14 @@ function ok(data) {
   return { ok: true, data };
 }
 
+/** 探测失败只带一条有界说明，不把本机路径/整段堆栈泄给渲染进程。 */
+function boundedProbeError(error) {
+  const raw = error && typeof error.message === 'string' ? error.message : '';
+  const compact = raw.replace(/\s+/g, ' ').trim();
+  if (!compact) return 'probe-failed';
+  return compact.length > 160 ? compact.slice(0, 160) : compact;
+}
+
 function toResult(error, fallbackCode, fallbackMessage) {
   if (error instanceof ProjectStoreError) {
     return fail(error.code, error.message, error.details);
@@ -293,12 +301,14 @@ function createProjectIpc(options) {
 
     'devtools:probe': async () => {
       if (!probeDevtools) {
-        return ok({ found: false, path: null, version: null, via: 'none', running: false, projectOpen: false, windowTitle: '' });
+        return ok({ status: 'failed', found: false, path: null, version: null, via: 'none', running: false, projectOpen: false, windowTitle: '', error: 'probe-unavailable' });
       }
       try {
         return ok(await probeDevtools());
       } catch (error) {
-        return ok({ found: false, path: null, version: null, via: 'none', running: false, projectOpen: false, windowTitle: '', error: error.message });
+        // 探测异常不等于「工具未安装」：带上 failed 让界面说「检测失败」，而不是「没装」。
+        const message = boundedProbeError(error);
+        return ok({ status: 'failed', found: false, path: null, version: null, via: 'none', running: false, projectOpen: false, windowTitle: '', error: message });
       }
     },
   };

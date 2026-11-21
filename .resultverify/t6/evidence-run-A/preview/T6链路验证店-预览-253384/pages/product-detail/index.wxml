@@ -1,0 +1,54 @@
+<view class="page product-page">
+  <state-view wx:if="{{loading}}" state="loading" title="正在加载商品" />
+  <view wx:elif="{{error}}" class="product-page__error">
+    <error-banner message="{{error}}" action="{{errorAction}}" request-id="{{requestId}}" bind:retry="onRetry" />
+    <view class="ghost-button" bind:tap="onRetry">重新加载</view>
+  </view>
+  <block wx:elif="{{product}}">
+    <view class="product-page__hero">
+      <image wx:if="{{product.imageUrl}}" class="product-page__image" src="{{product.imageUrl}}" mode="aspectFill" />
+      <view wx:else class="product-page__placeholder">{{product.initial}}</view>
+    </view>
+    <view class="product-page__body surface-card">
+      <view class="product-page__topline">
+        <text class="product-page__eyebrow">本店精选</text>
+        <text wx:if="{{product.available === false}}" class="product-page__soldout">暂时售罄</text>
+      </view>
+      <text class="product-page__name">{{product.name}}</text>
+      <text class="product-page__description">{{product.description || '门店用心制作，欢迎品尝。'}}</text>
+      <view class="product-page__divider"></view>
+      <view class="product-page__buyrow">
+        <view class="product-page__price"><text>¥</text><text>{{amount}}</text></view>
+        <view class="product-page__stepper">
+          <view class="product-page__step {{quantity > 0 ? '' : 'product-page__step--off'}}" bind:tap="onRemove">−</view>
+          <text class="product-page__quantity">{{quantity}}</text>
+          <view class="product-page__step product-page__step--add {{product.available === false ? 'product-page__step--disabled' : ''}}" bind:tap="onAdd">+</view>
+        </view>
+      </view>
+      <view class="primary-button product-page__add {{product.available === false ? 'primary-button--off' : ''}}" bind:tap="onAdd">
+        {{product.available === false ? '暂不可售' : '加入购物车'}}
+      </view>
+    </view>
+    <view class="product-page__note">商品价格与售卖状态以门店当前菜单为准</view>
+  </block>
+  <cart-bar
+    wx:if="{{product}}"
+    total-cents="{{cartSummary.totalCents}}"
+    total-quantity="{{cartSummary.totalQuantity}}"
+    submitting="{{false}}"
+    bind:expand="onExpandCart"
+    bind:checkout="onCheckout"
+  />
+  <cart-panel
+    wx:if="{{product}}"
+    visible="{{cartVisible}}"
+    items="{{cartSummary.items}}"
+    total-cents="{{cartSummary.totalCents}}"
+    total-quantity="{{cartSummary.totalQuantity}}"
+    submitting="{{false}}"
+    bind:close="onCloseCart"
+    bind:add="onCartAdd"
+    bind:remove="onCartRemove"
+    bind:checkout="onCheckout"
+  />
+</view>

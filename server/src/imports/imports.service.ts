@@ -214,7 +214,12 @@ export class ImportsService {
             const id = product.existingId as string;
             await tx.product.update({
               where: { id },
-              data: { priceCents: product.priceCents, available: product.available, updatedAt: now },
+              data: {
+                description: product.description,
+                priceCents: product.priceCents,
+                available: product.available,
+                updatedAt: now,
+              },
             });
             mapping.products[product.draftId] = id;
           } else {
@@ -373,6 +378,7 @@ export class ImportsService {
           id: product.id,
           name: product.name,
           priceCents: product.priceCents,
+          description: product.description,
           available: product.available,
         })),
       })),

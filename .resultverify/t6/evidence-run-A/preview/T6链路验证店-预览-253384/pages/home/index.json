@@ -1,0 +1,12 @@
+{
+  "navigationBarTitleText": "扫码点餐",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "error-banner": "/components/error-banner/index",
+    "fulfillment-switch": "/components/fulfillment-switch/index",
+    "order-card": "/components/order-card/index",
+    "state-view": "/components/state-view/index",
+    "store-header": "/components/store-header/index"
+  },
+  "backgroundColor": "#F7F3EE"
+}

@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "订单详情",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "error-banner": "/components/error-banner/index",
+    "order-status": "/components/order-status/index",
+    "pay-result": "/components/pay-result/index",
+    "state-view": "/components/state-view/index",
+    "status-timeline": "/components/status-timeline/index"
+  }
+}

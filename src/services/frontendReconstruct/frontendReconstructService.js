@@ -188,12 +188,54 @@ export function createFrontendReconstructService(options = {}) {
       return failure('FRONTEND_PAYLOAD_INVALID', '草稿无法序列化，请重试。');
     }
     if (bytes > 128 * 1024) return failure('PAYLOAD_TOO_LARGE', '草稿超过 128 KB，已拒绝。');
+
+    const hasPlan = Object.prototype.hasOwnProperty.call(input, 'plan');
+    if (hasPlan) {
+      if (!input.plan || typeof input.plan !== 'object' || Array.isArray(input.plan)) {
+        return failure('FRONTEND_PAYLOAD_INVALID', 'plan 必须是对象。');
+      }
+      let planBytes = 0;
+      try {
+        const text = JSON.stringify(input.plan);
+        if (typeof text !== 'string') throw new TypeError('PLAN_NOT_SERIALIZABLE');
+        planBytes = typeof TextEncoder === 'function'
+          ? new TextEncoder().encode(text).length
+          : text.length;
+      } catch (error) {
+        return failure('FRONTEND_PAYLOAD_INVALID', 'plan 无法序列化，请重试。');
+      }
+      if (planBytes > 256 * 1024) {
+        return failure('FRONTEND_PAYLOAD_INVALID', 'plan 超过 256 KiB，已拒绝。');
+      }
+    }
+
+    const hasStoreId = Object.prototype.hasOwnProperty.call(input, 'storeId');
+    if (hasStoreId && (typeof input.storeId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(input.storeId))) {
+      return failure('FRONTEND_PAYLOAD_INVALID', 'storeId 格式不正确。');
+    }
+
+    const hasBackendVersions = Object.prototype.hasOwnProperty.call(input, 'backendVersions');
+    if (hasBackendVersions) {
+      const versions = input.backendVersions;
+      const keys = versions && typeof versions === 'object' && !Array.isArray(versions) ? Object.keys(versions) : [];
+      const validKeys = keys.length === 2 && keys.every((key) => ['storeConfigVersion', 'catalogVersion'].includes(key));
+      const validValues = validKeys
+        && ['storeConfigVersion', 'catalogVersion'].every((key) => versions[key] === null
+          || (Number.isInteger(versions[key]) && versions[key] >= 0));
+      if (!validValues) {
+        return failure('FRONTEND_PAYLOAD_INVALID', 'backendVersions 必须只含非负整数或 null 的 storeConfigVersion/catalogVersion。');
+      }
+    }
+
     let result;
     try {
       result = await api.buildCandidate({
         projectId: cleanString(input.projectId, 80),
         runId: cleanString(input.runId, 80),
         draft,
+        ...(hasPlan ? { plan: input.plan } : {}),
+        ...(hasStoreId ? { storeId: input.storeId } : {}),
+        ...(hasBackendVersions ? { backendVersions: input.backendVersions } : {}),
       });
     } catch (error) {
       return failure('FRONTEND_BUILD_FAILED', describeFrontendError('FRONTEND_BUILD_FAILED'));
@@ -220,12 +262,18 @@ export function createFrontendReconstructService(options = {}) {
   async function verifyCandidate(input = {}) {
     const api = requireMethod('verifyCandidate');
     if (!api) return missingApi();
+    const hasAppId = input.appId !== undefined;
+    const appId = hasAppId && typeof input.appId === 'string' ? input.appId.trim().toLowerCase() : '';
+    if (hasAppId && !/^wx[0-9a-f]{16}$/.test(appId)) {
+      return failure('FRONTEND_PAYLOAD_INVALID', 'appId 必须是 wx 加 16 位小写十六进制');
+    }
     let result;
     try {
       result = await api.verifyCandidate({
         projectId: cleanString(input.projectId, 80),
         runId: cleanString(input.runId, 80),
         attempt: Number.isInteger(input.attempt) ? input.attempt : null,
+        ...(hasAppId ? { appId } : {}),
       });
     } catch (error) {
       return failure('FRONTEND_VERIFY_FAILED', describeFrontendError('FRONTEND_VERIFY_FAILED'));

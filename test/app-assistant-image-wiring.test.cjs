@@ -44,15 +44,27 @@ test('氛围图走 app-assistant，不会自动写素材文件', () => {
   const turn = app.slice(start, app.indexOf('\n  };', start));
   assert.doesNotMatch(turn, /attachImageData|asset-store|ipcRenderer|window\.smartStore\.attach/, '统一入口不得自动落盘素材');
   assert.match(turn, /attachments: attachedImages\.map/, '图片只随请求发送');
-  const router = sliceBlock(app, 'const dispatchAgentChatTurn = (text, images = []) => {');
-  assert.match(router, /runAppAssistantTurn\(\{ text, images: list \}\)/, 'store/auto 图只做视觉理解');
+  const router = sliceBlock(app, 'const dispatchAgentChatTurn = (text, images = [],');
+  assert.match(router, /runAppAssistantTurn\(\{ text, images: list, retry \}\)/, 'store/auto 图只做视觉理解，并支持重试透传');
 });
 
-test('参考图不绕过候选验证：侧栏只跳既有面板', () => {
+test('参考图不绕过候选验证：一次发送自动构建，但侧栏不得直接采用', () => {
   const app = readApp();
-  const router = sliceBlock(app, 'const dispatchAgentChatTurn = (text, images = []) => {');
-  assert.match(router, /handleAgentChatOpenCandidates\(\)/, '只定位候选面板');
-  assert.doesNotMatch(router, /requestFrontendReconstruct|frontendReducer|adopt/i, '侧栏不得直接生成/采用候选');
+  const router = sliceBlock(app, 'const dispatchAgentChatTurn = (text, images = [],');
+  assert.match(router, /kind === 'reference'/, '参考图必须进入独立自动链，不能作为 app-assistant 图片');
+  assert.match(app, /resolveFrontendGenerationIntent\(\{[\s\S]{0,160}text,[\s\S]{0,160}images/, '单张 reference 图必须触发 explicit 生成意图');
+  const autoRequestAt = app.indexOf("type: 'FRONTEND_AUTO_REQUEST'");
+  assert.ok(autoRequestAt >= 0, '同一发送必须以独立 runId 开始自动分析');
+  const commitImageAt = app.indexOf('await commitScreenRefImage(image)', autoRequestAt);
+  assert.ok(commitImageAt > autoRequestAt, 'FRONTEND_AUTO_REQUEST 必须先于共享图片提交，避免同步 effect 多推进 revision');
+  assert.match(app, /prepareProjectPreview\(\{[\s\S]{0,300}bindingKey:/, '自动链必须先准备当前 run 的独立预览门店');
+  assert.match(app, /frontendService\.buildCandidate\(\{/, '分析为 planned 后必须自动构建候选');
+  assert.match(app, /frontendService\.verifyCandidate\(/, '候选构建后必须执行微信验证');
+  assert.doesNotMatch(
+    router,
+    /FRONTEND_ADOPT|adoptCandidate|frontendReducer/i,
+    '自动发送不得绕过结果卡直接采用候选',
+  );
   assert.match(app, /document\.getElementById\('frontend-reconstruct-panel'\)/, '候选入口仍是原面板');
 });
 

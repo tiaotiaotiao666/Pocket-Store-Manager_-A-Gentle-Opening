@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "我的",
+  "enablePullDownRefresh": false,
+  "usingComponents": {
+    "error-banner": "/components/error-banner/index",
+    "state-view": "/components/state-view/index"
+  }
+}

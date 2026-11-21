@@ -16,9 +16,16 @@ import StorageSection from './StorageSection.jsx';
 const APPID_RE = /^wx[0-9a-f]{16}$/;
 
 const MODEL_OPTIONS = [
-  { value: 'deepseek-chat', label: 'deepseek-chat（通用对话，推荐）' },
-  { value: 'deepseek-reasoner', label: 'deepseek-reasoner（深度推理，更慢）' },
+  { value: 'deepseek-flash', label: 'deepseek-flash（V4.1 Flash，支持看图与工具调用）' },
+  { value: 'deepseek-v4-pro', label: 'deepseek-v4-pro（更强推理，不支持看图）' },
 ];
+
+/** 旧配置可能仍是 deepseek-chat / deepseek-reasoner：保留可读项，避免下拉显示成第一项。 */
+function modelOptionsFor(current) {
+  const value = typeof current === 'string' ? current.trim() : '';
+  if (!value || MODEL_OPTIONS.some((item) => item.value === value)) return MODEL_OPTIONS;
+  return [...MODEL_OPTIONS, { value, label: `${value}（当前配置）` }];
+}
 
 function Field({ label, hint, error, children, wide = false }) {
   return (
@@ -172,9 +179,9 @@ export default function SettingsPanel({
                   />
                 </Field>
 
-                <Field label="模型">
+                <Field label="模型" hint="带图片时只能用 deepseek-flash；deepseek-v4-pro 不支持看图">
                   <select value={draft.modelName} onChange={(event) => update('modelName', event.target.value)}>
-                    {MODEL_OPTIONS.map((item) => (
+                    {modelOptionsFor(draft.modelName).map((item) => (
                       <option key={item.value} value={item.value}>{item.label}</option>
                     ))}
                   </select>
@@ -275,7 +282,7 @@ export default function SettingsPanel({
                     ) : null}
                   </div>
                   <p className="settings-key-hint">
-                    这一栏只接管「开店资料」对话。图片识别、模板修改与参考截图仍由本机模型服务处理。
+                    这一栏接管「开店资料」对话，也支持直接看图（需要 deepseek-flash）。菜单识别、参考截图重构仍走各自的专用入口。
                   </p>
                 </div>
               </>

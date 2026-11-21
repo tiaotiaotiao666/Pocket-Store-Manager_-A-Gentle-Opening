@@ -10,7 +10,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   apiBaseUrl: 'http://127.0.0.1:3000/api/v1',
   modelChannel: 'deepseek',
   modelApiBaseUrl: 'https://api.deepseek.com',
-  modelName: 'deepseek-chat',
+  modelName: 'deepseek-flash',
   modelTimeoutMs: 60000,
   agentTransport: 'direct',
   agentEndpoint: '/api/v1/agent/turn',
@@ -50,6 +50,14 @@ function defaultLoadResult(warning) {
     source: 'default',
     warning: warning || null,
   };
+}
+
+/** 旧配置里的 deepseek-chat 是官方别名，统一迁移到带图像理解能力的 deepseek-flash。 */
+function migrateConfig(config) {
+  if (config && config.modelName === 'deepseek-chat') {
+    return { ...config, modelName: 'deepseek-flash' };
+  }
+  return config;
 }
 
 /**
@@ -98,7 +106,7 @@ export function createSettingsService() {
         const data = result.data || {};
         return {
           status: 'ok',
-          config: { ...DEFAULT_SETTINGS, ...(data.config || {}) },
+          config: migrateConfig({ ...DEFAULT_SETTINGS, ...(data.config || {}) }),
           source: data.source || 'file',
           warning: data.warning || null,
         };
@@ -108,7 +116,7 @@ export function createSettingsService() {
       try {
         const raw = store.getItem(CONFIG_KEY);
         if (!raw) return defaultLoadResult(null);
-        const config = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+        const config = migrateConfig({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
         return { status: 'ok', config, source: 'file', warning: null };
       } catch (error) {
         return defaultLoadResult('浏览器里的设置已损坏，已用默认值。重新保存一次设置即可覆盖。');

@@ -19,9 +19,31 @@ export function createDevtoolsService() {
     if (mode !== 'desktop' || !api || typeof api.probeDevtools !== 'function') {
       return { status: 'desktop-required', found: false, running: false, via: 'none', message: '需在桌面应用中探测开发者工具' };
     }
-    const result = await api.probeDevtools();
+    let result;
+    try {
+      result = await api.probeDevtools();
+    } catch (error) {
+      // IPC 本身失败也是「检测失败」，不能抛出：抛出会让上层环境清单永远停在「检测中」。
+      return {
+        status: 'failed',
+        found: false,
+        running: false,
+        via: 'none',
+        message: (error && error.message) || '探测通道失败',
+      };
+    }
     if (!result || result.ok !== true) {
       return { status: 'failed', found: false, running: false, via: 'none', message: result?.message || '探测失败' };
+    }
+    // 探测本身抛错时主进程会带 status:'failed'：这是「检测失败」，不是「没安装」。
+    if (result.data?.status === 'failed') {
+      return {
+        status: 'failed',
+        found: false,
+        running: false,
+        via: 'none',
+        message: result.data?.error || '探测失败',
+      };
     }
     return {
       status: 'ok',

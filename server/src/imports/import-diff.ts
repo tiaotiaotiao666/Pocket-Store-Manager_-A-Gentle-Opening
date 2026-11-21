@@ -65,6 +65,7 @@ export interface ExistingProduct {
   id: string;
   name: string;
   priceCents: number;
+  description: string;
   available: boolean;
 }
 
@@ -340,6 +341,10 @@ export function computeImportDiff(payload: ImportPayload, existing: ExistingStor
       if (matched.priceCents !== product.priceCents) {
         action = 'conflict';
         reasons.push('PRICE_CHANGED');
+      }
+      if (String(matched.description || '') !== String(product.description || '')) {
+        action = 'conflict';
+        reasons.push('DESCRIPTION_CHANGED');
       }
       if (matched.available !== product.available) {
         action = 'conflict';

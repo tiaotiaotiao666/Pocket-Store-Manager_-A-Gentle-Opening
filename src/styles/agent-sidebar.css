@@ -106,17 +106,27 @@
   overflow-wrap: anywhere;
 }
 
-/* 消息日志：侧栏自己滚动，Composer 永远贴在底部。 */
+/*
+ * 消息日志：消息与「本轮结果」（过程卡 / 变更卡 / 参考图摘要 / 忙碌 / 失败）
+ * 同处这一个滚动区，随会话上下滑动；侧栏里只有 Composer 与附件区固定在底部。
+ * 这样消息多或工具调用多时，固定区不会把消息区压到看不见。
+ */
 .agent-sidebar-log {
   flex: 1;
-  min-height: 96px;
+  min-height: 120px;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 2px 6px 2px 2px;
+  padding: 2px 6px 10px 2px;
   scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* 滚动区里的每一项保持自身高度，不能被 flex 压缩掉。 */
+.agent-sidebar-log > * {
+  flex: none;
 }
 
 .agent-sidebar-empty {
@@ -260,6 +270,31 @@
   outline-offset: 1px;
 }
 
+.agent-sidebar-candidate-progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 8px;
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.agent-sidebar-candidate-progress-bar {
+  grid-column: 1 / -1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+}
+
+.agent-sidebar-candidate-progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.2s var(--ease-soft);
+}
+
 /* 忙碌态：文案固定为「正在等待模型与工具结果」，UIA 只认这一句。 */
 .agent-sidebar-busy {
   flex: none;
@@ -388,6 +423,13 @@
 .agent-sidebar-composer .composer-hint,
 .agent-sidebar-composer .composer-notice {
   font-size: 11px;
+}
+
+/* 一轮结果的分组：过程卡 + 变更卡 + 参考图摘要，紧跟产生它的那一轮消息。 */
+.agent-sidebar-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 /* 过程卡在侧栏里更紧凑；`.chat-process*` 本体沿用 chat.css。 */
@@ -612,11 +654,11 @@
   to { transform: rotate(360deg); }
 }
 
-/* 统一会话：本轮变更卡 / 待确认 / stale 提示 */
+/* 统一会话：本轮变更卡 / 待确认 / stale 提示（在消息滚动区里，靠容器 gap 留间距） */
 .agent-chat-changes {
   display: grid;
   gap: 8px;
-  margin: 10px 0 0;
+  margin: 0;
 }
 
 .agent-chat-changes-applied {

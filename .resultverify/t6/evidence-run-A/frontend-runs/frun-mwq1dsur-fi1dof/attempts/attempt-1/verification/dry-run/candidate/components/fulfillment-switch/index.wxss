@@ -1,0 +1,49 @@
+@import "../../styles/component.wxss";
+
+.fulfillment {
+  display: flex;
+  padding: 8rpx;
+  border-radius: 24rpx;
+  background: rgba(35, 35, 35, 0.05);
+}
+
+.fulfillment__option {
+  flex: 1;
+  padding: 18rpx 20rpx;
+  border-radius: 18rpx;
+  text-align: center;
+  transition: background 0.2s ease;
+}
+
+.fulfillment__option--active {
+  background: var(--color-surface);
+  box-shadow: 0 6rpx 18rpx rgba(35, 35, 35, 0.08);
+}
+
+.fulfillment__option--off {
+  opacity: 0.4;
+}
+
+.fulfillment__title {
+  display: block;
+  font-size: 27rpx;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.fulfillment__sub {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: var(--color-muted);
+}
+
+.fulfillment__hint {
+  margin-top: 14rpx;
+  padding: 16rpx 20rpx;
+  border-radius: 16rpx;
+  background: #fdf0e4;
+  color: #8a5a2b;
+  font-size: 22rpx;
+  line-height: 1.5;
+}

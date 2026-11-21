@@ -24,7 +24,7 @@ const MESSAGES = Object.freeze({
   APP_ASSISTANT_CONFIRMATION_REQUIRED: '这项修改需要你确认后才能应用。',
   APP_ASSISTANT_ACTION_UNAVAILABLE: '当前阶段不能执行这个动作。',
   APP_ASSISTANT_ATTACHMENT_PURPOSE_UNKNOWN: '还不确定图片用途，请先说明要做什么。',
-  APP_ASSISTANT_PROPOSAL_DUPLICATE: '这份提案已经应用过，不会重复写入。',
+  APP_ASSISTANT_PROPOSAL_DUPLICATE: '有一条修改与前面的内容重复，已跳过；其余内容不受影响。',
 });
 
 export function createAppAssistantError(code, options = {}) {

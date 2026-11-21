@@ -192,7 +192,7 @@ export function getModelConfig() {
     viteEnv.VITE_MODEL_NAME,
     readProcessEnv('VITE_MODEL_NAME'),
     '',
-  )).trim() || 'deepseek-chat';
+  )).trim() || 'deepseek-flash';
   const rawTimeout = Number(firstDefined(
     overrides.modelTimeoutMs,
     viteEnv.VITE_MODEL_TIMEOUT_MS,

@@ -88,6 +88,11 @@ AppID 是否已填。**不含** `settings`、`apiKey`、绝对路径、base64、
 `APP_ASSISTANT_ACTION_UNAVAILABLE`、`APP_ASSISTANT_ATTACHMENT_PURPOSE_UNKNOWN`、
 `APP_ASSISTANT_PROPOSAL_DUPLICATE`。
 
+**重复 opId 的语义（2026-11-20 调整）**：opId 只是单轮的内部唯一键，不再是拒收条件。
+内容完全相同的修改只保留一条；opId 撞号但内容不同的修改会重新编号（`op_auto_<n>`）后照常应用。
+只有「整份提案的应用结果已写入过」这类真正的重复才返回 `APP_ASSISTANT_PROPOSAL_DUPLICATE`。
+原因：模型在同一批里复用一个 `op_1` 属于常态，用它当拒收理由会让用户「一直发不出消息」。
+
 上游模型/网络错误沿用现有 `DEEPSEEK_*` / `AGENT_*` 映射，不新建同义错误体系。
 
 ## 6. 桌面应用状态

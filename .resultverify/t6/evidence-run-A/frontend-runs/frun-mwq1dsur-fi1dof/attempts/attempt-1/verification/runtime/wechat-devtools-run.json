@@ -1,0 +1,347 @@
+{
+  "schemaVersion": "wechat-devtools-run.v1",
+  "generatedAt": "2026-11-21T06:38:46.170Z",
+  "projectRootLabel": "…\\dry-run\\candidate",
+  "cliLabel": "…\\微信web开发者工具\\cli.bat",
+  "status": "PASS",
+  "steps": [
+    {
+      "id": "login",
+      "title": "开发者工具登录态",
+      "status": "PASS",
+      "command": "cli.bat islogin",
+      "startedAt": "2026-11-21T06:38:46.173Z",
+      "finishedAt": "2026-11-21T06:38:49.846Z",
+      "durationMs": 3673,
+      "exitCode": 0,
+      "stdout": "{\"login\":true}",
+      "stderr": "- initialize\n\n(node:92448) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)\n× IDE may already started at port 40539, trying to connect\n\n√ IDE server started successfully, listening on http://127.0.0.1:40539\n- preparing\n√ islogin"
+    },
+    {
+      "id": "compile",
+      "title": "cli open --project（真实编译）",
+      "status": "PASS",
+      "command": "cli.bat open --project …\\dry-run\\candidate",
+      "startedAt": "2026-11-21T06:38:49.846Z",
+      "finishedAt": "2026-11-21T06:38:52.574Z",
+      "durationMs": 2728,
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "- initialize\n\n(node:101320) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)\n√ IDE server has started, listening on http://127.0.0.1:40539\n- preparing\n√ open"
+    },
+    {
+      "id": "automation",
+      "title": "cli auto --auto-port（自动化端口）",
+      "status": "PASS",
+      "command": "cli.bat auto --project …\\dry-run\\candidate --auto-port 9420",
+      "startedAt": "2026-11-21T06:38:52.574Z",
+      "finishedAt": "2026-11-21T06:38:59.448Z",
+      "durationMs": 6874,
+      "exitCode": 0,
+      "stdout": "{\n  \"autoPort\": 9420,\n  \"requestedAutoPort\": 9420\n}",
+      "stderr": "- initialize\n\n(node:97128) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `微信开发者工具 --trace-deprecation ...` to show where the warning was created)\n√ IDE server has started, listening on http://127.0.0.1:40539\n- preparing\n- Fetching AppID () permissions\n√ Using AppID: wx3b1c04f63cf6cfd0\n√ auto"
+    }
+  ],
+  "blocked": null,
+  "pages": [
+    {
+      "route": "/pages/home/index",
+      "label": "首页",
+      "status": "PASS",
+      "screenshot": "C:\\Users\\leiji\\AppData\\Local\\Temp\\sidebar-t6-electron-SGlYTI\\projects\\p_mwq1dhcf645ae8\\frontend-runs\\frun-mwq1dsur-fi1dof\\attempts\\attempt-1\\verification\\runtime\\shots\\pages-home-index.png",
+      "data": {
+        "keys": [
+          "loading",
+          "error",
+          "errorAction",
+          "requestId",
+          "store",
+          "visit",
+          "mode",
+          "tableName",
+          "tableOptions",
+          "tablesLoading",
+          "tablesError",
+          "activeOrders",
+          "pendingPaymentCount",
+          "identityLabel",
+          "merchantStoreId",
+          "demoMode",
+          "demoHint",
+          "versionNotice",
+          "slotProps",
+          "__webviewId__"
+        ],
+        "error": "",
+        "storeName": "T6链路验证店",
+        "categories": 0,
+        "products": 0,
+        "emptyCart": null,
+        "payHint": "",
+        "productName": "",
+        "productPrice": ""
+      },
+      "error": "",
+      "observation": ""
+    },
+    {
+      "route": "/pages/menu/index",
+      "label": "菜单",
+      "status": "PASS",
+      "screenshot": "C:\\Users\\leiji\\AppData\\Local\\Temp\\sidebar-t6-electron-SGlYTI\\projects\\p_mwq1dhcf645ae8\\frontend-runs\\frun-mwq1dsur-fi1dof\\attempts\\attempt-1\\verification\\runtime\\shots\\pages-menu-index.png",
+      "data": {
+        "keys": [
+          "loading",
+          "error",
+          "errorAction",
+          "requestId",
+          "store",
+          "visit",
+          "mode",
+          "tableName",
+          "storeId",
+          "categories",
+          "activeCategoryId",
+          "activeCategoryName",
+          "products",
+          "cartSummary",
+          "quantityMap",
+          "cartVisible",
+          "detailVisible",
+          "detailProduct",
+          "detailQuantity",
+          "tableOptions",
+          "tablesLoading",
+          "tablesError",
+          "slotProps",
+          "__webviewId__"
+        ],
+        "error": "",
+        "storeName": "T6链路验证店",
+        "categories": 1,
+        "products": 3,
+        "emptyCart": null,
+        "payHint": "",
+        "productName": "",
+        "productPrice": ""
+      },
+      "error": "",
+      "observation": "分类 1 个 · 菜品种类 3 个"
+    },
+    {
+      "route": "/pages/product-detail/index",
+      "label": "菜品详情",
+      "status": "PASS",
+      "screenshot": "C:\\Users\\leiji\\AppData\\Local\\Temp\\sidebar-t6-electron-SGlYTI\\projects\\p_mwq1dhcf645ae8\\frontend-runs\\frun-mwq1dsur-fi1dof\\attempts\\attempt-1\\verification\\runtime\\shots\\pages-product-detail-index.png",
+      "data": {
+        "keys": [
+          "loading",
+          "error",
+          "errorAction",
+          "requestId",
+          "storeId",
+          "productId",
+          "product",
+          "amount",
+          "quantity",
+          "cartSummary",
+          "cartVisible",
+          "__webviewId__"
+        ],
+        "error": "",
+        "storeName": "",
+        "categories": 0,
+        "products": 0,
+        "emptyCart": null,
+        "payHint": "",
+        "productName": "验证炒饭",
+        "productPrice": "¥23.45"
+      },
+      "error": "",
+      "observation": ""
+    },
+    {
+      "route": "/pages/checkout/index",
+      "label": "结算/下单入口",
+      "status": "PASS",
+      "screenshot": "C:\\Users\\leiji\\AppData\\Local\\Temp\\sidebar-t6-electron-SGlYTI\\projects\\p_mwq1dhcf645ae8\\frontend-runs\\frun-mwq1dsur-fi1dof\\attempts\\attempt-1\\verification\\runtime\\shots\\pages-checkout-index.png",
+      "data": {
+        "keys": [
+          "loading",
+          "store",
+          "visit",
+          "mode",
+          "modeText",
+          "tableName",
+          "tableOptions",
+          "tablesLoading",
+          "tablesError",
+          "items",
+          "totalCents",
+          "totalQuantity",
+          "totalText",
+          "note",
+          "noteLength",
+          "submitting",
+          "emptyCart",
+          "loggedIn",
+          "identityLabel",
+          "error",
+          "errorAction",
+          "requestId",
+          "payHint",
+          "__webviewId__"
+        ],
+        "error": "",
+        "storeName": "T6链路验证店",
+        "categories": 0,
+        "products": 0,
+        "emptyCart": false,
+        "payHint": "提交后进入订单详情，再点击「演示模拟支付」，本流程不产生真实支付。",
+        "productName": "",
+        "productPrice": ""
+      },
+      "error": "",
+      "observation": ""
+    }
+  ],
+  "interactions": [
+    {
+      "status": "NOT_RUN",
+      "detail": "菜单没有第二个分类，无法切换",
+      "label": "分类切换（页面处理器直调 + 状态断言）",
+      "critical": false
+    },
+    {
+      "status": "PASS",
+      "detail": "quantityMap[prd_01M7YD89MV3D916M6Z5YZ3]: 0 → 1 · 购物车总件数: 0 → 1 · 金额=¥23.45",
+      "path": "HANDLER_CALL（非点击）",
+      "label": "菜品加购（页面处理器直调 + 状态断言）",
+      "critical": true
+    },
+    {
+      "status": "PASS",
+      "detail": "cartVisible: false → true",
+      "path": "HANDLER_CALL（非点击）",
+      "label": "购物车展开（页面处理器直调 + 状态断言）",
+      "critical": false
+    },
+    {
+      "status": "BLOCKED",
+      "critical": false,
+      "detail": "首页未渲染 .home__table（tablesLoading=false，tablesError=\"\"，tableOptions=[]，后端 /tables=[]）：该项目后端没有餐台数据，堂食选桌不可执行（数据缺失，不是骨架缺陷）",
+      "label": "真实点击·首页选桌 →「开始点餐」进入菜单"
+    },
+    {
+      "status": "NOT_RUN",
+      "critical": false,
+      "detail": "菜单页未渲染 .menu__table（mode=DINE_IN，tableName=\"\"，tableOptions=[]，后端 /tables=[]）：后端无餐台数据，选桌步骤不可执行",
+      "label": "真实点击·选择餐桌（菜单页 .menu__table）"
+    },
+    {
+      "status": "PASS",
+      "detail": "提交结算页（items=1，合计=¥46.90）后落到 pages/order-detail/index，真实后端订单号=ord_01M7YDAPRVM9P3NWDVN9H6；桌号一致性：菜单所选=\"\"/\"\" · 结算页=\"\" · 订单记录 tableId=\"(订单对象未返回)\"（本单未选桌：后端无餐台数据，不做一致性断言）；结算页演示支付提示=\"提交后进入订单详情，再点击「演示模拟支付」，本流程不产生真实支付。\"",
+      "path": "CLICK（真实点击）+ HANDLER_CALL（补足购物车）",
+      "label": "真实点击·结算提交下单",
+      "critical": true
+    },
+    {
+      "status": "PASS",
+      "detail": "演示模拟支付：paymentStatus UNPAID → DEMO_PAID · payResult=success · 订单号=ord_01M7YDAPRVM9P3NWDVN9H6（演示支付，未发生真实交易）",
+      "path": "CLICK（真实点击）",
+      "label": "真实点击·订单详情「演示模拟支付」",
+      "critical": false
+    },
+    {
+      "status": "PASS",
+      "detail": "后端=[] · 菜单=[] · 首页=[] · 结算=[] · 三页 tablesLoading=false / tablesError 为空：true,true,true",
+      "path": "DATA_SOURCE",
+      "label": "桌号数据源·首页/菜单/结算均来自后端 /stores/:id/tables",
+      "critical": false
+    },
+    {
+      "status": "BLOCKED",
+      "detail": "宿主可定位；host.$$(\".category-nav__item\") + tap 后 activeCategoryId: cat_01M7YD89MTJCFQY4W747D6 → cat_01M7YD89MTJCFQY4W747D6 · 点击未触发 bind:select",
+      "path": "host.$$(\".category-nav__item\") + tap",
+      "label": "锚点点击·分类切换（#menu-category-nav）",
+      "critical": false
+    },
+    {
+      "status": "PASS",
+      "detail": "宿主 #menu-product-prd_01M7YD89MV3D916M6Z5YZ3 可定位；host.$$(\".product-card__step--add\") + tap 后数量 0 → 1",
+      "path": "host.$$(\".product-card__step--add\") + tap",
+      "label": "锚点点击·菜品加购（#menu-product-*）",
+      "critical": false
+    },
+    {
+      "status": "PASS",
+      "detail": "宿主可定位；host.$$(\".cart-bar__summary\") + tap 后 cartVisible: false → true",
+      "path": "host.$$(\".cart-bar__summary\") + tap",
+      "label": "锚点点击·购物车展开（#menu-cart-bar）",
+      "critical": false
+    }
+  ],
+  "identity": {
+    "composer": true,
+    "missing": [],
+    "appidKind": "real",
+    "appidMasked": "wx3b****f6cfd0"
+  },
+  "projectPages": [
+    "pages/home/index",
+    "pages/menu/index",
+    "pages/orders/index",
+    "pages/mine/index",
+    "pages/checkout/index",
+    "pages/order-detail/index",
+    "pages/product-detail/index",
+    "pages/merchant-orders/index"
+  ],
+  "bundle": {
+    "ready": true,
+    "observation": "第 2 次 reLaunch(/pages/home/index) 后首页 data 有 20 个字段"
+  },
+  "verdict": {
+    "status": "PASS",
+    "reason": "页面与关键交互全部通过",
+    "pages": {
+      "total": 4,
+      "PASS": 4,
+      "FAIL": 0,
+      "BLOCKED": 0,
+      "NOT_RUN": 0
+    },
+    "interactions": {
+      "total": 11,
+      "PASS": 7,
+      "FAIL": 0,
+      "BLOCKED": 2,
+      "NOT_RUN": 2
+    },
+    "critical": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "blocked": 0,
+      "notRun": 0
+    },
+    "degraded": [
+      {
+        "label": "分类切换（页面处理器直调 + 状态断言）",
+        "status": "NOT_RUN"
+      },
+      {
+        "label": "真实点击·首页选桌 →「开始点餐」进入菜单",
+        "status": "BLOCKED"
+      },
+      {
+        "label": "真实点击·选择餐桌（菜单页 .menu__table）",
+        "status": "NOT_RUN"
+      },
+      {
+        "label": "锚点点击·分类切换（#menu-category-nav）",
+        "status": "BLOCKED"
+      }
+    ]
+  }
+}

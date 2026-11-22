@@ -147,7 +147,10 @@ function assertExactKeys(
   code: FrontendErrorCode,
 ): void {
   for (const key of Object.keys(value)) {
-    if (!allowed.includes(key)) fail(code, `${path}.${key}`);
+    if (!allowed.includes(key)) {
+      // 允许键集合本身就是契约公开信息：一起回给模型，避免它逐个键试错把调用次数用尽。
+      throw frontendError(code, { path: `${path}.${key}`, allowedKeys: [...allowed] });
+    }
   }
 }
 

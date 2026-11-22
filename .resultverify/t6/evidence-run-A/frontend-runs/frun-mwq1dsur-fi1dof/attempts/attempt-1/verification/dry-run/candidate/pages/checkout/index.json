@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "确认订单",
-  "usingComponents": {
-    "error-banner": "/components/error-banner/index",
-    "state-view": "/components/state-view/index"
-  }
-}

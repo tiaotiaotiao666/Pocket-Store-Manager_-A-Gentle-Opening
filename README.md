@@ -7,7 +7,9 @@
 - 服务端（可选）：NestJS 11 + Prisma + MySQL（`server/`）
 - 小程序真源：`templates/base/ordering-base/1.0.0/src`（`miniprogram/` 只是只读镜像，不是交付物）
 
-文档入口：[`docs/项目概览.md`](docs/项目概览.md)、索引 [`docs/README.md`](docs/README.md)、交接 [`docs/handoff/README.md`](docs/handoff/README.md)、P5 交付（演示脚本 / 答辩 / 证据索引）见 [`docs/交付/`](docs/交付/)。
+**最终交付唯一入口：[`docs/R3-最终交付冻结.md`](docs/R3-最终交付冻结.md)**（启动、云栖小馆数据、导出、故障恢复、证据、录屏与答辩材料）。历史文档只保留当时验收记录，当前状态以 R3 为准。
+
+其他文档：[`docs/项目概览.md`](docs/项目概览.md)、索引 [`docs/README.md`](docs/README.md)、交接 [`docs/handoff/README.md`](docs/handoff/README.md)。
 
 ---
 

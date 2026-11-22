@@ -131,12 +131,23 @@ function fail(code: FrontendErrorCode, path?: string): never {
   throw frontendError(code, path === undefined ? undefined : { path });
 }
 
+function describeType(value: unknown): string {
+  if (value === undefined) return 'missing';
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
 function assertObject(
   value: unknown,
   path: string,
   code: FrontendErrorCode,
+  expected?: string,
 ): Record<string, unknown> {
-  if (!isPlainObject(value)) fail(code, path);
+  if (!isPlainObject(value)) {
+    // 形状提示同样属于契约公开信息：只回「该写什么 + 收到的是什么类型」，不回模型原文。
+    throw frontendError(code, expected ? { path, expected, received: describeType(value) } : { path });
+  }
   return value;
 }
 
@@ -172,7 +183,10 @@ function assertEnum<T extends string>(
   path: string,
   code: FrontendErrorCode,
 ): T {
-  if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) fail(code, path);
+  if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) {
+    // 期望值属于契约公开信息：一并回传，模型可一次改对，避免多轮试错耗尽调用上限。
+    throw frontendError(code, { path, expected: [...allowed] });
+  }
   return value as T;
 }
 
@@ -194,7 +208,7 @@ function assertInteger(
   max: number,
 ): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) {
-    fail(code, path);
+    throw frontendError(code, { path, expected: `integer ${min}–${max}` });
   }
   return value;
 }
@@ -829,7 +843,12 @@ function parseRequirementPages(
     previousOrder = order;
     const layout = assertEnum(page.layout, FRONTEND_LAYOUT_KINDS, `${path}.layout`, code);
 
-    const targetSize = assertObject(page.targetSize, `${path}.targetSize`, code);
+    const targetSize = assertObject(
+      page.targetSize,
+      `${path}.targetSize`,
+      code,
+      '{"width":<整数 320-1024>,"height":<整数 320-4096>}（必填，不能省略或写成字符串/数组）',
+    );
     assertExactKeys(targetSize, TARGET_SIZE_KEYS, `${path}.targetSize`, code);
     const width = assertInteger(targetSize.width, `${path}.targetSize.width`, code, 320, 1024);
     const height = assertInteger(targetSize.height, `${path}.targetSize.height`, code, 320, 4096);

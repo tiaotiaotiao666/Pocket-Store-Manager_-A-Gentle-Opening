@@ -2060,9 +2060,18 @@ function baseReducer(state, action) {
         : null;
       const requestContextRevision = Number.isInteger(chat.requestContextRevision) ? chat.requestContextRevision : null;
       const currentContentRevision = Number.isInteger(state.project?.contentRevision) ? state.project.contentRevision : 0;
+      // 本轮自己写入造成的版本前进不算冲突：以「本轮写入后版本」为基线；
+      // 本轮没写入时仍按请求快照判定，所以真实晚响应与外部修改冲突照样会被标出来。
+      const appliedNow = state.agentChat?.lastApplied;
+      const appliedRevision = appliedNow
+        && appliedNow.requestId === identity.requestId
+        && Number.isInteger(appliedNow.appliedRevision)
+        ? appliedNow.appliedRevision
+        : null;
+      const baselineRevision = appliedRevision ?? requestContextRevision;
       // 请求期间手改业务数据：消息照常落地并如实说明「结果未写入」，不静默成功。
-      const stale = requestContextRevision !== null && currentContentRevision !== requestContextRevision
-        ? { requestId: identity.requestId, expectedRevision: requestContextRevision, actualRevision: currentContentRevision }
+      const stale = baselineRevision !== null && currentContentRevision !== baselineRevision
+        ? { requestId: identity.requestId, expectedRevision: baselineRevision, actualRevision: currentContentRevision }
         : null;
       return {
         ...state,
@@ -2142,6 +2151,28 @@ function baseReducer(state, action) {
             ? action.contextRevision
             : (Number.isInteger(state.project?.contentRevision) ? state.project.contentRevision : 0),
           lastError: null,
+          revision: nextChatRevision(chat),
+        },
+      };
+    }
+
+    /**
+     * 「撤销本轮」成功后调用：清掉那一轮的变更卡锚点与冲突提示，避免界面继续显示已撤销的结果。
+     *
+     * 只清显示状态；真实版本回退由 UNDO_APPLY 负责，两者不互相替代。
+     */
+    case 'AGENT_CHAT_UNDO_APPLIED': {
+      const chat = state.agentChat ?? createEmptyAgentChat();
+      const requestId = chatIdText(action.requestId) || (chat.lastApplied ? chat.lastApplied.requestId : null);
+      if (!chat.lastApplied && !chat.lastStale) return state;
+      if (chat.lastApplied && requestId !== chat.lastApplied.requestId) return state;
+      return {
+        ...state,
+        agentChat: {
+          ...chat,
+          lastApplied: null,
+          lastStale: null,
+          lastUndone: requestId ? { requestId } : null,
           revision: nextChatRevision(chat),
         },
       };

@@ -2134,6 +2134,10 @@ export default function App() {
       plan,
       projectName,
       mode: 'development',
+      // 与正式导出走同一份权威素材：海报只传受控引用（项目 ID + 资产 ID），
+      // 字节由主进程按资产权限与大小校验后读取，预览副本才不会缺 assets/media。
+      projectId: state.project.activeId || null,
+      posterAssetId: state.visual.imageAssetId || null,
       storeId: prepared.storeId,
       backendVersions: prepared.backendVersions,
       candidateOverlay: frontendCandidateOverlay,
@@ -2836,6 +2840,9 @@ export default function App() {
       return;
     }
     dispatch({ type: 'UNDO_APPLY' });
+    // 撤销成功后清掉这一轮的变更卡与冲突提示，并明确告诉用户已经撤销。
+    dispatch({ type: 'AGENT_CHAT_UNDO_APPLIED', requestId: applied.requestId });
+    setNotice('已撤销本轮修改，门店资料已回到这一轮应用前的值。');
   };
 
   /** 侧栏统一先进入门店资料阶段，再定位同一个候选面板。 */

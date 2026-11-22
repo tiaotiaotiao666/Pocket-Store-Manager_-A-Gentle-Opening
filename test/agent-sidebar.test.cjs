@@ -748,3 +748,56 @@ test('时间线：参考图摘要挂在触发它的那条消息后面', async ()
   assert.equal(timeline[2].candidate.summary, '参考图意图：首页三卡并排');
   assert.equal(timeline[2].anchorId, 'chat-assistant-req9');
 });
+
+// R2 D1：同一轮不再自报冲突，撤销后清理卡片/冲突；未写入路径的冲突必须保留。
+test('reducer：写入轮次不报 stale，撤销后清理变更卡，未写入的迟到响应仍报 stale', async () => {
+  const { machine, state, projectId } = await seededProject();
+  const base = Number.isInteger(state.project.contentRevision) ? state.project.contentRevision : 0;
+  const started = machine.reducer(state, {
+    type: 'AGENT_CHAT_REQUEST_START',
+    projectId,
+    requestId: 'req-d1',
+    draftRevision: 0,
+    contextRevision: base,
+    utterance: '联系电话改成 010-88886666',
+  });
+  const success = (from, requestId) => machine.reducer(from, {
+    type: 'AGENT_CHAT_SUCCESS',
+    projectId,
+    requestId,
+    draftRevision: 0,
+    phase: started.phase,
+    reply: '联系电话已改好。',
+    run: { status: 'done', durationMs: 1, tools: [] },
+  });
+
+  // 1) 未写入 + 请求期间内容被外部改动：冲突必须保留。
+  const changedOutside = { ...started, project: { ...started.project, contentRevision: base + 1 } };
+  const staleDone = success(changedOutside, 'req-d1');
+  assert.ok(staleDone.agentChat.lastStale, '未写入的轮次遇到外部改动仍要报冲突');
+  assert.equal(staleDone.agentChat.lastStale.expectedRevision, base);
+
+  // 2) 本轮自己写入（contentRevision 前进）：不得同时报冲突。
+  const appliedState = {
+    ...started,
+    project: { ...started.project, contentRevision: base + 1 },
+    agentChat: {
+      ...started.agentChat,
+      lastApplied: {
+        requestId: 'req-d1',
+        proposalId: 'prop-d1',
+        appliedRevision: base + 1,
+        entries: [{ fieldId: 'store.phone', label: '联系电话', before: '', after: '010-88886666' }],
+      },
+    },
+  };
+  const appliedDone = success(appliedState, 'req-d1');
+  assert.equal(appliedDone.agentChat.lastStale, null, '本轮写入造成的版本前进不算冲突');
+  assert.ok(appliedDone.agentChat.lastApplied);
+
+  // 3) 撤销本轮后：变更卡与冲突状态一起清掉，并记下撤销的是哪一轮。
+  const undone = machine.reducer(appliedDone, { type: 'AGENT_CHAT_UNDO_APPLIED', requestId: 'req-d1' });
+  assert.equal(undone.agentChat.lastApplied, null);
+  assert.equal(undone.agentChat.lastStale, null);
+  assert.deepEqual(undone.agentChat.lastUndone, { requestId: 'req-d1' });
+});

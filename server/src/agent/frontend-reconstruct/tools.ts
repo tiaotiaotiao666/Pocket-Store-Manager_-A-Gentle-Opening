@@ -127,33 +127,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * 日志只记录 code 与经 sanitizeFrontendLogDetails 白名单化后的结构化信息，
  * 不记录参数、模型原文、图片或超长未知字段名。
  */
-/**
- * 模型反复猜 requirement 结构会把单次运行的模型调用次数耗尽（429 FRONTEND_MODEL_CALL_LIMIT）；
- * 校验失败时回传一份最小合法示例，让它按示例改，而不是逐字段试错。
- */
-function buildMinimalRequirementExample(targetPages?: readonly string[]): Record<string, unknown> {
-  const first = targetPages && targetPages.length > 0 ? targetPages[0] : '';
-  const pageId = first || FRONTEND_TARGET_PAGES[0] || 'home';
-  return {
-    summary: '按参考截图微调当前页面结构',
-    mustKeep: [{ kind: 'page', ref: `page:${pageId}` }],
-    pages: [{
-      pageId,
-      order: 1,
-      layout: 'single-column',
-      targetSize: { width: 375, height: 812 },
-      regions: [],
-    }],
-    visual: {},
-    bindings: [],
-    unknownRegions: [],
-    lowConfidence: [],
-    inferredInteractions: [],
-    unsupported: [],
-    degradations: [],
-  };
-}
-
 function toToolError(
   error: unknown,
   context?: AgentToolContext,
@@ -517,12 +490,6 @@ export function createFrontendReconstructTools(session: FrontendReconstructSessi
           draftKept,
         } as unknown as JsonValue;
       } catch (error) {
-        if (error instanceof FrontendReconstructError && error.code === 'FRONTEND_REQUIREMENT_INVALID') {
-          throw frontendError(error.code, {
-            ...(error.details ?? {}),
-            minimalRequirement: buildMinimalRequirementExample(session.targetPages),
-          });
-        }
         toToolError(error, context);
       }
     },

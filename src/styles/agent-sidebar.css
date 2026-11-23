@@ -775,3 +775,149 @@
   font-size: 11.5px;
   line-height: 1.45;
 }
+/* ── 本轮 UI 修复 3：本轮图片默认紧凑，只有选了图才展开 ── */
+.agent-chat-attachments.is-compact {
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-head {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-title {
+  font-size: 11px;
+}
+
+.agent-chat-attachments-kinds {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.agent-chat-attachments-kind {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.agent-chat-attachments-hint {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-hint {
+  -webkit-line-clamp: 2;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-add {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-add-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ── 本轮 UI 修复 4：Agent 等待提示条 ── */
+.agent-waiting-hint {
+  display: grid;
+  gap: 4px;
+  margin: 0 12px 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--accent-ring, rgba(109, 94, 252, 0.35));
+  border-radius: var(--radius-sm, 10px);
+  background: var(--accent-soft, rgba(109, 94, 252, 0.08));
+}
+
+.agent-waiting-hint-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.agent-waiting-hint-detail {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.agent-waiting-hint-go {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--accent);
+  color: var(--accent-ink, #fff);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.agent-waiting-hint-go:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.agent-waiting-hint-note {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--faint);
+}/* 本轮 UI 修复 3b：0 张图片时进一步压到一行高度（仍保留用途与入口） */
+.agent-chat-attachments.is-compact {
+  gap: 5px;
+  padding: 7px 9px;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-head {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-title {
+  flex: none;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-kinds {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-kinds::-webkit-scrollbar {
+  height: 0;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-kind {
+  padding: 2px 7px;
+  font-size: 10.5px;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-hint {
+  -webkit-line-clamp: 1;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.agent-chat-attachments.is-compact .agent-chat-attachments-count {
+  font-size: 10.5px;
+}

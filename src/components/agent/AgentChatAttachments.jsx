@@ -152,7 +152,7 @@ export default function AgentChatAttachments({
 
   return (
     <section
-      className={`agent-chat-attachments${dragging ? ' is-dragging' : ''}`}
+      className={`agent-chat-attachments${dragging ? ' is-dragging' : ''}${list.length === 0 ? ' is-compact' : ''}`}
       aria-label="本轮图片附件"
       onDragOver={(event) => {
         if (isDisabled || isBusy) return;
@@ -182,6 +182,7 @@ export default function AgentChatAttachments({
                 type="button"
                 className={`agent-chat-attachments-kind${item === activeKind ? ' is-active' : ''}`}
                 aria-pressed={item === activeKind}
+                title={KIND_CONFIG[item].hint}
                 disabled={isDisabled || isBusy}
                 onClick={() => setKind(item)}
               >
@@ -245,13 +246,14 @@ export default function AgentChatAttachments({
         <button
           type="button"
           className="agent-chat-attachments-add"
+          aria-label="添加图片"
           disabled={isDisabled || isBusy || room === 0}
           onClick={() => inputRef.current?.click()}
         >
           {working ? (
-            <><Loader2 size={14} className="agent-chat-attachments-spinner" aria-hidden="true" />压缩中…</>
+            <><Loader2 size={14} className="agent-chat-attachments-spinner" aria-hidden="true" /><span className="agent-chat-attachments-add-label">压缩中…</span></>
           ) : (
-            <><ImagePlus size={14} aria-hidden="true" />添加图片</>
+            <><ImagePlus size={14} aria-hidden="true" /><span className="agent-chat-attachments-add-label">添加图片</span></>
           )}
         </button>
         <span className="agent-chat-attachments-count">

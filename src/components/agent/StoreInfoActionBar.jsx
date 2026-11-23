@@ -31,7 +31,7 @@ export default function StoreInfoActionBar({
       <div className="agent-action-buttons">
         <button
           type="button"
-          className="agent-btn agent-btn-confirm"
+          className="agent-btn agent-btn-confirm" data-jump-id="store-info-confirm"
           disabled={!canConfirm}
           onClick={() => onConfirm?.()}
         >

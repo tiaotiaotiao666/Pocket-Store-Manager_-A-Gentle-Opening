@@ -1064,4 +1064,29 @@
 .preview-dock-config-actions button:disabled {
   opacity: 0.6;
   cursor: default;
+}/* ── 本轮 UI 修复：模板详情两栏按容器宽度换行，不再互相挤压 ── */
+.template-gallery .template-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.template-gallery .template-detail-preview {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.template-gallery .template-detail-info {
+  flex: 1 1 300px;
+  min-width: 300px;
+  min-height: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1024px) {
+  .template-gallery .template-detail-info {
+    flex-basis: 100%;
+    min-width: 0;
+  }
 }

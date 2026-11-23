@@ -96,6 +96,7 @@ import {
   undoAdoptionRecord,
 } from './services/frontendReconstruct/adoptionBridge.js';
 import { describeFlow } from './domain/flowStages.mjs';
+import { selectAgentWaitingHint } from './domain/agentWaiting.mjs';
 import { describeGalleryLegend, describeTemplateStatus } from './domain/templateStatus.mjs';
 import {
   requestTemplateRevise,
@@ -5060,6 +5061,27 @@ case PHASES.DEPLOY: {
 
   const agentComposer = selectAgentComposerState(state);
   const undoState = selectUndoState(state);
+  // 三.3：Agent 在等用户去别的区域点一个控件时，必须说清「等什么 / 在哪 / 点哪个」。
+  // 推导口径只在 domain/agentWaiting.mjs 一处；这里只做接线，不另写第二套条件。
+  const agentWaitingHint = selectAgentWaitingHint({
+    phase,
+    agent: state.agent,
+    build: state.build,
+    presentation: presentationState,
+  });
+  // 跳转只做「滚到控件 + 聚焦 + 高亮一下」，绝不代替用户点确认/应用/生成/导出。
+  const handleWaitingGo = (jumpId) => {
+    const node = document.querySelector(`[data-jump-id="${jumpId}"]`);
+    if (!node) {
+      const fallback = document.querySelector(jumpId === 'template-apply' ? '.template-gallery' : '.workspace-actions');
+      fallback?.scrollIntoView({ block: 'center', inline: 'nearest' });
+      return;
+    }
+    node.scrollIntoView({ block: 'center', inline: 'nearest' });
+    if (typeof node.focus === 'function') node.focus({ preventScroll: true });
+    node.classList.add('is-jump-flash');
+    window.setTimeout(() => node.classList.remove('is-jump-flash'), 1600);
+  };
   // 右侧栏「Agent 对话」视图模型：安全字段 + 回调，组件不持有会话状态、也不自己发请求。
   // 过程卡只给 lastRun（`normalizeChatRun` 白名单产物），trace 不进消息正文。
   const agentChatViewModel = {
@@ -5083,6 +5105,8 @@ case PHASES.DEPLOY: {
     onRetry: handleAgentChatRetry,
     onOpenCandidates: handleAgentChatOpenCandidates,
     onUndoApplied: handleAgentChatUndoApplied,
+    waitingHint: agentWaitingHint,
+    onWaitingGo: handleWaitingGo,
   };
   // UX0a-3：海报素材（可选）阶段没有真实生图服务，不再提供"重新生成"输入区。
   const composerVisible = phase === PHASES.STORE_INFO

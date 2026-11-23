@@ -3,6 +3,7 @@ import { ChevronRight, MessageSquareText, RefreshCw, ShieldCheck } from 'lucide-
 import Composer from '../chat/Composer.jsx';
 import { ProcessSummary } from '../chat/ChatStream.jsx';
 import AgentChatAttachments from './AgentChatAttachments.jsx';
+import AgentWaitingHint from './AgentWaitingHint.jsx';
 import AppAssistantChangeCard from './AppAssistantChangeCard.jsx';
 import {
   CHAT_DRAFT_MAX_CHARS,
@@ -111,6 +112,9 @@ export default function AgentSidebarPanel({
   // 当前阶段动作其实不可执行时的原因（App 与底层 handler 用同一份判断算出）。
   // 有值时：发送按钮禁用 + 输入框下方直接显示原因，绝不让「点了没反应」发生。
   sendBlockedReason = null,
+  // 「Agent 正在等你操作」提示：内容与是否显示都由 App 依据真实状态算出。
+  waitingHint = null,
+  onWaitingGo,
   // 本轮附件：只随请求发送、不落盘；能带哪几种图片由 App 按阶段传入。
   images = [],
   imageKinds = [],
@@ -341,6 +345,8 @@ export default function AgentSidebarPanel({
           </section>
         ) : null}
       </div>
+
+      <AgentWaitingHint hint={waitingHint} busy={busy} onGo={onWaitingGo} />
 
       {attachmentsEnabled ? (
         <AgentChatAttachments

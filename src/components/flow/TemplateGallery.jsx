@@ -242,7 +242,7 @@ export default function TemplateGallery({
               <div className="template-apply-row">
                 <button
                   type="button"
-                  className="primary-button template-apply-button"
+                  className="primary-button template-apply-button" data-jump-id="template-apply"
                   onClick={() => {
                     onSelect?.(selected.id);
                     setPreviewId(null);

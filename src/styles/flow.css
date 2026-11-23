@@ -1721,3 +1721,71 @@
     justify-content: space-between;
   }
 }
+/* ── 本轮 UI 修复 1：模板修改入口回到文档流，不再像浮层压住旁边内容 ── */
+.template-gallery .template-revise {
+  min-width: 0;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elev);
+  color: var(--ink);
+  box-shadow: none;
+  animation: none;
+}
+
+.template-gallery .template-revise-head,
+.template-gallery .template-revise-modes,
+.template-gallery .template-revise-form,
+.template-gallery .template-revise-hint,
+.template-gallery .template-revise-echo,
+.template-gallery .template-revise-status,
+.template-gallery .template-revise-error {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.template-gallery .template-revise-form,
+.template-gallery .template-revise-modes {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.template-gallery .template-revise-heading h4 { color: var(--ink); }
+.template-gallery .template-revise-heading p { color: var(--ink-soft); }
+.template-gallery .template-revise-kicker { color: var(--accent); }
+.template-gallery .template-revise-input {
+  background: var(--bg-sunken, #f6f6f9);
+  color: var(--ink);
+  border-color: var(--line);
+}
+.template-gallery .template-revise-input::placeholder { color: var(--faint); }
+.template-gallery .template-revise-mock {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-ring);
+}
+.template-gallery .template-revise-button { box-shadow: none; }
+.template-gallery .template-revise-echo,
+.template-gallery .template-revise-status,
+.template-gallery .template-revise-hint { color: var(--ink-soft); }
+
+/* ── 本轮 UI 修复 2：满意度条与详情按钮不竖排、不挤压 ── */
+.template-gallery .satisfy-prompt {
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 12px 14px;
+  animation: none;
+}
+
+.template-gallery .satisfy-prompt-body { flex: 1 1 130px; min-width: 0; }
+.template-gallery .satisfy-prompt-question { display: block; white-space: normal; word-break: keep-all; }
+.template-gallery .satisfy-prompt-action { flex: none; white-space: nowrap; }
+
+.template-apply-row { flex-wrap: wrap; gap: 8px; }
+.template-apply-row .primary-button,
+.template-apply-row .ghost-button { white-space: nowrap; }
+
+/* 跳转高亮：只是视觉聚焦，不触发任何动作 */
+[data-jump-id].is-jump-flash {
+  outline: 3px solid var(--accent-ring, rgba(109, 94, 252, 0.45));
+  outline-offset: 2px;
+}

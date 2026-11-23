@@ -141,7 +141,7 @@ export default function StoreInfoStep({
           }}
         >
           <div className="store-images-head">
-            <h4>已上传图片</h4>
+            <h4>{imageList.length > 0 ? '已上传图片' : '还没有上传图片'}</h4>
             <span className="store-style-hint">真实项目资产，最多 6 张；只保存在本机项目里，不会打进导出工程。可以把图片直接拖到这里。</span>
           </div>
 

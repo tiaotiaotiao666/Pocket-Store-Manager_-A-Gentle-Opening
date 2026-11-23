@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ChevronRight, MessageSquareText, RefreshCw, ShieldCheck } from 'lucide-react';
 import Composer from '../chat/Composer.jsx';
-import { ProcessSummary } from '../chat/ChatStream.jsx';
 import AgentChatAttachments from './AgentChatAttachments.jsx';
 import AppAssistantChangeCard from './AppAssistantChangeCard.jsx';
 import {
@@ -21,8 +20,7 @@ import '../../styles/agent-sidebar.css';
  *   视图模型（`selectAgentChatState` 的输出）与回调；
  * - 能否发送 / 能否重试 / 本轮做什么，都复用 `domain/agentSidebar.mjs` 的判断，组件里
  *   不另写第二套规则；
- * - 过程卡只复用 ChatStream 导出的 `ProcessSummary` 与安全视图：没有真实 trace 时
- *   不渲染任何工具步骤，`partial` 显示「部分完成」而不是「全部成功」；
+ * - 一轮结束后只展示真实写入结果/候选摘要，不再渲染「本轮已完成 + 用时」过程卡；
  * - 前端重构/参考图意图展示真实进度与「查看候选」跳转；采用仍只在候选面板确认；
  * - 本轮图片附件只在门店资料/模板展示阶段出现，由 App 传入允许的用途；
  *   附件只随请求发送，不写消息正文、不写项目快照。
@@ -33,66 +31,6 @@ const ROLE_LABELS = Object.freeze({
   assistant: '轻启',
   system: '系统',
 });
-
-/** 过程卡状态 → 用户看得懂的徽标文案（partial 一律「部分完成」）。 */
-const RUN_TITLES = Object.freeze({
-  done: '本轮已完成',
-  partial: '部分完成',
-  failed: '本轮未完成',
-});
-
-const RUN_TONES = Object.freeze({
-  done: 'done',
-  partial: 'partial',
-  failed: 'failed',
-});
-
-function formatDuration(ms) {
-  if (!Number.isFinite(ms) || ms <= 0) return '';
-  if (ms < 1000) return `${Math.round(ms)} 毫秒`;
-  const seconds = ms / 1000;
-  if (seconds < 60) return `${seconds.toFixed(1)} 秒`;
-  return `${Math.floor(seconds / 60)} 分 ${Math.round(seconds % 60)} 秒`;
-}
-
-/**
- * 把领域层 `normalizeChatRun` 的安全运行视图映射成 `ProcessSummary` 需要的形状。
- *
- * 只做标签映射：不读消息正文、不序列化 trace、不补假步骤。`toolLabels` 只在真实
- * 工具调用存在时才非空，因此没有真实 trace 时 `steps` 为空（不渲染任何步骤）。
- *
- * @param {object|null} run `normalizeChatRun` 的输出
- * @returns {object|null} `ProcessSummary` 可消费的安全视图
- */
-export function buildAgentChatProcessView(run) {
-  if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
-  const status = RUN_TITLES[run.status] ? run.status : 'done';
-  const toolLabels = Array.isArray(run.toolLabels)
-    ? run.toolLabels.filter((label) => typeof label === 'string' && label.trim())
-    : [];
-  const metaLines = [];
-  const duration = formatDuration(run.durationMs);
-  if (duration) metaLines.push(`用时 ${duration}`);
-
-  const steps = toolLabels.map((label, index) => ({
-    id: `agent-chat-tool-${index}`,
-    label,
-    state: status === 'failed' ? 'failed' : (status === 'partial' ? 'partial' : 'done'),
-  }));
-
-  let notice = typeof run.note === 'string' ? run.note : '';
-  if (!notice && status === 'partial') notice = '这一轮只完成了一部分，还有步骤没有跑完。';
-  if (!notice && status === 'failed') notice = '这一轮没有完成；可以点「重试上一轮」再来一次。';
-
-  return {
-    title: RUN_TITLES[status],
-    headline: steps.length ? `完成了 ${steps.length} 项处理` : '',
-    metaLines,
-    steps,
-    tone: RUN_TONES[status],
-    notice,
-  };
-}
 
 function resolvePhaseLabel(phaseLabel, phase) {
   if (typeof phaseLabel === 'string' && phaseLabel.trim()) return phaseLabel.trim();
@@ -106,7 +44,6 @@ export default function AgentSidebarPanel({
   phase = null,
   phaseLabel = '',
   chat = null,
-  process = null,
   candidate = null,
   // 当前阶段动作其实不可执行时的原因（App 与底层 handler 用同一份判断算出）。
   // 有值时：发送按钮禁用 + 输入框下方直接显示原因，绝不让「点了没反应」发生。
@@ -127,7 +64,7 @@ export default function AgentSidebarPanel({
 }) {
   const view = chat && typeof chat === 'object' ? chat : {};
   const messages = Array.isArray(view.messages) ? view.messages : [];
-  // 草稿是受控值：失败/切视图时都从视图模型读回，因此输入与草稿不会被清空。
+  // 草稿是受控值：从视图模型读回；发送成功后由 App 清空，请求失败时保留供重试。
   const draft = typeof view.draft === 'string' ? view.draft : '';
   const status = typeof view.status === 'string' ? view.status : CHAT_STATUS.IDLE;
   const busy = view.busy === true || status === CHAT_STATUS.REQUESTING;
@@ -136,8 +73,6 @@ export default function AgentSidebarPanel({
     ? view.plan
     : buildAgentChatSubmitPlan({ projectId, phase, hasProject: Boolean(projectId) });
 
-  // 过程卡优先用 App 传入的安全视图；缺省时把领域层 running 视图映射一次，仍不放假步骤。
-  const runView = process && typeof process === 'object' ? process : buildAgentChatProcessView(view.lastRun);
   // 参考图重构意图：App 可以显式传摘要；否则取最后一条重构类消息的正文当摘要。
   const reconstructMessage = candidate && typeof candidate === 'object'
     ? null
@@ -171,11 +106,10 @@ export default function AgentSidebarPanel({
   const canUndoApplied = Boolean(applied && contentRevision !== null && contentRevision === applied.appliedRevision);
 
   // 消息与「本轮结果」排成一条时间线（domain 只算一次）：
-  // 过程卡 / 变更卡 / 待确认 / stale 挂在产生它的那一轮消息之后，
+  // 变更卡 / 待确认 / stale / 参考图摘要挂在产生它的那一轮消息之后，
   // 新消息追加在下面，下一轮有新结果时才在更下面再出现一份。
   const timeline = buildAgentChatTimeline({
     messages,
-    run: view.lastRun,
     applied,
     pending,
     stale,
@@ -183,9 +117,6 @@ export default function AgentSidebarPanel({
     candidateMessageId: reconstructMessage ? reconstructMessage.id : '',
   });
   const timelineTailKey = timeline.length ? timeline[timeline.length - 1].key : '';
-  // 外部显式传入的过程视图若没有对应的 run 条目，就在日志末尾补一次（不丢信息）。
-  const processRendered = process && typeof process === 'object'
-    && timeline.some((item) => item.kind === 'result' && item.run);
 
   const logRef = useRef(null);
   // 结果块也是日志的一部分，所以「自动滚到底」同时盯着时间线长度与末项身份，
@@ -244,7 +175,7 @@ export default function AgentSidebarPanel({
         ) : null}
 
         {/*
-         * 时间线 = 消息流 + 每轮结果：过程卡 /「本轮已写入」/ 参考图摘要挂在
+         * 时间线 = 消息流 + 每轮结果：「本轮已写入」/ 参考图摘要挂在
          * 产生它的那一轮消息之后，和普通消息一样上下滑动。
          * 用户再发新消息时它被顶上去，下一轮有新结果时才在更下面再出现一份，
          * 不会永远停在底部挡住新消息。
@@ -262,7 +193,6 @@ export default function AgentSidebarPanel({
             </article>
           ) : (
             <div className="agent-sidebar-turn" key={item.key}>
-              <ProcessSummary process={buildAgentChatProcessView(item.run)} />
               <AppAssistantChangeCard
                 applied={item.applied}
                 pending={item.pending}
@@ -310,8 +240,6 @@ export default function AgentSidebarPanel({
             </div>
           )
         ))}
-
-        {processRendered ? null : <ProcessSummary process={runView} />}
 
         {busy ? (
           <p className="agent-sidebar-busy" id="project-agent-busy" role="status">

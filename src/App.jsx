@@ -95,7 +95,7 @@ import {
   candidateOverlayFromAdoption,
   undoAdoptionRecord,
 } from './services/frontendReconstruct/adoptionBridge.js';
-import { describeFlow } from './domain/flowStages.mjs';
+import { FLOW_STAGE_KEYS, describeFlow, stageForPhase } from './domain/flowStages.mjs';
 import { describeGalleryLegend, describeTemplateStatus } from './domain/templateStatus.mjs';
 import {
   requestTemplateRevise,
@@ -839,12 +839,33 @@ export default function App() {
     ? describeSignatureDrift(preflightSignature, exportSignatureParts)
     : null;
 
+  // 左栏步骤块是双向的：记住本次打开项目走到过的最远一步，退回前面的步骤改了之后
+  // 还能直接点回后面那一步，不必一步步重走。换项目时重置为当前阶段。
+  const currentStageIndex = FLOW_STAGE_KEYS.indexOf(stageForPhase(state.phase));
+  const [reachedStage, setReachedStage] = useState(() => ({
+    projectId: state.project.activeId ?? null,
+    index: currentStageIndex,
+  }));
+  const activeProjectId = state.project.activeId ?? null;
+  useEffect(() => {
+    setReachedStage((prev) => {
+      if (prev.projectId !== activeProjectId) return { projectId: activeProjectId, index: currentStageIndex };
+      if (currentStageIndex <= prev.index) return prev;
+      return { projectId: activeProjectId, index: currentStageIndex };
+    });
+  }, [activeProjectId, currentStageIndex]);
+  // 渲染期就按当前阶段兜底，避免换项目后那一帧沿用上一个项目的进度。
+  const reachedStageIndex = reachedStage.projectId === activeProjectId
+    ? Math.max(reachedStage.index, currentStageIndex)
+    : currentStageIndex;
+
   // P2：主线步骤条只是只读投影，不改任何业务动作；构建中不提供返回入口。
   const flowDescriptor = useMemo(
     () => describeFlow(state.phase, {
       busy: state.phase === PHASES.BUILDING || state.agent.status === 'requesting',
+      reachedIndex: reachedStageIndex,
     }),
-    [state.phase, state.agent.status],
+    [state.phase, state.agent.status, reachedStageIndex],
   );
 
   // P2：模板卡状态（当前使用 / 候选模板 / 已采用），参考候选的来源始终标注。
@@ -1835,7 +1856,7 @@ export default function App() {
     frontendDispatch({ type: 'FRONTEND_RESET', keepImage: false });
     dispatch({ type: 'RESET_PROJECT' });
   };
-  const selectSession = (id) => dispatch({ type: 'SWITCH_SESSION', id });
+  const goToStage = (targetPhase) => dispatch({ type: 'PHASE_GOTO', phase: targetPhase });
 
   const handlePromptFeedback = async (text) => {
     if (promptBusy) return;
@@ -2702,9 +2723,14 @@ export default function App() {
           note: proposal.trace?.degraded ? '这一轮有步骤没有正常完成，结果可能不完整。' : null,
         }),
       });
-      const keepInput = proposal.status === 'needs-input' || proposal.status === 'rejected';
-      if (!keepInput) dispatch({ type: 'AGENT_CHAT_DRAFT_SET', value: '' });
-      if (!preserveAttachments && !keepInput) setAgentChatImages([]);
+      // 只要这一轮拿到了有效回应（proposal / needs-input / rejected），输入框就清空：
+      // 原话已经写进对话记录，追问时也不该把上一句继续留在输入框里。
+      // 只有请求异常（catch 分支）才保留草稿，供「重试上一轮」使用。
+      dispatch({ type: 'AGENT_CHAT_DRAFT_SET', value: '' });
+      const keepAttachments = preserveAttachments
+        || proposal.status === 'needs-input'
+        || proposal.status === 'rejected';
+      if (!keepAttachments) setAgentChatImages([]);
       setAgentChatImageError(null);
       setAgentChatImageBusy(false);
       return { ...result, projectState };
@@ -5061,7 +5087,7 @@ case PHASES.DEPLOY: {
   const agentComposer = selectAgentComposerState(state);
   const undoState = selectUndoState(state);
   // 右侧栏「Agent 对话」视图模型：安全字段 + 回调，组件不持有会话状态、也不自己发请求。
-  // 过程卡只给 lastRun（`normalizeChatRun` 白名单产物），trace 不进消息正文。
+  // 会话状态只保留 `normalizeChatRun` 的白名单产物；trace 不进消息正文。
   const agentChatViewModel = {
     projectId: state.project.activeId || null,
     projectName: String(state.store.name || state.agentDraft.storeName || '').trim(),
@@ -5193,14 +5219,13 @@ case PHASES.DEPLOY: {
       sidebar={(
         <Sidebar
           appName="口袋店长·轻启"
-          sessions={state.sessions}
-          activeSessionId={state.activeSessionId}
+          flow={flowDescriptor}
           currentStoreName={state.store.name}
           saveLabel={selectSaveLabel(state)}
           mode={state.project.mode}
           modelLabel={selectModelLabel(state)}
           onStartOnboarding={startOnboarding}
-          onSelectSession={selectSession}
+          onSelectStage={goToStage}
           onOpenWorkbench={handleOpenWorkbench}
           onOpenSettings={handleOpenSettings}
           onReset={reset}

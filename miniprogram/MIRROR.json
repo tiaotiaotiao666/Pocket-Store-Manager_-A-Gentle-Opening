@@ -6,7 +6,7 @@
   "generatedBy": "scripts/sync-miniprogram-mirror.cjs",
   "validateWith": "npm run mini:check",
   "digestAlgorithm": "sha256(第2列=path:sha256 排序后拼接)",
-  "digest": "30a411f3d34424e46fcf81848294a46fdd4a9373b1c40b0d9690c4da0f55ae13",
-  "fileCount": 149,
-  "syncedAt": "2026-11-20T04:06:41.465Z"
+  "digest": "0c5da001ae4440274548d85db1fba08da16dcd3d5eeb2dcda8005d0a0e3c364f",
+  "fileCount": 150,
+  "syncedAt": "2026-11-23T17:02:27.849Z"
 }

@@ -78,10 +78,11 @@ export function isFlowVisible(phase) {
 
 /**
  * @param {string} phase 当前相位
- * @param {{busy?:boolean}} [options]
+ * @param {{busy?:boolean, reachedIndex?:number}} [options]
+ *   reachedIndex：本次打开项目里已经走到过的最远步骤下标；缺省等于当前步骤。
  * @returns {{
  *   visible:boolean, currentKey:string, currentIndex:number, currentLabel:string,
- *   steps:Array<{key:string,label:string,hint:string,index:number,state:'done'|'current'|'todo'}>,
+ *   steps:Array<{key:string,label:string,hint:string,index:number,state:'done'|'current'|'todo',phase:string,visited:boolean,canVisit:boolean}>,
  *   back:{key:string,label:string,phase:string}|null,
  *   next:{key:string,label:string}|null
  * }}
@@ -90,15 +91,26 @@ export function describeFlow(phase, options = {}) {
   const currentKey = stageForPhase(phase);
   const currentIndex = FLOW_STAGE_KEYS.indexOf(currentKey);
   const busy = options && options.busy === true;
+  const reachedIndex = options && Number.isInteger(options.reachedIndex)
+    ? Math.max(currentIndex, Math.min(options.reachedIndex, FLOW_STAGES.length - 1))
+    : currentIndex;
   const current = FLOW_STAGES[currentIndex];
 
-  const steps = FLOW_STAGES.map((stage, index) => ({
-    key: stage.key,
-    label: stage.label,
-    hint: stage.hint,
-    index,
-    state: index < currentIndex ? 'done' : (index === currentIndex ? 'current' : 'todo'),
-  }));
+  const steps = FLOW_STAGES.map((stage, index) => {
+    const state = index < currentIndex ? 'done' : (index === currentIndex ? 'current' : 'todo');
+    return {
+      key: stage.key,
+      label: stage.label,
+      hint: stage.hint,
+      index,
+      state,
+      phase: stage.entryPhase,
+      visited: index <= reachedIndex,
+      // 到过的步骤可以双向跳：退回去改了还能点回来，不必一步步重走。
+      // 构建中/模型请求中不提供跳转，与「返回修改」同一道门禁。
+      canVisit: !busy && index !== currentIndex && index <= reachedIndex,
+    };
+  });
 
   const back = current.backPhase
     ? { key: FLOW_STAGES[currentIndex - 1].key, label: current.backLabel, phase: current.backPhase }

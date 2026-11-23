@@ -221,7 +221,7 @@
   text-transform: uppercase;
 }
 
-.sidebar-sessions {
+.sidebar-stages {
   flex: 1;
   min-height: 0;
   margin: 0;
@@ -229,71 +229,132 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   overflow-y: auto;
 }
 
-.sidebar-session {
+.sidebar-stage {
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 9px;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border-radius: var(--radius-sm);
-  text-align: left;
-  color: var(--ink-soft);
-  font-size: 13px;
-  transition: background 0.18s var(--ease-soft), color 0.18s var(--ease-soft);
-}
-
-.sidebar-session.is-step {
-  padding-left: 26px;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-.sidebar-session:hover {
+  border: 1px solid var(--line-soft);
   background: var(--bg-elev);
-  color: var(--ink);
+  text-align: left;
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.18s var(--ease-soft), background 0.18s var(--ease-soft), color 0.18s var(--ease-soft);
 }
 
-.sidebar-session.is-active {
-  background: var(--accent-soft);
-  color: var(--accent);
+.sidebar-stage.can-visit {
+  cursor: pointer;
+}
+
+.sidebar-stage:disabled {
+  cursor: default;
+}
+
+.sidebar-stage-index {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--line-soft);
+  color: var(--muted);
+  font-size: 11px;
   font-weight: 600;
 }
 
-.sidebar-session-dot {
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--faint);
-  transition: background 0.18s var(--ease-soft), transform 0.18s var(--ease-soft);
-}
-
-.sidebar-session.is-main .sidebar-session-dot {
-  width: 7px;
-  height: 7px;
-  background: var(--ink-soft);
-}
-
-.sidebar-session.is-step .sidebar-session-dot {
-  width: 4px;
-  height: 4px;
-  background: var(--faint);
-}
-
-.sidebar-session.is-active .sidebar-session-dot {
-  background: var(--accent);
-  transform: scale(1.15);
-}
-
-.sidebar-session-title {
+.sidebar-stage-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+}
+
+.sidebar-stage-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.sidebar-stage-hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-stage.is-current {
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
+}
+
+.sidebar-stage.is-current .sidebar-stage-index {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.sidebar-stage.is-done .sidebar-stage-index {
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sidebar-stage.is-todo {
+  border-color: var(--line);
+  background: transparent;
+  box-shadow: none;
+}
+
+.sidebar-stage.is-todo .sidebar-stage-label,
+.sidebar-stage.is-todo .sidebar-stage-hint {
+  color: var(--muted);
+}
+
+/* 已经到过、只是当前不在那一步的块（退回去之后要能点回来）：保持白卡与正常可读性。 */
+.sidebar-stage.is-todo.can-visit {
+  border-color: var(--line-soft);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-xs);
+}
+
+.sidebar-stage.is-todo.can-visit .sidebar-stage-label {
+  color: var(--ink);
+}
+
+.sidebar-stage.is-todo.can-visit .sidebar-stage-hint {
+  color: var(--muted);
+}
+
+.sidebar-stage.is-todo.can-visit .sidebar-stage-index {
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sidebar-stage.can-visit:hover {
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
+}
+
+.sidebar-stage.can-visit:hover .sidebar-stage-label {
+  color: var(--accent);
+}
+
+.sidebar-stages-note {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
 .sidebar-foot {

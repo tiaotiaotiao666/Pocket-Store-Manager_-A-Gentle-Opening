@@ -20,6 +20,14 @@ Component({
       type: Boolean,
       value: false,
     },
+    tableCount: {
+      type: Number,
+      value: 0,
+    },
+    tablesLoading: {
+      type: Boolean,
+      value: false,
+    },
   },
 
   methods: {

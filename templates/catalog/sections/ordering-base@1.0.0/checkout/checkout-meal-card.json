@@ -21,8 +21,8 @@
     "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
     "lineStart": 22,
-    "lineEnd": 60,
-    "digest": "sha256:e6d68ad3aeb1770e704cb7eec7a30a2e527303c5376aecf33bac9417ab8650c7"
+    "lineEnd": 65,
+    "digest": "sha256:575864532c44cae7922e130ba04e877da22e8a2248b993b1b7089bd451c8d499"
   },
   "template": {
     "occurrences": 1,
@@ -30,8 +30,8 @@
     "snippets": [
       {
         "lineStart": 22,
-        "lineEnd": 60,
-        "code": "<view class=\"surface-card checkout__card\">\n        <view class=\"checkout__row\">\n          <text class=\"checkout__row-label\">用餐方式</text>\n          <text class=\"checkout__row-value\">{{modeText}}</text>\n        </view>\n        <view class=\"checkout__row\">\n          <text class=\"checkout__row-label\">桌号</text>\n          <text class=\"checkout__row-value\">{{tableName || '无需桌号'}}</text>\n        </view>\n        <view class=\"checkout__row\">\n          <text class=\"checkout__row-label\">下单身份</text>\n          <text class=\"checkout__row-value\">{{identityLabel}}</text>\n        </view>\n        <view wx:if=\"{{mode === 'DINE_IN'}}\" class=\"checkout__tables\">\n          <text class=\"checkout__tables-label\">门店桌号</text>\n          <block wx:if=\"{{tablesLoading}}\">\n            <text class=\"checkout__tables-hint\">正在读取门店桌号…</text>\n          </block>\n          <block wx:elif=\"{{tablesError}}\">\n            <text class=\"checkout__tables-hint\">{{tablesError}}</text>\n            <view class=\"checkout__tables-retry\" bind:tap=\"onRetryTables\">重试</view>\n          </block>\n          <block wx:elif=\"{{tableOptions.length === 0}}\">\n            <text class=\"checkout__tables-hint\">当前门店还没有可用桌号，请联系店员确认</text>\n          </block>\n          <block wx:else>\n            <view\n              wx:for=\"{{tableOptions}}\"\n              wx:key=\"id\"\n              class=\"checkout__table {{tableName === item.name ? 'checkout__table--active' : ''}}\"\n              data-id=\"{{item.id}}\"\n              data-name=\"{{item.name}}\"\n              bind:tap=\"onPickTable\"\n            >\n              {{item.name}}\n            </view>\n          </block>\n        </view>\n      </view>"
+        "lineEnd": 65,
+        "code": "<view class=\"surface-card checkout__card\">\n        <view class=\"checkout__row\">\n          <text class=\"checkout__row-label\">用餐方式</text>\n          <text class=\"checkout__row-value\">{{modeText}}</text>\n        </view>\n        <view class=\"checkout__row\">\n          <text class=\"checkout__row-label\">桌号</text>\n          <text class=\"checkout__row-value\">{{tableName || '无需桌号'}}</text>\n        </view>\n        <view class=\"checkout__row\">\n          <text class=\"checkout__row-label\">下单身份</text>\n          <text class=\"checkout__row-value\">{{identityLabel}}</text>\n        </view>\n        <view wx:if=\"{{mode === 'DINE_IN'}}\" class=\"checkout__tables\">\n          <view class=\"checkout__tables-head\">\n            <text class=\"checkout__tables-title\">选择桌号</text>\n            <text wx:if=\"{{tableName}}\" class=\"checkout__tables-picked\">已选 {{tableName}} 桌</text>\n          </view>\n          <view wx:if=\"{{tablesLoading}}\" class=\"checkout__tables-status\">\n            <text class=\"checkout__tables-hint\">正在读取门店桌号…</text>\n          </view>\n          <view wx:elif=\"{{tablesError}}\" class=\"checkout__tables-status\">\n            <text class=\"checkout__tables-hint\">{{tablesError}}</text>\n            <view class=\"checkout__tables-retry\" bind:tap=\"onRetryTables\">重试</view>\n          </view>\n          <view wx:elif=\"{{tableOptions.length === 0}}\" class=\"checkout__tables-status\">\n            <text class=\"checkout__tables-hint\">当前门店还没有可用桌号，请联系店员确认</text>\n          </view>\n          <scroll-view wx:else class=\"checkout__tables-scroll\" scroll-x enable-flex>\n            <view class=\"checkout__tables-list\">\n              <view\n                wx:for=\"{{tableOptions}}\"\n                wx:key=\"id\"\n                class=\"checkout__table {{tableName === item.name ? 'checkout__table--active' : ''}}\"\n                data-id=\"{{item.id}}\"\n                data-name=\"{{item.name}}\"\n                bind:tap=\"onPickTable\"\n              >\n                {{item.name}}\n              </view>\n            </view>\n          </scroll-view>\n        </view>\n      </view>"
       }
     ]
   },
@@ -81,9 +81,14 @@
       "checkout__row-label",
       "checkout__row-value",
       "checkout__tables",
-      "checkout__tables-label",
+      "checkout__tables-head",
+      "checkout__tables-title",
+      "checkout__tables-picked",
+      "checkout__tables-status",
       "checkout__tables-hint",
       "checkout__tables-retry",
+      "checkout__tables-scroll",
+      "checkout__tables-list",
       "checkout__table",
       "{{tableName",
       "===",
@@ -127,26 +132,65 @@
       {
         "selector": ".checkout__tables",
         "declarations": [
-          "display: flex",
-          "align-items: center",
           "margin-top: 12rpx",
           "padding-top: 16rpx",
           "border-top: 2rpx solid rgba(230, 222, 210, 0.6)"
         ]
       },
       {
-        "selector": ".checkout__tables-label",
+        "selector": ".checkout__tables-head",
         "declarations": [
-          "margin-right: 14rpx",
+          "display: flex",
+          "align-items: baseline",
+          "justify-content: space-between"
+        ]
+      },
+      {
+        "selector": ".checkout__tables-title",
+        "declarations": [
+          "font-size: 24rpx",
+          "font-weight: 600",
+          "color: var(--color-text)"
+        ]
+      },
+      {
+        "selector": ".checkout__tables-picked",
+        "declarations": [
           "font-size: 22rpx",
-          "color: var(--color-muted)"
+          "font-weight: 600",
+          "color: var(--color-primary)"
+        ]
+      },
+      {
+        "selector": ".checkout__tables-status",
+        "declarations": [
+          "display: flex",
+          "align-items: center",
+          "justify-content: space-between",
+          "margin-top: 10rpx"
+        ]
+      },
+      {
+        "selector": ".checkout__tables-scroll",
+        "declarations": [
+          "width: 100%",
+          "margin-top: 12rpx",
+          "white-space: nowrap"
+        ]
+      },
+      {
+        "selector": ".checkout__tables-list",
+        "declarations": [
+          "display: flex",
+          "align-items: center"
         ]
       },
       {
         "selector": ".checkout__table",
         "declarations": [
+          "flex: 0 0 auto",
           "margin-right: 12rpx",
-          "padding: 8rpx 22rpx",
+          "padding: 10rpx 26rpx",
           "border-radius: 999rpx",
           "background: #fdf0e4",
           "color: #8a5a2b",
@@ -158,6 +202,7 @@
         "selector": ".checkout__table--active",
         "declarations": [
           "border: 2rpx solid var(--color-primary)",
+          "background: var(--color-primary-soft)",
           "color: var(--color-primary)"
         ]
       },
@@ -205,9 +250,11 @@
     "themeVars": [
       "--color-border",
       "--color-muted",
-      "--color-primary"
+      "--color-primary",
+      "--color-primary-soft",
+      "--color-text"
     ],
-    "selectorCount": 13
+    "selectorCount": 18
   },
   "reuse": {
     "level": "direct-wxml",
@@ -230,6 +277,6 @@
   ],
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:e6d68ad3aeb1770e704cb7eec7a30a2e527303c5376aecf33bac9417ab8650c7"
+    "digest": "sha256:575864532c44cae7922e130ba04e877da22e8a2248b993b1b7089bd451c8d499"
   }
 }

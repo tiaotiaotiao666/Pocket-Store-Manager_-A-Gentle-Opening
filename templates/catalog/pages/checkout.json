@@ -14,7 +14,7 @@
       "index.wxml",
       "index.wxss"
     ],
-    "digest": "sha256:fa9381682d67a66f4f67bb99717247a53a927fb737b73ae9b65add31b8db9e13"
+    "digest": "sha256:819101fc41af6b48277b5542de342a86106058c9d7d510939b53849f6d886c87"
   },
   "components": [
     {
@@ -28,7 +28,7 @@
       "tag": "error-banner",
       "componentId": "error-banner",
       "mode": "always",
-      "sourceLine": 99,
+      "sourceLine": 104,
       "usage": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onCloseError\" />"
     }
   ],

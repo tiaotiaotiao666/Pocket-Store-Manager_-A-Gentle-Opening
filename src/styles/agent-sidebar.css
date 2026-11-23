@@ -2,7 +2,7 @@
  * 右栏「Agent 对话」视图（T3）。
  *
  * 只跟随既有 CSS 变量与命名风格；不改动 chat.css 里既有的气泡/过程卡样式，
- * 过程卡复用 `.chat-process*`，这里只负责侧栏容器、消息日志与错误/重试区。
+ * 这里只负责侧栏容器、消息日志、变更卡与错误/重试区。
  */
 
 .agent-sidebar {
@@ -425,29 +425,11 @@
   font-size: 11px;
 }
 
-/* 一轮结果的分组：过程卡 + 变更卡 + 参考图摘要，紧跟产生它的那一轮消息。 */
+/* 一轮结果的分组：变更卡 + 参考图摘要，紧跟产生它的那一轮消息。 */
 .agent-sidebar-turn {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-/* 过程卡在侧栏里更紧凑；`.chat-process*` 本体沿用 chat.css。 */
-.agent-sidebar .chat-process {
-  flex: none;
-  padding: 10px 11px;
-  gap: 7px;
-}
-
-.agent-sidebar .chat-process-badge,
-.agent-sidebar .chat-process-step {
-  font-size: 11.5px;
-}
-
-.agent-sidebar .chat-process-meta,
-.agent-sidebar .chat-process-notice,
-.agent-sidebar .chat-process-headline {
-  font-size: 11px;
 }
 
 /* 本轮图片附件：只占侧栏宽度，不抢走消息区的滚动空间。 */

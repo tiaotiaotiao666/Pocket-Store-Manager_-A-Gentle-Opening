@@ -1,4 +1,4 @@
-import { FolderKanban, Settings, Sparkles } from 'lucide-react';
+import { Check, FolderKanban, Settings, Sparkles } from 'lucide-react';
 
 const MODE_LABEL = {
   desktop: '桌面版 · 数据存在本机',
@@ -7,18 +7,19 @@ const MODE_LABEL = {
 
 export default function Sidebar({
   appName = '口袋店长·轻启',
-  sessions = [],
-  activeSessionId,
+  flow = null,
   currentStoreName,
   saveLabel = { tone: 'saved', text: '尚未保存' },
   mode = 'desktop',
   modelLabel = '',
   onStartOnboarding,
-  onSelectSession,
+  onSelectStage,
   onOpenWorkbench,
   onOpenSettings,
   onReset,
 }) {
+  const steps = flow && Array.isArray(flow.steps) ? flow.steps : [];
+
   return (
     <div className="sidebar">
       <div className="sidebar-brand">
@@ -54,26 +55,47 @@ export default function Sidebar({
       </div>
 
       <div className="sidebar-section">
-        <span className="sidebar-section-label">会话记录</span>
-        <ul className="sidebar-sessions">
-          {sessions.map((session) => {
-            const step = session.kind === 'step';
-            return (
-              <li key={session.id}>
-                <button
-                  type="button"
-                  className={`sidebar-session${step ? ' is-step' : ' is-main'}${session.id === activeSessionId ? ' is-active' : ''}`}
-                  onClick={() => onSelectSession?.(session.id)}
-                  aria-label={`会话：${session.title}`}
-                  aria-current={session.id === activeSessionId ? 'true' : undefined}
-                >
-                  <span className="sidebar-session-dot" aria-hidden="true" />
-                  <span className="sidebar-session-title">{session.title}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <span className="sidebar-section-label">开店步骤</span>
+        {steps.length ? (
+          <>
+            <ol className="sidebar-stages" aria-label="开店步骤">
+              {steps.map((step) => {
+                const canVisit = step.canVisit === true;
+                const stepNo = step.index + 1;
+                const isCurrent = step.state === 'current';
+                const goBack = step.index < (flow.currentIndex ?? 0);
+                return (
+                  <li key={step.key}>
+                    <button
+                      type="button"
+                      className={`sidebar-stage is-${step.state}${canVisit ? ' can-visit' : ''}`}
+                      onClick={canVisit ? () => onSelectStage?.(step.phase) : undefined}
+                      disabled={!canVisit}
+                      aria-current={isCurrent ? 'step' : undefined}
+                      aria-label={canVisit
+                        ? (goBack
+                          ? `第 ${stepNo} 步 ${step.label}：返回这一步修改`
+                          : `第 ${stepNo} 步 ${step.label}：回到这一步继续`)
+                        : `第 ${stepNo} 步 ${step.label}`}
+                      title={step.hint}
+                    >
+                      <span className="sidebar-stage-index" aria-hidden="true">
+                        {step.visited && !isCurrent ? <Check size={11} /> : stepNo}
+                      </span>
+                      <span className="sidebar-stage-copy">
+                        <span className="sidebar-stage-label">{step.label}</span>
+                        <span className="sidebar-stage-hint">{step.hint}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="sidebar-stages-note">退回去改完，点后面的步骤就能回到刚才那一步，已填内容会保留。</p>
+          </>
+        ) : (
+          <p className="sidebar-stages-note">点「开始开店」后，这里会显示开店步骤。</p>
+        )}
       </div>
 
       <div className="sidebar-foot">

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell, nativeImage, safeStorage } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, shell, nativeImage, safeStorage, Menu } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
@@ -19,6 +19,7 @@ const { registerFrontendReconstructIpc } = require('./frontend-reconstruct-ipc.c
 const { createModelCredentials } = require('./model-credentials.cjs');
 const { registerModelIpc } = require('./model-ipc.cjs');
 const { openExternalLink, isAllowedAppUrl } = require('./external-link.cjs');
+const { registerWindowZoom } = require('./window-zoom.cjs');
 
 /**
  * 选择一个真正可写的用户数据目录。
@@ -236,6 +237,41 @@ function createWindow() {
       sandbox: true,
     },
   });
+
+  // T0 缩放：把默认菜单里那套无上下限的 zoomIn/zoomOut/resetZoom 角色换成本模块的受控实现；
+  // 同时显式保留编辑/重新加载/开发者工具，避免换菜单把 Ctrl+C/V、Ctrl+R、F12 一起弄丢。
+  // 视图里的「当前缩放：xx%」按真实 zoomFactor 重建菜单，保证显示值与实际比例一致。
+  const applyZoomMenu = (factor) => {
+    const zoomItems = zoom.buildTemplate(factor);
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      {
+        label: '编辑',
+        submenu: [
+          { role: 'undo', label: '撤销' },
+          { role: 'redo', label: '重做' },
+          { type: 'separator' },
+          { role: 'cut', label: '剪切' },
+          { role: 'copy', label: '复制' },
+          { role: 'paste', label: '粘贴' },
+          { role: 'selectAll', label: '全选' },
+        ],
+      },
+      {
+        label: '视图',
+        submenu: [
+          ...zoomItems,
+          { type: 'separator' },
+          { role: 'reload', label: '重新加载' },
+          { role: 'forceReload', label: '强制重新加载' },
+          { role: 'toggleDevTools', label: '开发者工具' },
+          { type: 'separator' },
+          { role: 'togglefullscreen', label: '全屏' },
+        ],
+      },
+    ]));
+  };
+  const zoom = registerWindowZoom(window, { userDataDir, onZoomChange: (factor) => applyZoomMenu(factor) });
+  applyZoomMenu(zoom.initialFactor);
 
   if (app.isPackaged) window.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   else window.loadURL('http://127.0.0.1:5173');

@@ -921,3 +921,40 @@
 .agent-chat-attachments.is-compact .agent-chat-attachments-count {
   font-size: 10.5px;
 }
+/* 有图态：标题与用途标签各自单行/换行，中文不再被挤成竖排；说明最多两行 */
+.agent-chat-attachments-head {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.agent-chat-attachments-title {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.agent-chat-attachments-kinds {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.agent-chat-attachments-kind {
+  white-space: nowrap;
+}
+
+.agent-chat-attachments-hint {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.agent-chat-attachment-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -135,3 +135,13 @@ test('本轮图片：0 张时是紧凑入口，选图后才展开；保留用途
   assert.match(css, /\.agent-chat-attachments\.is-compact \.agent-chat-attachments-hint \{[^}]*-webkit-line-clamp: 1;/);
   assert.match(css, /\.agent-chat-attachments\.is-compact \.agent-chat-attachments-add \{[^}]*width: 30px;/);
 });
+
+test('本轮图片：有图态标题单行、标签换行，中文不被挤成竖排，说明最多两行', () => {
+  const css = read('src/styles/agent-sidebar.css');
+  assert.match(css, /\.agent-chat-attachments-title \{[^}]*white-space: nowrap;/, '标题必须单行，不得一字一行');
+  assert.match(css, /\.agent-chat-attachments-title \{[^}]*flex: 0 0 auto;/, '标题不得被标签挤压缩窄');
+  assert.match(css, /\.agent-chat-attachments-kinds \{[^}]*flex-wrap: wrap;/, '用途标签整体换行而不是压缩标题');
+  assert.match(css, /\.agent-chat-attachments-kind \{[^}]*white-space: nowrap;/, '单个用途标签不得断行');
+  assert.match(css, /\.agent-chat-attachments-hint \{[^}]*-webkit-line-clamp: 2;/, '有图态说明最多两行');
+  assert.match(css, /\.agent-chat-attachment-name \{[^}]*text-overflow: ellipsis;/, '文件名超长省略而不是撑破面板');
+});

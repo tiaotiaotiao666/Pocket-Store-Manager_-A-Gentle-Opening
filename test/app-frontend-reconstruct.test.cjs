@@ -871,10 +871,11 @@ test('P4 ScreenReferencePanel 保留旧链路并承载新面板；新控件名�
 test('P4 agent:smoke 增加候选前端主链 UIA 断言（不伪造通过）', () => {
   const source = read(SMOKE_PATH);
   assert.match(source, /FRONTEND_PANEL_TEXTS/);
-  assert.match(source, /'门店基本资料'/);
-  assert.match(source, /'菜品资料与菜单图片'/);
-  assert.match(source, /'门店环境图片'/);
-  assert.match(source, /'参考小程序截图'/);
+  assert.match(source, /'门店经营资料'/);
+  assert.match(source, /'风格与图片素材'/);
+  assert.match(source, /'识别菜品并回写'/);
+  assert.match(source, /'添加环境图片'/);
+  assert.match(source, /'上传截图'/);
   assert.match(source, /'识别并生成候选方案'/);
   assert.match(source, /'补充要求'/);
   assert.match(source, /'目标页面：首页'/);

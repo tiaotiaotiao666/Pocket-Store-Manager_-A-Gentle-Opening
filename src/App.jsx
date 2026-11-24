@@ -4799,11 +4799,26 @@ export default function App() {
               showHeader={false}
               showIdentity={false}
               showImages={false}
+              showStyle={false}
               showSubmit={false}
               onFieldChange={handleFieldChange}
-              onStyleChange={(id) => dispatch({ type: 'SET_STYLE', id })}
             />
           </>
+        );
+        const styleSection = (
+          <StoreInfoStep
+            store={{ ...state.store, intro: state.store.notes }}
+            storeTypes={storeTypesForForm}
+            styles={STYLE_PRESETS}
+            styleId={state.visual.styleId}
+            embedded
+            showHeader={false}
+            showIdentity={false}
+            showContact={false}
+            showImages={false}
+            showSubmit={false}
+            onStyleChange={(id) => dispatch({ type: 'SET_STYLE', id })}
+          />
         );
         const dishesSection = (
           <>
@@ -4940,6 +4955,7 @@ export default function App() {
             <StoreInfoSections
               basic={basicSection}
               dishes={dishesSection}
+              style={styleSection}
               environment={environmentSection}
               reference={referenceSection}
             />

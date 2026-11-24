@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "frontend-source-bundle.v1",
+  "base": {
+    "id": "ordering-base",
+    "version": "1.0.0",
+    "treeSha256": "sha256:df05a2625d343acf6d9936e55a27d63dbb8941783fc087fb6c20c0a22247303a"
+  },
+  "targetPage": "menu",
+  "targetPages": ["menu"],
+  "files": [
+    {
+      "path": "pages/menu/index.wxml",
+      "sha256": "sha256:1547a4fe5305f465cd390b765f9c9a7efd4d7165ec978cebb1218dd5bf87b2c9"
+    },
+    {
+      "path": "pages/menu/index.wxss",
+      "sha256": "sha256:f9aecdcee8bff52de05ae785c8be4ae5a4d58c7fe8c70de2b71292191c118e68"
+    },
+    {
+      "path": "components/product-card/index.wxml",
+      "sha256": "sha256:cebe896a6cceb8ee2b620b6c6bd495ee49e6ce868541e72ed37fa3f540dd3fcf"
+    },
+    {
+      "path": "components/product-card/index.wxss",
+      "sha256": "sha256:469ffa7178929dc775bc7e7a48fa7c0c8f19a2e7dbe6a40d2ee2b58136ecce0e"
+    }
+  ],
+  "deleted": [],
+  "components": [
+    {
+      "componentId": "product-card",
+      "scope": "page",
+      "pages": ["menu"]
+    }
+  ],
+  "assets": []
+}

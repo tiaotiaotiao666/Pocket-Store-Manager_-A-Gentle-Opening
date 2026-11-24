@@ -1,7 +1,7 @@
 {
   "contractVersion": "app-capabilities-snapshot.v1",
   "catalogVersion": "app-capabilities.v1",
-  "digest": "c6df6763",
+  "digest": "3b590eed",
   "catalog": {
     "catalogVersion": "app-capabilities.v1",
     "fields": [
@@ -15,7 +15,7 @@
         "confirmWhenEmpty": true,
         "limits": {
           "minChars": 0,
-          "maxChars": 48
+          "maxChars": 20
         },
         "writeback": {
           "agentDraft": "storeName",

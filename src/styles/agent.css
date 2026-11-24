@@ -773,6 +773,52 @@
   cursor: not-allowed;
 }
 
+/* ── 问题 7：店名字段（当前字数/20 + 截断提示），不影响其它输入框 ── */
+.store-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+}
+
+.store-name-input-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.store-name-input-row .agent-input {
+  padding-right: 58px;
+}
+
+.store-name-counter {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.store-name-counter.is-at-limit {
+  color: #b07b3a;
+  font-weight: 600;
+}
+
+.store-name-notice {
+  margin: 0;
+  color: #b07b3a;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.store-name-notice.is-soft {
+  color: var(--muted);
+}
+
 .agent-textarea {
   resize: vertical;
   min-height: 58px;

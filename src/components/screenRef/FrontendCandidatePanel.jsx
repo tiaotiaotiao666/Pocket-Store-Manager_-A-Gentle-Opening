@@ -100,6 +100,7 @@ export default function FrontendCandidatePanel({
       role="region"
       aria-label="参考截图候选方案"
       id="frontend-reconstruct-panel"
+      data-jump-id="frontend-candidates"
     >
       <header className="frontend-candidate-head">
         <h4 className="frontend-candidate-title">候选前端方案</h4>

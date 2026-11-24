@@ -211,11 +211,11 @@ test('规则8：菜品 id 重复失败', async () => {
 test('规则3：结构体检（超长文案、总键数超限）整包失败', async () => {
   const { validatePresentationPatch, PRESENTATION_PATCH_CODES } = await loadPatch();
 
-  // 边界内合法：店名 48 码点 + 口号 40 码点 + 单菜描述 60 码点
+  // 边界内合法：店名 20 码点（与店名输入上限同源）+ 口号 40 码点 + 单菜描述 60 码点
   const withinLimit = validatePresentationPatch(
     {
       copy: {
-        storeName: 'a'.repeat(48),
+        storeName: 'a'.repeat(20),
         tagline: 'b'.repeat(40),
         dishes: [{ id: 'dish-a', description: '字'.repeat(60) }],
       },
@@ -223,6 +223,11 @@ test('规则3：结构体检（超长文案、总键数超限）整包失败', a
     FEATURE_CTX,
   );
   assert.equal(withinLimit.ok, true);
+
+  // 店名 21 码点 → 超限（店名上限只有一份，展示文案不再允许比输入更长）
+  const overStoreName = validatePresentationPatch({ copy: { storeName: 'a'.repeat(21) } }, FEATURE_CTX);
+  assert.equal(overStoreName.ok, false);
+  assert.equal(overStoreName.code, PRESENTATION_PATCH_CODES.INVALID);
 
   // 口号 41 码点 → 超限
   const overTagline = validatePresentationPatch({ copy: { tagline: '甲'.repeat(41) } }, FEATURE_CTX);

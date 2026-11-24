@@ -128,6 +128,7 @@ export default function AgentSidebarPanel({
   onRetry,
   onOpenCandidates,
   onUndoApplied,
+  pendingConfirm = null,
 }) {
   const view = chat && typeof chat === 'object' ? chat : {};
   const messages = Array.isArray(view.messages) ? view.messages : [];
@@ -275,6 +276,9 @@ export default function AgentSidebarPanel({
                 // 历史轮次的变更卡只作记录，撤销走全局撤销。
                 canUndo={canUndoApplied && Boolean(item.applied) && item.applied === applied}
                 onUndo={onUndoApplied}
+                pendingConfirm={item.pending ? pendingConfirm : null}
+                // 同一轮既有 stale 又有待确认：说明项目已变化，这一轮的确认入口一律不许再点。
+                pendingExpired={Boolean(item.pending && item.stale)}
               />
               {item.candidate ? (
                 <section className="agent-sidebar-candidate" aria-label="参考图重构摘要">

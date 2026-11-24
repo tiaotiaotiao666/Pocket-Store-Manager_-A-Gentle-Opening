@@ -1,4 +1,5 @@
 import { RotateCcw, ShieldAlert } from 'lucide-react';
+import { PENDING_CONFIRM_NOTE } from '../../domain/agentPendingConfirm.mjs';
 
 /**
  * 统一会话「本轮已写入」卡片。
@@ -24,10 +25,15 @@ export default function AppAssistantChangeCard({
   stale = null,
   canUndo = false,
   onUndo,
+  pendingConfirm = null,
+  pendingExpired = false,
 }) {
   const entries = applied && Array.isArray(applied.entries) ? applied.entries : [];
   const pendingFields = pending && Array.isArray(pending.fields) ? pending.fields : [];
   const pendingActions = pending && Array.isArray(pending.actions) ? pending.actions : [];
+  // 待确认项逐条给出「到哪确认」；App 没接进来时退化成原来的纯文字说明，绝不出现点不动的按钮。
+  const confirmItems = pendingConfirm && Array.isArray(pendingConfirm.items) ? pendingConfirm.items : [];
+  const onGoConfirm = pendingConfirm && typeof pendingConfirm.onGo === 'function' ? pendingConfirm.onGo : null;
   const hasPending = pendingFields.length > 0 || pendingActions.length > 0;
 
   if (!entries.length && !hasPending && !stale) return null;
@@ -71,9 +77,45 @@ export default function AppAssistantChangeCard({
             <ShieldAlert size={13} aria-hidden="true" />
             有 {pendingFields.length + pendingActions.length} 项需要你确认，尚未写入
           </p>
-          <p className="agent-chat-pending-note">
-            涉及清空已有值、删除菜品、素材、AppID、模板或导出等高风险操作；确认入口仍走原有业务面板。
-          </p>
+          <p className="agent-chat-pending-note">{PENDING_CONFIRM_NOTE}</p>
+          {confirmItems.length ? (
+            <ul className="agent-chat-pending-list">
+              {confirmItems.map((item) => (
+                <li className="agent-chat-pending-item" key={item.key}>
+                  <span className="agent-chat-pending-item-text">
+                    <span className="agent-chat-pending-item-title">{item.title}</span>
+                    <span className="agent-chat-pending-item-detail">{item.detail}</span>
+                  </span>
+                  {item.jumpId && onGoConfirm ? (
+                    <button
+                      type="button"
+                      className="agent-chat-pending-jump"
+                      // 同一屏可能有多条待确认：可见文案统一，读屏名按条目区分，避免同名按钮。
+                      aria-label={`前往确认：${item.title}`}
+                      disabled={pendingExpired || item.sameTargetAsHint === true}
+                      title={item.sameTargetAsHint ? '上面的提示已经指向同一处' : `定位到「${item.title}」的确认入口`}
+                      onClick={() => onGoConfirm(item)}
+                    >
+                      前往确认
+                    </button>
+                  ) : (
+                    <span className="agent-chat-pending-item-hint">
+                      {item.sameTargetAsHint ? '见上方提示' : '请到对应业务面板确认'}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="agent-chat-pending-note">
+              涉及清空已有值、删除菜品、素材、AppID、模板或导出等高风险操作；确认入口仍走原有业务面板。
+            </p>
+          )}
+          {pendingExpired ? (
+            <p className="agent-chat-pending-note">
+              这一轮的提案已经过期（项目在此期间有变化），请重新发一次再确认。
+            </p>
+          ) : null}
         </section>
       ) : null}
 

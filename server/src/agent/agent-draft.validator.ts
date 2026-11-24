@@ -17,7 +17,8 @@ import type {
  * - readyForReview 仅在 missingFields 与 errors 同时为空时为 true。
  */
 
-const MAX_STORE_NAME = 48;
+// 店名上限与新输入规则同源：src/domain/storeName.mjs 的 STORE_NAME_MAX_LENGTH（20 个可见字符）。
+const MAX_STORE_NAME = 20;
 const MAX_CATEGORY = 24;
 const MAX_DISH_NAME = 24;
 const MAX_DESCRIPTION = 60;

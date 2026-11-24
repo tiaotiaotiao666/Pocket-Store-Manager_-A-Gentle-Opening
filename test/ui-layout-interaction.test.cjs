@@ -90,10 +90,13 @@ test('等待提示已接入右侧 Agent 栏，并且 App 的跳转只滚到控�
   assert.match(app, /import \{ selectAgentWaitingHint \} from '\.\/domain\/agentWaiting\.mjs'/, '口径只能来自 domain');
   assert.match(app, /selectAgentWaitingHint\(\{/);
   assert.match(app, /onWaitingGo: handleWaitingGo/);
-  const handler = app.slice(app.indexOf('const handleWaitingGo'), app.indexOf('const handleWaitingGo') + 900);
-  assert.match(handler, /scrollIntoView/, '跳转要滚到控件');
-  assert.match(handler, /classList\.add\('is-jump-flash'\)/, '到达后要有高亮反馈');
-  assert.doesNotMatch(handler, /dispatch\(|\.click\(\)/, '跳转不得代替用户点击');
+  // 跳转实现收敛在 jumpToControl 里（等待提示与待确认卡片共用同一套滚动+高亮）
+  const jump = app.slice(app.indexOf('const jumpToControl'), app.indexOf('const jumpToControl') + 900);
+  assert.match(jump, /scrollIntoView/, '跳转要滚到控件');
+  assert.match(jump, /classList\.add\('is-jump-flash'\)/, '到达后要有高亮反馈');
+  assert.doesNotMatch(jump, /dispatch\(|\.click\(\)/, '跳转不得代替用户点击');
+  const handler = app.slice(app.indexOf('const handleWaitingGo'), app.indexOf('const handleWaitingGo') + 200);
+  assert.match(handler, /jumpToControl\(jumpId\)/, '等待提示只能走同一条跳转');
 });
 
 test('跳转锚点在真实控件上：门店资料确认按钮 + 模板「就用这套」', () => {

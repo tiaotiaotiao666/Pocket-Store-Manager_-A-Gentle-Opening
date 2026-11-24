@@ -183,6 +183,7 @@ export default function TemplateRevisePanel({
     <section
       className={`template-revise${failed ? ' is-failed' : ''}${busy ? ' is-busy' : ''}`}
       aria-label="模板修改"
+      data-jump-id="template-revise"
     >
       <header className="template-revise-head">
         <div className="template-revise-heading">

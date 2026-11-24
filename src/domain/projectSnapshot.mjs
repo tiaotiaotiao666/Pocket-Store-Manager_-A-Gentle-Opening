@@ -10,6 +10,8 @@
  */
 
 import { PHASES } from '../state/constants.mjs';
+// 老项目读入沿用兼容上限（48）：历史店名超过 20 字也不能在打开时被静默改写。
+import { STORE_NAME_LEGACY_MAX_LENGTH } from './storeName.mjs';
 import { features as catalogFeatures } from './catalog.mjs';
 import { STYLE_PRESETS } from './storeBrief.mjs';
 import { normalizeAgentDraft, validateAgentDraft, buildNextQuestion } from './agentDraft.mjs';
@@ -264,7 +266,7 @@ export function restorePresentationSlice(saved, selectedId, dishes) {
 function pickStore(store) {
   const source = isPlainObject(store) ? store : {};
   return {
-    name: text(source.name, 48),
+    name: text(source.name, STORE_NAME_LEGACY_MAX_LENGTH),
     type: text(source.type, 32),
     notes: text(source.notes ?? source.intro, 200),
     address: text(source.address, 120),
@@ -344,7 +346,7 @@ function pickVisual(visual) {
 function pickAgentDraft(draft) {
   const normalized = normalizeAgentDraft(draft);
   return {
-    storeName: text(normalized.storeName, 48),
+    storeName: text(normalized.storeName, STORE_NAME_LEGACY_MAX_LENGTH),
     category: text(normalized.category, 24),
     businessHours: text(normalized.businessHours, 120),
     fulfillment: { dineIn: Boolean(normalized.fulfillment.dineIn), takeaway: Boolean(normalized.fulfillment.takeaway) },

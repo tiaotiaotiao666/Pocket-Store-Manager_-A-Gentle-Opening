@@ -60,7 +60,9 @@ import {
 import { toDocument, fromDocument } from './domain/projectSnapshot.mjs';
 import { buildProposalApplyPlan } from './domain/appAssistantProposal.mjs';
 import { requestAppAssistant } from './services/appAssistant/appAssistantService.js';
-import { executeAppAssistantActions, selectUnexecutedActions } from './services/appAssistant/actionExecutor.js';
+import { executeAppAssistantActions, selectUnexecutedActions, APP_ASSISTANT_ACTION_HANDLERS } from './services/appAssistant/actionExecutor.js';
+import { describePendingConfirmations } from './domain/agentPendingConfirm.mjs';
+import { findAppCapabilityField } from './domain/appCapabilities.mjs';
 import { evaluateLocal, mergeComposerResult, mergeTargetPreflight } from './domain/preflightRules.mjs';
 import { createProjectService } from './services/projectService.js';
 import { createProjectThumbnailLoader } from './services/projectThumbnailLoader.js';
@@ -2686,7 +2688,12 @@ export default function App() {
         // 待确认项只登记摘要，绝不自动写入。
         // 动作请求里只有 navigate.phase 可自动执行；其余一律留给原业务面板确认。
         pending: {
-          fields: applyPlan.pendingConfirmations.map((item) => ({ opId: item.opId, fieldId: item.fieldId ?? null })),
+          fields: applyPlan.pendingConfirmations.map((item) => ({
+            opId: item.opId,
+            fieldId: item.fieldId ?? null,
+            // 带上 op：删菜和「清空/改写已有值」要走不同的确认入口，卡片文案也不同。
+            op: item.op ?? null,
+          })),
           actions: selectUnexecutedActions(executeAppAssistantActions(proposal.actionRequests, {
             state: frozenState,
             navigate: (nextPhase) => dispatch({ type: 'PHASE_GOTO', phase: nextPhase }),
@@ -5070,17 +5077,48 @@ case PHASES.DEPLOY: {
     presentation: presentationState,
   });
   // 跳转只做「滚到控件 + 聚焦 + 高亮一下」，绝不代替用户点确认/应用/生成/导出。
-  const handleWaitingGo = (jumpId) => {
+  // `behavior: 'instant'` 是必须的：主流区 `.chat-stream` 设了 `scroll-behavior: smooth`，
+  // 平滑滚动会被聊天流的自动滚到底打断，等于点了没反应。
+  const jumpToControl = (jumpId) => {
     const node = document.querySelector(`[data-jump-id="${jumpId}"]`);
     if (!node) {
       const fallback = document.querySelector(jumpId === 'template-apply' ? '.template-gallery' : '.workspace-actions');
-      fallback?.scrollIntoView({ block: 'center', inline: 'nearest' });
+      fallback?.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
       return;
     }
-    node.scrollIntoView({ block: 'center', inline: 'nearest' });
+    node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
     if (typeof node.focus === 'function') node.focus({ preventScroll: true });
     node.classList.add('is-jump-flash');
     window.setTimeout(() => node.classList.remove('is-jump-flash'), 1600);
+  };
+  const handleWaitingGo = (jumpId) => jumpToControl(jumpId);
+  // 问题 6：待确认卡片必须给一条「能点到的下一步」——只定位到原业务面板并高亮，
+  // 写入仍然要用户自己在那里点确认（不自动点、不自动写）。
+  const pendingConfirmItems = describePendingConfirmations(agentChatState.lastPending, {
+    fieldLabel: (fieldId) => {
+      const field = findAppCapabilityField(fieldId);
+      return field && typeof field.label === 'string' ? field.label : '';
+    },
+    actionLabel: (actionId) => {
+      const handler = APP_ASSISTANT_ACTION_HANDLERS[actionId];
+      return handler && typeof handler.label === 'string' ? handler.label : '';
+    },
+  }).map((item) => ({
+    ...item,
+    // 上方等待提示已经指向同一个控件时，卡片不再放第二个按钮要求同一件事。
+    sameTargetAsHint: Boolean(agentWaitingHint && agentWaitingHint.jumpId === item.jumpId),
+  }));
+  const handlePendingConfirmGo = (item) => {
+    const jumpId = item && typeof item.jumpId === 'string' ? item.jumpId : '';
+    if (!jumpId) return;
+    const targetPhase = item && typeof item.phase === 'string' ? item.phase : '';
+    if (targetPhase && targetPhase !== phase) {
+      // 确认入口在别的阶段：先切过去，等这一帧渲染完再滚到控件。
+      dispatch({ type: 'PHASE_GOTO', phase: targetPhase });
+      window.setTimeout(() => jumpToControl(jumpId), 260);
+      return;
+    }
+    jumpToControl(jumpId);
   };
   // 右侧栏「Agent 对话」视图模型：安全字段 + 回调，组件不持有会话状态、也不自己发请求。
   // 过程卡只给 lastRun（`normalizeChatRun` 白名单产物），trace 不进消息正文。
@@ -5107,6 +5145,8 @@ case PHASES.DEPLOY: {
     onUndoApplied: handleAgentChatUndoApplied,
     waitingHint: agentWaitingHint,
     onWaitingGo: handleWaitingGo,
+    // 待确认卡片的逐项定位入口（问题 6）：只定位高亮，不代替用户确认写入。
+    pendingConfirm: { items: pendingConfirmItems, onGo: handlePendingConfirmGo },
   };
   // UX0a-3：海报素材（可选）阶段没有真实生图服务，不再提供"重新生成"输入区。
   const composerVisible = phase === PHASES.STORE_INFO

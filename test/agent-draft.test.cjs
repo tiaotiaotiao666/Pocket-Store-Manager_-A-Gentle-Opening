@@ -52,22 +52,25 @@ test('D1 空草稿形状与缺项顺序：店名 → 品类 → 营业时间 →
   assert.equal(validation.missingFields[0].label, '店名');
 });
 
-test('D2 店名 1 字与 48 字合法', async () => {
+test('D2 店名 1 字与 19/20 字合法（新上限 20）', async () => {
   const draft = await loadDraft();
   assert.ok(!missingFields(draft.validateAgentDraft(validDraft({ storeName: '店' }))).includes('storeName'));
-  assert.ok(!codes(draft.validateAgentDraft(validDraft({ storeName: '店'.repeat(48) }))).includes('NAME_TOO_LONG'));
+  assert.ok(!codes(draft.validateAgentDraft(validDraft({ storeName: '店'.repeat(19) }))).includes('NAME_TOO_LONG'));
+  assert.ok(!codes(draft.validateAgentDraft(validDraft({ storeName: '店'.repeat(20) }))).includes('NAME_TOO_LONG'));
 });
 
-test('D3 49 字店名报 NAME_TOO_LONG', async () => {
+test('D3 21 字店名报 NAME_TOO_LONG（输入上限 20，不再下游静默截断）', async () => {
   const draft = await loadDraft();
-  assert.ok(codes(draft.validateAgentDraft(validDraft({ storeName: '店'.repeat(49) }))).includes('NAME_TOO_LONG'));
+  const validation = draft.validateAgentDraft(validDraft({ storeName: '店'.repeat(21) }));
+  assert.ok(codes(validation).includes('NAME_TOO_LONG'));
+  assert.equal(draft.AGENT_DRAFT_LIMITS.maxStoreName, 20);
 });
 
-test('D4 店名按 Unicode 码点计数：48 个 emoji 合法', async () => {
+test('D4 店名按可见字符计数：20 个 emoji 合法、21 个报错', async () => {
   const draft = await loadDraft();
-  const emoji = '😀'.repeat(48);
-  assert.equal(Array.from(emoji).length, 48);
-  assert.equal(emoji.length, 96);
+  const emoji = '😀'.repeat(20);
+  assert.equal(Array.from(emoji).length, 20);
+  assert.equal(emoji.length, 40);
   assert.ok(!codes(draft.validateAgentDraft(validDraft({ storeName: emoji }))).includes('NAME_TOO_LONG'));
   assert.ok(codes(draft.validateAgentDraft(validDraft({ storeName: `${emoji}店` }))).includes('NAME_TOO_LONG'));
 });

@@ -1,7 +1,9 @@
 import { MAX_DISHES, MAX_HOURS_SEGMENTS, MIN_DISHES, describeDishRequirement } from './storeLimits.mjs';
 import { parseHoursText, validateHoursSegments } from './businessHours.mjs';
+import { STORE_NAME_MAX_LENGTH } from './storeName.mjs';
 
-const MAX_STORE_NAME = 48;
+// 店名上限只有一份：src/domain/storeName.mjs（输入框、AI 提案、领域校验、服务端校验同源）。
+const MAX_STORE_NAME = STORE_NAME_MAX_LENGTH;
 const MAX_CATEGORY = 24;
 const MAX_DISH_NAME = 24;
 const MAX_DESCRIPTION = 60;

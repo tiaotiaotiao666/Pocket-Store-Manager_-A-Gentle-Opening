@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 
+import StoreNameField from '../common/StoreNameField.jsx';
 import {
   MAX_HOURS_SEGMENTS,
   describeHoursSegment,
@@ -100,7 +101,7 @@ export default function DraftEditor({
       : null;
 
   return (
-    <section className={`agent-editor${embedded ? ' is-embedded' : ''}`} aria-label={label}>
+    <section className={`agent-editor${embedded ? ' is-embedded' : ''}`} aria-label={label} data-jump-id="store-info-form">
       {collapsible ? (
         <button
           type="button"
@@ -123,15 +124,15 @@ export default function DraftEditor({
               <div className="agent-editor-grid">
                 <label className="agent-field" id="agent-field-storeName">
                   <span className="agent-field-label">店名</span>
-                  <input
-                    className={`agent-input${nameError ? ' is-invalid' : ''}`}
-                    type="text"
+                  {/* 店名走统一 20 字上限字段：输入/粘贴/拖拽/回填同一口径，带「当前字数/20」。 */}
+                  <StoreNameField
+                    inputId="agent-input-storeName"
                     value={draft.storeName}
                     placeholder="例如：松月食堂"
                     disabled={disabled}
-                    aria-invalid={nameError ? 'true' : 'false'}
-                    aria-describedby={nameError ? 'agent-error-storeName' : undefined}
-                    onChange={(event) => onChangeField?.('storeName', event.target.value)}
+                    invalid={Boolean(nameError)}
+                    describedBy={nameError ? 'agent-error-storeName' : undefined}
+                    onChange={(next) => onChangeField?.('storeName', next)}
                   />
                   <FieldMessage error={nameError} missing={fieldMissing(validation, 'storeName')} />
                 </label>
@@ -275,7 +276,7 @@ export default function DraftEditor({
                 </button>
               </div>
 
-              <ul className="agent-dish-list" id="agent-field-dishes">
+              <ul className="agent-dish-list" id="agent-field-dishes" data-jump-id="store-dishes">
                 {draft.dishes.map((dish, index) => {
                   const nameKey = `dishes[${index}].name`;
                   const priceKey = `dishes[${index}].priceCents`;

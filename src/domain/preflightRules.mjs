@@ -9,8 +9,11 @@ import { BASE_CAPABILITIES } from './capabilities.mjs';
 import { features as catalogFeatures } from './catalog.mjs';
 import { countUsableSegments, parseHoursText, validateHoursSegments } from './businessHours.mjs';
 import { MAX_DISHES, MIN_DISHES } from './storeLimits.mjs';
+import { STORE_NAME_LEGACY_MAX_LENGTH } from './storeName.mjs';
 
-const MAX_STORE_NAME = 48;
+// 导出口径走「老数据兼容上限」：历史项目里超过 20 字的店名不能因为体检而被判失败，
+// 否则老项目连打开后导出都做不了。新输入的 20 字规则在 storeName.mjs / 输入框里生效。
+const MAX_STORE_NAME = STORE_NAME_LEGACY_MAX_LENGTH;
 const MIN_PRICE_CENTS = 1;
 const MAX_PRICE_CENTS = 999999;
 const APPID_RE = /^wx[0-9a-f]{16}$/;

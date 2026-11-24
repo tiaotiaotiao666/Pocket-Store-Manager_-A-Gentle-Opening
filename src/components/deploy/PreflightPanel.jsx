@@ -85,7 +85,7 @@ export default function PreflightPanel({
         : `可以导出${ackWarns.length ? `（已确认 ${ackWarns.length} 项）` : ''}`));
 
   return (
-    <section className="preflight">
+    <section className="preflight" data-jump-id="export-preflight">
       <header className="preflight-head">
         <div className="preflight-heading">
           <span className={`preflight-mark${errorCount === 0 && pendingAck.length === 0 && status === 'done' && !stale ? ' is-ok' : ''}`}>

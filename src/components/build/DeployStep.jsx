@@ -144,7 +144,7 @@ export default function DeployStep({
       ) : null}
 
       {(status === 'idle' || status === 'choosing' || status === 'cancelled' || status === 'done') ? (
-        <div className="deploy-actions deploy-actions--start">
+        <div className="deploy-actions deploy-actions--start" data-jump-id="deploy-start">
           <button
             type="button"
             className="primary-button deploy-action"

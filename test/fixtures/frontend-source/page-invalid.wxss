@@ -1,0 +1,12 @@
+.page {
+  background-image: url("https://example.com/bg.png");
+}
+
+.hero {
+  background: url(//cdn.example.com/x.png) no-repeat;
+}
+
+@import "https://example.com/theme.wxss";
+
+.bad {
+  color: red;

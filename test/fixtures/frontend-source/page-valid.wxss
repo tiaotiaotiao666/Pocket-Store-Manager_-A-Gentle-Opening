@@ -1,0 +1,18 @@
+.page {
+  display: flex;
+  padding: 24rpx;
+  background-image: url('/assets/tabbar/home.png');
+}
+
+.page__hero {
+  background-image: url("data:image/png;base64,iVBORw0KGgo=");
+  color: var(--store-text-color);
+}
+
+@import "../../styles/component.wxss";
+
+@media (min-width: 600px) {
+  .page {
+    padding: 32rpx;
+  }
+}

@@ -1,0 +1,16 @@
+<view class="page">
+  <view wx:if="{{loading}}">loading</view>
+  <error-banner message="{{error}}" bind:retry="onRetry" />
+  <view wx:for="{{categories}}" wx:for-item="category" wx:for-index="categoryIndex">
+    <text>{{category.name}}</text>
+    <view wx:for="{{category.products}}" wx:for-item="product">
+      <product-card
+        product="{{product}}"
+        quantity="{{quantityMap[product.id] || 0}}"
+        bind:add="onProductAdd"
+      />
+      <image src="{{product.imageUrl}}" />
+    </view>
+  </view>
+  <view>{{cartSummary.totalQuantity}} / {{store.name}}</view>
+</view>

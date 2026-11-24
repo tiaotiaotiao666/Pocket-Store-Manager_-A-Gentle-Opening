@@ -429,7 +429,7 @@ test('cancel-run（真实在途任务）：requested → AGENT_CANCELLED → can
   assert.strictEqual(after.data.requestedAt, first.data.requestedAt);
 });
 
-test('run-check：未知 checkId → CHECK_UNKNOWN；B4 前缺注册表 → RUNTIME_TOOL_MISSING；绝不假 PASS', async (t) => {
+test('run-check：未知 checkId → CHECK_UNKNOWN；显式禁用 checks → RUNTIME_TOOL_MISSING；绝不假 PASS', async (t) => {
   const { userDataDir, ipc } = setup(t);
   const unknown = await ipc.invoke('agent:run-check', {
     projectId: PROJECT_ID, runId: RUN_ID, checkId: 'evil.command',
@@ -437,8 +437,10 @@ test('run-check：未知 checkId → CHECK_UNKNOWN；B4 前缺注册表 → RUNT
   assertEnvelopeShape(unknown);
   assert.strictEqual(unknown.code, CODES.CHECK_UNKNOWN);
 
+  // checks:false 显式禁用注册表（B3 的“无注入”口径）；默认已切到 B4 真实注册表。
+  const noChecks = toolsIpc.createAgentToolsIpc({ userDataDir, checks: false });
   for (const checkId of toolsIpc.CHECK_IDS) {
-    const missing = await ipc.invoke('agent:run-check', {
+    const missing = await noChecks.invoke('agent:run-check', {
       projectId: PROJECT_ID, runId: RUN_ID, checkId, params: { target: 'menu' },
     });
     assertEnvelopeShape(missing);
@@ -474,17 +476,118 @@ test('run-check：未知 checkId → CHECK_UNKNOWN；B4 前缺注册表 → RUNT
   assert.notStrictEqual(blocked.data.status, 'PASS');
 });
 
-test('verify-wechat：B4 前 deterministic AGENT_RUNTIME_TOOL_MISSING；注入后如实 BLOCKED', async (t) => {
-  const { ipc } = setup(t);
-  const missing = await ipc.invoke('agent:verify-wechat', {
+test('B4：真实 checks 注册表（fake runner，不 spawn）→ PASS/FAIL/BLOCKED 与参数白名单贯通 IPC', async (t) => {
+  const checksModule = require(path.join(REPO, 'desktop', 'agent-workspace', 'checks.cjs'));
+  const userDataDir = tempUserData(t);
+  initProject(userDataDir);
+  const withRunner = (runner) => toolsIpc.createAgentToolsIpc({
+    userDataDir,
+    checks: checksModule.createCheckRegistry({ userDataDir, runner }),
+  });
+
+  const passed = await withRunner(async () => ({ ok: true, code: 'OK', stdout: JSON.stringify({ status: 'PASS', issues: [] }), stderr: '', durationMs: 2 }))
+    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check' });
+  assertEnvelopeShape(passed);
+  assert.strictEqual(passed.ok, true, JSON.stringify(passed));
+  assert.strictEqual(passed.data.status, 'PASS');
+
+  const failed = await withRunner(async () => ({
+    ok: true,
+    code: 'OK',
+    stdout: JSON.stringify({ status: 'FAIL', issues: [{ code: 'SRC', message: '语法错误', file: 'pages/menu/index.wxml', line: 2 }] }),
+    stderr: '',
+    durationMs: 3,
+  })).invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check' });
+  assert.strictEqual(failed.data.status, 'FAIL');
+  assert.strictEqual(failed.data.issues[0].file, 'pages/menu/index.wxml');
+
+  const blocked = await withRunner(async () => ({ ok: false, code: 'EPERM', killed: false, stdout: '', stderr: 'spawn EPERM', durationMs: 1 }))
+    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'catalog.check' });
+  assert.strictEqual(blocked.ok, true, JSON.stringify(blocked));
+  assert.strictEqual(blocked.data.status, 'BLOCKED');
+  assert.notStrictEqual(blocked.data.status, 'PASS');
+
+  // 参数白名单在 checks.cjs 内生效：command / 未知键 → AGENT_PAYLOAD_INVALID。
+  const commandParam = await withRunner(async () => ({ ok: true, code: 'OK', stdout: '{"status":"PASS"}', stderr: '', durationMs: 1 }))
+    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check', params: { command: 'rm -rf /' } });
+  assert.strictEqual(commandParam.ok, false);
+  assert.strictEqual(commandParam.code, CODES.PAYLOAD_INVALID);
+  const unknownParam = await withRunner(async () => ({ ok: true, code: 'OK', stdout: '{"status":"PASS"}', stderr: '', durationMs: 1 }))
+    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check', params: { unknown: 1 } });
+  assert.strictEqual(unknownParam.code, CODES.PAYLOAD_INVALID);
+
+  // 工具/环境不可用（同步 throw EPERM / 返回工具缺失码）→ 成功 envelope 的 data.status='BLOCKED'，不是 CHECK_FAILED。
+  const throwing = toolsIpc.createAgentToolsIpc({
+    userDataDir,
+    checks: {
+      runCheck() {
+        const error = new Error('spawn EPERM');
+        error.code = 'EPERM';
+        throw error;
+      },
+    },
+  });
+  const thrown = await throwing.invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check' });
+  assertEnvelopeShape(thrown);
+  assert.strictEqual(thrown.ok, true, JSON.stringify(thrown));
+  assert.strictEqual(thrown.data.status, 'BLOCKED');
+  assert.strictEqual(thrown.data.issues[0].code, 'CHECK_TOOL_MISSING');
+
+  const missingCode = toolsIpc.createAgentToolsIpc({
+    userDataDir,
+    checks: { runCheck: async () => ({ ok: false, code: 'CHECK_TOOL_MISSING' }) },
+  });
+  const missingResult = await missingCode.invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check' });
+  assert.strictEqual(missingResult.ok, true, JSON.stringify(missingResult));
+  assert.strictEqual(missingResult.data.status, 'BLOCKED');
+
+  const failedCode = toolsIpc.createAgentToolsIpc({
+    userDataDir,
+    checks: { runCheck: async () => ({ ok: false, code: 'AGENT_CHECK_FAILED' }) },
+  });
+  const failedResult = await failedCode.invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check' });
+  assert.strictEqual(failedResult.ok, false);
+  assert.strictEqual(failedResult.code, 'AGENT_CHECK_FAILED');
+
+  // verify-wechat：工具缺失 → BLOCKED，绝不 PASS；同一环境错误映射 CHECK_TOOL_MISSING。
+  const verify = await withRunner(async () => ({ ok: false, code: 'ENOENT', killed: false, stdout: '', stderr: 'CLI missing', durationMs: 1 }))
+    .invoke('agent:verify-wechat', { projectId: PROJECT_ID, runId: RUN_ID, attemptId: 'attempt-1' });
+  assertEnvelopeShape(verify);
+  assert.strictEqual(verify.ok, true, JSON.stringify(verify));
+  assert.strictEqual(verify.data.status, 'BLOCKED');
+  assert.deepStrictEqual(verify.data.screenshots, []);
+
+  const verifyThrown = toolsIpc.createAgentToolsIpc({
+    userDataDir,
+    checks: {
+      verifyWechat() {
+        const error = new Error('spawn EPERM');
+        error.code = 'EPERM';
+        throw error;
+      },
+    },
+  });
+  const verifyResult = await verifyThrown.invoke('agent:verify-wechat', {
+    projectId: PROJECT_ID, runId: RUN_ID, attemptId: 'attempt-1',
+  });
+  assertEnvelopeShape(verifyResult);
+  assert.strictEqual(verifyResult.ok, true, JSON.stringify(verifyResult));
+  assert.strictEqual(verifyResult.data.status, 'BLOCKED');
+  assert.strictEqual(verifyResult.data.issues[0].code, 'CHECK_TOOL_MISSING');
+  assert.deepStrictEqual(verifyResult.data.screenshots, []);
+});
+
+test('verify-wechat：显式禁用 checks → RUNTIME_TOOL_MISSING；注入后如实 BLOCKED', async (t) => {
+  const userDataDir = tempUserData(t);
+  initProject(userDataDir);
+  const noChecks = toolsIpc.createAgentToolsIpc({ userDataDir, checks: false });
+  const missing = await noChecks.invoke('agent:verify-wechat', {
     projectId: PROJECT_ID, runId: RUN_ID, attemptId: 'attempt-1',
   });
   assertEnvelopeShape(missing);
   assert.strictEqual(missing.code, CODES.RUNTIME_TOOL_MISSING);
   assert.notStrictEqual(missing.data && missing.data.status, 'PASS');
 
-  const userDataDir = tempUserData(t);
-  initProject(userDataDir);
   const withChecks = toolsIpc.createAgentToolsIpc({
     userDataDir,
     checks: {

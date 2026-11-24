@@ -26,6 +26,7 @@ const workspaceMod = require('./agent-workspace/workspace.cjs');
 const transactionsMod = require('./agent-workspace/transactions.cjs');
 const manifestMod = require('./agent-workspace/manifest.cjs');
 const versionsMod = require('./agent-workspace/versions.cjs');
+const checksModule = require('./agent-workspace/checks.cjs');
 const contractGenerated = require('./frontend-reconstruct/contract.generated.cjs');
 
 const PROGRESS_CHANNEL = 'agent:progress';
@@ -76,6 +77,11 @@ const LIMITS = Object.freeze({
 
 const CHECK_STATUSES = Object.freeze(['PASS', 'FAIL', 'BLOCKED', 'NOT_RUN']);
 const RUNTIME_STATUSES = CHECK_STATUSES;
+/** 工具/环境不可用类错误：必须映射为 BLOCKED，不能显示成“检查失败”。 */
+const TOOL_UNAVAILABLE_CODES = new Set([
+  'EPERM', 'EACCES', 'ENOENT', 'ETIMEDOUT',
+  'CHECK_TOOL_MISSING', 'AGENT_RUNTIME_TOOL_MISSING', 'AGENT_TIMEOUT',
+]);
 
 const DRIVE_PATTERN = /^[A-Za-z]:[\\/]/;
 const UNC_PATTERN = /^\\\\/;
@@ -457,7 +463,19 @@ function createAgentToolsIpc(options) {
   const userDataDir = typeof opts.userDataDir === 'string' ? opts.userDataDir : '';
   const now = typeof opts.now === 'function' ? opts.now : Date.now;
   const timers = opts.timers || { setTimeout, clearTimeout };
-  const checks = opts.checks || null;
+  // B4：默认使用真实验证注册表（main 仍传 checks:null 也会解析到真实实现）；
+  // `checks:false` 显式禁用（确定性 AGENT_RUNTIME_TOOL_MISSING），对象保持 B3 注入形状。
+  const hasExplicitChecks = Object.prototype.hasOwnProperty.call(opts, 'checks');
+  const explicitChecks = hasExplicitChecks ? opts.checks : undefined;
+  let checks = explicitChecks && typeof explicitChecks === 'object' ? explicitChecks : null;
+  let checksReady = explicitChecks === false || Boolean(checks);
+  function resolveChecks() {
+    if (!checksReady) {
+      checks = checksModule.createCheckRegistry({ userDataDir });
+      checksReady = true;
+    }
+    return checks;
+  }
   const attachments = opts.attachments || null;
   const emitProgress = typeof opts.emitProgress === 'function' ? opts.emitProgress : null;
   const locks = opts.locks || createIdLocks();
@@ -592,6 +610,10 @@ function createAgentToolsIpc(options) {
       return outcome;
     } catch (error) {
       finishRun(contextOf(payload), runId, 'failed');
+      // 环境/工具类同步异常（例如沙箱 spawn EPERM）必须如实 BLOCKED，不能当“检查失败”。
+      if (error && TOOL_UNAVAILABLE_CODES.has(String(error.code || ''))) {
+        return fail('CHECK_TOOL_MISSING', '检查工具在当前环境不可用');
+      }
       return fail(CODES.CHECK_FAILED, '任务执行失败');
     }
   }
@@ -902,8 +924,9 @@ function createAgentToolsIpc(options) {
         if (!check.ok) return check;
         const params = validateParamsObject(payload.params);
         if (!params.ok) return params;
+        const checks = resolveChecks();
         if (!checks || typeof checks.runCheck !== 'function') {
-          return fail(CODES.RUNTIME_TOOL_MISSING, 'B4 检查注册表尚未接入');
+          return fail(CODES.RUNTIME_TOOL_MISSING, '检查注册表不可用');
         }
         const startedAtCheck = now();
         const outcome = await withRun(payload, commandSpecs['agent:run-check'], () => checks.runCheck({
@@ -913,7 +936,20 @@ function createAgentToolsIpc(options) {
           checkId: payload.checkId,
           params: payload.params || {},
         }));
-        if (!outcome || outcome.ok === false) return outcome || fail(CODES.CHECK_FAILED, '检查失败');
+        if (!outcome || outcome.ok === false) {
+          const rawCode = outcome && outcome.code ? String(outcome.code) : '';
+          if (TOOL_UNAVAILABLE_CODES.has(rawCode)) {
+            return success(payload, startedAt, {
+              checkId: payload.checkId,
+              status: 'BLOCKED',
+              durationMs: 0,
+              issues: [{
+                file: null, line: null, column: null, code: 'CHECK_TOOL_MISSING', message: '检查工具在当前环境不可用', source: 'check',
+              }],
+            });
+          }
+          return outcome || fail(CODES.CHECK_FAILED, '检查失败');
+        }
         if (!outcome.ok) return outcome;
         const status = CHECK_STATUSES.includes(outcome.status) ? outcome.status : 'FAIL';
         return success(payload, startedAt, {
@@ -934,8 +970,9 @@ function createAgentToolsIpc(options) {
         const attempt = parseAttemptId(payload.attemptId);
         if (!attempt.ok) return attempt;
         const timeoutMs = clampInt(payload.timeoutMs, 1000, 600000, 120000);
+        const checks = resolveChecks();
         if (!checks || typeof checks.verifyWechat !== 'function') {
-          return fail(CODES.RUNTIME_TOOL_MISSING, '微信验证工具尚未接入（B4）');
+          return fail(CODES.RUNTIME_TOOL_MISSING, '微信验证工具不可用');
         }
         const outcome = await withRun(payload, { timeoutMs }, () => checks.verifyWechat({
           projectId: payload.projectId,
@@ -944,7 +981,21 @@ function createAgentToolsIpc(options) {
           appId: payload.appId,
           timeoutMs,
         }));
-        if (!outcome || outcome.ok === false) return outcome || fail(CODES.RUNTIME_TOOL_MISSING, '微信验证工具不可用');
+        if (!outcome || outcome.ok === false) {
+          const rawCode = outcome && outcome.code ? String(outcome.code) : '';
+          if (TOOL_UNAVAILABLE_CODES.has(rawCode)) {
+            return success(payload, startedAt, {
+              status: 'BLOCKED',
+              pages: [],
+              interactions: [],
+              screenshots: [],
+              issues: [{
+                file: null, line: null, column: null, code: 'CHECK_TOOL_MISSING', message: '微信验证工具在当前环境不可用', source: 'wechat',
+              }],
+            });
+          }
+          return outcome || fail(CODES.RUNTIME_TOOL_MISSING, '微信验证工具不可用');
+        }
         if (!outcome.ok) return outcome;
         const status = RUNTIME_STATUSES.includes(outcome.status) ? outcome.status : 'BLOCKED';
         return success(payload, startedAt, {

@@ -1,6 +1,6 @@
 # Workspace-Agent B 阶段接口冻结（B1 范围 / B2 版本模型 / B3 RPC）
 
-> 版本：rev5。日期：2026-11-24。状态：**Captain 冻结；B1 已通过 r2（t8=pass）；B2 已通过 r2（t12=pass，0 findings）；B3 已开放（§3.5）；C1/C2 并行启动中（§4）；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境见 §13**。
+> 版本：rev8。日期：2026-11-24。状态：**Captain 冻结；B1/B2/B3 均已 r2 pass；B4 已开放（§3.5/§3.7）；C1 已提交、C2 已完成待对齐；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13**。
 > 所有者：Captain（`lead`）。团队：`workspace-agent-refactor`（workspace-lead / runtime-engineer / product-ui / verifier）。
 > 上游：`docs/handoff/Workspace-Agent大规模重构与遗留收尾-Flash总计划.md` §5、§14.4；`AGENTS.md`；
 > `docs/handoff/当前工作区交接.md` §1.6/§4.7/§8。
@@ -323,18 +323,19 @@ F2 两处 `adoption.sourceKind` 独立抽检通过；测试 50→53 全为真断
 | `agent:get-context` | `{projectId, runId?, turnId?}` | 项目/当前版本/门店草稿摘要/组件与页面事实摘要/可用 checkId/验证摘要 |
 | `agent:list-files` | `{projectId, versionId?, pathPrefix?, maxDepth?}` | `[{path,bytes,sha256?}]`, `truncated` |
 | `agent:read-file` | `{projectId, versionId?, path, offset?, limitBytes?}` | `{path,content,bytes,sha256,totalBytes,nextOffset}` |
-| `agent:search-files` | `{projectId, versionId?, query, mode:"name"\|"content"\|"both", maxResults?}` | `[{path,line?,preview?}]`, `truncated` |
+| `agent:search-files` | `{projectId, versionId?, query, mode:"name"\|"content"\|"both", maxResults?}` | `{matches:[{path,line?,preview?}], truncated}`（rev7 按实现修正） |
 | `agent:write-files` | `{projectId, runId, turnId, baseVersionId, changes:[{path,content,expectedBaseSha256?}]}` | `{transactionId,files:[{path,status,sha256}],revision,treeDigest}` |
 | `agent:delete-files` | `{projectId, runId, turnId, baseVersionId, paths:[{path,expectedBaseSha256?}]}` | `{transactionId,files:[{path,status}],revision,treeDigest}` |
 | `agent:add-image-asset` | `{projectId, runId, turnId, attachmentRef}`（`attachmentRef` = 既有 assetId，不是路径） | `{assetId,relative,caption?}`（复用 `project:attach-images`，不新增写路径） |
-| `agent:get-diff` | `{projectId, comparedTo:{versionId?\|attemptId?}, basePath?}`（限定取值域，二者只给一个） | `{files:[{path,status,additions,deletions,sha256,diff?}],truncated}` |
+| `agent:get-diff` | `{projectId, comparedTo:{versionId?} \| {runId,turnId,attempt}, basePath?}`（结构化，禁止裸 attemptId；二者只给一个） | `{files:[{path,status,additions,deletions,sha256,diff?}],truncated}` |
 | `agent:run-check` | `{projectId, runId, attemptId?, checkId, params?}`（`params` 按 checkId 白名单，无 command/env/shell/cwd/任意路径） | `{checkId,status:"PASS"\|"FAIL"\|"BLOCKED"\|"NOT_RUN",durationMs,issues:[{file,line,column,code,message,source}],evidenceRelative?}` |
 | `agent:verify-wechat` | `{projectId, runId, attemptId, appId?, timeoutMs?}` | `{status,pages,interactions,screenshots,evidenceRelative}`（工具缺失 → `BLOCKED`） |
 | `agent:read-verification` | `{projectId, runId, attemptId?, versionId?, source:"attempt"\|"version"}` | 有界 issues + 截图相对引用（无绝对路径、无 base64）；`source:"version"` 用于 E3 的 before 基线 |
-| `agent:read-artifact` | `{projectId, attemptId?, versionId?, kind:"screenshot"\|"report"\|"diff", ref}`（`ref` 必须是本会话返回过的相对引用） | `{mime,bytes,sha256,content}`（字节有上限；renderer 用短生命周期 Blob URL 展示，不落盘） |
-| `agent:submit-candidate` | `{projectId, runId, attemptId, targetPage, summary?}` | `{candidateId,revision,treeDigest,targetPage,status:"submitted"}`（**不能** adopted/exported/verified） |
+| `agent:read-artifact` | `{projectId, attemptId?, versionId?, kind:"screenshot"\|"report"\|"diff", ref}`（`ref` 必须是本会话返回过的相对引用） | 文本：`{mime,bytes,sha256,content}`（≤64 KiB）；二进制：`{mime,bytes,sha256,contentBytes:Uint8Array}`（≤2 MiB，**不用 base64**；renderer 用短生命周期 Blob URL，不落盘） |
+| `agent:submit-candidate` | `{projectId, runId, turnId, attemptId, targetPage, summary?}`（rev7 补 turnId） | `{candidateId,revision,treeDigest,targetPage,status:"submitted"}`（**不能** adopted/exported/verified） |
 | `agent:versions` | `{projectId}` | `{currentVersionId, redoVersionId, versions:[{versionId,parentVersionId,createdAt,reason,isCurrent,treeDigest,verification,fileCount,screenshotCount}]}` |
-| `agent:adopt-version` | `{projectId, versionId, partialConfirmed?}` | `{currentVersionId, adoption}` |
+| `agent:adopt-version` | `{projectId, versionId, partialConfirmed?}` | `{currentVersionId, adoption}`（只支持 current 幂等 / previous / redoVersionId；任意历史版本 → `AGENT_VERSION_CONFLICT`） |
+| `agent:adopt-attempt`（rev6 新增，B3.x/E 前置） | `{projectId, runId, turnId, attempt, targetPage, partialConfirmed?}` | `{currentVersionId, adoption}`（走 B2 `adoptAttempt`；**B3 当前未实现**，E1 接线前由 workspace-lead 补并复核） |
 | `agent:undo` / `agent:redo` | `{projectId}` | `{currentVersionId}` |
 | `agent:reopen` | `{projectId}` | 版本身份 + 漂移状态（不抛半套数据） |
 | `agent:cancel-run` | `{projectId, runId}` | `{state:"requested"\|"cancelled"\|"too-late", stage?, cancelled:bool}`（`too-late` 不得显示成失败） |
@@ -342,7 +343,7 @@ F2 两处 `adoption.sourceKind` 独立抽检通过；测试 50→53 全为真断
 - 进度事件：`agent:progress`，payload 只含
   `{projectId,runId,turnId,attemptId,phase,stage,status,at,message≤120}`；不含路径、源码、base64、prompt、密钥。
   `status ∈ running|succeeded|failed|cancelled`；`stage` 必须来自 §9.1 冻结清单；UI 遇到未知 `stage` 必须显示
-  “未知阶段（<stage>）”，**不得静默丢步**（rev2 裁定 F5）。
+  “未知阶段（<stage>）”，**不得静默丢步**（rev2 裁定 F5）。B3 目前只透传 `stage`；B4/E 接线必须只发白名单值（rev6）。
 - `run-check` 只接受注册 checkId：`source.check`、`mini.check`、`composer.dry-run`、`output.consistency`、
   `unit.targeted`、`unit.full`、`desktop.contract`、`catalog.check`、`registry.check`、`wechat.verify`
   （后续 `installer.check`、`ui.smoke` 另加）。**模型/UI 只能选 checkId，不能给 command/shell/env/任意参数。**
@@ -395,6 +396,60 @@ F2 两处 `adoption.sourceKind` 独立抽检通过；测试 50→53 全为真断
 - **B4** 只加 `desktop/agent-workspace/checks.cjs`、`scripts/agent-checks/*`、注册表测试，并把注入接口替换为真实实现；
   仍不接受任意 command/shell/env。
 
+### 3.6 B3 实际交付与 5 缺口裁定（rev6，2026-11-24）
+
+B3（t16）完成。Captain 独立复跑：`agent-tools-ipc` + facade **24/24**、`desktop-contract`+契约+旧链+agent-workspace
+**119/119**、`frontend-reconstruct*` **186/186**、`require('desktop/agent-tools-ipc.cjs')` ok。
+`desktop/preload.cjs` 相对 `origin/main` **只多出 B3 的 `workspaceAgent` 改动**，旧 API 全保留。
+
+实际交付：`desktop/agent-tools-ipc.cjs`（19 命令 + progress；统一 envelope；`isTrustedSender`；每项目写锁 + 读并发 4；
+cancel 三态；版本命令只调 B2；checks/attachments 注入，B4 前确定性 `AGENT_CHECK_UNKNOWN`/`AGENT_RUNTIME_TOOL_MISSING`）；
+`desktop/preload.cjs`（仅加 `smartStore.workspaceAgent`，19 方法 + onProgress，freeze）；`desktop/main.cjs` 注册（checks:null、progress 广播）；
+`src/services/workspaceAgent/index.js`（renderer facade）；`desktop/project-ipc.cjs`（`project:load` 附只读 `versionState`，项目仍可打开）；
+`desktop/composer-ipc.cjs`（有 agent-workspace 时写盘前 `verifyExportIdentity`，漂移中止、不回落 Base）；测试 17+7 + desktop-contract +1。
+
+5 缺口裁定（rev6）：
+
+| # | 缺口 | 裁定 |
+|---|---|---|
+| ① | `adopt-version` 只支持 current/previous/redo；无 attempt→新版本命令 | **接受 B3 现状**：任意历史版本跳转一律 `AGENT_VERSION_CONFLICT`，UI 不得展示为“采用”；新增 `agent:adopt-attempt` 作为 **B3.x/E 前置**（B2 已有 `adoptAttempt`），E1 接线前补；`submit-candidate` 仍只 submitted |
+| ② | `get-diff` 的 `comparedTo.attemptId` 是 turn 局部 id | **采纳**：改为结构化 `{versionId}` 或 `{runId,turnId,attempt}`，禁止裸 attemptId（已并入 §3.2） |
+| ③ | `read-artifact` 文本/二进制返回形状 | **采纳**：文本 ≤64 KiB 回 `content`；二进制回 `{mime,bytes,sha256,contentBytes:Uint8Array}` ≤2 MiB，**不用 base64**，renderer Blob URL（已并入 §3.2） |
+| ④ | progress `stage` 只透传、未强制白名单 | **接受 B3 现状**，B4/E 必须只发 §9.1 白名单；UI 未知 stage 显示“未知阶段（x）”，不丢步 |
+| ⑤ | `run-check` 的 checkId 参数白名单未定 | **B4 定义**：标量有界、禁 command/env/shell/cwd/任意路径；B3 现有“拒绝 command/env/shell/cwd”作为下限保留 |
+
+**B3 复核通过前不开 B4**；复核需覆盖：19 命令/envelope/无绝对路径、sender、写锁与 cancel、preload 只加不改、
+facade 唯一出口、project-ipc/composer-ipc 接线、注入 checks 不伪造 PASS、测试未削弱、写入面零越界。
+
+### 3.7 B3 复核 r1 结果与返修（rev7，2026-11-24）
+
+t17 verdict = **needs_revision**（2 × medium）。门禁真实：`agent-tools-ipc`+facade 24/24、`desktop-contract`+契约+旧链+
+agent-workspace* 119/119、`frontend-reconstruct*` 186/186、require ok；root 等价 1343/1334/7/2，失败集与 A0 一致。
+自写攻击 64 项 63 PASS / 1 FAIL（F2），另有行为观察 F1。证据：`docs/evidence/workspace-agent/b3-review.md`。
+
+| ID | 级别 | 问题 | 返修要求 |
+|---|---|---|---|
+| F1 | medium | `agent:cancel-run` 无 `requested` 态：活动 run 首次 cancel 直接返回 `cancelled` | 首次 cancel → `state:"requested"` + `requestedAt`；停止后查询 → `cancelled`；完成/未知 → `too-late`；补测试 |
+| F2 | medium | `read-artifact` 二进制未返回 `contentBytes`（rev6 ③ 未落地） | 二进制 → `{mime,bytes,sha256,contentBytes:Uint8Array}` ≤2 MiB；超限 → **`AGENT_RESULT_TOO_LARGE`**（不用 ARTIFACT_NOT_FOUND）；文本保持 ≤64 KiB `content` |
+
+补充裁定（rev7）：`read-artifact` 超 2 MiB 使用 `AGENT_RESULT_TOO_LARGE`（§3.3 已列），`AGENT_ARTIFACT_NOT_FOUND`
+只用于“引用不存在/非法”。返修只允许改 `desktop/agent-tools-ipc.cjs` 与其测试，不动 preload/main/project-ipc/composer-ipc
+与 `desktop/agent-workspace/`；r2 通过前 B4 不开放。
+
+非 finding 观察同步（rev7）：① `submit-candidate` 实际要求 `turnId`，§3.2 表已补；② `search-files` 实际返回
+`{matches,truncated}`，§3.2 表已按实现修正；③ adopt 不存在/非 current 版本返回 `AGENT_VERSION_CONFLICT`（符合 rev6 ①）；
+④ artifact 非法 ref 复用 §1.7 码（符合 §3.3）。
+
+**r2 结果（2026-11-24，t19）：PASS，0 findings。** 25/25、119/119、186/186、require ok；root 等价 1354/1345/7/2
+（失败集与 A0 一致）；攻击套件重跑 68/68；F1 三态链真实复验（requested → AGENT_CANCELLED → cancelled，重复 cancel
+幂等，too-late 正确）；F2 二进制 `contentBytes` + 文本 `content` + >2MiB `AGENT_RESULT_TOO_LARGE` 独立验证；
+测试 17→18、无削弱、越界为零。→ **B3 门禁关闭，B4 开放。**
+
+r2 观察裁定（rev8）：
+① >64 KiB 文本类 artifact 走 `contentBytes`（文本 ≤64 KiB 才回 `content`）——**采纳**，冻结 §3.2 已按此口径；
+② 已取消并停止的 run 再次 cancel 返回 `cancelled`（普通完成/未知仍 `too-late`）——**采纳**，这是“取消已生效”的查询语义，
+   与 `requested` 首次请求、`too-late` 未参与区分开。
+
 ## 4. 依赖门禁与开放顺序（Captain 控制）
 
 | 轮次 | 开放 | 前置门禁 |
@@ -437,10 +492,11 @@ F2 两处 `adoption.sourceKind` 独立抽检通过；测试 50→53 全为真断
 2. Captain 更新本文件（rev+1）并在任务描述/消息中同步；B2/B3 实现按新 rev 执行。
 3. 不得在实现里“先按另一种形状写，事后再改契约”。
 
-## 8. 待补（rev5 内容）
+## 8. 待补（rev7 内容）
 
-- B2 独立复核若返修，rev5 记录返修点与最终签名（当前 §2.6 已按 t9 实际签名冻结）。
-- B3 落地后补：checkId → 脚本映射表、各命令 payload/artifact 上限的具体数值（当前 artifact 上限 2 MiB）。
+- B3 独立复核若返修，rev7 记录返修点与最终签名。
+- B4 落地后补：checkId → 脚本映射表、各命令 payload/artifact 上限具体数值（当前 artifact 上限 2 MiB）。
+- B3.x：`agent:adopt-attempt`（attempt→新版本）在 E1 接线前补并复核。
 - B3 接线后补：`agent:*` 与 composer 导出路径的实际调用点（`resolveVersionSource`/`verifyExportIdentity`）。
 
 ## 9. rev2 修订裁定（product-ui t3 提案 F1–F9）
@@ -626,4 +682,37 @@ server `tsc --noEmit` → 0；`agent:smoke` → 2（`spawnSync node.exe EPERM`�
   2. 端口 9420 监听后，automator 可用 TCP 连接（无需我们 spawn）；
   3. 我们的固定入口目前把 CLI 步骤与 automator 合在一个进程里，E 阶段需要“connect-only”模式（属 C4 后工作，未开始）。
 - 在此之前微信运行时证据保持 `BLOCKED`，不得用截图/预览替代。
+
+### 13.8 仓库同步策略（2026-11-24，用户已确认）
+
+- 远端 `origin/main` 在另一条线上领先 5 个提交（`70e0057..f407c49`），涉及 `src/App.jsx`、`src/state/sessionMachine.mjs`、
+  `desktop/main.cjs`、`templates/**`、`miniprogram/**`、`.resultverify/t6/**` 等；本地工作树仍基于 `70e0057`。
+- 已按阶段推送 3 个提交到远端（用临时 worktree 叠到 `origin/main` 上，未触碰本地脏工作区）：
+  `fb6065d`（A0/A4 证据）、`8ed7e28`（D0 探针）、`5053118`（B1/B2 内核）。远端 HEAD = `5053118`。
+- 推送通道：本机 git 全局 `http.proxy=http://127.0.0.1:7877`（Clash）对 HTTPS 握手失败；
+  一次性使用 `socks5h://127.0.0.1:7877` + `http.sslBackend=openssl` 成功。**未修改用户全局 git 配置，未 force push。**
+- 本地 `main` 与远端分叉（ahead 3 / behind 8）；那 3 个本地提交与远端 3 个内容相同、SHA 不同。
+  安全备份：本地分支 `backup/local-before-sync-20261124`（指向 `13928c3`）。
+- **用户决定的策略：等 B3/C1 完成并提交后，统一对齐一次**，然后一次性 push；此前不推送新提交。
+  对齐步骤（届时执行，需备份 + 不用 force）：
+  1. 先把 B3/C1 提交到本地；
+  2. 预存用户既有未提交改动（commit 到 `wip/pre-existing-changes` 分支，不用 stash 丢弃）；
+  3. `git rebase --onto origin/main 13928c3 main` 把 B3/C1 叠到远端最新（冲突逐文件裁决）；
+  4. 解冲突后跑 `agent-workspace*`、`frontend-contract`+旧链、`frontend-reconstruct*`、以及 B3/C1 的测试；
+  5. `git push origin main`（直连或 socks5h+openssl），并核对远端 HEAD。
+- 风险提醒：B3 触碰的 `desktop/{main,preload,project-ipc,composer-ipc}.cjs` 与远端 5 个提交有重叠，rebase 时可能有冲突；
+  不得用 `-X ours/theirs` 整包吞掉，必须逐文件对照远端语义。
+
+**对齐执行结果（2026-11-24 19:0x）**：
+
+- 以 `origin/main`（`5053118`）为基准用临时 worktree 重建并推送：
+  `183eb16` C1、`d61d70d` C2、`3ff97ea` C1 快照对齐远端模板、`a248685` B3；随后补 `1841c4e`
+  修复 `main.cjs` 漏注入 `userDataDir`（否则导出身份守卫会静默跳过）。远端 HEAD = `1841c4e`。
+- 对齐暴露并修复的真实问题：远端 5 个提交改过 Base 模板 → C1 快照在旧基线生成会 `--check` 漂移，
+  已在新 Base 重新生成（78,120 B，8 页/15 组件/4 Plan/84 UI 状态不变）。
+- 本地干净路径已对齐远端内容：`templates/`、`miniprogram/`、`server/src/agent/frontend-reconstruct/`、
+  `server/src/agent/workspace/`（重新生成的 C1 快照）、`desktop/main.cjs`。
+- 本地 `main` 仍与远端分叉，**未做 `reset --hard`/`checkout -- .`**（工作区有用户未提交改动）；
+  后续阶段提交继续用“worktree 叠到 origin/main + push”的方式，等用户决定是否整体对齐本地分支。
+- 推送通道：`socks5h://127.0.0.1:7877` + `http.sslBackend=openssl` 一次性参数；未改全局 git 配置、未 force push。
 

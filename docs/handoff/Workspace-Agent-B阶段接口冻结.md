@@ -1,6 +1,6 @@
 # Workspace-Agent B 阶段接口冻结（B1 范围 / B2 版本模型 / B3 RPC）
 
-> 版本：rev10。日期：2026-11-24。状态：**Captain 冻结；B1/B2/B3/B4 均已 r2 pass（B4 通过 t23）；C1/C2 已推送；C3/C4 可开放（§4）；B3.x `adopt-attempt` 仍待 E1 前补；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13**。
+> 版本：rev12。日期：2026-11-24。状态：**Captain 冻结；B1–B4 r2 pass 已推送；C1/C2 已推送；C3 已实现，r1 复核 needs_revision（reparse 边界，返修中）；C4 待 C3 闭环；B3.x `adopt-attempt` 待 E1 前补；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13**。
 > 所有者：Captain（`lead`）。团队：`workspace-agent-refactor`（workspace-lead / runtime-engineer / product-ui / verifier）。
 > 上游：`docs/handoff/Workspace-Agent大规模重构与遗留收尾-Flash总计划.md` §5、§14.4；`AGENTS.md`；
 > `docs/handoff/当前工作区交接.md` §1.6/§4.7/§8。
@@ -498,6 +498,37 @@ r2 观察裁定（rev8）：
   不得开始 E 的真实图片生成；不得用 React 预览截图冒充微信运行时截图。
 - 每阶段必须同时收到**实现报告**与**独立验证报告**才开下一阶段；不把“计划存在”当交付。
 - A 的遗留失败不阻塞 B 原型，但必须保留到 I 阶段收口。
+
+### 4.1 C3 Composer 源码覆盖契约（rev11，C3 已实现待复核）
+
+- **输入**：`overlayRoot` 由主进程派生（不由模型/渲染进程给目录）；根下
+  `<overlayRoot>/source-bundle.json` = `{schemaVersion:"frontend-source-bundle.v1", base:{id,version,treeSha256},
+  targetPage|targetPages, files:[{path,sha256}], deleted:[…], components:[{componentId,scope:"page"|"shared",pages?}], assets:[…]}`；
+  `files` 为**最终完整文件内容**（不是 diff）。
+- **校验（fail-closed）**：真实目录且拒链接/reparse；Base 身份 + 源树 sha256；路径仅 `pages/`、`components/`、`assets/`，
+  禁绝对路径/盘符/`..`/反斜杠/NUL；声明 sha 与真实字节一致；资产真实魔数 png/jpeg/webp、单件 ≤2 MiB、≤20；
+  新增组件四件套；page scope 的页面必须在 Plan 内。
+- **覆盖语义**：页面/组件直接覆盖（无 WXML 替换/WXSS 追加，全仓无 `styleMode` 第二套样式）；page-scoped 组件生成
+  `components/<id>--<page>` 且只改目标页 `usingComponents`；shared 覆盖共享组件并在报告列出 affected pages；
+  支持新增组件/JSON/JS、页面 JS、本地资产；`usingComponents` 按最终 WXML 重算（保留已用/补变体/清新未用）。
+- **错误码**：`SOURCE_OVERLAY_COMPONENT_UNKNOWN`（未知标签）、`SLOT_REQUIRED_BY_PLAN`（已分配插槽缺锚点）、
+  `SOURCE_OVERLAY_CONFLICT`（与 FrontendPack 同时出现，先于 Recipe 状态门禁）、`FEATURE_ASSET_MISSING`、
+  `SOURCE_OVERLAY_*` 输入校验族。
+- **source-changes.v1**：`base{id,version,treeSha256}` + `plan.digest` + `lock{path,registryDigest}` +
+  `overlay{digest,targetPages,components,sharedImpacts}` + `summary{added,modified,deleted,unchanged}` +
+  `files[{path,status,sha256,baseSha256?}]`；无时间戳/绝对路径，自身不入 diff。
+- **同源确定性**：dry-run / 重复导出 / 重开 / 正式导出同一实现；两次 compose 的 treeSha + lockDigest 一致；
+  `buildProjectFiles` 与导出逐字节一致。
+- **entry.assets**：从 pack 根读取并保留 `assets/<id>/<relative>` 相对子路径；找不到回落 entry.path 并按旧 basename
+  落盘（兼容注释保留）；旧空行为不变。
+- **真实门禁（Captain full-access）**：composer 全量 **133/133 PASS**、overlay **6/6**、frontend-reconstruct **186/186**；
+  沙箱 EPERM 环境下 composer-media 那条只能记 BLOCKED，不得写 PASS。
+- **reparse 边界（rev12 返修要求）**：`loadSourceOverlay` 根必须 `realpath(root) === 规范化词法 root`
+  （win32 大小写不敏感），否则 `SOURCE_OVERLAY_ROOT_INVALID`；每个文件/资产读取的 `realpath` 必须仍在 `realRoot` 内，
+  并逐段拒绝 reparse（junction 的 lstat 是普通目录，必须用 realpath 双检），拒绝时不得继续 compose、不得读入外部内容。
+- **treeSha 口径（rev12）**：`result.treeSha256` 指**项目文件树**；`generation-report.json`/`生成报告.md`/`composition.lock.json`
+  含时间/耗时属易变元数据，确定性比较排除它们（三次比较口径一致）。
+
 
 ## 5. 写入锁（共享文件串行）
 

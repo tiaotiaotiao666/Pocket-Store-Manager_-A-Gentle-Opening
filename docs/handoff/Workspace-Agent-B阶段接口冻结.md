@@ -1,6 +1,6 @@
 # Workspace-Agent B 阶段接口冻结（B1 范围 / B2 版本模型 / B3 RPC）
 
-> 版本：rev8。日期：2026-11-24。状态：**Captain 冻结；B1/B2/B3 均已 r2 pass；B4 已开放（§3.5/§3.7）；C1 已提交、C2 已完成待对齐；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13**。
+> 版本：rev10。日期：2026-11-24。状态：**Captain 冻结；B1/B2/B3/B4 均已 r2 pass（B4 通过 t23）；C1/C2 已推送；C3/C4 可开放（§4）；B3.x `adopt-attempt` 仍待 E1 前补；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13**。
 > 所有者：Captain（`lead`）。团队：`workspace-agent-refactor`（workspace-lead / runtime-engineer / product-ui / verifier）。
 > 上游：`docs/handoff/Workspace-Agent大规模重构与遗留收尾-Flash总计划.md` §5、§14.4；`AGENTS.md`；
 > `docs/handoff/当前工作区交接.md` §1.6/§4.7/§8。
@@ -380,6 +380,11 @@ F2 两处 `adoption.sourceKind` 独立抽检通过；测试 50→53 全为真断
   不接受命令、shell、env、cwd；只返回有界 issues。
 - `wechat.verify` 固定包装 `scripts/wechat-devtools-run.cjs`（复用现有 `frontend-verify` 语义），
   工具缺失/超时/证据矛盾 → `BLOCKED`，不得伪造截图。
+- 环境不可用归一（rev9）：同步 spawn `EPERM/EACCES/ENOENT/ETIMEDOUT` 一律 `status:"BLOCKED"`；
+  CLI dispatcher 用**工具缺失码**（如 `CHECK_TOOL_MISSING`），`CHECK_FAILED` 只留给“工具存在但检查真的失败/非零退出”。
+- dispatcher 仅主进程内部调用（固定 argv）；`--root` 只做绝对路径校验，不暴露给 renderer。
+- `verifyWechat` 当前不透传 `pages/interactions/screenshots`（wrapper 无产出即空）；E3 可扩展为**只透传 wrapper 自报的相对引用**，
+  不得伪造截图。
 
 ### 3.5 B3/B4 边界与 B3 范围（rev5）
 
@@ -440,10 +445,38 @@ agent-workspace* 119/119、`frontend-reconstruct*` 186/186、require ok；root �
 `{matches,truncated}`，§3.2 表已按实现修正；③ adopt 不存在/非 current 版本返回 `AGENT_VERSION_CONFLICT`（符合 rev6 ①）；
 ④ artifact 非法 ref 复用 §1.7 码（符合 §3.3）。
 
-**r2 结果（2026-11-24，t19）：PASS，0 findings。** 25/25、119/119、186/186、require ok；root 等价 1354/1345/7/2
-（失败集与 A0 一致）；攻击套件重跑 68/68；F1 三态链真实复验（requested → AGENT_CANCELLED → cancelled，重复 cancel
-幂等，too-late 正确）；F2 二进制 `contentBytes` + 文本 `content` + >2MiB `AGENT_RESULT_TOO_LARGE` 独立验证；
-测试 17→18、无削弱、越界为零。→ **B3 门禁关闭，B4 开放。**
+**r2 结果（2026-11-24，t23）：PASS，0 findings。** 29/29、129/129、186/186、require ok；root 等价 1365/1356/7/2
+（失败集与 A0 一致）；攻击套件 34/34；F1 工具类错误→`BLOCKED`+`CHECK_TOOL_MISSING`（同步 throw EPERM、懒加载路径、
+非零退出+stdout PASS→FAIL 均独立复验）；测试 27→29、无削弱、越界为零。→ **B4 闭环，C3/C4 开放。**
+
+### 3.8 B4 实际交付（rev10，2026-11-24）
+
+B4（t20 + t22 返修）完成并通过 r2（t23=pass，0 findings）。checkId → 实际执行：
+
+| checkId | 实际执行 |
+|---|---|
+| source.check | `scripts/frontend-capabilities.cjs --check` |
+| mini.check | `scripts/validate-miniprogram.cjs` |
+| composer.dry-run | `scripts/composer/verify-cli.cjs --root <版本 source>` |
+| output.consistency | `scripts/agent-checks/output-consistency.cjs`（只读包装 `desktop/output-consistency.cjs`） |
+| unit.targeted | `node --test <白名单 targetFiles 1..5>` |
+| unit.full | `node --test test` |
+| desktop.contract | `node --test test/desktop-contract.test.cjs` |
+| catalog.check | `scripts/component-catalog.cjs --check` |
+| registry.check | `scripts/registry-check.cjs` |
+| wechat.verify | `scripts/wechat-devtools-run.cjs <版本 source>`（wrapper 自报合法 status 才透传，否则 BLOCKED） |
+
+- 参数白名单：timeoutMs 1000..600000；unit.targeted targetFiles 固定白名单 1..5；wechat.verify appId `wx`+16hex；
+  拒绝 command/cmd/shell/exec/spawn/env/cwd/dir/directory/path/script/argv、控制字符、绝对/盘符/UNC/`..`/非标量
+  → `AGENT_PAYLOAD_INVALID`。
+- 环境错误归一：工具类（EPERM/EACCES/ENOENT/ETIMEDOUT/CHECK_TOOL_MISSING）→ `status:"BLOCKED"` + issue
+  `CHECK_TOOL_MISSING`；`CHECK_FAILED` 只用于真实非零/真实失败。
+- `wechat.verify` 缺派生 root → `AGENT_CHECK_UNKNOWN`（视为“检查上下文未知”，rev10 记录）。
+- 真实集成（Captain full-access shell）：source.check / registry.check / catalog.check / unit.targeted **PASS**；
+  mini.check **FAIL** = MIRROR `PRE_EXISTING`；wechat.verify 无 root → **BLOCKED**。
+- 注入：`checks` 未传/null → 懒加载真实注册表；对象 → B3 形状；false → `AGENT_RUNTIME_TOOL_MISSING`。
+- 门禁：29/29、129/129、186/186；root 等价 1365/1356/7 无 NEW。
+
 
 r2 观察裁定（rev8）：
 ① >64 KiB 文本类 artifact 走 `contentBytes`（文本 ≤64 KiB 才回 `content`）——**采纳**，冻结 §3.2 已按此口径；

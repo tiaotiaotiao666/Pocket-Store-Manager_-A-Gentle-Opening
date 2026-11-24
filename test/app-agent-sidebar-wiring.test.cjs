@@ -218,7 +218,8 @@ test('RightPanel 拿到 agentChat 视图模型，回调全部集中在这里', (
   const source = readApp();
   assert.match(source, /<RightPanel[\s\S]{0,160}agentChat=\{agentChatViewModel\}/, 'RightPanel 必须收到 agentChat 视图模型');
   const viewModel = sliceBlock(source, 'const agentChatViewModel = {', '\n  };\n');
-  ['projectId', 'projectName', 'phase', 'phaseLabel', 'chat: agentChatState', 'candidate: agentChatCandidate'].forEach((key) => {
+  // 视图模型给面板的是「带过期标记的会话快照」：lastPending 的版本基线一变就整体降级为过期。
+  ['projectId', 'projectName', 'phase', 'phaseLabel', 'chat: agentChatView', 'candidate: agentChatCandidate'].forEach((key) => {
     assert.ok(viewModel.includes(`${key}`), `视图模型缺少字段：${key}`);
   });
   ['images: agentChatImages', 'imageKinds: agentChatImageKinds', 'imageError: agentChatImageError'].forEach((key) => {

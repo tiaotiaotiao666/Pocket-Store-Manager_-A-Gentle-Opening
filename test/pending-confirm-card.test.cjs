@@ -72,14 +72,32 @@ test('每个可见确认入口都对应一个真实存在的 data-jump-id 锚点
   }
 });
 
-test('卡片渲染可点的「前往确认」，过期时禁用，且不提供第二个同名目标', () => {
+test('卡片渲染可点的「前往确认」，过期时整块收起只剩「重新发一次」，且不提供第二个同名目标', () => {
   const card = read('src/components/agent/AppAssistantChangeCard.jsx');
   assert.match(card, /前往确认/);
   assert.match(card, /aria-label=\{`前往确认：\$\{item\.title\}`\}/, '同屏多条待确认要有可区分名称');
-  assert.match(card, /disabled=\{pendingExpired \|\| item\.sameTargetAsHint === true\}/);
+  assert.match(card, /disabled=\{item\.sameTargetAsHint === true\}/);
   assert.match(card, /PENDING_CONFIRM_NOTE/);
   assert.doesNotMatch(card, /\.click\(\)|dispatch\(/, '卡片只定位，不得自己触发写入');
-  assert.match(card, /这一轮的提案已经过期/, '过期必须提示重新发一次，而不是让用户点旧提案');
+  // 过期：不再渲染入口，也不再说「尚未写入」，避免和「已写入」同时出现。
+  assert.match(card, /这一轮的提案已经过期/);
+  assert.match(card, /请重新发一次再确认/);
+  assert.match(card, /pendingExpired\s*\n?\s*\?/, '过期要走单独分支，而不是只把按钮置灰');
+  assert.match(card, /当时需要确认，这一轮已经过期/, '过期文案不能再写「尚未写入」');
+});
+
+test('项目在响应之后又变了（含用户自己删完菜）时，旧待确认卡片立刻失效', () => {
+  const machine = read('src/state/sessionMachine.mjs');
+  assert.match(machine, /baselineRevision,/, 'lastPending 要记住这一轮的版本基线');
+  assert.match(machine, /projectId: state\.project\?\.activeId \?\? null,/, 'lastPending 要记住所属项目');
+
+  const app = read('src/App.jsx');
+  const drift = app.slice(app.indexOf('const pendingDrift ='), app.indexOf('const pendingDrift =') + 1200);
+  assert.match(drift, /pending\.baselineRevision/);
+  assert.match(drift, /state\.project\?\.contentRevision/);
+  assert.match(drift, /switchedProject/, '换项目也算过期');
+  assert.match(app, /const agentChatView = pendingDrift \? \{ \.\.\.agentChatState, lastStale: pendingDrift \}/);
+  assert.match(app, /chat: agentChatView,/, '面板必须拿到带过期标记的视图，否则按钮还能点');
 });
 
 test('App 接线：待确认项带 op、按阶段跳转、与等待提示去重', () => {

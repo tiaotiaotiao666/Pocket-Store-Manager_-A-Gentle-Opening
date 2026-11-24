@@ -2086,9 +2086,13 @@ function baseReducer(state, action) {
           lastError: null,
           lastStale: stale,
           // 待确认项只登记摘要（字段/动作），绝不自动写入；requestId 用于在消息流里定位那一轮。
+          // baselineRevision/projectId 让「这一轮之后项目又变了/换了项目」能在任意时刻判定为过期，
+          // 避免用户已经手动删完菜，卡片还在展示可点的「前往确认」并写着「尚未写入」。
           lastPending: action.pending && typeof action.pending === 'object'
             ? {
               requestId: identity.requestId,
+              projectId: state.project?.activeId ?? null,
+              baselineRevision,
               fields: Array.isArray(action.pending.fields) ? action.pending.fields.slice(0, 24) : [],
               actions: Array.isArray(action.pending.actions) ? action.pending.actions.slice(0, 2) : [],
             }

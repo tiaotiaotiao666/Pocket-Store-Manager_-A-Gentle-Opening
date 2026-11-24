@@ -5120,6 +5120,27 @@ case PHASES.DEPLOY: {
     }
     jumpToControl(jumpId);
   };
+  // 问题 6 的状态一致：响应之后项目又变了（例如用户已经自己在菜品区删完了、或切了项目），
+  // 这一轮的待确认项立刻按「过期」处理——卡片上的「前往确认」全部失效，改为让用户重新发一次，
+  // 不让「尚未写入」的卡片挂着一个指向已完成动作的活按钮。
+  const pendingDrift = (() => {
+    const pending = agentChatState.lastPending && typeof agentChatState.lastPending === 'object'
+      ? agentChatState.lastPending
+      : null;
+    if (!pending) return null;
+    if (agentChatState.lastStale && typeof agentChatState.lastStale === 'object') return agentChatState.lastStale;
+    const currentRevision = Number.isInteger(state.project?.contentRevision) ? state.project.contentRevision : 0;
+    const baselineRevision = Number.isInteger(pending.baselineRevision) ? pending.baselineRevision : null;
+    const switchedProject = (pending.projectId ?? null) !== (state.project?.activeId ?? null);
+    if (!switchedProject && (baselineRevision === null || currentRevision === baselineRevision)) return null;
+    return {
+      requestId: pending.requestId ?? null,
+      expectedRevision: baselineRevision,
+      actualRevision: currentRevision,
+      reason: switchedProject ? 'project-switched' : 'project-changed',
+    };
+  })();
+  const agentChatView = pendingDrift ? { ...agentChatState, lastStale: pendingDrift } : agentChatState;
   // 右侧栏「Agent 对话」视图模型：安全字段 + 回调，组件不持有会话状态、也不自己发请求。
   // 过程卡只给 lastRun（`normalizeChatRun` 白名单产物），trace 不进消息正文。
   const agentChatViewModel = {
@@ -5127,7 +5148,7 @@ case PHASES.DEPLOY: {
     projectName: String(state.store.name || state.agentDraft.storeName || '').trim(),
     phase,
     phaseLabel: meta?.label ?? '',
-    chat: agentChatState,
+    chat: agentChatView,
     candidate: agentChatCandidate,
     // 与 handleAgentChatSubmit 共用同一条原因：面板禁用发送 + 显示原因。
     sendBlockedReason: agentChatSendBlockedReason,

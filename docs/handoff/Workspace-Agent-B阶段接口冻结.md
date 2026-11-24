@@ -1,6 +1,6 @@
 # Workspace-Agent B 阶段接口冻结（B1 范围 / B2 版本模型 / B3 RPC）
 
-> 版本：rev13。日期：2026-11-24。状态：**Captain 冻结；B1–B4、C1–C4 全部 r2 pass；C4 硬门禁通过（t30=pass，微信/真机如实 BLOCKED/NOT_RUN）；D1 已实现待复核（t31）；本轮按用户要求收口后停止，E/D2+ 未启动；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13**。
+> 版本：rev14。日期：2026-11-24。状态：**Captain 冻结；B1–B4、C1–C4、D1 全部通过独立复核并推送/待推送；C4 硬门禁 pass（微信/真机如实 BLOCKED/NOT_RUN）；按用户要求本轮收口后停止，E/D2+ 未启动；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13**。
 > 所有者：Captain（`lead`）。团队：`workspace-agent-refactor`（workspace-lead / runtime-engineer / product-ui / verifier）。
 > 上游：`docs/handoff/Workspace-Agent大规模重构与遗留收尾-Flash总计划.md` §5、§14.4；`AGENTS.md`；
 > `docs/handoff/当前工作区交接.md` §1.6/§4.7/§8。
@@ -555,6 +555,27 @@ r2 观察裁定（rev8）：
 1. 成员发现本冻结不可实现（例如上限与真实文件冲突）→ 停止扩范围，给 Captain 一页证据 + 建议。
 2. Captain 更新本文件（rev+1）并在任务描述/消息中同步；B2/B3 实现按新 rev 执行。
 3. 不得在实现里“先按另一种形状写，事后再改契约”。
+
+### 7.1 D1 实际交付（rev14，2026-11-24）
+
+D1（t29）完成并通过 r2（t31=pass，0 findings）。
+
+- 契约 `contracts/workspace-agent.v1.json`：`workspace-agent.v1`、`POST /api/v1/agent/workspace`、operations 4、
+  **tools 11（rpc 唯一）**、operationTools 4 组、**limits 17**、**errorCodes 18**、allowedKeys 8、
+  forbidden 恰 `applied/adopted/exported/verified`；服务端从契约取值，无同义常量副本。
+- 服务端：`server/src/agent/workspace/workspace-agent.{contract,controller,mock,module,rpc,service,tools,types}.ts`
+  + `index.ts`；**复用 runtime 的 runAgent（无第二套 loop）**；工具经注入 `WorkspaceRpcProxy`（源码无 `node:fs`
+  读写，契约加载器除外）；mock 显式零网络零磁盘；`response close → abort → 408 AGENT_ABORTED`；
+  错误映射 503/504/502/400/413/500。
+- 接线：`server/src/agent/agent.module.ts` 仅 **+2 行**（import + imports 数组），`AgentModule.imports` 含
+  `WorkspaceAgentModule`，controller 自动构造、路由真实挂载。
+- 独立复核（t31）：16/16、`tsc` 0、契约 JSON ok、自写攻击 15/15、server 非 DB 562 pass（6 个 DB 文件因
+  `execSync` spawn EPERM = BLOCKED，非 D1）。
+- 观察（非 finding，rev14 记录）：
+  ① `main.ts` 的 body parser 对 `/api/v1/agent` 默认 2 MiB（≥ 契约 256 KiB），service 层 262144 已独立验证；
+  ② reply 脱敏覆盖 claims 与绝对路径，未做通用 `sk-` scrub——服务端从不把 `DEEPSEEK_*` 写入 prompt/日志/响应，
+     后续 rev 可加通用密钥 scrub。
+- **真实 DeepSeek 工具循环 NOT_RUN**；D2–D4 未启动（按用户要求本轮停止）。
 
 ## 8. 待补（rev7 内容）
 

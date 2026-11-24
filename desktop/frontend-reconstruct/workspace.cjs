@@ -21,345 +21,55 @@
  * - `projectId`/`runId` 必须匹配固定字符集，禁止 `/`、`\`、`..`、盘符、控制字符。
  * - 任何已存在的路径段只要命中 symlink/junction（realpath 与词法路径不一致）即拒绝。
  * - 所有 attempt 子路径都必须是规范 POSIX 相对路径，拒绝绝对路径/`..`/反斜杠/盘符。
+ *
+ * 路径安全实现与 `desktop/agent-workspace/paths.cjs` **同源**（B1 抽取，唯一一份）：
+ * 这里只保留候选链自己的领域逻辑（固定布局、attempt 独占分配、run.json），
+ * 共享函数直接再导出，禁止在这里复制第二份 lstat/realpath/mkdir 逻辑。
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
-const crypto = require('node:crypto');
 
-/** ID/路径校验与契约同源（这里沿用窄控制字符集合：只禁 C0 与 DEL，不改变既有落盘行为）。 */
+/**
+ * 契约常量必须**直接**从生成契约取（`test/frontend-contract.test.cjs` 的单一源断言
+ * 要求本文件直接 `require('./contract.generated.cjs')`）。
+ * 安全路径函数继续复用 `desktop/agent-workspace/paths.cjs` 的同一实现，不复制第二份。
+ */
+const { PROJECT_ID_PATTERN, RUN_ID_PATTERN } = require('./contract.generated.cjs');
+
 const {
-  PROJECT_ID_PATTERN,
-  RUN_ID_PATTERN,
-  CONTROL_CHAR_NARROW_PATTERN: CONTROL_CHAR_PATTERN,
-} = require('./contract.generated.cjs');
+  LEGACY_CODES,
+  ATTEMPT_DIR_PATTERN,
+  STAGING_PATTERN,
+  REPO_ROOT,
+  ok,
+  fail,
+  samePath,
+  realpathOf,
+  isInside,
+  isInsideOrEqual,
+  isProtectedRepoDir,
+  isLinkLike,
+  removeTreeSafely,
+  randomSuffix,
+  resolvePrivateRoot,
+  auditPath,
+  ensureDirectory,
+  assertCanonicalDir,
+  ensureCanonicalDirectory,
+  assertId,
+  assertSafeRelativePath,
+  resolveInside,
+  writeJsonAtomic,
+} = require('../agent-workspace/paths.cjs');
 
-const REPO_ROOT = path.resolve(__dirname, '..', '..');
+const CODES = LEGACY_CODES;
 
 const PROJECTS_DIR = 'projects';
 const RUNS_DIR = 'frontend-runs';
 const ATTEMPTS_DIR = 'attempts';
 const RUN_FILE = 'run.json';
 const ATTEMPT_FILE = 'attempt.json';
-const ATTEMPT_DIR_PATTERN = /^attempt-([1-9][0-9]{0,3})$/;
-const STAGING_PATTERN = /^\.staging-[0-9a-f]{8}$/;
-const DRIVE_PATTERN = /^[A-Za-z]:/;
-
-const CODES = Object.freeze({
-  ROOT_INVALID: 'WORKSPACE_ROOT_INVALID',
-  PROJECT_ID_INVALID: 'WORKSPACE_PROJECT_ID_INVALID',
-  RUN_ID_INVALID: 'WORKSPACE_RUN_ID_INVALID',
-  PATH_REJECTED: 'WORKSPACE_PATH_REJECTED',
-  ATTEMPT_FAILED: 'WORKSPACE_ATTEMPT_FAILED',
-  IO_FAILED: 'WORKSPACE_IO_FAILED',
-});
-
-function ok(extra) {
-  return Object.assign({ ok: true }, extra);
-}
-
-function fail(code, target, message) {
-  return { ok: false, code, path: target || '.', message };
-}
-
-function samePath(first, second) {
-  const a = path.resolve(first);
-  const b = path.resolve(second);
-  if (process.platform === 'win32') return a.toLowerCase() === b.toLowerCase();
-  return a === b;
-}
-
-function realpathOf(target) {
-  return fs.realpathSync.native ? fs.realpathSync.native(target) : fs.realpathSync(target);
-}
-
-/** target 是否严格位于 root 之内（不含等于）。 */
-function isInside(root, target) {
-  const relative = path.relative(path.resolve(root), path.resolve(target));
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
-}
-
-function isInsideOrEqual(root, target) {
-  return samePath(root, target) || isInside(root, target);
-}
-
-function isProtectedRepoDir(target) {
-  return isInsideOrEqual(REPO_ROOT, target);
-}
-
-/**
- * 判断一个已存在路径是否“链接样”：POSIX symlink，或 Windows junction / 任何
- * realpath 与词法路径不一致的别名。junction 的 `lstat().isSymbolicLink()` 在 Node 上
- * 为 false，因此这里必须用 realpath 复核，不能只信 lstat。
- */
-function isLinkLike(target) {
-  let stats;
-  try {
-    stats = fs.lstatSync(target);
-  } catch (error) {
-    return false;
-  }
-  if (stats.isSymbolicLink()) return true;
-  try {
-    return !samePath(realpathOf(target), path.resolve(target));
-  } catch (error) {
-    return true;
-  }
-}
-
-/**
- * 安全递归删除：遇到 symlink/junction **只删链接本身**，绝不跟随到目标目录，
- * 避免清理 staging/attempt 时误删工作区之外的文件。
- */
-function removeTreeSafely(target) {
-  let stats;
-  try {
-    stats = fs.lstatSync(target);
-  } catch (error) {
-    return false;
-  }
-  if (stats.isSymbolicLink()) {
-    try {
-      fs.unlinkSync(target);
-      return true;
-    } catch (error) {
-      try {
-        fs.rmdirSync(target);
-        return true;
-      } catch (inner) {
-        return false;
-      }
-    }
-  }
-  if (!stats.isDirectory()) {
-    try {
-      fs.unlinkSync(target);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
-  if (isLinkLike(target)) {
-    // Windows junction：lstat 是目录，但绝不能递归进入。
-    try {
-      fs.rmdirSync(target);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
-  let entries;
-  try {
-    entries = fs.readdirSync(target, { withFileTypes: true });
-  } catch (error) {
-    return false;
-  }
-  for (const entry of entries) {
-    const full = path.join(target, entry.name);
-    if (!removeTreeSafely(full)) return false;
-  }
-  try {
-    fs.rmdirSync(target);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-function randomSuffix() {
-  return crypto.randomBytes(4).toString('hex');
-}
-
-/**
- * 校验应用私有根目录。
- *
- * 规则（P2 repair-3 / T18-F2）：
- * - 绝对路径、非盘符根、词法路径不得位于仓库内；
- * - **mkdir 前**先 canonical 化最近已存在祖先（lstat/realpath 拒 symlink/junction、
- *   受保护路径检查），再用逐段非递归 mkdir 创建，因此祖先 junction + 缺失根不会
- *   在链接目标里留下新目录；
- * - 创建后 root 本身仍要 lstat/realpath 一致，真实根再复核受保护目录。
- *
- * @returns {{ok:true, root:string, rootReal:string}|{ok:false, code:string, path:string, message:string}}
- */
-function resolvePrivateRoot(userDataDir) {
-  if (typeof userDataDir !== 'string' || userDataDir.trim() === '') {
-    return fail(CODES.ROOT_INVALID, 'userDataDir', '必须提供应用私有数据目录');
-  }
-  if (CONTROL_CHAR_PATTERN.test(userDataDir)) return fail(CODES.ROOT_INVALID, 'userDataDir', '路径含控制字符');
-  if (!path.isAbsolute(userDataDir)) return fail(CODES.ROOT_INVALID, 'userDataDir', '必须是绝对路径');
-  const root = path.resolve(userDataDir);
-  if (root === path.parse(root).root) return fail(CODES.ROOT_INVALID, 'userDataDir', '不允许把盘符根目录当作私有工作区');
-  if (isProtectedRepoDir(root)) {
-    return fail(CODES.PATH_REJECTED, 'userDataDir', '私有工作区不得位于仓库内（会污染全局 templates/miniprogram/Registry）');
-  }
-  const canonical = ensureCanonicalDirectory(root);
-  if (!canonical.ok) return canonical;
-  const rootReal = canonical.realDir;
-  if (isProtectedRepoDir(rootReal)) {
-    return fail(CODES.PATH_REJECTED, 'userDataDir', '私有数据目录的真实路径位于仓库内');
-  }
-  return ok({ root, rootReal });
-}
-
-/**
- * 从私有根到 target 逐段检查：已存在段不得是 symlink/junction，且真实路径必须留在根内。
- * 不存在的段直接跳过（由创建方负责），因此本函数可安全用于“即将创建”的路径。
- */
-function auditPath(privateRoot, rootReal, target) {
-  if (!isInsideOrEqual(privateRoot, target)) {
-    return fail(CODES.PATH_REJECTED, target, '路径越出私有工作区根目录');
-  }
-  const relative = path.relative(privateRoot, target);
-  if (relative === '') return ok();
-  let current = privateRoot;
-  for (const segment of relative.split(path.sep)) {
-    current = path.join(current, segment);
-    if (!fs.existsSync(current)) continue;
-    let stats;
-    try {
-      stats = fs.lstatSync(current);
-    } catch (error) {
-      return fail(CODES.IO_FAILED, current, '无法读取路径：' + (error.code || error.message));
-    }
-    if (stats.isSymbolicLink()) {
-      return fail(CODES.PATH_REJECTED, current, '工作区内不得存在符号链接或 junction');
-    }
-    let real;
-    try {
-      real = realpathOf(current);
-    } catch (error) {
-      return fail(CODES.IO_FAILED, current, '无法解析真实路径：' + (error.code || error.message));
-    }
-    // Windows junction 的 lstat 不是 symlink，但 realpath 会指向别处：这里一并拒绝。
-    if (!samePath(real, current)) {
-      return fail(CODES.PATH_REJECTED, current, '工作区内不得存在符号链接或 junction（真实路径不一致）');
-    }
-    if (!isInsideOrEqual(rootReal, real)) {
-      return fail(CODES.PATH_REJECTED, current, '真实路径越出私有工作区根目录');
-    }
-  }
-  return ok();
-}
-
-/**
- * 逐段（非递归）创建目录：每创建/命中一段都跑一次 `auditPath`，
- * 因此绝不会沿着已存在的 reparse point（symlink/junction）往工作区外写。
- *
- * `privateRoot`/`rootReal` 必须是 `resolvePrivateRoot` 校验过的私有根及其真实路径。
- */
-function ensureDirectory(privateRoot, rootReal, target) {
-  if (typeof target !== 'string' || !path.isAbsolute(target)) {
-    return fail(CODES.IO_FAILED, target, '目录必须是绝对路径');
-  }
-  if (!isInsideOrEqual(privateRoot, target)) {
-    return fail(CODES.PATH_REJECTED, target, '目录越出私有工作区根目录');
-  }
-  if (!fs.existsSync(privateRoot)) return fail(CODES.IO_FAILED, privateRoot, '私有工作区根目录不存在');
-  const relative = path.relative(privateRoot, target);
-  if (relative === '') return auditPath(privateRoot, rootReal, privateRoot);
-
-  let current = privateRoot;
-  for (const segment of relative.split(path.sep)) {
-    current = path.join(current, segment);
-    if (!fs.existsSync(current)) {
-      try {
-        fs.mkdirSync(current, { recursive: false, mode: 0o700 });
-      } catch (error) {
-        if (error.code !== 'EEXIST') {
-          return fail(CODES.IO_FAILED, current, '创建目录失败：' + (error.code || error.message));
-        }
-      }
-    }
-    const audit = auditPath(privateRoot, rootReal, current);
-    if (!audit.ok) return audit;
-  }
-  return ok({ dir: current });
-}
-
-/**
- * 目录必须是“规范目录”：存在、lstat 不是符号链接、realpath 与词法路径一致。
- * 用于 staging 目录创建后的立即复核（防止创建与写入之间被替换成 junction）。
- */
-function assertCanonicalDir(target) {
-  let stats;
-  try {
-    stats = fs.lstatSync(target);
-  } catch (error) {
-    return fail(CODES.IO_FAILED, target, '目录不可读：' + (error.code || error.message));
-  }
-  if (stats.isSymbolicLink()) return fail(CODES.PATH_REJECTED, target, '目录不得是符号链接');
-  if (!stats.isDirectory()) return fail(CODES.PATH_REJECTED, target, '必须是目录');
-  let real;
-  try {
-    real = realpathOf(target);
-  } catch (error) {
-    return fail(CODES.IO_FAILED, target, '无法解析真实路径：' + (error.code || error.message));
-  }
-  if (!samePath(real, path.resolve(target))) {
-    return fail(CODES.PATH_REJECTED, target, '目录不得是 junction 或路径别名（真实路径不一致）');
-  }
-  return ok({ dir: path.resolve(target), realDir: real });
-}
-
-/**
- * 创建/规范化一个目录（P2 repair-3 / T18-F2）。
- *
- * 关键顺序：**先 canonical 化最近已存在的祖先，再逐段非递归 mkdir**。
- * 祖先若是 symlink/junction（或真实路径落在仓库/受保护目录），在创建任何目录之前就拒绝，
- * 因此“祖先 junction + 缺失根”不会在链接目标里留下新目录。
- *
- * @returns {{ok:true, dir:string, realDir:string}|{ok:false, code:string, path:string, message:string}}
- */
-function ensureCanonicalDirectory(target) {
-  if (typeof target !== 'string' || !path.isAbsolute(target)) {
-    return fail(CODES.IO_FAILED, target, '目录必须是绝对路径');
-  }
-  const resolved = path.resolve(target);
-  if (CONTROL_CHAR_PATTERN.test(resolved)) return fail(CODES.PATH_REJECTED, resolved, '路径含控制字符');
-
-  let existing = resolved;
-  while (!fs.existsSync(existing)) {
-    const parent = path.dirname(existing);
-    if (parent === existing) break;
-    existing = parent;
-  }
-  let stats;
-  try {
-    stats = fs.lstatSync(existing);
-  } catch (error) {
-    return fail(CODES.IO_FAILED, existing, '无法读取最近已存在祖先：' + (error.code || error.message));
-  }
-  if (stats.isSymbolicLink()) {
-    return fail(CODES.PATH_REJECTED, existing, '最近已存在祖先不得是符号链接（mkdir 前拒绝）');
-  }
-  if (!stats.isDirectory()) {
-    return fail(CODES.PATH_REJECTED, existing, '最近已存在祖先必须是目录');
-  }
-  let existingReal;
-  try {
-    existingReal = realpathOf(existing);
-  } catch (error) {
-    return fail(CODES.IO_FAILED, existing, '无法解析祖先真实路径：' + (error.code || error.message));
-  }
-  // Windows junction 的 lstat 不是 symlink：真实路径不一致即视为链接/别名，mkdir 前拒绝。
-  if (!samePath(existingReal, existing)) {
-    return fail(CODES.PATH_REJECTED, existing, '最近已存在祖先不得是 junction 或路径别名（mkdir 前拒绝）');
-  }
-  if (isProtectedRepoDir(existingReal)) {
-    return fail(CODES.PATH_REJECTED, resolved, '目标路径经过仓库/受保护目录（mkdir 前拒绝）');
-  }
-  const ensured = ensureDirectory(existing, existingReal, resolved);
-  if (!ensured.ok) return ensured;
-  return assertCanonicalDir(resolved);
-}
-
-function assertId(value, pattern, code, name) {
-  if (typeof value !== 'string' || !pattern.test(value)) {
-    return fail(code, name, name + ' 非法：只允许字母数字与 ._-（不得含分隔符或 ..）');
-  }
-  return ok();
-}
 
 /**
  * 计算（不创建）固定布局的工作区路径。
@@ -431,23 +141,6 @@ function createWorkspace(options) {
   return ok({ ...paths, run });
 }
 
-function writeJsonAtomic(file, value) {
-  const dir = path.dirname(file);
-  const temp = path.join(dir, '.' + path.basename(file) + '.' + randomSuffix() + '.tmp');
-  try {
-    fs.writeFileSync(temp, JSON.stringify(value, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' });
-    fs.renameSync(temp, file);
-    return ok();
-  } catch (error) {
-    try {
-      if (fs.existsSync(temp)) fs.unlinkSync(temp);
-    } catch (ignored) {
-      /* 清理失败不掩盖原始错误 */
-    }
-    return fail(CODES.IO_FAILED, file, '原子写入失败：' + (error.code || error.message));
-  }
-}
-
 function listAttempts(workspace) {
   const dir = workspace.attemptsDir || workspace;
   const out = [];
@@ -463,7 +156,6 @@ function listAttempts(workspace) {
 /**
  * 分配并独占创建下一个 attempt（以及其 staging 目录）。
  *
- * 关键点：
  * - `attempt-<n>` 用**非递归** mkdir 独占创建，不会复用/覆盖上一个 attempt；
  * - 创建后逐段 audit（`ensureDirectory`），并立即复核 attempt 与 staging 的
  *   lstat + realpath，防止创建与首次写入之间被替换成 junction；
@@ -560,36 +252,6 @@ function removeStaging(stagingDir, attemptDir) {
   return removeTreeSafely(stagingDir);
 }
 
-/**
- * 校验规范 POSIX 相对路径（写入 attempt 内的每个文件都必须先过这一关）。
- */
-function assertSafeRelativePath(relative) {
-  if (typeof relative !== 'string' || relative === '') {
-    return fail(CODES.PATH_REJECTED, String(relative), '必须是非空相对路径');
-  }
-  if (relative !== relative.trim()) return fail(CODES.PATH_REJECTED, relative, '路径首尾不得有空白');
-  if (relative.length > 200) return fail(CODES.PATH_REJECTED, relative, '路径过长');
-  if (CONTROL_CHAR_PATTERN.test(relative)) return fail(CODES.PATH_REJECTED, relative, '路径含控制字符');
-  if (relative.includes('\\')) return fail(CODES.PATH_REJECTED, relative, '只接受 POSIX 相对路径');
-  if (relative.startsWith('/')) return fail(CODES.PATH_REJECTED, relative, '不得是绝对路径');
-  if (DRIVE_PATTERN.test(relative)) return fail(CODES.PATH_REJECTED, relative, '不得包含盘符');
-  for (const segment of relative.split('/')) {
-    if (segment === '' || segment === '.' || segment === '..') {
-      return fail(CODES.PATH_REJECTED, relative, '路径段非法（空段/./..）');
-    }
-  }
-  return ok({ relative });
-}
-
-/** 把相对路径解析到指定根目录内，并再次确认未逃逸。 */
-function resolveInside(root, relative) {
-  const safe = assertSafeRelativePath(relative);
-  if (!safe.ok) return safe;
-  const target = path.resolve(root, relative);
-  if (!isInside(root, target)) return fail(CODES.PATH_REJECTED, relative, '路径越出目标目录');
-  return ok({ relative, target });
-}
-
 /** 读取 run.json（不存在或损坏时返回 null，调用方决定如何降级）。 */
 function readRun(workspace) {
   if (!fs.existsSync(workspace.runFile)) return null;
@@ -630,12 +292,15 @@ module.exports = {
   RUN_ID_PATTERN,
   ATTEMPT_DIR_PATTERN,
   STAGING_PATTERN,
+  // 共享安全路径实现（与 desktop/agent-workspace/paths.cjs 是同一份引用）。
   isInside,
   isInsideOrEqual,
   isProtectedRepoDir,
   isLinkLike,
   samePath,
   realpathOf,
+  randomSuffix,
+  assertId,
   resolvePrivateRoot,
   workspacePaths,
   createWorkspace,

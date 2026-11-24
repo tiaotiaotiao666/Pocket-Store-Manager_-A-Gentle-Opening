@@ -17,7 +17,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { fillThemeDefaults } = require('./resolve.cjs');
-const { walk, relativePosix, fileSha256 } = require('./digest.cjs');
+const { walk, relativePosix, fileSha256, sha256, planDigest, treeSha256 } = require('./digest.cjs');
+const { loadSourceOverlay, applySourceOverlay, copyEntryAssets, BUILTIN_TAGS } = require('./source-overlay.cjs');
 const {
   fail,
   ok,
@@ -767,6 +768,64 @@ function overlayFrontendPack(files, graph) {
   return ok();
 }
 
+/** C3：生成 source-changes.json（逐文件 added/modified/deleted + sha256；不含时间戳/绝对路径）。 */
+function buildSourceChanges(baseSnapshot, files, options) {
+  const opts = options || {};
+  const graph = opts.graph;
+  const overlay = opts.overlay || null;
+  const paths = new Set([...baseSnapshot.keys(), ...files.keys()]);
+  paths.delete('source-changes.json');
+  const entries = [];
+  const summary = { added: 0, modified: 0, deleted: 0, unchanged: 0 };
+  let baseTree = null;
+  try {
+    baseTree = treeSha256(graph.baseSrc);
+  } catch (error) {
+    baseTree = null;
+  }
+  for (const relative of [...paths].sort()) {
+    const baseHash = baseSnapshot.get(relative) || null;
+    const finalBuffer = files.get(relative);
+    const finalHash = finalBuffer ? sha256(finalBuffer) : null;
+    let status;
+    if (baseHash && finalHash) status = baseHash === finalHash ? 'unchanged' : 'modified';
+    else if (!baseHash && finalHash) status = 'added';
+    else status = 'deleted';
+    summary[status] += 1;
+    if (status === 'unchanged') continue;
+    entries.push({
+      path: relative,
+      status,
+      sha256: finalHash,
+      ...(baseHash ? { baseSha256: baseHash } : {}),
+    });
+  }
+  return {
+    schemaVersion: 'source-changes.v1',
+    base: {
+      id: graph.base.id,
+      version: graph.base.version,
+      treeSha256: baseTree,
+    },
+    plan: { digest: opts.planDigest || planDigest(graph.plan) },
+    lock: {
+      path: 'composition.lock.json',
+      registryDigest: opts.registryDigest || null,
+    },
+    overlay: overlay
+      ? {
+        schemaVersion: overlay.bundle.schemaVersion,
+        digest: overlay.digest,
+        targetPages: [...overlay.targetPages],
+        components: overlay.componentScopes,
+        sharedImpacts: overlay.sharedImpacts,
+      }
+      : null,
+    summary,
+    files: entries,
+  };
+}
+
 function buildProjectFiles(graph, options) {
   const opts = { mode: 'development', ...options };
   if (opts.media !== undefined) {
@@ -780,11 +839,33 @@ function buildProjectFiles(graph, options) {
   const presentationTokens = opts.presentationTokens === undefined ? graph.presentationTokens : opts.presentationTokens;
   const storeName = (graph.plan.storeProfile && graph.plan.storeProfile.name) || '我的餐馆';
   const files = readBaseFiles(graph, opts);
+  // C3：Base 快照用于 source-changes.json（在任何覆盖/生成前捕获）。
+  const baseSnapshot = new Map();
+  for (const [relative, buffer] of files) baseSnapshot.set(relative, sha256(buffer));
   applyRoleOutput(files, graph, opts.role);
 
-  // FrontendPack 只覆盖视图层：WXML 替换、WXSS 追加、JSON 受限合并；控制器 JS 始终来自 Base。
-  const overlay = overlayFrontendPack(files, graph);
-  if (!overlay.ok) return overlay;
+  // C3：私有 workspace/source overlay 优先于旧 FrontendPack；两者互斥。
+  let sourceOverlayResult = null;
+  if (opts.sourceOverlay) {
+    if (graph.frontendPack) {
+      return fail('SOURCE_OVERLAY_CONFLICT', 'sourceOverlay', '同一产物不能同时使用 FrontendPack 与 source overlay');
+    }
+    let bundle = opts.sourceOverlay;
+    if (!bundle || !Array.isArray(bundle.files)) {
+      const loadedOverlay = loadSourceOverlay(graph, opts.sourceOverlay);
+      if (!loadedOverlay.ok) return loadedOverlay;
+      bundle = loadedOverlay.bundle;
+    }
+    const appliedOverlay = applySourceOverlay(files, graph, bundle);
+    if (!appliedOverlay.ok) return appliedOverlay;
+    sourceOverlayResult = { ...appliedOverlay, bundle };
+  }
+
+  // 旧 FrontendPack 只覆盖视图层：WXML 替换、WXSS 追加、JSON 受限合并；控制器 JS 始终来自 Base。
+  if (!sourceOverlayResult) {
+    const overlay = overlayFrontendPack(files, graph);
+    if (!overlay.ok) return overlay;
+  }
 
   files.set('app.json', Buffer.from(json(buildAppJson(graph, opts, theme, storeName)), 'utf8'));
   files.set('theme.generated.wxss', Buffer.from(buildThemeWxss(theme, presentationTokens), 'utf8'));
@@ -814,12 +895,9 @@ function buildProjectFiles(graph, options) {
         if (item.asset.kind === 'feature-pack') {
           const featureSrc = path.join(item.asset.dir, item.asset.manifest.entry.path);
           copyDirectoryToFiles(featureSrc, 'components/' + tag, files);
-          (item.asset.manifest.entry.assets || []).forEach((assetFile) => {
-            const source = path.join(featureSrc, assetFile);
-            if (fs.existsSync(source)) {
-              files.set('assets/' + item.asset.id + '/' + path.posix.basename(assetFile), fs.readFileSync(source));
-            }
-          });
+          // C3 修复：entry.assets 相对 pack 根（不是 entry.path），目标保留相对子路径。
+          const assetCopy = copyEntryAssets(item.asset, files);
+          if (!assetCopy.ok) return assetCopy;
         } else {
           copyDirectoryToFiles(
             path.join(item.asset.dir, item.asset.manifest.entry.path),
@@ -832,7 +910,7 @@ function buildProjectFiles(graph, options) {
     });
   });
 
-  // 页面 usingComponents 只保留实际使用的组件 + 插槽标签
+  // 页面 usingComponents 只保留实际使用的组件 + 插槽标签；C3 overlay 需加页面变体/新组件路径。
   graph.pageIds.forEach((pageId) => {
     const jsonFile = 'pages/' + pageId + '/index.json';
     const wxmlFile = 'pages/' + pageId + '/index.wxml';
@@ -849,6 +927,23 @@ function buildProjectFiles(graph, options) {
     copiedTags.forEach((asset, tag) => {
       if (used.has(tag)) filtered[tag] = '/components/' + tag + '/index';
     });
+    if (sourceOverlayResult) {
+      // 页面变体：tag 不变，路径指向确定性变体目录；新共享组件按真实目录补路径。
+      const overlayTags = sourceOverlayResult.pageTagPaths.get(pageId);
+      if (overlayTags) {
+        for (const [tag, target] of overlayTags) {
+          if (used.has(tag)) filtered[tag] = target;
+        }
+      }
+      for (const tag of used) {
+        if (filtered[tag] || BUILTIN_TAGS.has(tag)) continue;
+        if (files.has('components/' + tag + '/index.json')) {
+          filtered[tag] = '/components/' + tag + '/index';
+          continue;
+        }
+        return fail('SOURCE_OVERLAY_COMPONENT_UNKNOWN', jsonFile, '最终 WXML 使用了不可解析的组件：' + tag, { pageId, tag });
+      }
+    }
     pageJson.usingComponents = filtered;
     files.set(jsonFile, Buffer.from(json(pageJson), 'utf8'));
   });
@@ -864,15 +959,38 @@ function buildProjectFiles(graph, options) {
   const forbidden = detectForbiddenKeysWithCode(storeConfig, 'STORE_CONFIG_FIELD_FORBIDDEN');
   if (forbidden) return forbidden;
 
+  // C3：source-changes.json 在全部覆盖与生成之后、写盘之前生成（本身不计入 diff）。
+  let sourceChanges = null;
+  if (sourceOverlayResult) {
+    sourceChanges = buildSourceChanges(baseSnapshot, files, {
+      graph,
+      planDigest: opts.planDigest,
+      registryDigest: opts.registryDigest,
+      overlay: sourceOverlayResult,
+    });
+    files.set('source-changes.json', Buffer.from(JSON.stringify(sourceChanges, null, 2) + '\n', 'utf8'));
+  }
+
   return {
     ...ok(),
     files,
+    sourceChanges,
+    sourceOverlay: sourceOverlayResult
+      ? {
+        digest: sourceOverlayResult.digest,
+        targetPages: sourceOverlayResult.targetPages,
+        componentScopes: sourceOverlayResult.componentScopes,
+        sharedImpacts: sourceOverlayResult.sharedImpacts,
+        variantDirs: sourceOverlayResult.variantDirs,
+      }
+      : null,
     stats: {
       pages: graph.pageIds.length,
       components: files.size > 0 ? new Set([...files.keys()].filter((file) => file.startsWith('components/')).map((file) => file.split('/')[1])).size : 0,
       assets: [...files.keys()].filter((file) => file.startsWith('assets/')).length,
       files: files.size,
       frontendPackPages: graph.frontendPack ? graph.frontendPack.pages.length : 0,
+      sourceOverlayPages: sourceOverlayResult ? sourceOverlayResult.targetPages.length : 0,
     },
     theme,
     storeConfig,
@@ -895,4 +1013,8 @@ module.exports = {
   json,
   configModule,
   text,
+  buildSourceChanges,
+  loadSourceOverlay,
+  applySourceOverlay,
+  copyEntryAssets,
 };

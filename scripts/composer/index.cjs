@@ -17,6 +17,7 @@ const { resolvePlan, fillThemeDefaults } = require('./resolve.cjs');
 const { planDigest } = require('./digest.cjs');
 const { buildLock, finalizeLock } = require('./lock.cjs');
 const { buildProjectFiles } = require('./emit.cjs');
+const { loadSourceOverlay } = require('./source-overlay.cjs');
 const { verifyOutput } = require('./verify.cjs');
 const { validateMedia } = require('./media.cjs');
 const { preflight, createStaging, cleanupStale, writeFiles, commitStaging, removeStaging, estimateSize, sanitizeProjectName } = require('./atomic.cjs');
@@ -174,9 +175,24 @@ async function compose(options) {
     role: opts.role,
   });
   if (!graph.ok) return graph;
+  // C3：FrontendPack 与 source overlay 语义互斥，先于 Recipe 状态门禁报冲突。
+  if (opts.sourceOverlay && graph.frontendPack) {
+    return fail('SOURCE_OVERLAY_CONFLICT', 'sourceOverlay', '同一产物不能同时使用 FrontendPack 与 source overlay');
+  }
   // 组合解析通过后再拦：更具体的错误优先，未验证配方仍然被结构化拒绝。
   if (!stageGate.ok) return stageGate;
   mark('resolve');
+
+  // C3：私有 workspace/source overlay 必须在生成前校验（Base 摘要/文件 sha/路径/组件范围）。
+  let sourceOverlayBundle = null;
+  if (opts.sourceOverlay) {
+    if (graph.frontendPack) {
+      return fail('SOURCE_OVERLAY_CONFLICT', 'sourceOverlay', '同一产物不能同时使用 FrontendPack 与 source overlay');
+    }
+    const loadedOverlay = loadSourceOverlay(graph, opts.sourceOverlay);
+    if (!loadedOverlay.ok) return loadedOverlay;
+    sourceOverlayBundle = loadedOverlay.bundle;
+  }
 
   await idle();
   emitProgress(opts.onProgress, 3);
@@ -206,6 +222,8 @@ async function compose(options) {
     storeId: opts.storeId,
     role: opts.role,
     media,
+    sourceOverlay: sourceOverlayBundle,
+    registryDigest: loaded.registryDigest,
   });
   if (!emitted.ok) return emitted;
 
@@ -309,6 +327,8 @@ async function compose(options) {
       fileCount: verified.files.length,
       checks: verified.checks,
       stats: emitted.stats,
+      sourceChanges: emitted.sourceChanges,
+      sourceOverlay: emitted.sourceOverlay,
       recipe,
       recipeDeliverable: Boolean(recipe && recipe.deliverable),
       previewOnly: graph.previewOnly,
@@ -339,10 +359,24 @@ function validateComposition(plan, options) {
   });
   if (!graph.ok) return graph;
   if (!stageGate.ok) return stageGate;
+  let sourceOverlay = null;
+  if (opts.sourceOverlay) {
+    if (graph.frontendPack) {
+      return fail('SOURCE_OVERLAY_CONFLICT', 'sourceOverlay', '同一产物不能同时使用 FrontendPack 与 source overlay');
+    }
+    const loadedOverlay = loadSourceOverlay(graph, opts.sourceOverlay);
+    if (!loadedOverlay.ok) return loadedOverlay;
+    sourceOverlay = {
+      digest: loadedOverlay.bundle.digest,
+      targetPages: loadedOverlay.bundle.targetPages,
+      components: loadedOverlay.bundle.components,
+    };
+  }
   return {
     ...ok(),
     planDigest: planDigest(plan),
     recipe,
+    sourceOverlay,
     registryVersion: loaded.registry.registryVersion,
     registryDigest: loaded.registryDigest,
     capabilitySet: graph.capabilitySet,

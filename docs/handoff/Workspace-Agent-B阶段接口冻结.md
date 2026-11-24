@@ -1,6 +1,6 @@
 # Workspace-Agent B 阶段接口冻结（B1 范围 / B2 版本模型 / B3 RPC）
 
-> 版本：rev12。日期：2026-11-24。状态：**Captain 冻结；B1–B4 r2 pass 已推送；C1/C2 已推送；C3 已实现，r1 复核 needs_revision（reparse 边界，返修中）；C4 待 C3 闭环；B3.x `adopt-attempt` 待 E1 前补；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13**。
+> 版本：rev13。日期：2026-11-24。状态：**Captain 冻结；B1–B4、C1–C4 全部 r2 pass；C4 硬门禁通过（t30=pass，微信/真机如实 BLOCKED/NOT_RUN）；D1 已实现待复核（t31）；本轮按用户要求收口后停止，E/D2+ 未启动；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13**。
 > 所有者：Captain（`lead`）。团队：`workspace-agent-refactor`（workspace-lead / runtime-engineer / product-ui / verifier）。
 > 上游：`docs/handoff/Workspace-Agent大规模重构与遗留收尾-Flash总计划.md` §5、§14.4；`AGENTS.md`；
 > `docs/handoff/当前工作区交接.md` §1.6/§4.7/§8。

@@ -1,0 +1,31 @@
+Command: node --test --experimental-test-isolation=none --test-force-exit test/agent-workspace.c4-slice.test.cjs
+Exit: 0
+Result: 1 test / 1 pass / 0 fail
+Scope: B1 attempt -> B2 adoptAttempt(v2) -> C3 overlay from version source -> Composer export ->
+       byte equality, source-changes, inspectOutput, runChecks, C2 source-check, C1 page-contract,
+       undo/redo/reopen/identity, duplicate export determinism, missing overlay/drift fail-closed.
+
+C2 source-check (modified version source vs Base baseline):
+{
+  "baseIssues": 0,
+  "modifiedIssues": 0,
+  "newIssues": 0,
+  "newIssueDetails": [],
+  "ok": true
+}
+
+Composer export checks (inspectOutput / runChecks / C1 snapshot):
+{
+  "outputConsistency": { "ok": true, "problems": 0, "fileCount": 143 },
+  "miniCheck": { "ok": true, "errors": 0, "warnings": 0, "stats": { "pages": 8, "components": 15, "js": 55, "wxss": 26 } },
+  "c1Snapshot": { "ok": true, "errors": 0 }
+}
+
+C1 page-contract (menu) verified inside test:
+- requiredHandlers: onSelectCategory, onOpenDetail, onProductAdd, onProductRemove, onExpandCart, onCheckout, onPickTable, onModeChange
+- requiredComponentEvents: category-nav.select -> onSelectCategory; product-card.add/remove/openDetail; cart-bar.checkout -> onCheckout
+- all present in modified version source; no changes to page JS.
+
+Composer internal verifyOutput (static / security / usingComponents / media) ran during compose and passed;
+the export also passed desktop/output-consistency (same implementation as output.consistency check)
+and scripts/validate-miniprogram.runChecks (same implementation as mini:check, --root export).

@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "source-changes.v1",
+  "base": {
+    "id": "ordering-base",
+    "version": "1.0.0",
+    "treeSha256": "sha256:df05a2625d343acf6d9936e55a27d63dbb8941783fc087fb6c20c0a22247303a"
+  },
+  "plan": {
+    "digest": "sha256:221b137377119ef6ecfd907cb11f0946b79c9c9011821f031455de544f017c87"
+  },
+  "lock": {
+    "path": "composition.lock.json",
+    "registryDigest": "sha256:2893fff482173a20e946abfc4762d966878d136d1d846482cfcf518f33acfb7b"
+  },
+  "overlay": {
+    "schemaVersion": "frontend-source-bundle.v1",
+    "digest": "sha256:1b60e839e729fe31c5bf4b92e742afd54089f28b88acb599352ddfe40eb481c7",
+    "targetPages": [
+      "menu"
+    ],
+    "components": [
+      {
+        "componentId": "product-card",
+        "scope": "page",
+        "pages": [
+          "menu"
+        ]
+      }
+    ],
+    "sharedImpacts": []
+  },
+  "summary": {
+    "added": 5,
+    "modified": 16,
+    "deleted": 0,
+    "unchanged": 121
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "status": "added",
+      "sha256": "sha256:e3eeab0ff16d638b8082b7de58ba5905ba52074029770ed37ba682b440e4de56"
+    },
+    {
+      "path": "app.json",
+      "status": "modified",
+      "sha256": "sha256:6479aba739f500c136168585cf048b603b0f3950a55814c4eba6b312d45c601a",
+      "baseSha256": "sha256:6c6bc8d04a79d973a109d4f95f4178104aefe5ad00948e13e60665e8b40edba7"
+    },
+    {
+      "path": "components/product-card--menu/index.js",
+      "status": "added",
+      "sha256": "sha256:036dcf904fe543a5a4da6bc994392569b682fdf0091a8f07e3f106eef6e3500e"
+    },
+    {
+      "path": "components/product-card--menu/index.json",
+      "status": "added",
+      "sha256": "sha256:6e72dadc3680e796aee6cd518838aed27738a42c14bf6b1e9a9067044115c815"
+    },
+    {
+      "path": "components/product-card--menu/index.wxml",
+      "status": "added",
+      "sha256": "sha256:cebe896a6cceb8ee2b620b6c6bd495ee49e6ce868541e72ed37fa3f540dd3fcf"
+    },
+    {
+      "path": "components/product-card--menu/index.wxss",
+      "status": "added",
+      "sha256": "sha256:469ffa7178929dc775bc7e7a48fa7c0c8f19a2e7dbe6a40d2ee2b58136ecce0e"
+    },
+    {
+      "path": "config/env.js",
+      "status": "modified",
+      "sha256": "sha256:38c00a867c2ecbe84e720fea81a471d78e06457c5509b8e2dcddda582f801a6d",
+      "baseSha256": "sha256:508aa734d11a959f6310493742be1da07439b22ee21ca384036668b04f41a1c5"
+    },
+    {
+      "path": "config/slots.generated.js",
+      "status": "modified",
+      "sha256": "sha256:19fae6283c046bfca05ca3a3ed25485100e10b1594d1952ea50fd372524154ea",
+      "baseSha256": "sha256:ad4e83a203ab1ee725eea25fe01e7d14e182086235946d05213166a82dc464f2"
+    },
+    {
+      "path": "config/store.generated.js",
+      "status": "modified",
+      "sha256": "sha256:c5f36ee090d9078478706099a6b8b0079e2b6d2f272f7ccb1bf58c279886268e",
+      "baseSha256": "sha256:3db374f7030ed3ad6e5419c17f8af6b91cc38db0a9da56bb14645c81e4ddd7ff"
+    },
+    {
+      "path": "pages/checkout/index.json",
+      "status": "modified",
+      "sha256": "sha256:f2716b27ff6ee742dd659454e776f2282edd83886b43041f76baa55161bed0b0",
+      "baseSha256": "sha256:20679a610cf6030e45adcfe4ab7da97d050eaf68770637bee87cd46b2dde06be"
+    },
+    {
+      "path": "pages/home/index.json",
+      "status": "modified",
+      "sha256": "sha256:f311cbf774610284addf378a72c6efeacdb3cfc84c4be34c6f840936c381bdd1",
+      "baseSha256": "sha256:250261e610d8702d7d4132182fa9b5634d2ea41bfa828dc869c62cad4e559084"
+    },
+    {
+      "path": "pages/menu/index.json",
+      "status": "modified",
+      "sha256": "sha256:f35bdcba976c2b8f91609762b3dbe3dd16177c0a6808ae923172966d8c57aa84",
+      "baseSha256": "sha256:56e517a212d3f535af823c101201625ed8cc9c8bff00340327021c33d09523b5"
+    },
+    {
+      "path": "pages/menu/index.wxml",
+      "status": "modified",
+      "sha256": "sha256:1547a4fe5305f465cd390b765f9c9a7efd4d7165ec978cebb1218dd5bf87b2c9",
+      "baseSha256": "sha256:82b54f8cdd584ba3961c3e5e0427403fc15c46c1e4723ef44da524d44e408fcc"
+    },
+    {
+      "path": "pages/menu/index.wxss",
+      "status": "modified",
+      "sha256": "sha256:f9aecdcee8bff52de05ae785c8be4ae5a4d58c7fe8c70de2b71292191c118e68",
+      "baseSha256": "sha256:39ab8f276a44977c8cb5925f47a262d681c6e21b95eb5aa0ef4096a521ef8418"
+    },
+    {
+      "path": "pages/merchant-orders/index.json",
+      "status": "modified",
+      "sha256": "sha256:1a3056123b33086ce35570da002e8c0c3c234e08faffb5ed3c7ce79e1e233c5b",
+      "baseSha256": "sha256:0e4ae73950c0768830d1c8b055c05d1858abc2e14c4e4305cc41d49994282c02"
+    },
+    {
+      "path": "pages/mine/index.json",
+      "status": "modified",
+      "sha256": "sha256:e734b184204971c6a6d3c3e58f9e212cd21250bac1da494f27b8302f7e0132af",
+      "baseSha256": "sha256:2facac5f38c076a7b7e43959bf936ca925e03d94bc69606e0b1b54aff1cd4dae"
+    },
+    {
+      "path": "pages/order-detail/index.json",
+      "status": "modified",
+      "sha256": "sha256:8eb47962bdca12c30a98a153a02ec0fa3d5ccce440911417223a1a22c04f754d",
+      "baseSha256": "sha256:7466a9446c79b507b912282e3a0f677106ef7cdef12c75ed7f80966ef7c69ca7"
+    },
+    {
+      "path": "pages/orders/index.json",
+      "status": "modified",
+      "sha256": "sha256:e09308bd795a69e6d5d0fba55736e3305d920bfcc180277a7849d89084443170",
+      "baseSha256": "sha256:879185bcbe02f7b7cff85082b77fdd26248e02294ecdd1781be09ee6b76bb97d"
+    },
+    {
+      "path": "pages/product-detail/index.json",
+      "status": "modified",
+      "sha256": "sha256:e2a408a8da5d3f145d127b60e5d6d9f4c2c93877bf32fcf5cfdf6b1b1f37d624",
+      "baseSha256": "sha256:24ed26d8bbc20a84efbef735a39e179527599a716926ba9e74666330a5bb0968"
+    },
+    {
+      "path": "project.config.json",
+      "status": "modified",
+      "sha256": "sha256:1f1ccd8ebf57ee236273a952835139b2ea4d883731457a35d25d84a5e78cf87e",
+      "baseSha256": "sha256:17be9606ba86a7131876803b36878092fe756e5d7f9306a091f776f34828fabc"
+    },
+    {
+      "path": "theme.generated.wxss",
+      "status": "modified",
+      "sha256": "sha256:ed3d3a0f008d3e2c8a915085489c4ff20257cc1495022af7faf594f043eba024",
+      "baseSha256": "sha256:ef57b0b282dfa73bf6d2396328740034fec590ad2a13f45c8b45c705c78e5732"
+    }
+  ]
+}

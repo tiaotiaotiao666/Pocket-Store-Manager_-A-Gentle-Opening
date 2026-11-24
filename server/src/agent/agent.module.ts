@@ -20,6 +20,7 @@ import { DeepseekAgentProvider } from './provider/deepseek-agent.provider';
 import { DeepseekChatModel, readDeepseekChatSettings } from './runtime';
 import { StoreSetupAgentController } from './store-setup/store-setup.controller';
 import { StoreSetupAgentService } from './store-setup/store-setup.service';
+import { WorkspaceAgentModule } from './workspace/workspace-agent.module';
 
 /** 默认 fetch：真实运行走 Node 全局 fetch；测试通过 AGENT_FETCH 注入 stub。 */
 const defaultAgentFetch: AgentFetch = (input, init) => fetch(input, init);
@@ -27,6 +28,7 @@ const defaultAgentFetch: AgentFetch = (input, init) => fetch(input, init);
 const agentModelLogger = new Logger('AgentModel');
 
 @Module({
+  imports: [WorkspaceAgentModule],
   controllers: [
     AgentController,
     StoreSetupAgentController,

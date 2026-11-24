@@ -302,6 +302,8 @@ registerComposerIpc(ipcMain, {
   defaultParentDir: defaultExportParent,
   // 系统 %TEMP% 对 Electron 不可写的机器上，node 兜底子进程的临时文件放这里。
   composeTempRoot: path.join(app.getPath('userData'), 'compose-tmp'),
+  // B3：有 agent-workspace 时导出前 verifyExportIdentity（身份不一致中止，不回落 Base）。
+  userDataDir,
 });
 
 registerProjectIpc(ipcMain, {
@@ -312,6 +314,8 @@ registerProjectIpc(ipcMain, {
   probeDevtools,
   dialog,
   shell,
+  // B3：项目加载时按 versions.reopenProject 校验版本身份（漂移 → unavailable + 码）。
+  userDataDir,
 });
 
 registerModelIpc(ipcMain, {

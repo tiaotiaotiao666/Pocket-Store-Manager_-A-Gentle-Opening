@@ -20,6 +20,7 @@ const { createModelCredentials } = require('./model-credentials.cjs');
 const { registerModelIpc } = require('./model-ipc.cjs');
 const { openExternalLink, isAllowedAppUrl } = require('./external-link.cjs');
 const { registerWindowZoom } = require('./window-zoom.cjs');
+const { registerAgentToolsIpc } = require('./agent-tools-ipc.cjs');
 
 /**
  * 选择一个真正可写的用户数据目录。
@@ -349,6 +350,27 @@ registerFrontendReconstructIpc(ipcMain, {
   userDataDir,
   // 设置里的 baseUrl / 超时 / 模拟模式由主进程读取；不信任渲染进程。
   loadSettings: () => settingsStore.loadConfig(),
+});
+
+/**
+ * B3：Workspace Agent 受控任务 RPC（`agent:*` 19 命令 + `agent:progress`）。
+ *
+ * 版本/工作区命令只调用 B1/B2 模块；`run-check`/`verify-wechat` 需要 B4 的真实 checks
+ * 注册表。B4 落地前**不注入 checks**，因此这些命令会确定性返回
+ * AGENT_RUNTIME_TOOL_MISSING / AGENT_CHECK_UNKNOWN，绝不伪造 PASS。
+ */
+registerAgentToolsIpc(ipcMain, {
+  userDataDir,
+  checks: null,
+  emitProgress: (payload) => {
+    for (const target of BrowserWindow.getAllWindows()) {
+      try {
+        target.webContents.send('agent:progress', payload);
+      } catch (error) {
+        /* 窗口已关闭时忽略进度发送失败 */
+      }
+    }
+  },
 });
 
 registerFlushGuard({

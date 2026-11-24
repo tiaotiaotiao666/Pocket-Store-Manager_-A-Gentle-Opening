@@ -560,3 +560,81 @@ test('P5c 未在对话框确认的任意路径仍然被拒绝', async () => {
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.code, 'TARGET_NOT_WRITABLE');
 });
+
+// ---- B3：Workspace Agent preload 命名空间（只做加法断言，不改既有 preload 断言） ----
+
+test('B3：preload workspaceAgent 只暴露 19 个语义命令 + onProgress，旧 API 与订阅不变', () => {
+  const source = fs.readFileSync(path.join(REPO, 'desktop', 'preload.cjs'), 'utf8');
+  const listenerSets = new Map();
+  const invocations = [];
+  let exposed;
+  const ipcRenderer = {
+    on: (channel, handler) => { listenerSets.set(channel, handler); },
+    invoke: async (channel, payload) => {
+      invocations.push({ channel, payload });
+      return { ok: true, data: { channel }, issues: [], meta: {} };
+    },
+  };
+  vm.runInNewContext(source, {
+    require: (request) => {
+      assert.strictEqual(request, 'electron');
+      return {
+        contextBridge: { exposeInMainWorld: (key, value) => { exposed = { key, value }; } },
+        ipcRenderer,
+      };
+    },
+    console,
+  });
+  assert.strictEqual(exposed.key, 'smartStore');
+  const api = exposed.value;
+  const workspaceAgent = api.workspaceAgent;
+  assert.ok(workspaceAgent && typeof workspaceAgent === 'object');
+  assert.strictEqual(Object.isFrozen(workspaceAgent), true);
+
+  const methods = [
+    'getContext', 'listFiles', 'readFile', 'searchFiles', 'writeFiles', 'deleteFiles',
+    'addImageAsset', 'getDiff', 'runCheck', 'verifyWechat', 'readVerification', 'readArtifact',
+    'submitCandidate', 'versions', 'adoptVersion', 'undo', 'redo', 'reopen', 'cancelRun',
+  ];
+  assert.deepStrictEqual(Object.keys(workspaceAgent).sort(), [...methods, 'onProgress'].sort());
+  for (const method of methods) {
+    assert.strictEqual(typeof workspaceAgent[method], 'function', '缺少 workspaceAgent.' + method);
+  }
+  assert.strictEqual(typeof workspaceAgent.onProgress, 'function');
+  for (const forbidden of ['ipcRenderer', 'invoke', 'send', 'readFileSync', 'exec', 'spawn']) {
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(workspaceAgent, forbidden), false, '不得暴露 ' + forbidden);
+  }
+
+  // 旧 smartStore API 继续存在（B3 不改旧链）。
+  for (const legacy of ['projectLoad', 'projectSave', 'composerExport', 'exportProject', 'analyzeFrontend', 'onFrontendProgress', 'attachImages']) {
+    assert.strictEqual(typeof api[legacy], 'function', '旧 API 丢失：' + legacy);
+  }
+
+  // 19 个方法只映射到冻结的 agent:* channel；payload 原样交给主进程再校验。
+  const expectedChannels = [
+    'agent:get-context', 'agent:list-files', 'agent:read-file', 'agent:search-files',
+    'agent:write-files', 'agent:delete-files', 'agent:add-image-asset', 'agent:get-diff',
+    'agent:run-check', 'agent:verify-wechat', 'agent:read-verification', 'agent:read-artifact',
+    'agent:submit-candidate', 'agent:versions', 'agent:adopt-version', 'agent:undo',
+    'agent:redo', 'agent:reopen', 'agent:cancel-run',
+  ];
+  for (const [index, method] of methods.entries()) {
+    invocations.length = 0;
+    workspaceAgent[method]({ projectId: 'p_abc12345' });
+    assert.strictEqual(invocations.length, 1, method);
+    assert.strictEqual(invocations[0].channel, expectedChannels[index]);
+    assert.strictEqual(invocations[0].channel.startsWith('agent:'), true);
+  }
+
+  // 进度订阅：agent:progress → onProgress；退订后不再触发。
+  assert.strictEqual(typeof listenerSets.get('agent:progress'), 'function');
+  let received = null;
+  const unsubscribe = workspaceAgent.onProgress((payload) => { received = payload; });
+  assert.strictEqual(typeof unsubscribe, 'function');
+  listenerSets.get('agent:progress')({}, { status: 'running', stage: 'write' });
+  assert.strictEqual(received.stage, 'write');
+  unsubscribe();
+  received = null;
+  listenerSets.get('agent:progress')({}, { status: 'succeeded' });
+  assert.strictEqual(received, null);
+});

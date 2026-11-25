@@ -45,14 +45,19 @@ export function selectAgentWaitingHint({ phase, agent, build, presentation, fron
 
   if (phase === 'template-pick') {
     const candidates = Array.isArray(build?.candidates) ? build.candidates : [];
-    const selectedId = build && typeof build.selectedId === 'string' ? build.selectedId : '';
+    const building = build && typeof build === 'object' && build.status === 'building';
     const revising = presentation && typeof presentation === 'object' && presentation.status === 'revising';
-    // 修订/重新匹配在跑的时候不是「等你」，此时不提示，避免和进度条抢注意力。
-    if (candidates.length > 0 && !selectedId && !revising) {
+    // 真实语义（不是凭字段名猜）：
+    // - `build.selectedId` 是「当前使用的那套」，生成候选时由 BUILD_READY 默认指向第一套，
+    //   它既是系统建议也是「就用这套」的结果，**无法区分预选与用户确认**；
+    // - 阶段推进只发生在 `CONFIRM_TEMPLATE`（详情底部「下一步」），在此之前仍然停在 template-pick；
+    // 所以等待条件是「有候选 且 还没确认采用（仍在 template-pick）」，不是「selectedId 为空」。
+    // 重新匹配/修订在跑的时候不是「等你」，此时不提示，避免和进度条抢注意力。
+    if (candidates.length > 0 && !building && !revising) {
       return {
-        title: '等你挑一套页面骨架',
-        detail: '需要你确认后才会继续：先点中间「页面骨架」的卡片看预览，再点详情里的「就用这套」。',
-        jumpId: 'template-apply',
+        title: '等你确认采用页面骨架',
+        detail: '已为你预选一套页面骨架。你可以换选，确认采用后才会继续：点中间「页面骨架」详情底部的「对于当前页面满意？」右侧「下一步」才会进入装修与视觉。',
+        jumpId: 'template-confirm',
         actionLabel: '前往处理',
       };
     }

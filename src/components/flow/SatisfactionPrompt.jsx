@@ -12,6 +12,7 @@ export default function SatisfactionPrompt({
       <button
         type="button"
         className="satisfy-prompt-action"
+        data-jump-id="template-confirm"
         disabled={disabled}
         onClick={onConfirm}
       >

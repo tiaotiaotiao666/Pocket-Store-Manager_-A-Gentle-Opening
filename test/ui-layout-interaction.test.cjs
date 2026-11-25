@@ -47,22 +47,41 @@ test('等待提示：资料没齐 / 已确认 / 请求中 / 失败都不提示�
   assert.equal(selectAgentWaitingHint({ phase: 'store-info', ...base, agent: null }), null);
 });
 
-test('等待提示：模板阶段只有「还没采用候选」才提示，采用后 / 修订中 / 无候选都不提示', async () => {
+test('等待提示：模板阶段按「是否已确认采用」触发，默认预选也要提示，跑请求时不提示', async () => {
   const selectAgentWaitingHint = await loadWaiting();
   const candidates = [{ id: 't1' }, { id: 't2' }];
-  const hint = selectAgentWaitingHint({
+
+  // 默认预选第一套（selectedId 有值）——用户还没点「下一步」确认采用，仍然是等在用户。
+  const preselected = selectAgentWaitingHint({
     phase: 'template-pick',
     agent: { status: 'confirmed' },
-    build: { candidates, selectedId: '' },
+    build: { candidates, selectedId: 't1' },
     presentation: { status: 'idle' },
   });
-  assert.ok(hint);
-  assert.match(hint.detail, /就用这套/);
-  assert.equal(hint.jumpId, 'template-apply');
+  assert.ok(preselected, '默认预选不等于已确认采用，必须仍提示');
+  assert.equal(preselected.jumpId, 'template-confirm');
+  assert.match(preselected.detail, /已为你预选一套页面骨架/);
+  assert.match(preselected.detail, /你可以换选，确认采用后才会继续/);
+  assert.equal(preselected.actionLabel, '前往处理');
 
-  assert.equal(selectAgentWaitingHint({ phase: 'template-pick', build: { candidates, selectedId: 't1' }, presentation: { status: 'idle' } }), null);
-  assert.equal(selectAgentWaitingHint({ phase: 'template-pick', build: { candidates, selectedId: '' }, presentation: { status: 'revising' } }), null);
+  // 用户换选到别的候选：提示保留（换选不等于确认采用）。
+  const reselected = selectAgentWaitingHint({
+    phase: 'template-pick',
+    build: { candidates, selectedId: 't2' },
+    presentation: { status: 'idle' },
+  });
+  assert.ok(reselected);
+
+  // 没有预选（旧口径）同样提示。
+  assert.ok(selectAgentWaitingHint({ phase: 'template-pick', build: { candidates, selectedId: '' }, presentation: { status: 'idle' } }));
+
+  // 重新匹配/修订在跑、还没有候选：不提示，避免和进度条抢注意力。
+  assert.equal(selectAgentWaitingHint({ phase: 'template-pick', build: { status: 'building', candidates, selectedId: 't1' }, presentation: { status: 'idle' } }), null);
+  assert.equal(selectAgentWaitingHint({ phase: 'template-pick', build: { candidates, selectedId: 't1' }, presentation: { status: 'revising' } }), null);
   assert.equal(selectAgentWaitingHint({ phase: 'template-pick', build: { candidates: [], selectedId: '' }, presentation: { status: 'idle' } }), null);
+
+  // 确认采用后阶段已推进（不再是 template-pick）：提示自然消失。
+  assert.equal(selectAgentWaitingHint({ phase: 'prompt-studio', build: { candidates, selectedId: 't1' }, presentation: { status: 'idle' } }), null);
 });
 
 test('等待提示：其它阶段一律不提示，不做无依据的入口暗示', async () => {
@@ -99,8 +118,10 @@ test('等待提示已接入右侧 Agent 栏，并且 App 的跳转只滚到控�
   assert.match(handler, /jumpToControl\(jumpId\)/, '等待提示只能走同一条跳转');
 });
 
-test('跳转锚点在真实控件上：门店资料确认按钮 + 模板「就用这套」', () => {
+test('跳转锚点在真实控件上：门店资料确认按钮 + 模板确认采用「下一步」+ 模板换选「就用这套」', () => {
   assert.match(read('src/components/agent/StoreInfoActionBar.jsx'), /data-jump-id="store-info-confirm"/);
+  // 等待提示的锚点必须是真正推进阶段的按钮（CONFIRM_TEMPLATE），不是只改 selectedId 的「就用这套」。
+  assert.match(read('src/components/flow/SatisfactionPrompt.jsx'), /data-jump-id="template-confirm"/);
   assert.match(read('src/components/flow/TemplateGallery.jsx'), /data-jump-id="template-apply"/);
 });
 

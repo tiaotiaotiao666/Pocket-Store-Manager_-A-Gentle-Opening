@@ -126,24 +126,33 @@ test('布局：模板详情两栏按容器宽度换行，文字不会被挤成�
   assert.match(flow, /\[data-jump-id\]\.is-jump-flash/);
 });
 
-test('本轮图片：0 张时收成一行加号入口，点「用途说明」才展开；保留用途选择与逐张删除', () => {
+test('本轮图片：0 张时不渲染任何面板，入口是输入区工具行的「＋ 上传图片」', () => {
   const source = read('src/components/agent/AgentChatAttachments.jsx');
-  assert.match(source, /const collapsed = list\.length === 0 && !expanded;/, '0 张且未展开时走收起态');
-  assert.match(source, /is-compact is-collapsed/, '收起态复用紧凑样式');
-  assert.match(source, /aria-label="添加图片"/);
-  assert.match(source, /aria-label="查看图片用途与限制"/, '用途说明必须可发现');
-  assert.match(source, /title=\{KIND_CONFIG\[item\]\.hint\}/, '用途说明必须可发现');
+  // 0 张时只留隐藏 input：不出现标题、用途说明、大卡片
+  assert.match(source, /list\.length === 0 \? \(activeError \? ' is-error' : ' is-bare'\)/, '0 张走 is-bare，不占高度');
+  assert.match(source, /\{list\.length === 0 \? null : \(/, '0 张时不渲染卡片内容');
+  assert.doesNotMatch(source, /\bexpanded\b/, '旧的「用途说明展开」状态已移除');
+
+  // 上传入口在输入区工具行里，通过 triggerRef 复用同一套校验
+  assert.match(source, /open: \(\) => inputRef\.current\?\.click\(\)/, '上传入口复用隐藏 input');
+  assert.match(source, /ingest: \(files\) => \{/, '拖拽入口复用同一条校验链路');
+  assert.match(source, /title=\{KIND_CONFIG\[item\]\.hint\}/, '用途说明可发现');
   assert.match(source, /aria-label=\{`移除\$\{item\.name \|\| '已选图片'\}`\}/, '逐张删除必须保留');
   assert.match(source, /AGENT_IMAGE_LIMITS\.maxTotalImages/, '数量上限仍复用同一份限制');
 
+  const panel = read('src/components/agent/AgentSidebarPanel.jsx');
+  assert.match(panel, /aria-label="上传图片"/, '工具行按钮要有可读名称');
+  assert.match(panel, /title="上传图片（最多 3 张）/, '用途说明走悬浮提示');
+  assert.match(panel, /attachTriggerRef\.current\?\.open\(\)/);
+  assert.match(panel, /attachTriggerRef\.current\?\.ingest\(event\.dataTransfer\?\.files\)/, '拖拽仍然可用');
+  assert.match(panel, /triggerRef=\{attachTriggerRef\}/);
+
+  const composer = read('src/components/chat/Composer.jsx');
+  assert.match(composer, /\{actions \? <span className="composer-tools">/, '按钮渲染在输入框工具行内');
+
   const css = read('src/styles/agent-sidebar.css');
-  assert.match(css, /\.agent-chat-attachments\.is-collapsed \{[^}]*box-shadow: none;/, '收起态不再占一块卡片高度');
-  assert.match(
-    css,
-    /\.agent-chat-attachments\.is-collapsed \.agent-chat-attachments-add\.is-plus \{[^}]*height: 26px;/,
-    '加号入口保持单行高度',
-  );
-  assert.match(css, /\.agent-chat-attachments-compact-row \{[^}]*display: flex;/, '收起态是一行');
+  assert.match(css, /\.agent-chat-attachments\.is-bare \{[^}]*height: 0;/, '0 张时不占高度');
+  assert.match(css, /\.agent-chat-attachments\.is-error \{[^}]*border-style: solid;/, '上传失败提示必须还能看见');
 });
 
 test('本轮图片：有图态标题单行、标签换行，中文不被挤成竖排，说明最多两行', () => {
@@ -154,4 +163,66 @@ test('本轮图片：有图态标题单行、标签换行，中文不被挤成�
   assert.match(css, /\.agent-chat-attachments-kind \{[^}]*white-space: nowrap;/, '单个用途标签不得断行');
   assert.match(css, /\.agent-chat-attachments-hint \{[^}]*-webkit-line-clamp: 2;/, '有图态说明最多两行');
   assert.match(css, /\.agent-chat-attachment-name \{[^}]*text-overflow: ellipsis;/, '文件名超长省略而不是撑破面板');
+});
+
+test('等待提示：参考图候选待采用、导出前体检待处理也必须走到同一张提示卡', async () => {
+  const selectAgentWaitingHint = await loadWaiting();
+
+  const adopt = selectAgentWaitingHint({
+    phase: 'template-pick',
+    build: { candidates: [], selectedId: '' },
+    presentation: { status: 'idle' },
+    frontend: { canAdopt: true, busy: false },
+  });
+  assert.equal(adopt?.jumpId, 'frontend-candidates', '候选待采用要指向真实采用入口');
+  assert.match(adopt.title, /等你确认/);
+  assert.match(adopt.detail, /采用/, '要说清点哪个按钮才会写进项目');
+
+  // 正在跑 / 已经采用 / 没有候选：都不是「等你」
+  assert.equal(selectAgentWaitingHint({
+    phase: 'template-pick',
+    build: { candidates: [] },
+    frontend: { canAdopt: false, busy: true },
+  }), null);
+
+  const idle = selectAgentWaitingHint({ phase: 'deploy', deploy: { preflight: { status: 'idle' } } });
+  assert.equal(idle?.jumpId, 'export-preflight');
+  const failed = selectAgentWaitingHint({ phase: 'deploy', deploy: { preflight: { status: 'failed' } } });
+  assert.equal(failed?.jumpId, 'export-preflight', '体检失败也要能一键回到体检区');
+  const pendingAck = selectAgentWaitingHint({
+    phase: 'deploy',
+    deploy: { preflight: { status: 'done', errors: [{ code: 'E' }], warns: [], acknowledged: [] } },
+  });
+  assert.equal(pendingAck?.jumpId, 'export-preflight', '风险项没勾选等于还在等用户');
+  assert.match(pendingAck.title, /等你确认/);
+
+  // 体检中 / 体检通过且没有待确认项：不提示
+  assert.equal(selectAgentWaitingHint({ phase: 'deploy', deploy: { preflight: { status: 'checking' } } }), null);
+  assert.equal(selectAgentWaitingHint({
+    phase: 'deploy',
+    deploy: { preflight: { status: 'done', errors: [], warns: [], acknowledged: [] } },
+  }), null);
+
+  // 与其它阶段不串味
+  assert.equal(selectAgentWaitingHint({ phase: 'home', agent: { status: 'reviewing', missingFields: [], errors: [] } }), null);
+});
+
+test('等待提示：每个阶段最多一张卡，jumpId 不重复，接线只来自 App', () => {
+  const panel = read('src/components/agent/AgentSidebarPanel.jsx');
+  const hints = panel.match(/<AgentWaitingHint/g) || [];
+  assert.equal(hints.length, 1, '侧栏只能有一处等待提示');
+  const app = read('src/App.jsx');
+  assert.match(app, /frontend: frontendView/, '候选前端等待态用真实视图模型判断');
+  assert.match(app, /deploy: state\.deploy/, '导出等待态用真实导出状态判断');
+});
+
+test('高亮反馈：闪两下，减少动态效果时退化成稳定高亮', () => {
+  const flow = read('src/styles/flow.css');
+  assert.match(flow, /@keyframes jump-flash-twice/, '要有闪烁关键帧');
+  assert.match(flow, /\[data-jump-id\]\.is-jump-flash \{[^}]*animation: jump-flash-twice [\d.]+s [a-z-]+ 2;/, '必须闪两下');
+  assert.match(flow, /@media \(prefers-reduced-motion: reduce\) \{\s*\[data-jump-id\]\.is-jump-flash \{[^}]*animation: none;/, '减少动效时不要闪');
+  const app = read('src/App.jsx');
+  // 类名要留够两次动画的时间再撤掉，否则只看到一下
+  assert.match(app, /classList\.add\('is-jump-flash'\)/);
+  assert.match(app, /setTimeout\(\(\) => node\.classList\.remove\('is-jump-flash'\), 1600\)/);
 });

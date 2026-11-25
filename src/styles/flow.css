@@ -1787,7 +1787,30 @@
 .template-apply-row .ghost-button { white-space: nowrap; }
 
 /* 跳转高亮：只是视觉聚焦，不触发任何动作 */
+/* 问题 6：定位到目标控件后闪两下，让用户一眼看到该点哪儿。
+   只做视觉提示，不加交互、不替用户点；开了「减少动态效果」时退化成稳定高亮。 */
+@keyframes jump-flash-twice {
+  0%,
+  100% {
+    outline-color: rgba(109, 94, 252, 0);
+    background-color: transparent;
+  }
+  50% {
+    outline-color: rgba(109, 94, 252, 0.85);
+    background-color: rgba(109, 94, 252, 0.1);
+  }
+}
+
 [data-jump-id].is-jump-flash {
   outline: 3px solid var(--accent-ring, rgba(109, 94, 252, 0.45));
   outline-offset: 2px;
+  animation: jump-flash-twice 0.62s ease-in-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-jump-id].is-jump-flash {
+    animation: none;
+    outline-color: var(--accent-ring, rgba(109, 94, 252, 0.45));
+    background-color: rgba(109, 94, 252, 0.08);
+  }
 }

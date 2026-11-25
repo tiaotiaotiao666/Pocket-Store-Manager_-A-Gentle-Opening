@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ChevronRight, MessageSquareText, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ChevronRight, MessageSquareText, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
 import Composer from '../chat/Composer.jsx';
 import AgentChatAttachments from './AgentChatAttachments.jsx';
 import AgentWaitingHint from './AgentWaitingHint.jsx';
@@ -124,6 +124,9 @@ export default function AgentSidebarPanel({
   const timelineTailKey = timeline.length ? timeline[timeline.length - 1].key : '';
 
   const logRef = useRef(null);
+  // 图片附件面板在 0 张时不渲染卡片，上传入口是下面的「＋ 上传图片」按钮，
+  // 这个 ref 由 AgentChatAttachments 注入 { open, ingest }，点击与拖拽都走它的校验链路。
+  const attachTriggerRef = useRef(null);
   // 结果块也是日志的一部分，所以「自动滚到底」同时盯着时间线长度与末项身份，
   // 而不是只看消息条数——否则新结果插到历史位置时用户看不到。
   useEffect(() => {
@@ -290,14 +293,39 @@ export default function AgentSidebarPanel({
           onAdd={onAddImages}
           onRemove={onRemoveImage}
           onBusyChange={onImageBusyChange}
+          triggerRef={attachTriggerRef}
         />
       ) : null}
 
-      <div className="agent-sidebar-composer" id="project-agent-composer">
+      <div
+        className="agent-sidebar-composer"
+        id="project-agent-composer"
+        onDragOver={(event) => {
+          if (!attachmentsEnabled) return;
+          event.preventDefault();
+        }}
+        onDrop={(event) => {
+          if (!attachmentsEnabled) return;
+          event.preventDefault();
+          attachTriggerRef.current?.ingest(event.dataTransfer?.files);
+        }}
+      >
         <Composer
           value={draft}
           placeholder="说明这一轮要改什么…"
           submitLabel="发送到项目对话"
+          actions={attachmentsEnabled ? (
+            <button
+              type="button"
+              className="composer-attach"
+              aria-label="上传图片"
+              title="上传图片（最多 3 张）：识别菜单、取门店氛围或参考界面"
+              disabled={busy || imageBusy || plan.allowed === false}
+              onClick={() => attachTriggerRef.current?.open()}
+            >
+              <Plus size={16} aria-hidden="true" />
+            </button>
+          ) : null}
           hint={busy
             ? '上一轮还在处理中：结果回来后会解除发送。'
             : (imageBusy

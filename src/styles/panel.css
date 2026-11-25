@@ -41,7 +41,9 @@
 
 .workspace-composer {
   flex: none;
-  padding: 14px 24px 22px;
+  /* 底部留白只留一份：.composer 自己已有 22px 下边距，这里再叠 22px 就变成 44px 死白，
+     内容不足时看着像「空白占了半屏」。这里收成 6px，输入区仍然贴在可见底部。 */
+  padding: 14px 24px 6px;
   background: linear-gradient(180deg, rgba(250, 249, 247, 0) 0%, var(--bg) 42%);
 }
 

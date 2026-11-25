@@ -1014,49 +1014,47 @@
   text-overflow: ellipsis;
 }
 
-/* 本轮 UI 修复 4：0 张图片时整块收成一行「+ 添加图片」，用途标签与说明点「用途说明」再展开。 */
-.agent-chat-attachments.is-collapsed {
-  padding: 6px 8px;
-  border-style: dashed;
-  background: transparent;
-  box-shadow: none;
-}
-
-.agent-chat-attachments-compact-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.agent-chat-attachments.is-collapsed .agent-chat-attachments-add.is-plus {
-  width: auto;
-  min-width: 0;
-  height: 26px;
-  padding: 0 10px;
-  gap: 5px;
-  font-size: 11.5px;
-  white-space: nowrap;
-}
-
-.agent-chat-attachments.is-collapsed .agent-chat-attachments-count {
-  font-size: 10.5px;
-  white-space: nowrap;
-}
-
-.agent-chat-attachments-more {
-  margin-left: auto;
-  padding: 2px 6px;
+/* 本轮 UI 修复 4：没有图片时整块不渲染（只剩隐藏的 input），入口是输入区工具行的「＋ 上传图片」。 */
+.agent-chat-attachments.is-bare {
+  margin: 0;
+  padding: 0;
+  height: 0;
   border: 0;
-  border-radius: var(--radius-sm, 6px);
+  background: none;
+  overflow: hidden;
+}
+
+/* 没有图片但上传失败：只留一行错误提示，不能因为收起态的高度 0 把提示藏掉。 */
+.agent-chat-attachments.is-error {
+  margin: 0 0 8px;
+  padding: 7px 10px;
+  border-style: solid;
+}
+
+/* 输入区工具行里的「＋ 上传图片」：图标按钮，不占标题行高度。 */
+.composer-attach {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0 2px 0 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
   background: transparent;
   color: var(--muted);
-  font-size: 10.5px;
-  white-space: nowrap;
   cursor: pointer;
+  transition: color 0.16s var(--ease-soft), background 0.16s var(--ease-soft);
 }
 
-.agent-chat-attachments-more:hover {
+.composer-attach:hover:not(:disabled) {
   color: var(--accent);
   background: var(--accent-soft, rgba(99, 91, 255, 0.08));
+}
+
+.composer-attach:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

@@ -9,6 +9,7 @@ export default function Composer({
   submitDisabled = disabled,
   maxChars,
   hint,
+  actions = null,
   onChange,
   onSubmit,
 }) {
@@ -32,6 +33,7 @@ export default function Composer({
     <div className="composer" role="group" aria-label="消息输入区">
       {hint ? <p className="composer-hint">{hint}</p> : null}
       <div className={`composer-box${disabled ? ' is-disabled' : ''}${analysis.overLimit ? ' is-over-limit' : ''}`}>
+        {actions ? <span className="composer-tools">{actions}</span> : null}
         <textarea
           className="composer-input"
           rows={1}

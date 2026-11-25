@@ -5117,6 +5117,9 @@ case PHASES.DEPLOY: {
     agent: state.agent,
     build: state.build,
     presentation: presentationState,
+    // 参考图候选「等用户采用」和导出前体检「等用户处理」也是真实等待态，统一走同一张提示卡。
+    frontend: frontendView,
+    deploy: state.deploy,
   });
   // 跳转只做「滚到控件 + 聚焦 + 高亮一下」，绝不代替用户点确认/应用/生成/导出。
   // `behavior: 'instant'` 是必须的：主流区 `.chat-stream` 设了 `scroll-behavior: smooth`，

@@ -290,6 +290,15 @@
   box-shadow: var(--shadow-accent);
 }
 
+/* 输入区工具行：目前只有「＋ 上传图片」，图标按钮贴在输入框左侧。 */
+.composer-tools {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+  gap: 2px;
+}
+
 .composer-box.is-disabled {
   opacity: 0.6;
   box-shadow: var(--shadow-xs);

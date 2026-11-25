@@ -65,11 +65,26 @@ test('每个可见确认入口都对应一个真实存在的 data-jump-id 锚点
   ]) {
     const source = read(rel);
     for (const match of source.matchAll(/data-jump-id="([^"]+)"/g)) anchors.add(match[1]);
+    // 门店资料拆两栏后锚点改为按 mode 计算的变量，锚点表要跟着取变量里的字面量。
+    for (const match of source.matchAll(/data-jump-id=\{([A-Za-z0-9_$]+)\}/g)) {
+      const decl = new RegExp(`const ${match[1].replace(/\$/g, '\\$')} =[^;]*;`).exec(source);
+      if (!decl) continue;
+      for (const literal of decl[0].matchAll(/'([a-z]+(?:-[a-z]+)+)'/g)) anchors.add(literal[1]);
+    }
   }
   for (const item of items) {
     if (!item.jumpId) continue;
     assert.ok(anchors.has(item.jumpId), `${item.jumpId} 必须是真实控件上的锚点，不能是死按钮`);
   }
+});
+
+test('门店资料拆两栏后锚点仍唯一：store-info-form 只挂在门店那一份编辑区', () => {
+  const source = read('src/components/agent/DraftEditor.jsx');
+  // 同一个组件按 mode 渲染两份，锚点必须按 mode 区分，否则「前往确认」可能滚到菜品那一栏。
+  assert.match(source, /const rootJumpId = mode === 'dishes' \? undefined : 'store-info-form';/);
+  assert.match(source, /data-jump-id=\{rootJumpId\}/);
+  assert.doesNotMatch(source, /data-jump-id="store-info-form"/, '写死会让两栏都带同一个锚点');
+  assert.match(source, /id="agent-field-dishes" data-jump-id="store-dishes"/);
 });
 
 test('卡片渲染可点的「前往确认」，过期时整块收起只剩「重新发一次」，且不提供第二个同名目标', () => {

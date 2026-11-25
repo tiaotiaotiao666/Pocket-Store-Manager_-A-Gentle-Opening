@@ -100,8 +100,13 @@ export default function DraftEditor({
       ? `至少 ${minDishes} 道，还差 ${minDishes - visibleDishCount} 道`
       : null;
 
+  // 门店资料拆成「门店经营资料 / 风格与图片素材」两栏后，同一个组件会渲染两份：
+  // 只有门店那一份挂 store-info-form 锚点（菜品锚点挂在菜品列表上），
+  // 否则同一个 data-jump-id 出现两次，「前往确认」可能滚到另一栏。
+  const rootJumpId = mode === 'dishes' ? undefined : 'store-info-form';
+
   return (
-    <section className={`agent-editor${embedded ? ' is-embedded' : ''}`} aria-label={label} data-jump-id="store-info-form">
+    <section className={`agent-editor${embedded ? ' is-embedded' : ''}`} aria-label={label} data-jump-id={rootJumpId}>
       {collapsible ? (
         <button
           type="button"

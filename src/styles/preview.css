@@ -566,6 +566,37 @@
   gap: 9px;
   justify-content: center;
   min-width: 0;
+  /* 窄列里长段落与按钮组不许溢出到左边的手机预览上。 */
+  overflow-wrap: anywhere;
+}
+
+/* 中间列被右侧 Agent 面板挤窄时（容器 < 780px），两列并排会把信息列压到几十像素：
+   深色「模板修改」卡和「对当前页面满意？下一步」会溢出去压在手机预览上，文字被压成竖排。
+   这里改为上下堆叠，并给子块最小宽度兜底。 */
+@container (max-width: 780px) {
+  .template-detail {
+    grid-template-columns: minmax(0, 1fr);
+    /* 窄窗口下 .template-detail 在别处被改成 flex（见下方 media 规则），两种布局都要能堆叠。 */
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .template-detail-preview {
+    align-items: flex-start;
+  }
+
+  .template-detail-info,
+  .template-revise,
+  .satisfy-prompt {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .satisfy-prompt {
+    flex-wrap: wrap;
+  }
 }
 
 .template-detail-kicker {

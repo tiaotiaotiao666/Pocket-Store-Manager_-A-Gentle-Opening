@@ -393,6 +393,8 @@
   flex-direction: column;
   gap: 22px;
   animation: fade-rise 0.45s var(--ease-soft) both;
+  /* 供 .template-detail 的容器查询用：中间列变窄时改成上下堆叠，避免两列互压。 */
+  container-type: inline-size;
 }
 
 .template-gallery .template-grid {

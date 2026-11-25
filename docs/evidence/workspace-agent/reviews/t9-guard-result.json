@@ -1,0 +1,172 @@
+[
+  {
+    "id": "G01-strict-fail-closed-zero-upstream",
+    "ok": true,
+    "detail": {
+      "outcome": {
+        "ok": false,
+        "code": "DEEPSEEK_UNAVAILABLE",
+        "message": "模型并发通道不可用（EEXIST: EEXIST: file already exists, mkdir 'C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-blocked-Y6PTo6\\token-dir'），HTTP 真实生成已暂停，请稍后重试。"
+      },
+      "calls": 0,
+      "warnings": [
+        "跨进程模型并发令牌不可用（EEXIST: EEXIST: file already exists, mkdir 'C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-blocked-Y6PTo6\\token-dir'），本进程只保留进程内限流；这不再是「全局最多 3」的保证，请修复 C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-blocked-Y6PTo6\\token-dir 的权限或设置 MODEL_UPSTREAM_TOKEN_DIR。"
+      ],
+      "global": {
+        "enabled": true,
+        "dir": "C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-blocked-Y6PTo6\\token-dir",
+        "maxTokens": 3,
+        "held": 0,
+        "available": false,
+        "degraded": true,
+        "reason": "EEXIST: EEXIST: file already exists, mkdir 'C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-blocked-Y6PTo6\\token-dir'"
+      }
+    }
+  },
+  {
+    "id": "G02-loose-visible-warning-degraded",
+    "ok": true,
+    "detail": {
+      "calls": 1,
+      "degraded": true,
+      "warnings": [
+        "跨进程模型并发令牌不可用（EEXIST: EEXIST: file already exists, mkdir 'C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-blocked-Y6PTo6\\token-dir'），本进程只保留进程内限流；这不再是「全局最多 3」的保证，请修复 C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-blocked-Y6PTo6\\token-dir 的权限或设置 MODEL_UPSTREAM_TOKEN_DIR。"
+      ]
+    }
+  },
+  {
+    "id": "G03-guard-covered-raw-fetch-releases-at-headers",
+    "ok": true,
+    "detail": {
+      "headersDone": true,
+      "secondStartedDuringBody": true,
+      "bodyDone": true
+    }
+  },
+  {
+    "id": "G04-adapter-path-holds-slot-until-body-read",
+    "ok": true,
+    "detail": {
+      "secondDuringBody": false,
+      "bodyDone": true,
+      "modelError": null,
+      "stats": {
+        "maxConcurrent": 1,
+        "active": 0,
+        "queued": 0,
+        "maxQueueLength": 1,
+        "totalAcquired": 2,
+        "totalTimedOut": 0,
+        "lastWaitMs": 252
+      }
+    }
+  },
+  {
+    "id": "G05-guard-limits-raw-fetch-to-3",
+    "ok": true,
+    "detail": {
+      "peak": 3,
+      "requests": 6,
+      "totalAcquiredAfterChat": 5,
+      "totalAcquired": 5
+    }
+  },
+  {
+    "id": "G06-entry-queue-3-admit-2-wait-no-429",
+    "ok": true,
+    "detail": {
+      "admitted": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "queued": 2,
+      "busyBefore": 0,
+      "totalBusy": 0
+    }
+  },
+  {
+    "id": "G07-entry-default-3-and-env-honored",
+    "ok": true,
+    "detail": {
+      "defaultOptions": {
+        "maxConcurrent": 3
+      },
+      "nineOptions": {
+        "maxConcurrent": 9
+      }
+    }
+  },
+  {
+    "id": "G08-scheduler-ignores-agent-max-concurrent",
+    "ok": true,
+    "detail": {
+      "maxConcurrent": 3,
+      "queueTimeoutMs": 180000,
+      "tokenDir": null,
+      "warnings": []
+    }
+  },
+  {
+    "id": "G10-default-token-dir-same",
+    "ok": true,
+    "detail": {
+      "serverDefault": "C:\\Users\\leiji\\AppData\\Local\\Temp\\smart-store-model-slots",
+      "desktopDefault": null
+    }
+  },
+  {
+    "id": "G11-shared-singleton-defaults-to-strict",
+    "ok": true,
+    "detail": {
+      "code": "MODEL_BUSY",
+      "global": {
+        "enabled": true,
+        "dir": "C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-singleton-blocked-C1DJfS\\blocked",
+        "maxTokens": 3,
+        "held": 0,
+        "available": false,
+        "degraded": true,
+        "reason": "EEXIST: EEXIST: file already exists, mkdir 'C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-singleton-blocked-C1DJfS\\blocked'"
+      },
+      "guard": true
+    }
+  },
+  {
+    "id": "G12-guard-path-request-timeout-consumes-queue-wait",
+    "ok": true,
+    "detail": {
+      "outcome": "ModelSchedulerError",
+      "requests": 0,
+      "stats": {
+        "maxConcurrent": 1,
+        "active": 0,
+        "queued": 0,
+        "maxQueueLength": 1,
+        "totalAcquired": 1,
+        "totalTimedOut": 0,
+        "lastWaitMs": 2
+      }
+    }
+  },
+  {
+    "id": "G13-guard-not-reinstalled-after-fetch-replacement",
+    "ok": true,
+    "detail": {
+      "reportedInstalled": true,
+      "acquiredBefore": 0,
+      "acquiredAfter": 0
+    }
+  },
+  {
+    "id": "G09-bootstrap-installs-guard",
+    "ok": true,
+    "detail": {
+      "installedAfterInit": true,
+      "hasScheduler": true,
+      "queueMax": 3
+    }
+  }
+]

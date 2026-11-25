@@ -1,0 +1,171 @@
+[
+  {
+    "id": "T01-token-file-shape-identical",
+    "ok": true,
+    "detail": {
+      "desktopFiles": [
+        {
+          "file": "slot-1.token",
+          "payload": {
+            "v": 1,
+            "pid": 102280,
+            "host": "xincell",
+            "acquiredAt": 1795590226082,
+            "expiresAt": 1795590256082,
+            "label": "desktop"
+          }
+        }
+      ],
+      "serverFiles": [
+        {
+          "file": "slot-1.token",
+          "payload": {
+            "v": 1,
+            "pid": 102280,
+            "host": "xincell",
+            "acquiredAt": 1795590226085,
+            "expiresAt": 1795590256085,
+            "label": "server"
+          }
+        }
+      ],
+      "desktopKeys": [
+        "acquiredAt",
+        "expiresAt",
+        "host",
+        "label",
+        "pid",
+        "v"
+      ],
+      "serverKeys": [
+        "acquiredAt",
+        "expiresAt",
+        "host",
+        "label",
+        "pid",
+        "v"
+      ],
+      "desktopTtl": 30000,
+      "serverTtl": 30000,
+      "desktopMax": 3,
+      "serverMax": 3
+    }
+  },
+  {
+    "id": "T02-desktop-tokens-block-server",
+    "ok": true,
+    "detail": {
+      "serverCode": "MODEL_QUEUE_TIMEOUT",
+      "serverAfterRelease": true,
+      "heldByDesktop": 3
+    }
+  },
+  {
+    "id": "T03-server-tokens-block-desktop",
+    "ok": true,
+    "detail": {
+      "desktopCode": "MODEL_QUEUE_TIMEOUT",
+      "desktopAfterRelease": true
+    }
+  },
+  {
+    "id": "T04-expired-dead-pid-reclaimed-both",
+    "ok": true,
+    "detail": {
+      "desktopToken": 1,
+      "serverToken": 1
+    }
+  },
+  {
+    "id": "T05-outlet-inventory",
+    "ok": true,
+    "detail": {
+      "outlets": [
+        "src/agent/presentation/template-revise.provider.ts",
+        "src/agent/provider/deepseek-agent.provider.ts",
+        "src/agent/runtime/adapters/deepseek-chat-model.ts",
+        "src/agent/workspace/workspace-agent.module.ts",
+        "src/generation/model-provider.service.ts"
+      ],
+      "wiring": {
+        "src/agent/runtime/adapters/deepseek-chat-model.ts": true,
+        "src/agent/provider/deepseek-agent.provider.ts": true,
+        "src/agent/workspace/workspace-agent.module.ts": true
+      }
+    }
+  },
+  {
+    "id": "T06-t9-static-filter-misses-3-of-5",
+    "ok": true,
+    "detail": {
+      "t9Filter": [
+        "src/agent/workspace/workspace-agent.module.ts",
+        "src/generation/model-provider.service.ts"
+      ],
+      "outlets": [
+        "src/agent/presentation/template-revise.provider.ts",
+        "src/agent/provider/deepseek-agent.provider.ts",
+        "src/agent/runtime/adapters/deepseek-chat-model.ts",
+        "src/agent/workspace/workspace-agent.module.ts",
+        "src/generation/model-provider.service.ts"
+      ]
+    }
+  },
+  {
+    "id": "T07-scheduler-does-not-read-agent-max",
+    "ok": true,
+    "detail": {
+      "agentMaxReads": [
+        "src/agent/model-scheduler/agent-entry-queue.ts",
+        "src/agent/model-scheduler/index.ts",
+        "src/agent/model-scheduler/model-scheduler.ts",
+        "src/agent/model-scheduler/model-scheduler.types.ts"
+      ],
+      "resolve": {
+        "maxConcurrent": 3,
+        "queueTimeoutMs": 180000,
+        "tokenDir": null,
+        "warnings": []
+      }
+    }
+  },
+  {
+    "id": "T08-x9-server-rewrite-removed",
+    "ok": true,
+    "detail": {
+      "pendingConfirmation": [],
+      "forbiddenRewrite": false,
+      "hasPathScrub": true
+    }
+  },
+  {
+    "id": "T09-x9-absence-assertion-present",
+    "ok": true,
+    "detail": {
+      "hasPendingAssert": true,
+      "hasPatternAssert": true
+    }
+  },
+  {
+    "id": "T10-no-second-case-copy",
+    "ok": true,
+    "detail": {
+      "duplicatedIds": [],
+      "fixtureDirs": [
+        "cases.json"
+      ],
+      "serverFixtureCopies": 0,
+      "referencesFixture": true
+    }
+  },
+  {
+    "id": "T11-agent-max-default-3",
+    "ok": true,
+    "detail": {
+      "envClassDefault": true,
+      "numericDefault": true,
+      "railsDefault": true,
+      "railsResidualFallback2": true
+    }
+  }
+]

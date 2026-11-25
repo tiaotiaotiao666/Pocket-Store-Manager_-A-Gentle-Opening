@@ -1,0 +1,3342 @@
+{
+  "schemaVersion": "e0-verify-report.v1",
+  "kind": "E0-V1 准备阶段运行报告（非验收结论）",
+  "mode": "offline",
+  "generatedAt": "2026-11-25T07:04:21.528Z",
+  "durationMs": 178789,
+  "head": "437bf5f0aedb",
+  "tempUserData": {
+    "prefix": "dsh-e0v1-",
+    "insideTmpdir": true,
+    "insideRepo": false,
+    "cleanedUp": true
+  },
+  "counts": {
+    "PASS": 73,
+    "FAIL": 2,
+    "NOT_RUN": 47,
+    "BLOCKED": 0,
+    "total": 122
+  },
+  "e0Verdict": "FAIL",
+  "e0VerdictNote": "本脚本是攻击链/垂直链骨架；E0 是否通过只能由 t8（E0-V1）在 X1–X12 关闭后出具。",
+  "guard": {
+    "repoDataDirsChanged": []
+  },
+  "frozenInterfaces": [
+    {
+      "name": "workspace",
+      "path": "desktop/agent-workspace/workspace.cjs",
+      "revision": "rev3 §1.10",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": null
+    },
+    {
+      "name": "files",
+      "path": "desktop/agent-workspace/files.cjs",
+      "revision": "rev3 §1.10",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": null
+    },
+    {
+      "name": "transactions",
+      "path": "desktop/agent-workspace/transactions.cjs",
+      "revision": "rev3 §1.10",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": null
+    },
+    {
+      "name": "manifest",
+      "path": "desktop/agent-workspace/manifest.cjs",
+      "revision": "rev3 §1.10",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": null
+    },
+    {
+      "name": "paths",
+      "path": "desktop/agent-workspace/paths.cjs",
+      "revision": "rev3 §1.10",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": null
+    },
+    {
+      "name": "versions",
+      "path": "desktop/agent-workspace/versions.cjs",
+      "revision": "rev4 §2.6",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": null
+    },
+    {
+      "name": "checks",
+      "path": "desktop/agent-workspace/checks.cjs",
+      "revision": "rev15 §14.4（t5 已改为 checkId→subject 平台表 + 四态归一）",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": null
+    },
+    {
+      "name": "source-check",
+      "path": "scripts/frontend-source/check.cjs",
+      "revision": "C2（§14.4 要求 source.check 直连此入口）",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": null
+    },
+    {
+      "name": "agent-tools-ipc",
+      "path": "desktop/agent-tools-ipc.cjs",
+      "revision": "rev7 §3.6（E0 需补 agent:adopt-attempt）",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": null
+    },
+    {
+      "name": "run-coordinator",
+      "path": "desktop/agent-workspace/run-coordinator.cjs",
+      "revision": "rev15 §14.2",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": "workspace-lead（t1 E0-W1 / t5 E0-W2）"
+    },
+    {
+      "name": "model-call-scheduler",
+      "path": "desktop/model-call-scheduler.cjs",
+      "revision": "rev15 §14.6",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": "runtime-engineer（t2 E0-R1a）"
+    },
+    {
+      "name": "agent-runtime",
+      "path": "desktop/agent-runtime",
+      "revision": "rev15 §14.7/§14.8",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": "runtime-engineer（t6 E0-R1 / t7 E0-R2）"
+    },
+    {
+      "name": "source-bundle",
+      "path": "desktop/agent-workspace/source-bundle.cjs",
+      "revision": "rev15 §14.5（平台派生 bundle + 8 页枚举单一事实源）",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": "workspace-lead（t5 E0-W2）"
+    },
+    {
+      "name": "direct-runtime",
+      "path": "desktop/agent-workspace/direct-runtime.cjs",
+      "revision": "rev15 §14.7（invokeDirect 下游，未接线显式 AGENT_RUNTIME_TOOL_MISSING）",
+      "status": "present",
+      "missingExports": [],
+      "error": null,
+      "owner": "workspace-lead（t5 E0-W2）/ runtime-engineer（t6 E0-R1）"
+    }
+  ],
+  "readiness": {
+    "generatedAt": "2026-11-25T07:04:21.537Z",
+    "note": "本表只陈述事实，不关闭任何 X；X1–X12 关闭结论由 t8（E0-V1）出具。",
+    "rows": [
+      {
+        "status": "NOT_RUN",
+        "x": "X1",
+        "owner": "E0-W1（workspace-lead，任务 t1）",
+        "evidence": "desktop/agent-workspace/run-coordinator.cjs + docs/evidence/workspace-agent/e0-v1/incremental-w1r1a.md",
+        "facts": {
+          "coordinatorPresent": true,
+          "coordinatorStatus": "present",
+          "w1r1aEvidencePresent": true,
+          "executedCases": [
+            "C01",
+            "C02",
+            "C04",
+            "C13",
+            "C14",
+            "C16"
+          ]
+        },
+        "reason": "W1 执行断言已在 e0-v1 增量复跑（C01/C02/C04/C13/C14 = PASS：startRun 从 currentVersionId 复制 attempt 树、无版本/未知项目 AGENT_VERSION_NOT_FOUND 且零建目录、写事务 revision+1 与摘要重算、getRun 视图一致、入参校验）；C16 用**真实注册表+真实检查子进程**跑通 写改→派生→双检查→submit(partial)→adopt v2。整体关闭（IPC 挂载、direct 通道接入、真实 Flash）仍由 t8 判"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X2",
+        "owner": "E0-R2（runtime-engineer，任务 t7）",
+        "evidence": "desktop/agent-runtime/**（resolveAssetImage / buildMultimodalContent）",
+        "facts": {
+          "runtimePresent": true,
+          "hasResolveAssetImage": false
+        },
+        "reason": "图片资产解析与多模态 content parts 未落地；无法验证回答是否依赖图像内容（A43–A48 全 NOT_RUN）"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X3",
+        "owner": "E0-W1（workspace-lead，任务 t1）",
+        "evidence": "desktop/agent-workspace/run-coordinator.cjs + docs/evidence/workspace-agent/e0-v1/incremental-w1r1a.md",
+        "facts": {
+          "coordinatorPresent": true,
+          "coordinatorExports": [
+            "CODES",
+            "MODEL_TOOL_NAMES",
+            "PLATFORM_ONLY_TOOL_NAMES",
+            "RUN_STATES",
+            "ATTEMPT_STATUSES",
+            "PROGRESS_STAGES",
+            "LIMITS",
+            "createRunCoordinator"
+          ],
+          "coordinatorMissingExports": [],
+          "executedCases": [
+            "C03",
+            "C04",
+            "C05",
+            "C08",
+            "C10",
+            "C11",
+            "C15",
+            "C16"
+          ]
+        },
+        "reason": "W1 执行断言 PASS（C03 写入拒绝 version subject / read_file 版本覆盖只读；C04 写只落 attempt；C05 工具面 11 vs 平台专用 3；C08 提交后 AGENT_ATTEMPT_IMMUTABLE；C10 伪造/跨项目/跨 run/跨 turn 句柄 AGENT_ATTEMPT_NOT_FOUND|AGENT_RUN_NOT_FOUND|AGENT_PROJECT_MISMATCH 且目录指纹不变；C11 取消三态与迟到零落盘；C15 注册表漂移 fail-closed 不抛异常）。图片资产/多模态证据（X2）、direct 通道（t6）与真实模型属后续任务，整体关闭由 t8 判"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X4",
+        "owner": "E0-W2（workspace-lead，任务 t5）",
+        "evidence": "desktop/agent-workspace/checks.cjs + scripts/frontend-source/check.cjs",
+        "facts": {
+          "available": true,
+          "checkIds": [
+            "source.check",
+            "composer.dry-run",
+            "mini.check",
+            "output.consistency",
+            "capabilities.check",
+            "wechat.verify",
+            "unit.targeted",
+            "unit.full",
+            "desktop.contract",
+            "catalog.check",
+            "registry.check"
+          ],
+          "sourceCheckScript": "scripts/frontend-source/check.cjs",
+          "sourceCheckExpectation": "scripts/frontend-source/check.cjs（rev15 §14.4）",
+          "miniCheckScoped": false,
+          "checkSubjects": {
+            "source.check": "attempt",
+            "composer.dry-run": "attempt",
+            "mini.check": "export",
+            "output.consistency": "export",
+            "capabilities.check": "repo",
+            "wechat.verify": "export",
+            "unit.targeted": "repo",
+            "unit.full": "repo",
+            "desktop.contract": "repo",
+            "catalog.check": "repo",
+            "registry.check": "repo"
+          },
+          "hasCapabilitiesCheck": true
+        },
+        "reason": "rev15 §14.5/§14.12-5：checks.cjs 现已声明 checkId→subject（source.check/composer.dry-run=attempt、mini.check/output.consistency/wechat.verify=export、其余=repo），并在结果里回 subjectKind/exportedRoot/exportTreeDigest；W1 侧 C07（证据主体降级即拒）与 C16（真实 source.check/dry-run 双 PASS）已执行 PASS。仍需 t5 判定：source.check 是否直连 scripts/frontend-source/check.cjs（当前 scripts/frontend-source/check.cjs）、mini.check scoped=false（期望只查派生导出树）→ t5 交付前 X4 记未关闭"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X5",
+        "owner": "E0-W2（workspace-lead，任务 t5）",
+        "evidence": "submit 8 页枚举 + SourceFacts/page-contract 派生",
+        "facts": {
+          "submitImplementPresent": true,
+          "coordinatorExports": [
+            "CODES",
+            "MODEL_TOOL_NAMES",
+            "PLATFORM_ONLY_TOOL_NAMES",
+            "RUN_STATES",
+            "ATTEMPT_STATUSES",
+            "PROGRESS_STAGES",
+            "LIMITS",
+            "createRunCoordinator"
+          ]
+        },
+        "reason": "submit 8 页单一来源枚举是否成立，需 t8 用 V08/A01–A03 执行判定（Coordinator 已导出 createRunCoordinator，但页枚举与 SourceFacts 同源无法从导出面静态确认）"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X6",
+        "owner": "E0-W2（workspace-lead，任务 t5）",
+        "evidence": "deriveSourceBundle（平台派生，模型不可调）",
+        "facts": {
+          "derivesBundlePresent": false
+        },
+        "reason": "source-bundle 平台派生未落地（正文中无 deriveSourceBundle 实现）；A01/A04 无法执行"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X7",
+        "owner": "E0-W1/W2（workspace-lead，任务 t1/t5）",
+        "evidence": "desktop/agent-tools-ipc.cjs + desktop/agent-workspace/run-coordinator.cjs + B2 versions.adoptAttempt",
+        "facts": {
+          "adoptAttemptIpcPresent": true,
+          "submitGatePresent": true,
+          "b2AdoptAttemptPresent": true,
+          "executedCases": [
+            "C06",
+            "C07",
+            "C08",
+            "C09",
+            "C16"
+          ]
+        },
+        "reason": "W1 层已执行：C06 缺证据 submit → AGENT_STATIC_GATE_FAILED；C07 证据主体降级（version）→ 门禁拒绝；C08 attempt 主体 PASS 证据 → submitted(partial)；C09 adopt 三分码各自命中且不互相顶替；C16 真实检查链 submit/adopt 跑通。**仍未关闭**：agent:adopt-attempt IPC 未实现（adoptAttemptIpcPresent=true），B2 adoptAttempt 不校验磁盘证据绑定 → A01–A09 由 t8 复跑"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X8",
+        "owner": "E0-R1（runtime-engineer，任务 t6）",
+        "evidence": "desktop/model-credentials.cjs#requestChat + direct workspace loop",
+        "facts": {
+          "requestChatHasFinishReason": true,
+          "requestChatHasTruncated": true,
+          "outputTruncatedCode": false
+        },
+        "reason": "requestChat 未返回 finishReason/truncated，direct 循环不存在；截断不回放工具的语义无法判定（A32–A34）"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X9",
+        "owner": "E0-R1（桌面侧，任务 t6）+ E0-R1b（服务端副本，任务 t9）",
+        "evidence": "desktop 回复处理（删除伪状态正则改写）+ server/src/agent/workspace/workspace-agent.service.ts",
+        "facts": {
+          "serverRegexRewriteStillPresent": false,
+          "directRuntimePresent": true
+        },
+        "reason": "rev15 §14.12-3：X9 判据 = 桌面侧已删 且 服务端副本已删/证明不可达。当前 desktop 侧未落地；服务端仍保留 `已验证/已采用 → 待本地确认` 改写（server/src/agent/workspace/workspace-agent.service.ts:80），必须在 E0 关闭前由 t9 E0-R1b 删除并补“已不存在”断言 → X9 未关闭"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X10",
+        "owner": "E0-U1（product-ui，任务 t3）+ 后续接线",
+        "evidence": "src/components/agent/e0/** + docs/evidence/workspace-agent/e0-u1/**",
+        "facts": {
+          "e0ComponentsPresent": true,
+          "e0u1EvidencePresent": true
+        },
+        "reason": "本轮只判“接入项是否冻结”：统一 run 状态/单页枚举/截图二进制/未知 stage 不丢步 → 待 t3 交付后由 t8 判"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X11",
+        "owner": "E0-Git（Captain，已完成）",
+        "evidence": "docs/evidence/workspace-agent/e0-git/{baseline.md,status-classification.json}",
+        "facts": {
+          "baselineEvidencePresent": true,
+          "statusClassificationPresent": true
+        },
+        "reason": "基线证据已归档（基线=origin/main 内容+15 local-edit+7 untracked-only）；“后续每个任务能说清基线与变更归属”仍需 t8 对交付逐项核对，故本轮不关闭"
+      },
+      {
+        "status": "NOT_RUN",
+        "x": "X12",
+        "owner": "E0-R1a（桌面侧，任务 t2）+ 服务端通道（任务 t9）",
+        "evidence": "desktop/model-call-scheduler.cjs + docs/evidence/workspace-agent/e0-r1a/",
+        "facts": {
+          "schedulerPresent": true,
+          "schedulerStatus": "present",
+          "maxUpstreamConcurrency": 3,
+          "e0r1aEvidencePresent": true,
+          "desktopSideClosed": true,
+          "executedCases": [
+            "S01",
+            "S02",
+            "S03",
+            "S04",
+            "S05",
+            "S06"
+          ],
+          "w1r1aEvidencePresent": true
+        },
+        "reason": "rev15 §14.12：桌面侧已关闭（t2 交付 27 tests + 5 并发实测 active=3/queued=2 + 两进程峰值 3，证据 e0-r1a/）；W1 侧独立复验 S01–S06 全 PASS（5 并发→active 3/queued 2；排队超时 MODEL_QUEUE_TIMEOUT；取消 MODEL_ABORTED 不泄漏槽位；两进程峰值 3；clamp=3 且非法值 MODEL_CONFIG_INVALID；FIFO 无插队）；服务端侧（t9）与真实模型并发（t8）未做，故仍只记“桌面侧已关闭”"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "P01",
+      "group": "P 前置（B1/B2 冻结模块）",
+      "title": "临时 userData 只建在系统临时目录，且与项目真实 userData 不重叠",
+      "x": [],
+      "requires": [],
+      "expected": "临时根在 tmpdir 内、不在仓库内、与 app-data/AppData 真实 userData 无交集；用例结束可自清",
+      "basis": "",
+      "status": "PASS",
+      "detail": "临时 userData 安全",
+      "observed": {
+        "tempPrefix": "dsh-e0v1-",
+        "insideTmpdir": true,
+        "insideRepo": false
+      },
+      "durationMs": 1
+    },
+    {
+      "id": "P02",
+      "group": "P 前置（B1/B2 冻结模块）",
+      "title": "initProject 建立 v1（import-base），treeDigest 与磁盘一致且可重开",
+      "x": [],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "currentVersionId=v1 / reason=import-base / parentVersionId=null；两次 reopen 摘要一致",
+      "basis": "",
+      "status": "PASS",
+      "detail": "v1 基线可重开",
+      "observed": {
+        "versionId": "v1",
+        "treeDigest": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b"
+      },
+      "durationMs": 503
+    },
+    {
+      "id": "P03",
+      "group": "P 前置（B1/B2 冻结模块）",
+      "title": "createAttempt 从当前版本 source 复制工作树，且不改动该版本",
+      "x": [],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "attempt-1 目录在私有根内；versions/v1 指纹不变；attempt 记录创建时 treeDigest",
+      "basis": "",
+      "status": "PASS",
+      "detail": "attempt 工作树来源于当前版本",
+      "observed": {
+        "attempt": 1,
+        "treeDigest": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
+        "revision": 1
+      },
+      "durationMs": 765
+    },
+    {
+      "id": "P04",
+      "group": "P 前置（B1/B2 冻结模块）",
+      "title": "writeFile 写入真实修改：revision 递增、treeDigest 变化、版本不被改动",
+      "x": [],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "revision 递增；treeDigest 变化；读回内容为新内容；versions/v1/source 逐字节不变",
+      "basis": "",
+      "status": "PASS",
+      "detail": "attempt 内真实修改可读回，版本零写入",
+      "observed": {
+        "revisionBefore": 1,
+        "revisionAfter": 2,
+        "digestBefore": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
+        "digestAfter": "sha256:1f4eac5711e5efadfc8c769b1ed458169549204a758dbf2899651f2961b76f77"
+      },
+      "durationMs": 1457
+    },
+    {
+      "id": "P05",
+      "group": "P 前置（B1/B2 冻结模块）",
+      "title": "adoptAttempt（B2）生成 v2：parent=v1、sourceKind=agent-edit、v1 逐字节不变",
+      "x": [],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "currentVersionId=v2、previousVersionId=v1；adoption.sourceKind=agent-edit；v1 目录指纹前后一致",
+      "basis": "",
+      "status": "PASS",
+      "detail": "B2 采用链可用（E0 证据绑定仍由 V10/A07/A08 覆盖）",
+      "observed": {
+        "currentVersionId": "v2",
+        "sourceKind": "agent-edit",
+        "treeDigest": "sha256:90747756f4d1679623377ae679b1ac37fda4014a8e65f3f599f0bc87758569fd"
+      },
+      "durationMs": 1778
+    },
+    {
+      "id": "P06",
+      "group": "P 前置（B1/B2 冻结模块）",
+      "title": "undo/redo 只动指针，不新增版本目录",
+      "x": [],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "undo→v1(redo=v2)；redo→v2(redo=null)；versions/ 目录集合不变",
+      "basis": "",
+      "status": "PASS",
+      "detail": "undo/redo 指针语义成立",
+      "observed": {
+        "versions": 2
+      },
+      "durationMs": 1479
+    },
+    {
+      "id": "P07",
+      "group": "P 前置（B1/B2 冻结模块）",
+      "title": "重开 + 导出身份：exportRoot 就是当前版本 source，摘要与索引一致",
+      "x": [],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "reopenProject/verifyExportIdentity PASS；resolveVersionSource.sourceRoot=versions/<current>/source；摘要=索引摘要",
+      "basis": "",
+      "status": "PASS",
+      "detail": "导出身份同源",
+      "observed": {
+        "versionId": "v2",
+        "treeDigest": "sha256:72a3fb1f2ac2a5ffe2e3e85e2e939c258a381b6805284f665359f7104524a77e"
+      },
+      "durationMs": 1718
+    },
+    {
+      "id": "P08",
+      "group": "P 前置（B1/B2 冻结模块）",
+      "title": "attempt 树摘要可被独立重算（平台摘要与磁盘一致）",
+      "x": [],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "manifest.buildManifest(candidateDir).treeDigest === attempt 摘要（写入前后各一次）",
+      "basis": "",
+      "status": "PASS",
+      "detail": "摘要可独立重算",
+      "observed": {},
+      "durationMs": 1324
+    },
+    {
+      "id": "C01",
+      "group": "C Coordinator（X1/X3）",
+      "title": "startRun 从 currentVersionId 复制 attempt 树（runId/turnId/attemptId/base 摘要/revision/subject）",
+      "x": [
+        "X1"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "ok:true；runId 形如 frun-…；turnId=turn-1；attemptId=attempt-1；baseVersionId=v1；baseTreeDigest=versions/v1 摘要；revision=1；subject={kind:\"attempt\",attemptId}；候选树重算摘要=baseTreeDigest；versions/v1 指纹不变",
+      "basis": "rev15 §14.2 不变量 1/2（唯一执行所有者；attempt 工作树来自当前版本）",
+      "status": "PASS",
+      "detail": "startRun 复制当前版本树建 attempt，返回冻结字段，版本零写入",
+      "observed": {
+        "runId": "frun-mwvrza73-3cc70d",
+        "baseVersionId": "v1",
+        "treeDigest": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
+        "revision": 1
+      },
+      "durationMs": 738
+    },
+    {
+      "id": "C02",
+      "group": "C Coordinator（X1/X3）",
+      "title": "无可用版本 / baseVersionId 不存在 → AGENT_VERSION_NOT_FOUND 且零建目录（不回落 Base）",
+      "x": [
+        "X1"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "baseVersionId=v99 → AGENT_VERSION_NOT_FOUND；未知项目 → AGENT_VERSION_NOT_FOUND；两种情况 runs/ 目录指纹都不变，且不为未知项目创建 agent-workspace 目录",
+      "basis": "rev15 §14.2 不变量 2（版本指针缺失 fail-closed）",
+      "status": "PASS",
+      "detail": "缺版本/未知项目均 AGENT_VERSION_NOT_FOUND，零建目录，不回落 Base",
+      "observed": {
+        "missingVersionCode": "AGENT_VERSION_NOT_FOUND",
+        "unknownProjectCode": "AGENT_VERSION_NOT_FOUND"
+      },
+      "durationMs": 310
+    },
+    {
+      "id": "C03",
+      "group": "C Coordinator（X1/X3）",
+      "title": "subject 固定为 attempt：写入不接受 subject 覆盖；read_file 的 version 覆盖只读",
+      "x": [
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "getAttemptState.subject.kind=attempt；write_files 带 subject/subjectOverride=version → AGENT_PAYLOAD_INVALID；read_file subjectOverride={kind:\"version\"} → ok 且内容=versions/v1/source 同路径；版本与候选指纹都不变",
+      "basis": "rev15 §14.3（工具上下文固定注入 subject:{kind:\"attempt\"}；写入永不接受 version subject）",
+      "status": "PASS",
+      "detail": "写入拒绝 version subject，read_file 版本覆盖只读且版本零写入",
+      "observed": {
+        "subjectKind": "attempt",
+        "writeRejections": [
+          "AGENT_PAYLOAD_INVALID",
+          "AGENT_PAYLOAD_INVALID"
+        ]
+      },
+      "durationMs": 1035
+    },
+    {
+      "id": "C04",
+      "group": "C Coordinator（X1/X3）",
+      "title": "写入只落 attempt：revision+1、treeDigest 重算、内容可读回、版本零写入",
+      "x": [
+        "X1",
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "write_files → ok、revision=2、treeDigest 变化；getAttemptState 同步；read_file 读回新内容；候选磁盘文件=提交内容；versions/v1 指纹不变",
+      "basis": "rev15 §14.2 不变量 3/4（写只落 attempt；每次写事务 revision+1 并重算 treeDigest）",
+      "status": "PASS",
+      "detail": "写事务 revision+1、摘要重算与磁盘一致、版本零写入",
+      "observed": {
+        "revisionBefore": 1,
+        "revisionAfter": 2,
+        "digestBefore": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
+        "digestAfter": "sha256:ff8a1e95f0ef5e93562f8eace24aab833939c8d318eea7d8b7885f1e1594362b"
+      },
+      "durationMs": 1542
+    },
+    {
+      "id": "C05",
+      "group": "C Coordinator（X1/X3）",
+      "title": "工具面固定：平台专用 3 名与未知名一律 AGENT_TOOL_NOT_ALLOWED",
+      "x": [
+        "X1",
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "模型工具表恰 11 个且不含平台专用名；derive_source_bundle/adopt_attempt/attach_image_asset/shell/write_file → AGENT_TOOL_NOT_ALLOWED",
+      "basis": "rev15 §14.3（11 个模型可见工具；derive_source_bundle/adopt_attempt/attach_image_asset 平台专用）",
+      "status": "PASS",
+      "detail": "平台专用与未知工具全部 AGENT_TOOL_NOT_ALLOWED，候选树不变",
+      "observed": {
+        "modelToolCount": 11,
+        "platformOnly": [
+          "derive_source_bundle",
+          "adopt_attempt",
+          "attach_image_asset"
+        ],
+        "codes": {
+          "derive_source_bundle": "AGENT_TOOL_NOT_ALLOWED",
+          "adopt_attempt": "AGENT_TOOL_NOT_ALLOWED",
+          "attach_image_asset": "AGENT_TOOL_NOT_ALLOWED",
+          "shell": "AGENT_TOOL_NOT_ALLOWED",
+          "write_file": "AGENT_TOOL_NOT_ALLOWED",
+          "child_process": "AGENT_TOOL_NOT_ALLOWED"
+        }
+      },
+      "durationMs": 801
+    },
+    {
+      "id": "C06",
+      "group": "C Coordinator（X1/X3）",
+      "title": "submit 静态门禁：完全没有检查证据 → AGENT_STATIC_GATE_FAILED，状态仍 open",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "submitAttempt → AGENT_STATIC_GATE_FAILED；getAttemptState.status 仍 open、runState 仍 running；窗口内树摘要与 run.json 状态不变",
+      "basis": "rev15 §14.5（submit 需要 source.check + composer.dry-run 证据）",
+      "status": "PASS",
+      "detail": "缺证据 submit 被静态门禁拒绝，状态与证据均未变化",
+      "observed": {
+        "code": "AGENT_STATIC_GATE_FAILED",
+        "message": "静态门禁未通过：缺少 source.check（未执行）、composer.dry-run（未执行）",
+        "status": "open"
+      },
+      "durationMs": 877
+    },
+    {
+      "id": "C07",
+      "group": "C Coordinator（X1/X3）",
+      "title": "run_check 路由由平台表决定：root=attempt 由平台注入，注册表不声明 attempt 主体的 PASS 不能放行 submit",
+      "x": [
+        "X4",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "注册表收到的 root=attempt/candidateDir、subject={kind:attempt}、subjectKind=attempt；即使注册表返回 PASS，只要没声明 attempt 主体，证据就降级为 version，submit 仍 AGENT_STATIC_GATE_FAILED",
+      "basis": "rev15 §14.4（checkId→subject 平台表；root/导出根只由平台填）/§14.5（证据主体必须是 attempt）",
+      "status": "PASS",
+      "detail": "平台注入 root/subject/导出父目录；证据主体降级后门禁拒绝",
+      "observed": {
+        "rootInjected": true,
+        "subjectKindFromRegistry": "version",
+        "platformSubjectKind": "attempt",
+        "exportParentInjected": true,
+        "submitCode": "AGENT_STATIC_GATE_FAILED",
+        "submitMessage": "静态门禁未通过：不满足 source.check 的证据主体不是 attempt、composer.dry-run 的证据主体不是 attempt"
+      },
+      "durationMs": 2236
+    },
+    {
+      "id": "C08",
+      "group": "C Coordinator（X1/X3）",
+      "title": "可提交路径：attempt 主体 PASS 证据 → submitted（partial）；其后写入 AGENT_ATTEMPT_IMMUTABLE、重复提交与取消 too-late",
+      "x": [
+        "X3",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "submit → ok、status=submitted、partial=true、candidateId=attempt-1；随后 write_files → AGENT_ATTEMPT_IMMUTABLE 且摘要不变；再次 submit → AGENT_RUN_ALREADY_SUBMITTED；cancelRun → state=too-late、cancelled=false、runState 仍 submitted",
+      "basis": "rev15 §14.5（submit）+ §14.2 不变量 6（提交后只读）+ §14.9（重复提交/取消三态）",
+      "status": "PASS",
+      "detail": "提交后可写拒绝、重复提交拒绝、取消 too-late；F1 六个绑定字段齐全且 exportRelative 为相对路径",
+      "observed": {
+        "submitCode": "ok",
+        "partial": true,
+        "exportRelative": "verification/export-tree",
+        "exportTreeDigestHead": "sha256:ddddddddd",
+        "lateWriteCode": "AGENT_ATTEMPT_IMMUTABLE",
+        "resubmitCode": "AGENT_RUN_ALREADY_SUBMITTED",
+        "cancelState": "too-late"
+      },
+      "durationMs": 2566
+    },
+    {
+      "id": "C09",
+      "group": "C Coordinator（X1/X3）",
+      "title": "adopt 三分码实测：未提交→AGENT_ADOPTION_FAILED+NOT_SUBMITTED；摘要不符→AGENT_EVIDENCE_STALE；未确认 partial→AGENT_PARTIAL_CONFIRM_REQUIRED",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "① 未提交 adopt → AGENT_ADOPTION_FAILED 且 issues[].code=NOT_SUBMITTED、不生成新版本；② 已提交但 submission.treeDigest 被改写 → AGENT_EVIDENCE_STALE（不得报 PARTIAL_CONFIRM_REQUIRED）；③ 已提交 partial 且未确认 → AGENT_PARTIAL_CONFIRM_REQUIRED；partialConfirmed:true 后才 adopt 成功并推进版本",
+      "basis": "rev15 §14.12-1（三分不得互相顶替）",
+      "status": "PASS",
+      "detail": "三分码各自命中且不互相顶替；确认后才推进版本",
+      "observed": {
+        "notSubmitted": {
+          "code": "AGENT_ADOPTION_FAILED",
+          "issueCodes": [
+            "NOT_SUBMITTED"
+          ]
+        },
+        "stale": {
+          "code": "AGENT_EVIDENCE_STALE"
+        },
+        "partialConfirm": {
+          "code": "AGENT_PARTIAL_CONFIRM_REQUIRED",
+          "adoptedVersionId": "v2"
+        }
+      },
+      "durationMs": 5093
+    },
+    {
+      "id": "C10",
+      "group": "C Coordinator（X1/X3）",
+      "title": "Coordinator 层句柄拒绝：跨项目 / 跨 run / 跨 turn / 伪造 attempt / 磁盘 projectId 篡改 → 拒绝且目录指纹不变",
+      "x": [
+        "X1",
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "跨项目 → AGENT_RUN_NOT_FOUND/AGENT_PROJECT_MISMATCH；伪造 attemptId/跨 turn → AGENT_ATTEMPT_NOT_FOUND；attempt.json 的 projectId 被篡改 → AGENT_PROJECT_MISMATCH；以上全部零落盘（两个项目树指纹不变）",
+      "basis": "rev15 §14.2 不变量 5 + §14.12-2（Coordinator 句柄校验层必须拒绝伪造 projectId）",
+      "status": "PASS",
+      "detail": "Coordinator 层句柄拒绝全部命中具体码，两个项目树零落盘",
+      "observed": {
+        "crossProjectCode": "AGENT_RUN_NOT_FOUND",
+        "forgedCode": "AGENT_ATTEMPT_NOT_FOUND",
+        "crossTurnCode": "AGENT_ATTEMPT_NOT_FOUND",
+        "crossRunCode": "AGENT_RUN_NOT_FOUND",
+        "tamperedCode": "AGENT_PROJECT_MISMATCH"
+      },
+      "durationMs": 1428
+    },
+    {
+      "id": "C11",
+      "group": "C Coordinator（X1/X3）",
+      "title": "取消三态与迟到调用：requested→cancelled、取消后不再调注册表/direct、迟到 run_check 结果零落盘",
+      "x": [
+        "X3",
+        "X8"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "在途取消 → state=requested；迟到 run_check 结果 → AGENT_CANCELLED 且不写证据、run 落 cancelled；取消后再调 run_check/direct → AGENT_CANCELLED 且注册表/direct 调用计数不增；无在途取消 → cancelled；再取消幂等",
+      "basis": "rev15 §14.2 不变量 5/6 + §14.9（cancel 三态）+ 计划 §4（取消后不得再发上游）",
+      "status": "PASS",
+      "detail": "requested/cancelled 两态与迟到丢弃成立；取消后不再调注册表/direct，零落盘",
+      "observed": {
+        "inFlight": "requested",
+        "lateCode": "AGENT_CANCELLED",
+        "postCancelCheckCode": "AGENT_CANCELLED",
+        "postCancelDirectCode": "AGENT_CANCELLED",
+        "registryCallsAfterCancel": 1,
+        "directCalls": 0,
+        "idleCancel": "cancelled"
+      },
+      "durationMs": 2350
+    },
+    {
+      "id": "C12",
+      "group": "C Coordinator（X1/X3）",
+      "title": "progress 事件：stage 在白名单内、status 合法、payload 无绝对路径/源码/base64",
+      "x": [
+        "X10"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "每个 event 的 stage ∈ PROGRESS_STAGES、status ∈ {running,succeeded,failed,cancelled}；message 不含盘符绝对路径、不含 data:image、不含 200+ 连续 base64；含 projectId/runId/attemptId 与 at",
+      "basis": "rev15 §9.1/§14.9（agent:progress 只允许白名单 stage；payload 不得含目录/源码/base64）",
+      "status": "PASS",
+      "detail": "progress stage/status 合法且已脱敏",
+      "observed": {
+        "eventCount": 4,
+        "stages": [
+          "workspace",
+          "write",
+          "bundle",
+          "validate"
+        ],
+        "statuses": [
+          "succeeded"
+        ]
+      },
+      "durationMs": 2199
+    },
+    {
+      "id": "C13",
+      "group": "C Coordinator（X1/X3）",
+      "title": "getRun / getAttemptState 视图：状态机 open→submitted 与 revision/treeDigest 一致",
+      "x": [
+        "X1"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "getRun 返回 turns/attempts 列表且含 attempt-1 + status/revision/treeDigest；submit 后 getRun 的 attempt 状态变 submitted、run.state 变 submitted",
+      "basis": "rev15 §14.2（getRun/getAttemptState 为冻结签名；无 UI 垂直链的读取面）",
+      "status": "PASS",
+      "detail": "getRun/getAttemptState 反映同一磁盘事实",
+      "observed": {
+        "initialState": "open",
+        "afterSubmit": {
+          "runState": "submitted",
+          "attemptStatus": "submitted"
+        }
+      },
+      "durationMs": 1749
+    },
+    {
+      "id": "C14",
+      "group": "C Coordinator（X1/X3）",
+      "title": "startRun 入参校验：targetPage/operation/utterance/imageAssetIds 非法一律拒绝且零建目录",
+      "x": [
+        "X1"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "targetPage 非法 → AGENT_TARGET_PAGE_UNSUPPORTED；operation 非法/utterance 空 → AGENT_PAYLOAD_INVALID；imageAssetIds 传路径或 dataURL → AGENT_PAYLOAD_INVALID；全部零建 runs 目录",
+      "basis": "rev15 §14.3（imageAssetIds 只接受 assetId，不接受路径/base64）+ §14.9 码表",
+      "status": "PASS",
+      "detail": "入参校验全部命中码，零建目录",
+      "observed": {
+        "codes": {
+          "targetPage": "AGENT_TARGET_PAGE_UNSUPPORTED",
+          "operation": "AGENT_PAYLOAD_INVALID",
+          "utterance": "AGENT_PAYLOAD_INVALID",
+          "pathAsset": "AGENT_PAYLOAD_INVALID",
+          "dataUrlAsset": "AGENT_PAYLOAD_INVALID",
+          "tooManyAssets": "AGENT_PAYLOAD_INVALID"
+        }
+      },
+      "durationMs": 287
+    },
+    {
+      "id": "C15",
+      "group": "C Coordinator（X1/X3）",
+      "title": "注册表漂移（未声明 definitions）时 run_check 必须**先拒后跑**（runner 0 次调用）且不抛异常",
+      "x": [
+        "X3",
+        "X4"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "注入一个没有 definitions 的注册表：source.check → AGENT_CHECK_UNKNOWN 且**检查 runner 被调用 0 次**；composer.dry-run 同样先拒；随后 submit 必须 AGENT_STATIC_GATE_FAILED；全过程不得抛未捕获异常（抛异常=IPC 层会 500）",
+      "basis": "rev15 §14.4（checkId→subject 来自平台表）+ §14.13-F2（缺 subject/root/definitions 先拒后跑，runner 调用次数 0）",
+      "status": "PASS",
+      "detail": "缺 definitions 时先拒后跑（runner 0 次），submit 仍被静态门禁拒绝，全程无异常",
+      "observed": {
+        "runCheckCode": "AGENT_CHECK_UNKNOWN",
+        "dryRunCode": "AGENT_CHECK_UNKNOWN",
+        "runnerCalls": 0,
+        "submitCode": "AGENT_STATIC_GATE_FAILED"
+      },
+      "durationMs": 857
+    },
+    {
+      "id": "C16",
+      "group": "C Coordinator（X1/X3）",
+      "title": "真实检查链（无替身）：写改 → 平台派生 bundle → source.check PASS → composer.dry-run PASS → submit(partial) → adopt 推进 v2",
+      "x": [
+        "X1",
+        "X3",
+        "X4",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
+      ],
+      "expected": "全程用**真实注册表与真实子进程检查**（不注入替身）：source.check/composer.dry-run 均 PASS 且 subjectKind=attempt、dry-run 给出导出根与导出树摘要；submit → submitted+partial；adopt 未确认被拒、确认后生成 v2 且候选内容进版本；v1 源目录字节不变。若子进程检查不可用（沙箱/工具缺失）则记 BLOCKED，不记 PASS",
+      "basis": "rev15 §14.5 合法链路顺序（write → derive → source.check → dry-run → submit → adopt）",
+      "status": "PASS",
+      "detail": "真实检查链跑通 desktop 侧闭环：写改→派生→双检查 PASS→submit(partial)→确认后 adopt 生成 v2",
+      "observed": {
+        "sourceCheck": {
+          "status": "PASS",
+          "subjectKind": "attempt"
+        },
+        "dryRun": {
+          "status": "PASS",
+          "subjectKind": "attempt",
+          "exportRelative": "verification/dry-run",
+          "exportTreeDigest": "sha256:8c16c59e2f738a3263e65af5e59d815122114b7484dd8fddf98f53401860d065"
+        },
+        "submit": {
+          "status": "submitted",
+          "partial": true,
+          "treeDigest": "sha256:a3a83f848f6fdfab5a13991e09da0350e96b45d4edc7e122568e33e9b328b96e"
+        },
+        "adopt": {
+          "adoptedVersionId": "v2",
+          "previousVersionId": "v1"
+        }
+      },
+      "durationMs": 4533
+    },
+    {
+      "id": "C17",
+      "group": "C Coordinator（X1/X3）",
+      "title": "检查后再写入：submit 不得再派生 → AGENT_EVIDENCE_STALE + issue EVIDENCE_STALE_RERUN_CHECKS + nextAction",
+      "x": [
+        "X4",
+        "X6",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "顺序 = 写 → source.check → composer.dry-run → **再写** → submit：submit 必须返回 AGENT_EVIDENCE_STALE、issues 含 EVIDENCE_STALE_RERUN_CHECKS、nextAction=rerun-checks；并且 submit 期间候选目录零写入（不派生 bundle、不改摘要），attempt 仍 open、无 submission 证据",
+      "basis": "rev15 §14.5 顺序（derive 只发生在检查阶段）+ §14.13-F3（stale 三要素，不得自动补派生）",
+      "status": "PASS",
+      "detail": "陈旧证据三要素齐全（AGENT_EVIDENCE_STALE + EVIDENCE_STALE_RERUN_CHECKS + rerun-checks），且 submit 未再派生",
+      "observed": {
+        "digestAfterChecks": "sha256:9965cad2b1f4077ad351f99aca5ec377a6396d8a8e353efbb641d4ff303cdec9",
+        "digestAfterSecondWrite": "sha256:346cdc5343fff6d3a27e9ae447fb5e5d8dd6a397caf968f3d03501f4fddfb08c",
+        "submitCode": "AGENT_EVIDENCE_STALE",
+        "issues": [
+          "EVIDENCE_STALE_RERUN_CHECKS"
+        ],
+        "nextAction": "rerun-checks",
+        "candidateUnchangedBySubmit": true,
+        "attemptStatus": "open"
+      },
+      "durationMs": 3293
+    },
+    {
+      "id": "S01",
+      "group": "S 调度器（X12 桌面侧）",
+      "title": "5 个并发任务：同时在跑恒为 3、排队峰值 2，5 个全部完成",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "active 峰值=3；stats().maxQueueLength=2；5 个任务全部 fulfilled；结束后 active=0、queued=0",
+      "basis": "rev15 §14.6（进程内并发上限 3，公平 FIFO）+ 计划 §4「5 个并发第 4 个排队」",
+      "status": "PASS",
+      "detail": "5 并发被限到 3 并发 + 2 排队，全部完成",
+      "observed": {
+        "peakActive": 3,
+        "maxQueueLength": 2,
+        "totalAcquired": 5
+      },
+      "durationMs": 104
+    },
+    {
+      "id": "S02",
+      "group": "S 调度器（X12 桌面侧）",
+      "title": "排队超过 queueTimeoutMs → MODEL_QUEUE_TIMEOUT（虚拟时钟推进，不真等 30s）",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "3 个槽位被占满后第 4 个排队；虚拟时间推进到 queueTimeoutMs 之后 → 第 4 个以 MODEL_QUEUE_TIMEOUT 结束；已占槽位的 3 个不受影响且随后正常完成",
+      "basis": "rev15 §14.6（排队超时给 MODEL_QUEUE_TIMEOUT，不是上游超时/429）",
+      "status": "PASS",
+      "detail": "排队超时命中 MODEL_QUEUE_TIMEOUT，占槽任务不受影响",
+      "observed": {
+        "queueTimeoutMs": 30000,
+        "code": "MODEL_QUEUE_TIMEOUT",
+        "totalTimedOut": 1,
+        "queuedBeforeTimeout": 1
+      },
+      "durationMs": 1
+    },
+    {
+      "id": "S03",
+      "group": "S 调度器（X12 桌面侧）",
+      "title": "取消排队任务：以 MODEL_ABORTED 结束且不泄漏槽位（后续任务仍能跑完）",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "占满 3 槽后排队 2 个，abort 其一 → MODEL_ABORTED；另一个取消排队项后队列归零；释放 holder 后新任务能立刻拿到槽位并完成，active 最终归零",
+      "basis": "rev15 §14.6（取消不泄漏槽位）+ 计划 §4（取消后不再发起上游）",
+      "status": "PASS",
+      "detail": "取消命中 MODEL_ABORTED，槽位不泄漏",
+      "observed": {
+        "cancelCodes": [
+          "MODEL_ABORTED",
+          "MODEL_ABORTED"
+        ],
+        "postCancelRan": true,
+        "activeAfter": 0
+      },
+      "durationMs": 1
+    },
+    {
+      "id": "S04",
+      "group": "S 调度器（X12 桌面侧）",
+      "title": "跨进程：两个进程各 2 个任务共享令牌池 → 全局上游并发峰值 ≤3",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "两个子进程各 2 个任务全部完成；合并时间线算出的全局峰值 ≤3；任一子进程报 degraded=true → 本条记 BLOCKED（环境不支持文件令牌），不得记 PASS",
+      "basis": "rev15 §14.6（跨进程令牌池 3；降级必须可见）+ e0-r1a 声称“两进程峰值 3”",
+      "status": "PASS",
+      "detail": "两进程 4 个任务、全局峰值 3（≤3）",
+      "observed": {
+        "peakGlobalConcurrency": 3,
+        "tasksA": 2,
+        "tasksB": 2,
+        "heldA": 0,
+        "degraded": false
+      },
+      "durationMs": 941
+    },
+    {
+      "id": "S05",
+      "group": "S 调度器（X12 桌面侧）",
+      "title": "并发上限只允许 1–3：configure(4) clamp 到 3 且有警告，configure(0) 抛 MODEL_CONFIG_INVALID",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "configure({maxConcurrent:4}) → config().maxConcurrent=3 且 warnings 非空；configure({maxConcurrent:0}) → 抛 MODEL_CONFIG_INVALID；env 里 MODEL_MAX_CONCURRENT=9 也被截断到 3",
+      "basis": "rev15 §14.6（>3 截断 + 可见警告；非法值报错）",
+      "status": "PASS",
+      "detail": "上限只接受 1–3；非法值报错；AGENT_* 旧名不生效",
+      "observed": {
+        "clamped": 3,
+        "invalidCode": "MODEL_CONFIG_INVALID",
+        "envMax": 3,
+        "legacyEnvIgnoredAs": 3,
+        "warnings": 1
+      },
+      "durationMs": 1
+    },
+    {
+      "id": "S06",
+      "group": "S 调度器（X12 桌面侧）",
+      "title": "排队公平性：先到先得（FIFO），释放一个槽位只放出队首",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "3 槽占满后排队 q0/q1/q2；释放 1 个槽位 → 只有 q0 开始；依次释放 → 顺序 q0→q1→q2，无插队",
+      "basis": "rev15 §14.6（公平 FIFO 队列）",
+      "status": "PASS",
+      "detail": "FIFO 顺序成立，无插队",
+      "observed": {
+        "order": [
+          "q0",
+          "q1",
+          "q2"
+        ],
+        "stats": {
+          "totalAcquired": 6,
+          "maxQueueLength": 3
+        }
+      },
+      "durationMs": 99
+    },
+    {
+      "id": "W01",
+      "group": "W t5 复核（X4）",
+      "title": "A11O 复核：source.check 在 attempt 候选树上执行（埋入 attempt 独有的非法 JSON 必须在 issues 里命中）",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
+      ],
+      "expected": "注册表收到的 root=attempt/candidate（不是仓库/版本路径）；在候选里写入 pages/menu/index.json 的非法 JSON 后，source.check 必须 FAIL 且 issues[].file 指向该 attempt 相对路径；同时 versions/v1 里的同一文件仍是合法 JSON （证明失败只可能来自 attempt 树，而不是仓库或已采用版本）",
+      "basis": "rev15 §14.4（source.check 主体=attempt，root 只由平台填）+ §14.5（检查只针对当前 attempt）",
+      "status": "PASS",
+      "detail": "source.check 真实执行于 attempt 候选树：候选内非法 JSON 被命中，已采用版本不受影响",
+      "observed": {
+        "rootIsCandidate": true,
+        "subjectKindFromRegistry": "attempt",
+        "statusOnBrokenJson": "FAIL",
+        "issueFiles": [
+          "pages/menu/index.json",
+          "pages/menu/index.wxml",
+          "pages/menu/index.wxml"
+        ],
+        "evidenceSubjectKind": "attempt"
+      },
+      "durationMs": 2479
+    },
+    {
+      "id": "W02",
+      "group": "W t5 复核（X4）",
+      "title": "A11O 复核：composer.dry-run 的 compose 输入是当前 attempt，导出树落 attempt/verification/",
+      "x": [
+        "X4",
+        "X6"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
+      ],
+      "expected": "run_check 入参 root=attempt/candidate、exportParentDir=attempt/verification；导出根相对引用落在 attempt 内（含 verification/，不含 miniprogram/ 或仓库路径）；导出树里能读到本次 attempt 的改动（标记字符串）；仓库 miniprogram/ 逐字节不变",
+      "basis": "rev15 §14.4（导出根只由平台派生）+ §14.5（dry-run 在 attempt 内产出导出树）",
+      "status": "PASS",
+      "detail": "dry-run 以 attempt 为输入、导出树落 attempt/verification/，仓库镜像零写入",
+      "observed": {
+        "rootIsCandidate": true,
+        "exportParentIsVerification": true,
+        "exportRelative": "verification/dry-run",
+        "exportTreeDigestHead": "sha256:749fc56feaec",
+        "exportedContainsAttemptEdit": true
+      },
+      "durationMs": 2828
+    },
+    {
+      "id": "W03",
+      "group": "W t5 复核（X4）",
+      "title": "A11O 复核：mini.check / output.consistency 只查本 attempt 的派生导出树，缺导出树即 AGENT_CHECK_UNKNOWN（不回落 miniprogram/）",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
+      ],
+      "expected": "未跑 dry-run 时 mini.check → AGENT_CHECK_UNKNOWN（不得回落到仓库 miniprogram/）；跑过 dry-run 后 mini.check 以 exportRoot=该导出树执行，证据 subjectKind=export 且 exportTreeDigest 等于 dry-run 摘要；把导出树删掉后再次 mini.check → 仍 AGENT_CHECK_UNKNOWN",
+      "basis": "rev15 §14.4（导出树级检查的 root 只能来自本 attempt 的 dry-run 证据）",
+      "status": "PASS",
+      "detail": "导出树级检查全部绑定本 attempt 的 dry-run 导出树；缺树先拒，不回落仓库镜像",
+      "observed": {
+        "miniWithoutDryRun": "AGENT_CHECK_UNKNOWN",
+        "miniStatus": "PASS",
+        "miniSubjectKind": "export",
+        "consistencySubjectKind": "export",
+        "afterExportRemoved": "AGENT_CHECK_UNKNOWN"
+      },
+      "durationMs": 5361
+    },
+    {
+      "id": "W04",
+      "group": "W t5 复核（X4）",
+      "title": "A11O 复核：capabilities.check 是独立 repo 级检查（不冒名 source.check），run_check 不给它注入 attempt 根",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "definitions 里 source.check.subject=attempt 且 script=scripts/frontend-source/check.cjs；capabilities.check.subject=repo 且 script=scripts/frontend-capabilities.cjs（两者脚本不同，不得互相冒名）；契约别名 capabilities.source-facts 与 canonical 指向同一实现（清理项，记录不阻塞）；run_check(capabilities.check) 时注册表收到的请求不带 root/exportRoot/subjectKind（repo 级不注入 attempt 路径）",
+      "basis": "rev15 §14.4（capabilities.check 为仓库级）+ §14.12-5（source.check 必须直连 frontend-source/check.cjs）",
+      "status": "PASS",
+      "detail": "capabilities.check 与 source.check 是两条独立检查；repo 级不注入 attempt 路径；别名 capabilities.source-facts 仍存在（清理项，见 finding）",
+      "observed": {
+        "sourceCheckScript": "scripts/frontend-source/check.cjs",
+        "capabilitiesScript": "scripts/frontend-capabilities.cjs",
+        "aliasPresent": true,
+        "aliasSame": true,
+        "rootInjected": null,
+        "subjectKindInjected": null
+      },
+      "durationMs": 798
+    },
+    {
+      "id": "W05",
+      "group": "W t5 复核（X5）",
+      "title": "X5：get_context.targetPages 是 [{id,enabled,reasons}] 派生（删掉候选里的页面文件必须立刻变为 enabled=false）",
+      "x": [
+        "X5"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-bundle"
+      ],
+      "expected": "targetPages 长度=8、id 集合等于 source-bundle.PAGE_IDS、每项含布尔 enabled 与数组 reasons；删掉候选里的 pages/mine/index.json + index.wxml 后，mine 必须 enabled=false 且 reasons 指出缺文件 （若 8 个永远为 true，本用例失败）",
+      "basis": "rev15 §14.5（页枚举唯一事实源 SourceFacts，enabled 由候选树派生，不是 8 个硬编码 true）",
+      "status": "PASS",
+      "detail": "8 页枚举来自 SourceFacts 且 enabled 随候选树派生（删除页面后立刻禁用并给出原因）",
+      "observed": {
+        "pageIds": [
+          "home",
+          "menu",
+          "checkout",
+          "orders",
+          "order-detail",
+          "product-detail",
+          "mine",
+          "merchant-orders"
+        ],
+        "enabledBefore": [
+          "home",
+          "menu",
+          "checkout",
+          "orders",
+          "order-detail",
+          "product-detail",
+          "mine",
+          "merchant-orders"
+        ],
+        "enabledCountBefore": 8,
+        "mineAfterDelete": {
+          "enabled": false,
+          "reasons": [
+            "候选缺少 pages/mine/index.json",
+            "候选缺少 pages/mine/index.wxml"
+          ]
+        },
+        "source": "scripts/agent-source-facts.cjs#PAGE_IDS/PAGE_CONTRACTS"
+      },
+      "durationMs": 2248
+    },
+    {
+      "id": "W06",
+      "group": "W t5 复核（X5）",
+      "title": "X5：用非 menu 页（home）走真实检查链提交成功；非法页与跨 run 目标页 → AGENT_TARGET_PAGE_UNSUPPORTED",
+      "x": [
+        "X5",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check",
+        "source-bundle"
+      ],
+      "expected": "startRun(targetPage=home) ok；submit(targetPage=menu) → AGENT_TARGET_PAGE_UNSUPPORTED（与 run 目标页不一致）；startRun(targetPage=not-a-page) → AGENT_TARGET_PAGE_UNSUPPORTED；home 页改完后真实 source.check + dry-run PASS → submit 成功且 targetPage=home",
+      "basis": "rev15 §14.5（targetPage 只认 8 页枚举，且必须是本次 run 的目标页且在候选中可用）",
+      "status": "PASS",
+      "detail": "非 menu 页（home）真实链路提交成功；非法页与跨 run 目标页均被拒",
+      "observed": {
+        "badPageCode": "AGENT_TARGET_PAGE_UNSUPPORTED",
+        "mismatchedSubmitCode": "AGENT_TARGET_PAGE_UNSUPPORTED",
+        "sourceCheck": "PASS",
+        "dryRun": "PASS",
+        "submittedTargetPage": "home"
+      },
+      "durationMs": 3588
+    },
+    {
+      "id": "W07",
+      "group": "W t5 复核（X6）",
+      "title": "X6：source-bundle 由平台派生、内容为最终完整文件 + deleted 显式，且 submit 前后逐字节不变",
+      "x": [
+        "X6",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check",
+        "source-bundle"
+      ],
+      "expected": "检查阶段派生 attempt/candidate/source-bundle.json：schemaVersion=frontend-source-bundle.v1、files[] 每项 {path,sha256} 且包含本次改动的 pages/menu/index.wxml、deleted 为显式数组、base.treeSha256 存在；submit 前后该文件字节与候选摘要完全不变（submit 不派生）",
+      "basis": "rev15 §14.5（bundle 平台派生 + submit 不再派生，§14.13-F3）",
+      "status": "PASS",
+      "detail": "bundle 由检查阶段平台派生、内容为最终完整文件摘要 + 显式 deleted，submit 逐字节不变",
+      "observed": {
+        "bundleFile": "source-bundle.json",
+        "fileCount": 1,
+        "deletedCount": 0,
+        "hasBaseTreeSha": true,
+        "bundleSha256Head": "11c87a112cf24ae8",
+        "unchangedAcrossSubmit": true
+      },
+      "durationMs": 3709
+    },
+    {
+      "id": "W08",
+      "group": "W t5 复核（X6）",
+      "title": "X6/F3：bundle 缺失时**在检查阶段补派生**，submit 只拒绝、绝不派生",
+      "x": [
+        "X6",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check",
+        "source-bundle"
+      ],
+      "expected": "有写入但没跑检查时 submit → 被拒（AGENT_STATIC_GATE_FAILED）且候选目录逐字节不变、bundle 仍不存在；随后 source.check 触发平台派生 → bundle 出现；再 dry-run → submit 成功",
+      "basis": "rev15 §14.5 + §14.13-F3（derive 只能发生在检查阶段；submit 不得补派生）",
+      "status": "PASS",
+      "detail": "submit 不派生（拒绝且零写入），bundle 由检查阶段补派生后链路才可提交",
+      "observed": {
+        "submitWithoutChecks": "AGENT_STATIC_GATE_FAILED",
+        "bundleCreatedBy": "source.check",
+        "finalSubmit": "submitted"
+      },
+      "durationMs": 4121
+    },
+    {
+      "id": "W09",
+      "group": "W t5 复核（X7）",
+      "title": "句柄/身份：伪造 projectId → AGENT_RUN_NOT_FOUND；搬迁 run 目录 → AGENT_PROJECT_MISMATCH 且副本零写入；伪造 turn/attempt → AGENT_ATTEMPT_NOT_FOUND",
+      "x": [
+        "X7",
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "跨项目句柄 → AGENT_RUN_NOT_FOUND；把 A 的 run 目录复制进 B 的 runs/ 后用 B 的 projectId 调用 → AGENT_PROJECT_MISMATCH；伪造 attemptId / 跨 turn → AGENT_ATTEMPT_NOT_FOUND；三次拒绝后 treeDigest 不变、B 侧副本目录逐字节不变（零写入）",
+      "basis": "rev15 §14.12-2 + §14.13-F6（run 级 / attempt 级 / projectId↔私有根 三分码）",
+      "status": "PASS",
+      "detail": "三类句柄拒绝命中具体码；搬迁副本零写入，候选摘要不变",
+      "observed": {
+        "crossCode": "AGENT_RUN_NOT_FOUND",
+        "forgedCode": "AGENT_ATTEMPT_NOT_FOUND",
+        "crossTurnCode": "AGENT_ATTEMPT_NOT_FOUND",
+        "movedCode": "AGENT_PROJECT_MISMATCH",
+        "copyZeroWrites": true,
+        "digestUnchanged": true
+      },
+      "durationMs": 1518
+    },
+    {
+      "id": "W10",
+      "group": "W t5 复核（X7/direct）",
+      "title": "direct 接线（静态）：main.cjs 用 getter 惰性装配 direct-runtime，并注入主进程唯一凭据",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "direct-runtime"
+      ],
+      "expected": "desktop/main.cjs 引用 direct-runtime 模块，createRunCoordinator 的 directRuntime 由 createDirectWorkspaceRuntime({ coordinator: () => workspaceRunCoordinator, credentials: modelCredentials }) 提供 （惰性 getter，不在模块顶层立即调用网络/凭据）",
+      "basis": "rev15 §14.7（invokeDirect 下游；未接线显式 AGENT_RUNTIME_TOOL_MISSING）",
+      "status": "PASS",
+      "detail": "main.cjs 惰性装配 direct-runtime（getter + 凭据），未暴露目录或命令入口",
+      "observed": {
+        "requiresDirectRuntime": true,
+        "lazyCoordinatorGetter": true,
+        "credentialsWired": true,
+        "lines": 472
+      },
+      "durationMs": 2
+    },
+    {
+      "id": "W11",
+      "group": "W t5 复核（X7/direct）",
+      "title": "direct 接线（行为）：接线后 invokeDirect 成功返回（不再 AGENT_RUNTIME_TOOL_MISSING），且请求有界",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "direct-runtime"
+      ],
+      "expected": "把真实 direct-runtime（transport 注入为确定性桩）接到 Coordinator 后：describe().ready=true；invokeDirect → ok:true 且 data.content/finishReason 来自下游、无 AGENT_RUNTIME_TOOL_MISSING；传给 transport 的 request 不含绝对路径/密钥；含绝对路径的请求被拒且 transport 调用 0 次",
+      "basis": "rev15 §14.7（direct 通道为默认通道；请求/返回都有界）",
+      "status": "PASS",
+      "detail": "接线后 invokeDirect 正常返回（content/finishReason），请求有界且含绝对路径时上游 0 调用",
+      "observed": {
+        "ready": true,
+        "contentReturned": true,
+        "finishReason": "stop",
+        "transportCalls": 1,
+        "badRequestCode": "AGENT_PAYLOAD_INVALID"
+      },
+      "durationMs": 854
+    },
+    {
+      "id": "W12",
+      "group": "W t5 复核（X7/direct）",
+      "title": "direct 未接线 / 未配凭据时仍显式 AGENT_RUNTIME_TOOL_MISSING（不静默降级、不返回空成功）",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "direct-runtime"
+      ],
+      "expected": "① Coordinator 未注入 directRuntime → invokeDirect 返回 AGENT_RUNTIME_TOOL_MISSING；② direct-runtime 有 coordinator 但没有 transport → 同样该码；③ transport 抛 DEEPSEEK_NOT_CONFIGURED（真实未配 Key 路径）→ 该码而不是崩或空成功",
+      "basis": "rev15 §14.7（能力缺失必须显式；空成功等于欺骗用户）",
+      "status": "PASS",
+      "detail": "三条未接线/未配凭据路径都显式 AGENT_RUNTIME_TOOL_MISSING，无空成功",
+      "observed": {
+        "unwiredCode": "AGENT_RUNTIME_TOOL_MISSING",
+        "noTransportCode": "AGENT_RUNTIME_TOOL_MISSING",
+        "notConfiguredCode": "AGENT_RUNTIME_TOOL_MISSING"
+      },
+      "durationMs": 1027
+    },
+    {
+      "id": "W13",
+      "group": "W t5 复核（X7 证据绑定）",
+      "title": "§14.13-F1：submission.json 缺 exportTreeDigest 时必须不可 adopt（缺导出树绑定=证据不完整）",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
+      ],
+      "expected": "真实链路提交成功；把 verification/submission.json 的 exportTreeDigest 字段删掉（模拟旧版/被篡改证据）后，adopt(partialConfirmed:true) 必须被拒（AGENT_EVIDENCE_STALE 或 AGENT_ADOPTION_FAILED），不得生成新版本",
+      "basis": "rev15 §14.13-F1（缺 exportTreeDigest 即不可 adopt）+ §14.5（adopt 必须校验导出树绑定）",
+      "status": "PASS",
+      "detail": "缺 exportTreeDigest 的提交证据被拒绝采用，未生成新版本",
+      "observed": {
+        "submitExportTreeDigestHead": "sha256:3a52b47f9ee3",
+        "adoptCode": "AGENT_EVIDENCE_STALE",
+        "nextAction": "rerun-checks"
+      },
+      "durationMs": 4492
+    },
+    {
+      "id": "W14",
+      "group": "W t5 复核（X7 证据绑定）",
+      "title": "partial 必须由运行时证据决定，不能只信 submission.json 的 partial 字段（改 false 也不能免确认）",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
+      ],
+      "expected": "真实链路提交为 partial（wechat.verify 未跑）；把 submission.json 的 partial 改成 false（模拟被篡改/旧版证据）后，不带 partialConfirmed 的 adopt 仍必须 AGENT_PARTIAL_CONFIRM_REQUIRED（不得因为字段被改就放行）",
+      "basis": "rev15 §14.12-Q1③（运行时 BLOCKED/NOT_RUN 且未确认 → AGENT_PARTIAL_CONFIRM_REQUIRED）+ §14.5（证据由平台判定）",
+      "status": "FAIL",
+      "detail": "partial 只信 submission.json：把 partial 改成 false 后，未确认的 adopt 直接成功（生成 v2）——运行时 BLOCKED 被绕过",
+      "observed": {
+        "stackTop": [
+          "at assert (<repo>\\scripts\\e0-verify\\lib\\harness.cjs:21:25)",
+          "at Object.run (<repo>\\scripts\\e0-verify\\chains\\workspace-w2.cjs:1017:7)",
+          "at async Object.runAll (<repo>\\scripts\\e0-verify\\lib\\harness.cjs:102:26)",
+          "at async main (<repo>\\scripts\\e0-verify\\run.cjs:160:21)"
+        ]
+      },
+      "durationMs": 4641
+    },
+    {
+      "id": "W15",
+      "group": "W t5 复核（X7 证据绑定）",
+      "title": "X7/A15：导出级证据缺 exportTreeDigest 不得被当成完整 PASS（不完整证据不参与门禁）",
+      "x": [
+        "X7",
+        "X4"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
+      ],
+      "expected": "真实链路跑到 mini.check PASS；为隔离“导出级证据不完整”这一个变量，写入一条**模拟的** wechat.verify PASS（仅测试，不声称微信运行时通过）；随后删掉 mini.check 证据的 exportTreeDigest：submit 不得把它当成完整 PASS —— 要么拒绝（AGENT_EVIDENCE_STALE / AGENT_STATIC_GATE_FAILED），要么按“该证据不可用”落 partial（partial=true）。直接给出 partial=false 的 submitted 即失败。",
+      "basis": "rev15 §14.4「证据必须记录 treeDigest|exportTreeDigest」+ A15「证据缺字段 → 不参与门禁」",
+      "status": "PASS",
+      "detail": "不完整导出级证据被拒绝（AGENT_EVIDENCE_STALE）",
+      "observed": {
+        "miniStatus": "PASS",
+        "tamperedFile": "mini.check.json",
+        "simulatedWechatEvidence": true,
+        "submitCode": "AGENT_EVIDENCE_STALE",
+        "submitPartial": null
+      },
+      "durationMs": 4376
+    },
+    {
+      "id": "W16",
+      "group": "W t5 复核（X6）",
+      "title": "X6：deleted 显式（删 assets/** 必须列入 deleted 且不进 files）＋ 平台派生工具的模型不可调用",
+      "x": [
+        "X6"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check",
+        "source-bundle"
+      ],
+      "expected": "候选里删除一个真实资产后：source.check 阶段的平台派生把该相对路径写入 bundle.deleted、且不出现在 bundle.files；files 每项 sha256 等于候选真实字节；模型调用 derive_source_bundle → AGENT_TOOL_NOT_ALLOWED 且候选摘要不变",
+      "basis": "rev15 §14.5/§4.1（deleted 显式；deriveSourceBundle 平台专用）+ §14.3（平台专用工具名 → AGENT_TOOL_NOT_ALLOWED）",
+      "status": "PASS",
+      "detail": "删除的资产被显式列入 bundle.deleted 且不进 files；模型不可调用平台派生工具",
+      "observed": {
+        "deletedAsset": "assets/tabbar/home-active.png",
+        "bundleDeleted": [
+          "assets/tabbar/home-active.png"
+        ],
+        "forbiddenToolCode": "AGENT_TOOL_NOT_ALLOWED",
+        "sourceCheckStatus": "PASS"
+      },
+      "durationMs": 2794
+    },
+    {
+      "id": "W17",
+      "group": "W t5 复核（X6）",
+      "title": "X6：模型自写 source-bundle.json 不得被平台当成“已派生清单”原样接受（模型不写摘要清单）",
+      "x": [
+        "X6"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check",
+        "source-bundle"
+      ],
+      "expected": "模型用 write_files 写入一份 source-bundle.json（files 摘要与候选一致，但 base.treeSha256 / deleted 是模型编的），再跑 source.check：平台必须在检查阶段重派生（清单字节/摘要变回真值）或明确拒绝该清单；把模型写的清单原样保留并据此记录 bundle 摘要，等于模型控制摘要清单。",
+      "basis": "rev15 §14.1 X6「source-bundle.json 由平台 deriveSourceBundle 派生；模型不写摘要清单」",
+      "status": "FAIL",
+      "detail": "平台把模型自写的 source-bundle.json 原样保留（未重派生）：模型控制了摘要清单（X6「模型不写摘要清单」）",
+      "observed": {
+        "stackTop": [
+          "at assert (<repo>\\scripts\\e0-verify\\lib\\harness.cjs:21:25)",
+          "at Object.run (<repo>\\scripts\\e0-verify\\chains\\workspace-w2.cjs:1226:7)",
+          "at async Object.runAll (<repo>\\scripts\\e0-verify\\lib\\harness.cjs:102:26)",
+          "at async main (<repo>\\scripts\\e0-verify\\run.cjs:160:21)"
+        ]
+      },
+      "durationMs": 2970
+    },
+    {
+      "id": "V01",
+      "group": "V 垂直链（E0-V1）",
+      "title": "startRun 创建 run/turn/attempt，工作树来自当前版本 source；无版本 → AGENT_VERSION_NOT_FOUND 且不建目录",
+      "x": [
+        "X1",
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "runId 平台生成（frun-…）、attempt-1；baseVersionId=currentVersionId；baseTreeDigest=该版本摘要；attempt 目录位于 <userData>/projects/<projectId>/agent-workspace/runs/…；无 currentVersionId → AGENT_VERSION_NOT_FOUND 且零建目录（不回落 Base）",
+      "basis": "rev15 §14.2 不变量 1–3",
+      "status": "PASS",
+      "detail": "startRun 从当前版本复制 attempt，平台生成 id；缺版本零建目录",
+      "observed": {
+        "runId": "frun-mwvs10lo-6fdc77",
+        "attemptId": "attempt-1",
+        "baseVersionId": "v1",
+        "baseTreeDigest": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
+        "revision": 1,
+        "missingVersionCode": "AGENT_VERSION_NOT_FOUND"
+      },
+      "durationMs": 918
+    },
+    {
+      "id": "V02",
+      "group": "V 垂直链（E0-V1）",
+      "title": "工具上下文固定 subject={kind:\"attempt\"}；返回 envelope 带 run/turn/attempt；base 版本只读，写入拒绝 version subject",
+      "x": [
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "invokeTool 返回 envelope 携带 runId/turnId/attemptId；read_file(subjectOverride:version) 只读成功；write_files 传 version subject → AGENT_PAYLOAD_INVALID/AGENT_TOOL_NOT_ALLOWED 且零落盘",
+      "basis": "rev15 §14.3",
+      "status": "PASS",
+      "detail": "subject 固定 attempt；写入拒绝 version；版本只读且零写入",
+      "observed": {
+        "writeRejections": [
+          "AGENT_PAYLOAD_INVALID",
+          "AGENT_PAYLOAD_INVALID"
+        ],
+        "versionReadOnly": true,
+        "subjectKind": "attempt"
+      },
+      "durationMs": 1228
+    },
+    {
+      "id": "V03",
+      "group": "V 垂直链（E0-V1）",
+      "title": "fake model（mock upstream）读 menu 事实并写真实修改：落 attempt/candidate、revision+1、treeDigest 变化、版本零写入",
+      "x": [
+        "X1",
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "agent-runtime"
+      ],
+      "expected": "direct runtime 调 get_context/read_file/write_files 真实落地；候选树含模型写入内容；revision 递增；当前版本 source 逐字节不变；trace 只含工具标签与相对路径",
+      "basis": "计划 §4 E0-V1 链第 4 步（mock 只替换上游补全，工具循环/写盘真实）",
+      "status": "PASS",
+      "detail": "mock upstream 驱动真实工具循环：get_context/read_file/write_files 落 attempt，版本零写入",
+      "observed": {
+        "mock": "fake upstream completion（确定性脚本）",
+        "revision": [
+          1,
+          2
+        ],
+        "treeDigest": [
+          "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
+          "sha256:27e92f699c8e78e820e9f0bd9455573d25e16dae5cada9313c7fec65a98234f7"
+        ],
+        "toolLabels": [
+          "get_context",
+          "read_file",
+          "write_files"
+        ],
+        "modelCalls": 2,
+        "versionWrites": false
+      },
+      "durationMs": 1918
+    },
+    {
+      "id": "V04",
+      "group": "V 垂直链（E0-V1）",
+      "title": "source-bundle 由平台派生（frontend-source-bundle.v1，最终完整内容 + 显式 deleted），模型不可调用派生",
+      "x": [
+        "X6"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check",
+        "source-bundle"
+      ],
+      "expected": "source.check 阶段派生 attempt/candidate/source-bundle.json：schemaVersion=frontend-source-bundle.v1、files[] 最终完整内容摘要、deleted 显式数组、base.treeSha256、targetPages 含目标页；模型调用 derive_source_bundle → AGENT_TOOL_NOT_ALLOWED",
+      "basis": "rev15 §14.5 / §4.1 source-bundle 形状",
+      "status": "PASS",
+      "detail": "bundle 由平台在检查阶段派生；模型调用派生工具被拒",
+      "observed": {
+        "bundleFile": "source-bundle.json",
+        "fileCount": 1,
+        "deleted": 0,
+        "modelDeriveRejected": "AGENT_TOOL_NOT_ALLOWED"
+      },
+      "durationMs": 2678
+    },
+    {
+      "id": "V05",
+      "group": "V 垂直链（E0-V1）",
+      "title": "source.check 必须检查 attempt 树：候选内埋入非法 JSON → FAIL 且 issues[].file 指向该 attempt；Base/版本里同一文件仍合法",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
+      ],
+      "expected": "证据 {checkId,status,treeDigest=attempt 摘要,subjectKind:\"attempt\",attemptId,at,issues[]}；候选 pages/menu/index.json 写成非法 JSON → status=FAIL、issues[].file=pages/menu/index.json；versions/v1 里的同一文件仍是合法 JSON（证明检查对象是 attempt，不是 Base/版本）",
+      "basis": "rev15 §14.4 第一行 + X4",
+      "status": "PASS",
+      "detail": "source.check 真实执行于 attempt；候选违法被命中，版本同文件未被牵连",
+      "observed": {
+        "status": "FAIL",
+        "subjectKind": "attempt",
+        "treeDigest": "sha256:eb0499e0ce4e92423df528704927ba8bc2d704dff446b7536365a3dc2a496977",
+        "issueFiles": [
+          "pages/menu/index.json",
+          "pages/menu/index.wxml",
+          "pages/menu/index.wxml"
+        ],
+        "versionFileStillValid": true
+      },
+      "durationMs": 3007
+    },
+    {
+      "id": "V06",
+      "group": "V 垂直链（E0-V1）",
+      "title": "composer.dry-run 以当前 attempt 为输入，导出树落 attempt/verification/dry-run/，内容含本次改动且摘要稳定",
+      "x": [
+        "X4",
+        "X6"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "返回相对 exportRelative（含 verification/、不含 miniprogram/）+ exportTreeDigest；导出树包含本次写入标记；两次 dry-run 的导出树摘要一致；仓库 miniprogram/ 逐字节不变",
+      "basis": "rev15 §14.4 第二行 / §14.5",
+      "status": "PASS",
+      "detail": "dry-run 以 attempt 为输入、导出树落 verification/，两次摘要一致，仓库镜像零写入",
+      "observed": {
+        "exportRelative": "verification/dry-run",
+        "exportTreeDigest": "sha256:3d8be20061cdd0a170621f6452d57891586f52b14b7175ef7e806ec0e68426c9",
+        "twoDryRunsEqual": true
+      },
+      "durationMs": 4566
+    },
+    {
+      "id": "V07",
+      "group": "V 垂直链（E0-V1）",
+      "title": "mini.check / output.consistency 只查本 attempt 派生导出树；无导出树 → AGENT_CHECK_UNKNOWN；root 指向 miniprogram/ 被拒",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "未跑 dry-run 时 mini.check → AGENT_CHECK_UNKNOWN；root 参数指向 miniprogram → AGENT_PAYLOAD_INVALID 且 runner 0 调用；跑过 dry-run 后两条检查以 exportRoot=该导出树执行，证据 exportTreeDigest 对齐；status 只用四态",
+      "basis": "rev15 §14.4 第三/四行 + “绝不回落仓库 miniprogram/”",
+      "status": "PASS",
+      "detail": "导出树级检查绑定本 attempt 的 dry-run 导出树；缺树先拒，root 注入被拒，不回落镜像",
+      "observed": {
+        "beforeCode": "AGENT_CHECK_UNKNOWN",
+        "miniStatus": "PASS",
+        "miniSubjectKind": "export",
+        "consistencyStatus": "PASS",
+        "rootInjection": "AGENT_PAYLOAD_INVALID",
+        "exportRootPinned": true
+      },
+      "durationMs": 5466
+    },
+    {
+      "id": "V08",
+      "group": "V 垂直链（E0-V1）",
+      "title": "submitAttempt 静态门禁 + 证据绑定：缺证据/旧摘要/非法页均不置 submitted；成功返回体含 F1 六项",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "缺 source.check/dry-run → AGENT_STATIC_GATE_FAILED；检查后再写 → AGENT_EVIDENCE_STALE；非法 targetPage → AGENT_TARGET_PAGE_UNSUPPORTED；齐全时 status=submitted 且返回 candidateId/revision/treeDigest/exportRelative/exportTreeDigest/targetPage/status",
+      "basis": "rev15 §14.5 submit 静态门禁 + §14.13-F1",
+      "status": "PASS",
+      "detail": "静态门禁三路拒绝命中；齐全后 submitted 且 F1 字段逐项存在",
+      "observed": {
+        "noEvidence": "AGENT_STATIC_GATE_FAILED",
+        "stale": "AGENT_EVIDENCE_STALE",
+        "issues": [
+          "EVIDENCE_STALE_RERUN_CHECKS"
+        ],
+        "badPage": "AGENT_TARGET_PAGE_UNSUPPORTED",
+        "submitted": {
+          "status": "submitted",
+          "treeDigest": "sha256:b8e46a678cc795b831a7b60813fd1e450c76af54ebd509d398a1f912332aabba",
+          "exportTreeDigest": "sha256:ac1d6d2fe60bff67fe80c4b0d9ea5c0762060d33da18c3615f4890ff0d42b859",
+          "targetPage": "menu",
+          "partial": true
+        }
+      },
+      "durationMs": 7729
+    },
+    {
+      "id": "V09",
+      "group": "V 垂直链（E0-V1）",
+      "title": "submitted 后该 attempt 只读；重复 submit 拒绝；repair 不覆盖已提交候选（新 run/attempt 承接）",
+      "x": [
+        "X3",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "submitted 后 write_files/delete_files → AGENT_ATTEMPT_IMMUTABLE 且零落盘；再次 submit → AGENT_RUN_ALREADY_SUBMITTED；已提交 attempt 指纹不变；后续修改只能落在新 run 的新 attempt",
+      "basis": "rev15 §14.2 不变量 4",
+      "status": "PASS",
+      "detail": "提交后只读/重复提交拒绝；repair 由新 run 承接，已提交候选字节不变",
+      "observed": {
+        "writeAfter": "AGENT_ATTEMPT_IMMUTABLE",
+        "deleteAfter": "AGENT_ATTEMPT_IMMUTABLE",
+        "again": "AGENT_RUN_ALREADY_SUBMITTED",
+        "repairRunId": "frun-mwvs1okj-ad45fa",
+        "repairAttemptId": "attempt-1",
+        "submittedAttemptUnchanged": true
+      },
+      "durationMs": 5082
+    },
+    {
+      "id": "V10",
+      "group": "V 垂直链（E0-V1）",
+      "title": "adoptAttempt 读磁盘 submitted + verification 证据并校验摘要绑定：成功生成 parent=当前版本的新版本；陈旧/未确认被拒",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "成功路径 adoptedVersionId=v2、previous=v1、adoption.sourceKind=agent-edit、verification 四态落 version.json；未确认 partial → AGENT_PARTIAL_CONFIRM_REQUIRED；篡改 submission.treeDigest → AGENT_EVIDENCE_STALE",
+      "basis": "rev15 §14.5 adopt-attempt 段 + §14.12-Q1",
+      "status": "PASS",
+      "detail": "adopt 读磁盘证据：未确认 partial 被拒，确认后生成 parent=v1 的 v2 且 verification 四态落盘",
+      "observed": {
+        "unconfirmed": "AGENT_PARTIAL_CONFIRM_REQUIRED",
+        "adoptedVersionId": "v2",
+        "previousVersionId": "v1",
+        "sourceKind": "agent-edit",
+        "runtimeVerification": "BLOCKED",
+        "treeDigest": "sha256:db7a65b62bb209bfc7abd5f7a33dbcb048f00eec564e891c96e9ace208a8d819"
+      },
+      "durationMs": 4597
+    },
+    {
+      "id": "V11",
+      "group": "V 垂直链（E0-V1）",
+      "title": "undo/redo/reopen：指针语义成立；篡改当前版本 source 后 reopen → AGENT_VERSION_CONFLICT 且不回退 Base",
+      "x": [
+        "X7",
+        "X11"
+      ],
+      "requires": [
+        "versions",
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest"
+      ],
+      "expected": "undo→v1(redo=v2)；redo→v2(redo=null)；versions/ 目录集合不变；篡改 v2 source 后 reopen → AGENT_VERSION_CONFLICT，指针仍 v2",
+      "basis": "B2 §2.2 + rev15 §14.2",
+      "status": "PASS",
+      "detail": "undo/redo 只动指针；漂移 reopen fail-closed 且不回退 Base",
+      "observed": {
+        "undo": "v1",
+        "redo": "v2",
+        "conflict": "AGENT_VERSION_CONFLICT",
+        "versionDirs": 2
+      },
+      "durationMs": 4912
+    },
+    {
+      "id": "V12",
+      "group": "V 垂直链（E0-V1）",
+      "title": "导出同源：verifyExportIdentity PASS；导出源 = versions/<current>/source；逐文件摘要与索引一致；漂移不回落 Base",
+      "x": [
+        "X6",
+        "X7"
+      ],
+      "requires": [
+        "versions",
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest"
+      ],
+      "expected": "verifyExportIdentity 当前版本 PASS；resolveVersionSource.sourceRoot=versions/<current>/source；重算摘要=索引摘要；篡改 source 后 verifyExportIdentity → AGENT_EXPORT_IDENTITY_MISMATCH",
+      "basis": "B2 §2.4 + rev15 §14.5",
+      "status": "PASS",
+      "detail": "导出同源 + 摘要一致；漂移 fail-closed 不回落 Base",
+      "observed": {
+        "versionId": "v2",
+        "sourceRoot": "v2",
+        "treeDigest": "sha256:fd9ced941c206055a090869ede09511311e32c3b4e6b073d344903866d4f40fd",
+        "drift": "AGENT_EXPORT_IDENTITY_MISMATCH"
+      },
+      "durationMs": 5212
+    },
+    {
+      "id": "V13",
+      "group": "V 垂直链（E0-V1）",
+      "title": "cancelRun 三态与迟到工具：取消后 direct 不再发上游、工具不落盘；取消后调用返回 AGENT_CANCELLED",
+      "x": [
+        "X8",
+        "X12"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "model-call-scheduler"
+      ],
+      "expected": "在途 cancel=requested，停止后查询=cancelled；已完成/未知=too-late 且 cancelled=false；取消后 invokeTool/invokeDirect 均 AGENT_CANCELLED，fake 上游调用 0 次，attempt 摘要不变",
+      "basis": "rev15 §14.2 不变量 6 / §14.6 第 7 条 / §3.3",
+      "status": "PASS",
+      "detail": "在途 requested → cancelled；迟到检查/工具零落盘；取消后 direct 0 次上游；已提交 too-late",
+      "observed": {
+        "first": "requested",
+        "lateCheck": "AGENT_CANCELLED",
+        "lateTool": "AGENT_CANCELLED",
+        "runState": "cancelled",
+        "tooLate": "too-late",
+        "upstreamCalls": 0,
+        "lateEvidenceCount": 0
+      },
+      "durationMs": 6514
+    },
+    {
+      "id": "V14",
+      "group": "V 垂直链（E0-V1）",
+      "title": "progress 事件只发白名单 stage/status，payload 无绝对路径/源码/base64/prompt/Key，未知 stage 不静默丢步",
+      "x": [
+        "X10"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
+      ],
+      "expected": "emitProgress 收到的 stage ∈ PROGRESS_STAGES，status ∈ {running,succeeded,failed,cancelled}；payload 无盘符路径/data:image/长 base64/私有根；未知 stage 缺省为 workspace 而不是丢事件",
+      "basis": "rev15 §14.9 / §9.1",
+      "status": "PASS",
+      "detail": "progress stage/status 白名单 + 脱敏成立（2 条）",
+      "observed": {
+        "eventCount": 2,
+        "stages": [
+          "workspace",
+          "write"
+        ],
+        "statuses": [
+          "succeeded"
+        ]
+      },
+      "durationMs": 1578
+    },
+    {
+      "id": "V15",
+      "group": "V 垂直链（E0-V1 全链）",
+      "title": "完整垂直链（单 attempt）：init/adopt base → run/attempt → 真实写改 → derive bundle → source.check → dry-run → mini/output → submit → adopt → undo/redo/reopen/export",
+      "x": [
+        "X1",
+        "X3",
+        "X4",
+        "X5",
+        "X6",
+        "X7",
+        "X11"
+      ],
+      "requires": [
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check",
+        "source-bundle"
+      ],
+      "expected": "每一步都成功且摘要对齐：source.check.treeDigest=当前 attempt；dry-run.exportTreeDigest 固定；mini/output 只查该导出树；submit.treeDigest=当前 attempt；adopt 生成的版本摘要=提交摘要；undo/redo/reopen/verifyExportIdentity 全部成立；版本 v1 字节不变",
+      "basis": "计划 §4 E0-V1 主链 + rev15 §14.11 通过条件（全部断言绑定当前 attempt/导出树摘要）",
+      "status": "PASS",
+      "detail": "无 UI 全链闭环：所有检查/提交/采用摘要均绑定当前 attempt 及其派生导出树",
+      "observed": {
+        "runId": "frun-mwvs27bw-57e6f8",
+        "attemptId": "attempt-1",
+        "treeAfterWrite": "sha256:434b8ba48139688a80e1638e013ec4ed5073d78a67d886e3ad30e0317d9ff511",
+        "treeAfterCheck": "sha256:8d8632cdf6f4f42a3f7d455a19caf54cab3b30b31535d9bfcd5a494a7388978b",
+        "sourceCheck": {
+          "status": "PASS",
+          "treeDigest": "sha256:8d8632cdf6f4f42a3f7d455a19caf54cab3b30b31535d9bfcd5a494a7388978b"
+        },
+        "exportRelative": "verification/dry-run",
+        "exportTreeDigest": "sha256:b0fc913ddf9eaef681f68eca8d7449d0afc8cfe7fd015ea255d1e8425b16238e",
+        "mini": "PASS",
+        "consistency": "PASS",
+        "submit": {
+          "status": "submitted",
+          "treeDigest": "sha256:8d8632cdf6f4f42a3f7d455a19caf54cab3b30b31535d9bfcd5a494a7388978b",
+          "partial": true
+        },
+        "adopt": {
+          "adoptedVersionId": "v2",
+          "previousVersionId": "v1",
+          "treeDigest": "sha256:8d8632cdf6f4f42a3f7d455a19caf54cab3b30b31535d9bfcd5a494a7388978b"
+        },
+        "reopen": true,
+        "exportIdentity": true,
+        "v1Unchanged": true
+      },
+      "durationMs": 5995
+    },
+    {
+      "id": "R01",
+      "group": "R 真实 Flash（需 E0-R1/R2）",
+      "title": "真实小参考图经 assetId 解析为受控资产（mime/字节/sha256 可复核）",
+      "x": [
+        "X2"
+      ],
+      "requires": [],
+      "expected": "resolveAssetImage({userDataDir,projectId,assetId}) 只接受 assetId；返回 {assetId,mime,bytes,sha256,dataUrl}；sha256 与原始输入图一致；symlink/junction/越界 → 拒绝",
+      "basis": "rev15 §14.8-1/2/3",
+      "status": "NOT_RUN",
+      "reason": "offline 模式不执行真实模型用例（用 --mode real 显式开启）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "R02",
+      "group": "R 真实 Flash（需 E0-R1/R2）",
+      "title": "多模态消息含真实 image_url data URL（顺序稳定、仅内存）",
+      "x": [
+        "X2"
+      ],
+      "requires": [],
+      "expected": "buildMultimodalContent 产出 [{type:\"text\"},{type:\"image_url\",image_url:{url:\"data:image/…\"}}]；不带 base64 进入 attempt.json/run.json/项目快照/trace/日志（跑完对落盘文件全量扫描断言）",
+      "basis": "rev15 §14.8 / §14.8-4",
+      "status": "NOT_RUN",
+      "reason": "offline 模式不执行真实模型用例（用 --mode real 显式开启）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "R03",
+      "group": "R 真实 Flash（需 E0-R1/R2）",
+      "title": "回答依赖图像内容（仅 assetId 文本时不得“看懂图”）",
+      "x": [
+        "X2"
+      ],
+      "requires": [],
+      "expected": "带图提问主色/元素能被正确回答；同一提示不带图或只给 assetId 文本时不得产生同样结论 → 证明多模态真实",
+      "basis": "rev15 §14.8-6",
+      "status": "NOT_RUN",
+      "reason": "offline 模式不执行真实模型用例（用 --mode real 显式开启）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "R04",
+      "group": "R 真实 Flash（需 E0-R1/R2）",
+      "title": "真实模型调用工具写出 menu 源码（工具 trace 可复核）",
+      "x": [
+        "X1",
+        "X8"
+      ],
+      "requires": [],
+      "expected": "工具名只出现 11 个模型可见工具；write_files 真实落 attempt/candidate；trace 只含工具标签与相对路径；revision/treeDigest 记录在案",
+      "basis": "rev15 §14.3/§14.7",
+      "status": "NOT_RUN",
+      "reason": "offline 模式不执行真实模型用例（用 --mode real 显式开启）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "R05",
+      "group": "R 真实 Flash（需 E0-R1/R2）",
+      "title": "读取检查结果并修复一次（issue→repair 闭环）",
+      "x": [
+        "X4",
+        "X7"
+      ],
+      "requires": [],
+      "expected": "模型读 source.check / composer.dry-run 的 issues 后进行一次定向修复；修复前后 treeDigest 与 issue 集合可追溯；修复走新 revision（或新 attempt），不覆盖已提交候选",
+      "basis": "计划 §4 E0-V1 真实 Flash 第 2 条",
+      "status": "NOT_RUN",
+      "reason": "offline 模式不执行真实模型用例（用 --mode real 显式开启）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "R06",
+      "group": "R 真实 Flash（需 E0-R1/R2）",
+      "title": "截断与重试如实记录：finish=length 时不回放工具",
+      "x": [
+        "X8"
+      ],
+      "requires": [],
+      "expected": "空正文 + finish_reason=length 记为 truncated；truncated 时本批 tool_calls 不执行、返回 output_truncated；重试次数/原因入证据；不把截断内容当完整源码写入工作树",
+      "basis": "rev15 §14.7 / D0 D-RT-1",
+      "status": "NOT_RUN",
+      "reason": "offline 模式不执行真实模型用例（用 --mode real 显式开启）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "R07",
+      "group": "R 真实 Flash（需 E0-R1/R2）",
+      "title": "微信/UIA 不可用时如实 BLOCKED，不得称微信通过",
+      "x": [
+        "X10"
+      ],
+      "requires": [],
+      "expected": "wechat.verify 工具缺失/CLI EPERM → status=BLOCKED 且行为 partial，不阻止 direct 工具闭环判定；报告中不得把 React 预览截图当微信运行时截图",
+      "basis": "计划 §4 E0 通过条件 + rev15 §14.11",
+      "status": "NOT_RUN",
+      "reason": "offline 模式不执行真实模型用例（用 --mode real 显式开启）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A16",
+      "group": "A 负例（句柄/路径/越权）",
+      "title": "伪造 attempt 句柄指向 versions/<id>/source → 拒绝且零落盘",
+      "x": [
+        "X3"
+      ],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "写入被拒（AGENT_WORKSPACE_INVALID / AGENT_PATH_* 之一），被伪造指向的 versions/v1 指纹前后一致",
+      "basis": "rev4 §2.7 F1（assertAttemptHandle 单实现）",
+      "status": "PASS",
+      "detail": "伪造句柄被拒且 versions/v1 指纹不变",
+      "observed": {
+        "code": "AGENT_WORKSPACE_INVALID"
+      },
+      "durationMs": 782
+    },
+    {
+      "id": "A17",
+      "group": "A 负例（句柄/路径/越权）",
+      "title": "相对路径越界（../ 与 sub/../../）→ AGENT_PATH_INVALID 且不产生越界文件",
+      "x": [
+        "X3"
+      ],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "两次写入都被参数类错误拒绝；临时私有根内没有出现 escape-probe.txt",
+      "basis": "rev3 §1.5-1",
+      "status": "PASS",
+      "detail": "路径越界被拒且无越界产物",
+      "observed": {
+        "codes": [
+          "AGENT_PATH_INVALID",
+          "AGENT_PATH_INVALID"
+        ]
+      },
+      "durationMs": 2022
+    },
+    {
+      "id": "A18",
+      "group": "A 负例（句柄/路径/越权）",
+      "title": "绝对路径 / 盘符 / UNC → AGENT_PATH_INVALID",
+      "x": [
+        "X3"
+      ],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "三种输入（C:/…、/etc/…、\\\\server\\share\\…）全部拒绝",
+      "basis": "rev3 §1.5-1",
+      "status": "PASS",
+      "detail": "绝对路径族全部拒绝",
+      "observed": {
+        "codes": [
+          "AGENT_PATH_INVALID",
+          "AGENT_PATH_INVALID",
+          "AGENT_PATH_INVALID"
+        ]
+      },
+      "durationMs": 801
+    },
+    {
+      "id": "A19",
+      "group": "A 负例（句柄/路径/越权）",
+      "title": "expectedBaseSha256 冲突 → AGENT_BASE_DIGEST_MISMATCH 且不落盘",
+      "x": [
+        "X3"
+      ],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "带错摘要的写入被拒；文件内容与摘要保持不变",
+      "basis": "rev3 §1.5-4",
+      "status": "PASS",
+      "detail": "摘要冲突 fail-closed",
+      "observed": {
+        "code": "AGENT_BASE_DIGEST_MISMATCH"
+      },
+      "durationMs": 1621
+    },
+    {
+      "id": "A20",
+      "group": "A 负例（句柄/路径/越权）",
+      "title": "非法 runId（frun-../../x）→ AGENT_ID_INVALID 且不建目录",
+      "x": [
+        "X3"
+      ],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "createAttempt 被拒；runs/ 下没有越界目录",
+      "basis": "rev3 §1.3（RUN_ID_PATTERN）",
+      "status": "PASS",
+      "detail": "非法 id fail-closed",
+      "observed": {
+        "code": "AGENT_ID_INVALID"
+      },
+      "durationMs": 334
+    },
+    {
+      "id": "A23",
+      "group": "A 负例（句柄/路径/越权）",
+      "title": "candidate 内符号链接/junction 逃逸 → AGENT_PATH_LINK（环境不允许则 BLOCKED）",
+      "x": [
+        "X3"
+      ],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "通过链接读到/写到工作树外的一切尝试都被拒绝；沙箱禁止创建链接时记 BLOCKED（不得记 PASS）",
+      "basis": "rev3 §1.5-2",
+      "status": "PASS",
+      "detail": "链接逃逸被拒",
+      "observed": {
+        "codes": [
+          "AGENT_PATH_LINK",
+          "AGENT_PATH_LINK"
+        ]
+      },
+      "durationMs": 904
+    },
+    {
+      "id": "A11O",
+      "group": "A 负例（检查目标）",
+      "title": "观察（t5 后）：direct 调用缺平台派生根时先拒，不再回落仓库/已采用版本源码",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "checks",
+        "workspace"
+      ],
+      "expected": "直接调注册表、**不传平台派生根**时：source.check / composer.dry-run 一律先拒（AGENT_CHECK_UNKNOWN）且 runner 0 次调用；即 t5 前“source.check 不带 --root 查仓库、composer.dry-run 查已采用版本 source”的行为已消失。A11O 只登记这一事实，不再单独判 X4；X4 绑定由 W01–W04（attempt 主体 + 派生导出树）复核。",
+      "basis": "rev15 §14.4（checkId→subject 平台表；root 只由平台填）+ §14.12-5（t5 前的 A11O 缺陷登记）",
+      "status": "PASS",
+      "detail": "缺平台派生根一律先拒（runner 0 次），t5 前的仓库/已采用版本回落行为不再存在；X4 绑定证据见 W01–W04",
+      "observed": {
+        "checks": [
+          {
+            "checkId": "source.check",
+            "rejectedCode": "AGENT_CHECK_UNKNOWN",
+            "reason": "source.check 需要平台派生的 attempt 根（不接受模型路径）"
+          },
+          {
+            "checkId": "composer.dry-run",
+            "rejectedCode": "AGENT_CHECK_UNKNOWN",
+            "reason": "composer.dry-run 需要平台派生的 attempt 根（不接受模型路径）"
+          }
+        ],
+        "runnerCalls": 0,
+        "subjects": {
+          "sourceCheck": "attempt",
+          "composerDryRun": "attempt",
+          "capabilitiesCheck": "repo"
+        },
+        "checkIds": [
+          "source.check",
+          "composer.dry-run",
+          "mini.check",
+          "output.consistency",
+          "capabilities.check",
+          "wechat.verify",
+          "unit.targeted",
+          "unit.full",
+          "desktop.contract",
+          "catalog.check",
+          "registry.check"
+        ],
+        "hasCapabilitiesCheck": true
+      },
+      "durationMs": 812
+    },
+    {
+      "id": "A13",
+      "group": "A 负例（检查目标）",
+      "title": "模型在 run_check 里传 root/path/command/env 等参数 → AGENT_PAYLOAD_INVALID",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "checks"
+      ],
+      "expected": "runCheck 返回 ok:false + AGENT_PAYLOAD_INVALID；不触发任何子进程执行",
+      "basis": "rev15 §14.4 参数白名单（root/attempt/versionId 由平台填）",
+      "status": "PASS",
+      "detail": "路径/命令类参数全部拒绝",
+      "observed": {
+        "rejected": 6,
+        "runnerCalls": 0
+      },
+      "durationMs": 1
+    },
+    {
+      "id": "A14",
+      "group": "A 负例（检查目标）",
+      "title": "未知 checkId（模型自造检查名）→ AGENT_CHECK_UNKNOWN",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "checks"
+      ],
+      "expected": "runCheck 返回 AGENT_CHECK_UNKNOWN；不得回落到“等价命令”或任意脚本",
+      "basis": "rev3 §3.5 / rev10 §3.8（只接受注册 checkId）",
+      "status": "PASS",
+      "detail": "未知 checkId 全部拒绝",
+      "observed": {
+        "rejected": 5
+      },
+      "durationMs": 0
+    },
+    {
+      "id": "A21O",
+      "group": "A 负例（句柄/路径/越权）",
+      "title": "观察：B1 文件/事务只校验目录布局，不校验 handle.projectId 与私有根一致",
+      "x": [
+        "X1",
+        "X3"
+      ],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "E0 期望：Coordinator 层必须拒绝伪造 projectId 的句柄（AGENT_PROJECT_MISMATCH，零落盘）；B1 直调属非产品链，本条只登记观察，不判 FAIL。当前观察：改写 handle.projectId 后写入仍落在原项目 attempt 树",
+      "basis": "rev15 §14.2 不变量 5 + §14.12-2（B1 只校验布局，跨项目拒绝由 Coordinator 承担，不因此判 FAIL）",
+      "status": "NOT_RUN",
+      "detail": "B1 直调仍写入（非产品链；按 rev15 §14.12-2 由 Coordinator 层拒绝，本条不判 FAIL）",
+      "observed": {
+        "acceptedWithMismatchedProjectId": true,
+        "note": "B1 层按布局与 candidateDir 判定归属；projectId 一致性由 Coordinator.assertAttemptHandle 负责（t1）"
+      },
+      "durationMs": 1577
+    },
+    {
+      "id": "A24",
+      "group": "A 负例（重开/导出身份）",
+      "title": "当前版本 source 被篡改 → AGENT_VERSION_CONFLICT 且不回退 Base",
+      "x": [
+        "X11"
+      ],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "reopen 返回 AGENT_VERSION_CONFLICT；currentVersionId 仍为 v1（不回落 Base、不静默采用磁盘内容）",
+      "basis": "B2 §2.2 重开 fail-closed",
+      "status": "PASS",
+      "detail": "重开漂移 fail-closed",
+      "observed": {
+        "code": "AGENT_VERSION_CONFLICT",
+        "currentVersionId": "v1"
+      },
+      "durationMs": 855
+    },
+    {
+      "id": "A25",
+      "group": "A 负例（重开/导出身份）",
+      "title": "导出身份漂移 → AGENT_EXPORT_IDENTITY_MISMATCH（不清洗摘要、不回落 Base）",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "workspace",
+        "files",
+        "manifest",
+        "versions"
+      ],
+      "expected": "篡改当前版本 source 后 verifyExportIdentity 失败且不给导出根；恢复后重新 PASS",
+      "basis": "B2 §2.4 导出身份",
+      "status": "PASS",
+      "detail": "导出身份 fail-closed",
+      "observed": {
+        "code": "AGENT_EXPORT_IDENTITY_MISMATCH"
+      },
+      "durationMs": 865
+    },
+    {
+      "id": "A01",
+      "group": "A 负例（submit/adopt 证据）",
+      "title": "未 derive source-bundle 就 submit → AGENT_STATIC_GATE_FAILED，不置 submitted",
+      "x": [
+        "X6",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "submitAttempt 返回 AGENT_STATIC_GATE_FAILED；attempt.json 状态仍非 submitted；磁盘无 submitted 证据",
+      "basis": "rev15 §14.5 submit 门禁①",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator.submitAttempt + 平台派生（t1/t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A02",
+      "group": "A 负例（submit/adopt 证据）",
+      "title": "未执行 source.check 就 submit → AGENT_STATIC_GATE_FAILED",
+      "x": [
+        "X4",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "submitAttempt 拒绝；attempt 未置 submitted；不得因“模型声称已检查”放行",
+      "basis": "rev15 §14.5 submit 门禁①②",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator.submitAttempt（t1）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A03",
+      "group": "A 负例（submit/adopt 证据）",
+      "title": "只跑 source.check PASS、未跑 composer.dry-run 就 submit → AGENT_STATIC_GATE_FAILED",
+      "x": [
+        "X4",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "submitAttempt 拒绝；缺 dry-run 证据或导出摘要不匹配都算缺证据",
+      "basis": "rev15 §14.5 submit 门禁②",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator.submitAttempt（t1/t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A04",
+      "group": "A 负例（submit/adopt 证据）",
+      "title": "伪造 PASS 证据记录（手写 verification/*.json）后 submit → 拒绝",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "平台重算/校验证据（treeDigest、subjectKind、attemptId、时间与内容摘要），手写 PASS 不得放行 → AGENT_STATIC_GATE_FAILED 或 AGENT_EVIDENCE_STALE",
+      "basis": "rev15 §14.5「读取并保存上述证据」+ §14.4 证据字段",
+      "status": "NOT_RUN",
+      "reason": "需要证据校验实现（t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A05",
+      "group": "A 负例（submit/adopt 证据）",
+      "title": "dry-run 导出摘要与提交时 attempt treeDigest 不一致 → AGENT_EVIDENCE_STALE",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "submit 拒绝并给出 AGENT_EVIDENCE_STALE；不得只比对 checkId 字符串",
+      "basis": "rev15 §14.5 submit 门禁②「导出自当前 treeDigest」",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator.submitAttempt（t1/t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A06",
+      "group": "A 负例（submit/adopt 证据）",
+      "title": "提交后继续写入使 treeDigest 变化，再用旧证据 submit → AGENT_EVIDENCE_STALE",
+      "x": [
+        "X3",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "旧证据对新树无效；若已 submitted 则写入先被 AGENT_ATTEMPT_IMMUTABLE 拦住（两条路径都不得放行）",
+      "basis": "rev15 §14.2 不变量 4 + §14.5",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator 写事务与提交门禁（t1/t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A07",
+      "group": "A 负例（submit/adopt 证据）",
+      "title": "adopt 时磁盘证据 treeDigest 与 attempt 当前树不一致 → AGENT_EVIDENCE_STALE",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "adoptAttempt 拒绝、不产生新版本目录、指针不变",
+      "basis": "rev15 §14.5 adopt-attempt 段",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator.adoptAttempt（t1/t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A08",
+      "group": "A 负例（submit/adopt 证据）",
+      "title": "提交后篡改导出树（attempt/verification/dry-run/**）再 adopt → AGENT_EVIDENCE_STALE",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "adopt 拒绝；exportTreeDigest 不符 → AGENT_EVIDENCE_STALE；不回退、不清洗",
+      "basis": "rev15 §14.5「校验 treeDigest/exportTreeDigest 与记录一致」",
+      "status": "NOT_RUN",
+      "reason": "需要导出树摘要校验（t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A09",
+      "group": "A 负例（submit/adopt 证据）",
+      "title": "partial（微信 BLOCKED）未 partialConfirmed 就 adopt → AGENT_PARTIAL_CONFIRM_REQUIRED",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "runtime 证据为 BLOCKED/NOT_RUN 且 partialConfirmed!==true → 拒绝；partialConfirmed:true 才可 adopt 且结果仍标 partial（≠ 通过）",
+      "basis": "rev15 §14.5 + §3.3",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator.adoptAttempt（t1/t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A49",
+      "group": "A 负例（submit/adopt 证据）",
+      "title": "越级 adopt：attempt 未 submitted（从未提交/已取消/已被取代）→ AGENT_ADOPTION_FAILED + issue NOT_SUBMITTED",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "adopt 拒绝：state ≠ submitted → AGENT_ADOPTION_FAILED 且 issues 含 code=NOT_SUBMITTED；不得用 AGENT_EVIDENCE_STALE / AGENT_PARTIAL_CONFIRM_REQUIRED 顶替；不生成新版本、versions/ 目录集合不变",
+      "basis": "rev15 §14.12-1（Captain 裁定 Q1；本清单原以「二者之一」记录该条，现按三分重写）",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator.adoptAttempt 的状态门 + agent:adopt-attempt IPC（t1/t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A10",
+      "group": "A 负例（检查目标）",
+      "title": "用 Base 源（templates/base/ordering-base/1.0.0/src）冒充候选跑 source.check → 判 FAIL",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "run-coordinator",
+        "checks"
+      ],
+      "expected": "平台拒绝：source.check 的 root 由平台按 attempt 计算，模型/调用方给 root 或指向 Base → AGENT_PAYLOAD_INVALID；若实现仍检查 Base，则判 FAIL（检查未落在 attempt 树）",
+      "basis": "rev15 §14.4 第一行（source.check 执行对象 = attempt 树）",
+      "status": "NOT_RUN",
+      "reason": "需要 checkId→subject 绑定（t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A11",
+      "group": "A 负例（检查目标）",
+      "title": "用已采用版本 versions/<current>/source 冒充候选跑 source.check → 判 FAIL",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "run-coordinator",
+        "checks"
+      ],
+      "expected": "source.check 的 subjectKind 必须是 attempt、treeDigest 必须等于 attempt 树摘要；等于版本摘要即判 FAIL",
+      "basis": "rev15 §14.4 + 计划 §1 X4",
+      "status": "NOT_RUN",
+      "reason": "需要 checkId→subject 绑定（t5）；当前注册表仍按已采用版本解析 root（见 A11O 观察）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A12",
+      "group": "A 负例（检查目标）",
+      "title": "用仓库 miniprogram/ 镜像跑 mini.check 冒充派生导出树 → 判 FAIL",
+      "x": [
+        "X4"
+      ],
+      "requires": [
+        "run-coordinator",
+        "checks"
+      ],
+      "expected": "无派生导出根 → AGENT_CHECK_UNKNOWN；root 指向 miniprogram/ → 拒绝；镜像检查结果不得当候选检查",
+      "basis": "rev15 §14.4 第三行「绝不允许回落仓库 miniprogram/ 镜像」",
+      "status": "NOT_RUN",
+      "reason": "需要 mini.check 改为 scoped + 派生根（t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A15",
+      "group": "A 负例（检查目标）",
+      "title": "检查证据不完整或 dry-run 导出树落点越界 → 拒收（不完整证据 ≠ PASS）",
+      "x": [
+        "X4",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "证据缺 {checkId,status,treeDigest|exportTreeDigest,subjectKind,attemptId,at,issues[]} 任一 → 不参与门禁；dry-run 把导出树写到 attempt/verification/dry-run/ 之外（含仓库 templates/）→ 拒绝且零落盘",
+      "basis": "rev15 §14.4 证据字段 + §14.5",
+      "status": "NOT_RUN",
+      "reason": "需要证据落盘与导出落点约束（t5）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A21",
+      "group": "A 负例（句柄/路径/越权）",
+      "title": "跨项目句柄（A 项目 handle 指向 B 项目树 / projectId 与根不一致）→ AGENT_PROJECT_MISMATCH 且零落盘",
+      "x": [
+        "X1",
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "拒绝 AGENT_PROJECT_MISMATCH；被指向项目与来源项目的树摘要都不变。判据按「Coordinator 层必须拒绝」执行：B1 直调（files/transactions 不校验 handle.projectId）属非产品链，不因此判 FAIL",
+      "basis": "rev15 §14.2 不变量 5 + §14.12-2（E0-W2 在 Coordinator 句柄校验层补 projectId ↔ 私有根 一致性断言）",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator 项目归属校验（t1，t5 E0-W2 补 projectId ↔ 私有根 一致性断言）；B1 直调现状见 A21O 观察",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A22",
+      "group": "A 负例（句柄/路径/越权）",
+      "title": "跨 run / 跨 turn 句柄（runId/turnId 混用或编造）→ AGENT_ATTEMPT_NOT_FOUND 且零落盘",
+      "x": [
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "拒绝；不创建任何目录、不写入任何文件",
+      "basis": "rev15 §14.2 不变量 5",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator 句柄校验（t1）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A26",
+      "group": "A 负例（attempt 不可变）",
+      "title": "submitted 后再写同一 attempt → AGENT_ATTEMPT_IMMUTABLE 且零落盘",
+      "x": [
+        "X3",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "write_files/delete_files 全部拒绝；attempt 树摘要不变；submitted 证据不变",
+      "basis": "rev15 §14.2 不变量 4",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator 的 submitted 只读门（t1）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A27",
+      "group": "A 负例（attempt 不可变）",
+      "title": "submitted 后重复 submit → AGENT_RUN_ALREADY_SUBMITTED（不产生第二个候选身份）",
+      "x": [
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "第二次 submit 拒绝；已提交候选身份、treeDigest、证据均不变",
+      "basis": "rev15 §14.9 新码表",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator.submitAttempt（t1）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A28",
+      "group": "A 负例（attempt 不可变）",
+      "title": "repair 覆盖已提交候选（继续写 attempt-1）→ 拒绝；修复必须新建 attempt-2",
+      "x": [
+        "X3",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "attempt-1 零写入且摘要不变；新修改落在 attempt-2，两个 attempt 摘要可追溯",
+      "basis": "rev15 §14.2 不变量 4「repair 建新 attempt，不覆盖已提交候选」",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator repair 流程（t1/t6）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A29",
+      "group": "A 负例（attempt 不可变）",
+      "title": "工具写入 version subject（直接改 base/已采用版本）→ AGENT_TOOL_NOT_ALLOWED / AGENT_PAYLOAD_INVALID",
+      "x": [
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "拒绝且零落盘；read_file 的 subjectOverride:{kind:\"version\"} 仍可只读",
+      "basis": "rev15 §14.3「写入永不接受 version subject」",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator 工具上下文校验（t1）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A30",
+      "group": "A 负例（工具白名单）",
+      "title": "模型调用平台专用工具（derive_source_bundle / adopt_attempt / attach_image_asset）→ AGENT_TOOL_NOT_ALLOWED",
+      "x": [
+        "X6",
+        "X7"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "三个名字都不在模型工具列表；调用即 AGENT_TOOL_NOT_ALLOWED；不得因名字相似而放行（大小写/前缀变体同样拒绝）",
+      "basis": "rev15 §14.3 平台专用段",
+      "status": "NOT_RUN",
+      "reason": "需要工具白名单实现（t1/t6）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A31",
+      "group": "A 负例（工具白名单）",
+      "title": "模型给出未登记工具名（如 write_file 单数、shell、exec）→ 拒绝",
+      "x": [
+        "X1",
+        "X3"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "AGENT_TOOL_NOT_ALLOWED；不存在通用 shell/exec/child_process 入口",
+      "basis": "rev15 §14.3（11 个工具固定命名）",
+      "status": "NOT_RUN",
+      "reason": "需要工具白名单实现（t1/t6）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A32",
+      "group": "A 负例（截断/预算）",
+      "title": "上游 finish_reason=length 且带 tool_calls → 不回放工具、返回 output_truncated、零落盘",
+      "x": [
+        "X8"
+      ],
+      "requires": [
+        "run-coordinator",
+        "model-call-scheduler",
+        "agent-runtime"
+      ],
+      "expected": "truncated=true → 立即停止本批工具执行；结果标 output_truncated（AGENT_OUTPUT_TRUNCATED）；attempt 树摘要不变；只允许定向重试",
+      "basis": "rev15 §14.7 / §12.2-3",
+      "status": "NOT_RUN",
+      "reason": "需要 requestChat 返回 finishReason/truncated（t6）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A33",
+      "group": "A 负例（截断/预算）",
+      "title": "空正文 + finish_reason=length → 记为 truncated（不是“无响应”，也不当完整源码）",
+      "x": [
+        "X8"
+      ],
+      "requires": [
+        "run-coordinator",
+        "model-call-scheduler",
+        "agent-runtime"
+      ],
+      "expected": "返回 truncated/output_truncated；不得抛“无响应”类错误、不得把空正文当成功写盘",
+      "basis": "rev15 §14.7 第 1 条 / D-RT-1",
+      "status": "NOT_RUN",
+      "reason": "需要 direct 通道截断检测（t6）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A34",
+      "group": "A 负例（截断/预算）",
+      "title": "预算：源码编辑默认 6000 / 硬上限 8000；请求 1200 回退或超 8000 → 明确报错",
+      "x": [
+        "X8"
+      ],
+      "requires": [
+        "run-coordinator",
+        "model-call-scheduler",
+        "agent-runtime"
+      ],
+      "expected": "不得静默回退 1200；>8000 明确报错而非静默裁剪；默认 6000 可被覆盖但有上限",
+      "basis": "rev15 §14.7 第 3 条",
+      "status": "NOT_RUN",
+      "reason": "需要 direct 预算实现（t6）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A35",
+      "group": "A 负例（取消/迟到）",
+      "title": "取消后不再发起上游请求（排队项出队、占槽释放）",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "cancel 后 upstream 调用计数不再增加；scheduler.stats().active/queued 归零；不出现 MODEL_ABORTED 之外的副作用",
+      "basis": "rev15 §14.6 第 7 条",
+      "status": "NOT_RUN",
+      "reason": "需要调度器 + direct runtime（t2/t6）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A36",
+      "group": "A 负例（取消/迟到）",
+      "title": "取消后迟到工具调用不落盘（迟到响应可丢弃）",
+      "x": [
+        "X8",
+        "X12"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "取消/提交后的工具调用返回失败码（AGENT_CANCELLED/AGENT_ATTEMPT_IMMUTABLE）；attempt 摘要不变",
+      "basis": "rev15 §14.2 不变量 6 / §3.3 迟到响应",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator 取消态 + 迟到丢弃（t1）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A37",
+      "group": "A 负例（取消/迟到）",
+      "title": "cancel 三态：requested → cancelled → too-late（too-late 不得显示为失败）",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "run-coordinator"
+      ],
+      "expected": "首次 cancel=requested；停止后查询=cancelled；已完成/未知=too-late 且 cancelled=false（UI 不得当失败）",
+      "basis": "rev15 §3.3 / rev7 F1",
+      "status": "NOT_RUN",
+      "reason": "需要 Coordinator.cancelRun（t1）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A38",
+      "group": "A 负例（上游并发）",
+      "title": "同时 5 个上游请求 → 恰好 3 并发、2 排队，最终全部成功",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "峰值并发=3（fetch 计数器观测）；最大排队=2；5 个全部完成；stats() 不含 prompt/源码/图片/Key",
+      "basis": "rev15 §14.6 / 计划 §4 E0-R1a 测试 1",
+      "status": "NOT_RUN",
+      "reason": "需要 ModelCallScheduler（t2）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A39",
+      "group": "A 负例（上游并发）",
+      "title": "排队超 180s → MODEL_QUEUE_TIMEOUT（不是上游超时，也不是 429）",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "排队 179s 后拿到槽位的请求仍有完整请求 timeout；>180s 明确 MODEL_QUEUE_TIMEOUT；不误报上游超时",
+      "basis": "rev15 §14.6 第 3/4 条",
+      "status": "NOT_RUN",
+      "reason": "需要 ModelCallScheduler（t2）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A40",
+      "group": "A 负例（上游并发）",
+      "title": "取消排队任务不减少已执行数；取消运行中任务释放槽位",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "1 慢请求占槽 + 4 排队；取消 1 个排队项后执行数不变；取消运行中任务后该槽位可被下一次请求立即使用",
+      "basis": "rev15 §14.6 第 7 条 / E0-R1a 测试 2",
+      "status": "NOT_RUN",
+      "reason": "需要 ModelCallScheduler（t2）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A41",
+      "group": "A 负例（上游并发）",
+      "title": "429/5xx 重试期间不出现第 4 个并发；重试结束释放槽位",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "重试继续持有同一槽位（或先释放再重新排队），任意时刻并发 ≤3；重试成功/失败都释放",
+      "basis": "rev15 §14.6 第 6 条",
+      "status": "NOT_RUN",
+      "reason": "需要 ModelCallScheduler（t2）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A42",
+      "group": "A 负例（上游并发）",
+      "title": "MODEL_MAX_CONCURRENT=4 或非法值 → clamp 到 3 并有可见警告",
+      "x": [
+        "X12"
+      ],
+      "requires": [
+        "model-call-scheduler"
+      ],
+      "expected": "不静默接受 >3；clamp=3 且给出警告码/日志（MODEL_CONFIG_INVALID 或等价可见警告）",
+      "basis": "rev15 §14.6 第 2 条",
+      "status": "NOT_RUN",
+      "reason": "需要 ModelCallScheduler（t2）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A43",
+      "group": "A 负例（图片/视觉）",
+      "title": "缺图 / 坏图（assetId 不存在、魔数不符、解码失败）→ AGENT_IMAGE_INVALID，不降级为文本",
+      "x": [
+        "X2"
+      ],
+      "requires": [
+        "run-coordinator",
+        "agent-runtime"
+      ],
+      "expected": "明确失败；不得把 assetId 字符串当视觉输入；不得静默走纯文本生成",
+      "basis": "rev15 §14.8-5",
+      "status": "NOT_RUN",
+      "reason": "需要 resolveAssetImage（t7 E0-R2）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A44",
+      "group": "A 负例（图片/视觉）",
+      "title": "单张图 > 2 MiB → AGENT_IMAGE_INVALID",
+      "x": [
+        "X2"
+      ],
+      "requires": [
+        "run-coordinator",
+        "agent-runtime"
+      ],
+      "expected": "按真实字节判定（不信扩展名）；不裁剪、不压缩后静默通过",
+      "basis": "rev15 §14.8-3",
+      "status": "NOT_RUN",
+      "reason": "需要 resolveAssetImage（t7）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A45",
+      "group": "A 负例（图片/视觉）",
+      "title": "非 PNG/JPEG/WebP（GIF/BMP/SVG/伪装扩展名）→ AGENT_IMAGE_INVALID",
+      "x": [
+        "X2"
+      ],
+      "requires": [
+        "run-coordinator",
+        "agent-runtime"
+      ],
+      "expected": "魔数 + 真实 MIME 双检；伪装扩展名（.png 内容为 GIF）同样拒绝",
+      "basis": "rev15 §14.8-3",
+      "status": "NOT_RUN",
+      "reason": "需要 resolveAssetImage（t7）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A46",
+      "group": "A 负例（图片/视觉）",
+      "title": "输入为路径或 base64 文本（而非 assetId）→ 拒绝",
+      "x": [
+        "X2"
+      ],
+      "requires": [
+        "run-coordinator",
+        "agent-runtime"
+      ],
+      "expected": "只接受既有 assetId；路径/base64/data URL 文本一律拒绝，且不读取该路径",
+      "basis": "rev15 §14.8-1",
+      "status": "NOT_RUN",
+      "reason": "需要 resolveAssetImage 输入校验（t7）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A47",
+      "group": "A 负例（图片/视觉）",
+      "title": "模型无视觉能力 → AGENT_VISION_UNAVAILABLE / needs-input，不得静默退化",
+      "x": [
+        "X2"
+      ],
+      "requires": [
+        "run-coordinator",
+        "model-call-scheduler",
+        "agent-runtime"
+      ],
+      "expected": "明确错误或 needs-input；不得改用纯文本生成并当成完成",
+      "basis": "rev15 §14.8-5",
+      "status": "NOT_RUN",
+      "reason": "需要 direct 通道视觉能力探测（t6/t7）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "A48",
+      "group": "A 负例（图片/视觉）",
+      "title": "data URL / base64 泄漏到 attempt.json/run.json/trace/日志 → 判 FAIL",
+      "x": [
+        "X2"
+      ],
+      "requires": [
+        "run-coordinator",
+        "agent-runtime"
+      ],
+      "expected": "对 run 目录与 trace 全量扫描，不得出现 \"data:image\"、长 base64 串或 prompt 原文；图片只在内存",
+      "basis": "rev15 §14.8-4",
+      "status": "NOT_RUN",
+      "reason": "需要图片管线（t7）",
+      "observed": null,
+      "durationMs": 0
+    },
+    {
+      "id": "G01",
+      "group": "G 环境守卫",
+      "title": "验证器运行期间仓库项目数据目录零写入",
+      "x": [],
+      "requires": [],
+      "expected": "app-data / generated-projects / generated-projects-test 指纹前后一致",
+      "status": "PASS",
+      "detail": "仓库数据目录指纹未变化",
+      "observed": {
+        "changed": []
+      },
+      "durationMs": 0
+    },
+    {
+      "id": "G03",
+      "group": "G 环境守卫",
+      "title": "验证器自检：拒绝断言/等值断言在“码不符/未拒绝/值不等”时必须抛错（防静默通过）",
+      "x": [],
+      "requires": [],
+      "expected": "错误码、未拒绝、值不相等三种情况都必须触发断言异常",
+      "status": "PASS",
+      "detail": "断言工具在三种失败路径上都抛错（报告具备判据价值）",
+      "observed": {
+        "wrongCodeThrew": true,
+        "acceptedThrew": true,
+        "equalThrew": true
+      },
+      "durationMs": 0
+    }
+  ]
+}

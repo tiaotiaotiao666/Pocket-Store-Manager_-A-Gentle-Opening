@@ -1,4 +1,4 @@
-import {
+﻿import {
   CallHandler,
   CanActivate,
   ExecutionContext,
@@ -22,7 +22,8 @@ import { finalize } from 'rxjs/operators';
  *
  * 配置：
  * - AGENT_RATE_LIMIT_PER_MINUTE：同一来源每分钟最多请求数，0 = 关闭（默认 120）；
- * - AGENT_MAX_CONCURRENT：同时进行中的请求上限，0 = 关闭（默认 2）。
+ * - AGENT_MAX_CONCURRENT：同时进行中的请求上限，0 = 关闭（默认 3；与 env.validation.ts 同源，
+ *   只保护入口，不参与上游并发计算）。
  *
  * 测试环境默认关闭这两道护栏，避免既有套件被计数误伤；
  * 需要验证 429 的用例显式打开（AGENT_RAILS_ENFORCE=1 或直接构造本模块）。
@@ -31,6 +32,12 @@ import { finalize } from 'rxjs/operators';
 export const AGENT_ROUTE_PREFIX = '/api/v1/agent/';
 export const AGENT_RATE_LIMITED_CODE = 'AGENT_RATE_LIMITED';
 export const AGENT_BUSY_CODE = 'AGENT_BUSY';
+/**
+ * Agent HTTP 入口并发默认值（唯一常量，不再散落字面量）。
+ * 必须与 `common/config/env.validation.ts` 里 `AGENT_MAX_CONCURRENT` 的默认值一致
+ * （E0-R1：2 → 3）；`server/test/runtime/guard-rails-default.test.cjs` 直接比对两处，漂移即失败。
+ */
+export const DEFAULT_AGENT_MAX_CONCURRENT = 3;
 const RATE_LIMITED_MESSAGE = '请求过于频繁，请稍后再试。';
 const BUSY_MESSAGE = '已有识别任务在进行中，请稍后再试。';
 
@@ -54,7 +61,7 @@ export class AgentRailsStore {
 
   constructor(options: AgentRailsOptions = {}) {
     this.perMinute = Math.max(0, Math.trunc(options.perMinute ?? 120));
-    this.maxConcurrent = Math.max(0, Math.trunc(options.maxConcurrent ?? 2));
+    this.maxConcurrent = Math.max(0, Math.trunc(options.maxConcurrent ?? DEFAULT_AGENT_MAX_CONCURRENT));
     this.now = typeof options.now === 'function' ? options.now : () => Date.now();
   }
 
@@ -179,7 +186,7 @@ export function readAgentRailsOptions(config: ConfigService): AgentRailsOptions 
   const enforce = String(config.get('AGENT_RAILS_ENFORCE') ?? '').trim() === '1';
   if (nodeEnv === 'test' && !enforce) return { perMinute: 0, maxConcurrent: 0 };
   const perMinute = Number(config.get('AGENT_RATE_LIMIT_PER_MINUTE') ?? 120);
-  const maxConcurrent = Number(config.get('AGENT_MAX_CONCURRENT') ?? 2);
+  const maxConcurrent = Number(config.get('AGENT_MAX_CONCURRENT') ?? DEFAULT_AGENT_MAX_CONCURRENT);
   return {
     perMinute: Number.isFinite(perMinute) ? perMinute : 120,
     maxConcurrent: Number.isFinite(maxConcurrent) ? maxConcurrent : 2,

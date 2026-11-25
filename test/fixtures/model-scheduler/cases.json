@@ -1,0 +1,131 @@
+{
+  "contractVersion": "model-scheduler.v1",
+  "frozenAt": "2026-11-25",
+  "source": [
+    "docs/handoff/Workspace-Agent-B阶段接口冻结.md §14.6（rev15）",
+    "docs/handoff/Workspace-Agent-E0闭环纠偏与E阶段-Flash续期计划.md §4 E0-R1a（含 Captain amend rev1）"
+  ],
+  "purpose": "桌面（E0-R1a）与服务端（E0-R1b）共用的 ModelCallScheduler 行为用例。服务端 parity 直接读这份文件，不得另写第二份用例。",
+  "constants": {
+    "maxUpstreamConcurrency": 3,
+    "minQueueWaitMs": 30000,
+    "maxQueueWaitMs": 600000,
+    "defaultQueueWaitMs": 180000,
+    "defaultLeaseTtlMs": 30000
+  },
+  "errorCodes": {
+    "queueTimeout": "MODEL_QUEUE_TIMEOUT",
+    "busy": "MODEL_BUSY",
+    "aborted": "MODEL_ABORTED",
+    "configInvalid": "MODEL_CONFIG_INVALID"
+  },
+  "env": {
+    "maxConcurrent": "MODEL_MAX_CONCURRENT",
+    "queueWaitMs": "MODEL_QUEUE_WAIT_MS",
+    "queueWaitMsCompatAlias": "MODEL_QUEUE_TIMEOUT_MS",
+    "tokenDir": "MODEL_UPSTREAM_TOKEN_DIR",
+    "neverReadForUpstreamLimit": ["AGENT_MAX_CONCURRENT"]
+  },
+  "tokenProtocol": {
+    "dirEnv": "MODEL_UPSTREAM_TOKEN_DIR",
+    "defaultDir": "<os.tmpdir()>/smart-store-model-slots",
+    "poolSize": 3,
+    "filePattern": "slot-<n>.token",
+    "createMode": "O_CREAT|O_EXCL（原子创建即互斥）",
+    "payload": ["v", "pid", "host", "acquiredAt", "expiresAt", "label"],
+    "heartbeat": "每 leaseTtl/3 用「临时文件 + rename」续租 expiresAt",
+    "reclaim": "expiresAt 已过且（同机 pid 已死 / 跨机 / 内容不可读且 mtime 超过 TTL）才 unlink 重试",
+    "dirUnavailable": "可见 warning + 可读原因 + globalStats().degraded=true；strict 模式 fail closed（MODEL_BUSY）"
+  },
+  "statsKeys": ["maxConcurrent", "active", "queued", "maxQueueLength", "totalAcquired", "totalTimedOut", "lastWaitMs"],
+  "cases": [
+    {
+      "id": "fifo-order-single-slot",
+      "title": "单槽时严格 FIFO：先到先得，不插队",
+      "scenario": "fifo-order",
+      "given": { "maxConcurrent": 1, "requestCount": 4 },
+      "expect": { "dispatchOrder": [1, 2, 3, 4], "maxUpstreamConcurrency": 1, "queueLengthPeak": 3 }
+    },
+    {
+      "id": "local-queue-timeout-code",
+      "title": "本地排队超时 → MODEL_QUEUE_TIMEOUT，且从未发起上游请求",
+      "scenario": "queue-timeout-local",
+      "given": { "maxConcurrent": 1, "queueWaitMs": 30000, "queuedRequestCount": 1 },
+      "expect": {
+        "errorCode": "MODEL_QUEUE_TIMEOUT",
+        "upstreamCallsForTimedOutRequest": 0,
+        "notUpstreamTimeoutCode": "DEEPSEEK_TIMEOUT"
+      }
+    },
+    {
+      "id": "release-after-body-read",
+      "title": "槽位在响应体读完后才释放：只拿到 HTTP 头不释放",
+      "scenario": "release-after-body",
+      "given": { "maxConcurrent": 1 },
+      "expect": { "secondStartsBeforeBodyRead": false, "secondStartsAfterBodyRead": true }
+    },
+    {
+      "id": "cancel-queued",
+      "title": "取消排队中的任务：出队、MODEL_ABORTED、不占用已执行计数",
+      "scenario": "cancel-queued",
+      "given": { "maxConcurrent": 1 },
+      "expect": { "errorCode": "MODEL_ABORTED", "upstreamCallsForCancelled": 0, "totalAcquiredUnchanged": true }
+    },
+    {
+      "id": "cancel-running",
+      "title": "取消运行中的任务：MODEL_ABORTED 且槽位在 settle 后释放",
+      "scenario": "cancel-running",
+      "given": { "maxConcurrent": 1 },
+      "expect": { "errorCode": "MODEL_ABORTED", "slotReleased": true, "nextDispatched": true }
+    },
+    {
+      "id": "retry-holds-slot",
+      "title": "429 重试继续持有同一槽位：任何时刻不出现第 4 个并发",
+      "scenario": "retry-holds-slot",
+      "given": { "maxConcurrent": 3, "requestCount": 5, "firstAttemptStatus": 429 },
+      "expect": { "maxUpstreamConcurrency": 3, "attemptsPerRequest": 2, "allSucceeded": true }
+    },
+    {
+      "id": "clamp-above-max",
+      "title": "MODEL_MAX_CONCURRENT=4 → clamp 到 3 并给出可见警告",
+      "scenario": "env-clamp",
+      "given": { "env": { "MODEL_MAX_CONCURRENT": "4" } },
+      "expect": { "maxConcurrent": 3, "warningCount": 1 }
+    },
+    {
+      "id": "clamp-invalid",
+      "title": "MODEL_MAX_CONCURRENT 非法值 → 收敛到 3 并给出可见警告",
+      "scenario": "env-clamp",
+      "given": { "env": { "MODEL_MAX_CONCURRENT": "abc" } },
+      "expect": { "maxConcurrent": 3, "warningCount": 1 }
+    },
+    {
+      "id": "queue-wait-env-primary",
+      "title": "排队预算读主名 MODEL_QUEUE_WAIT_MS",
+      "scenario": "env-queue-wait",
+      "given": { "env": { "MODEL_QUEUE_WAIT_MS": "60000" } },
+      "expect": { "queueWaitMs": 60000, "aliasWarning": false }
+    },
+    {
+      "id": "queue-wait-env-alias",
+      "title": "MODEL_QUEUE_TIMEOUT_MS 只是兼容别名（可用但要提醒）",
+      "scenario": "env-queue-wait",
+      "given": { "env": { "MODEL_QUEUE_TIMEOUT_MS": "60000" } },
+      "expect": { "queueWaitMs": 60000, "aliasWarning": true }
+    },
+    {
+      "id": "agent-entry-env-ignored",
+      "title": "AGENT_MAX_CONCURRENT 只限制 Agent HTTP 入口，不参与上游并发上限",
+      "scenario": "env-ignored-agent",
+      "given": { "env": { "AGENT_MAX_CONCURRENT": "9" } },
+      "expect": { "maxConcurrent": 3, "warningCount": 0 }
+    },
+    {
+      "id": "stats-purity",
+      "title": "stats() 只有计数与等待时长，无 prompt/源码/图片/Key",
+      "scenario": "stats-purity",
+      "given": {},
+      "expect": { "keys": ["maxConcurrent", "active", "queued", "maxQueueLength", "totalAcquired", "totalTimedOut", "lastWaitMs"] }
+    }
+  ]
+}

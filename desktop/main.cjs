@@ -21,6 +21,10 @@ const { registerModelIpc } = require('./model-ipc.cjs');
 const { openExternalLink, isAllowedAppUrl } = require('./external-link.cjs');
 const { registerWindowZoom } = require('./window-zoom.cjs');
 const { registerAgentToolsIpc } = require('./agent-tools-ipc.cjs');
+const { createRunCoordinator } = require('./agent-workspace/run-coordinator.cjs');
+const { createCheckRegistry } = require('./agent-workspace/checks.cjs');
+// 产品主链接真正的多轮工具/多模态 Runtime；旧 agent-workspace/direct-runtime.cjs 仅保留单次聊天兼容。
+const { createDirectWorkspaceRuntime } = require('./agent-runtime');
 
 /**
  * 选择一个真正可写的用户数据目录。
@@ -357,24 +361,66 @@ registerFrontendReconstructIpc(ipcMain, {
 });
 
 /**
- * B3：Workspace Agent 受控任务 RPC（`agent:*` 19 命令 + `agent:progress`）。
+ * `agent:progress` 唯一广播出口：payload 只含
+ * `{projectId,runId,turnId,attemptId,phase,stage,status,at,message≤120}`，
+ * 不含路径、源码、base64、prompt、密钥（与 B3/E0 冻结口径一致）。
+ */
+function broadcastAgentProgress(payload) {
+  for (const target of BrowserWindow.getAllWindows()) {
+    try {
+      target.webContents.send('agent:progress', payload);
+    } catch (error) {
+      /* 窗口已关闭时忽略进度发送失败 */
+    }
+  }
+}
+
+/**
+ * E0-W1：WorkspaceRunCoordinator 单例 —— 桌面侧唯一执行所有者（关闭 X1/X3）。
  *
- * 版本/工作区命令只调用 B1/B2 模块；`run-check`/`verify-wechat` 需要 B4 的真实 checks
- * 注册表。B4 落地前**不注入 checks**，因此这些命令会确定性返回
- * AGENT_RUNTIME_TOOL_MISSING / AGENT_CHECK_UNKNOWN，绝不伪造 PASS。
+ * 只在主进程内部持有：不向 renderer 暴露目录或绝对路径，也不新增任何通用 fs/exec 通道；
+ * run/turn/attempt 的创建、工具 subject 注入、revision/treeDigest、取消、提交与采用
+ * 全部走这一个实例（direct/HTTP 共用同一执行器，不回环 renderer）。
+ * `directRuntime` 由本文件**惰性**装配（E0-W2 交付锁）：coordinator 用 getter，凭据用主进程唯一的
+ * `modelCredentials`（safeStorage 解密 + ≤3 槽位调度）。未配置 Key / 未接线时 invokeDirect 仍显式返回
+ * AGENT_RUNTIME_TOOL_MISSING，绝不静默降级成假成功；写入永远只能经 coordinator 的 write_files。
+ */
+const workspaceRunCoordinator = createRunCoordinator({
+  userDataDir,
+  checks: createCheckRegistry({ userDataDir }),
+  directRuntime: createDirectWorkspaceRuntime({
+    coordinator: () => workspaceRunCoordinator,
+    credentials: modelCredentials,
+    userDataDir,
+    // D0 已实测 deepseek-flash 支持图片和工具；视觉仍由请求通道显式门控。
+    vision: true,
+    onProgress: (event) => broadcastAgentProgress({
+      projectId: event.projectId || null,
+      runId: event.runId || null,
+      turnId: event.turnId || null,
+      attemptId: event.attemptId || null,
+      phase: event.phase || 'direct',
+      stage: event.stage || 'analyze',
+      status: event.status || 'running',
+      at: new Date().toISOString(),
+      message: typeof event.message === 'string' ? event.message.slice(0, 120) : undefined,
+    }),
+  }),
+  emitProgress: broadcastAgentProgress,
+});
+
+/**
+ * B3/E0-W2：Workspace Agent 受控任务 RPC（`agent:*` 20 命令 + `agent:progress`）。
+ *
+ * 版本/工作区命令只调用 B1/B2 模块；`submit-candidate`/`adopt-attempt` 转调同一个
+ * WorkspaceRunCoordinator（唯一执行所有者），因此静态门禁与证据绑定只有一份实现。
+ * 注入 `checks: null` 表示注册表按需解析为真实 B4/E0-W2 注册表（不会伪造 PASS）。
  */
 registerAgentToolsIpc(ipcMain, {
   userDataDir,
   checks: null,
-  emitProgress: (payload) => {
-    for (const target of BrowserWindow.getAllWindows()) {
-      try {
-        target.webContents.send('agent:progress', payload);
-      } catch (error) {
-        /* 窗口已关闭时忽略进度发送失败 */
-      }
-    }
-  },
+  coordinator: workspaceRunCoordinator,
+  emitProgress: broadcastAgentProgress,
 });
 
 registerFlushGuard({

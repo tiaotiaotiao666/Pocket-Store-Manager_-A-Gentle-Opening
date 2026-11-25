@@ -1,0 +1,6 @@
+{
+  "name": "agent-runtime",
+  "private": true,
+  "description": "桌面 direct Workspace Runtime（主进程，E0-R1）。纯 CommonJS，不依赖 Electron。",
+  "main": "index.cjs"
+}

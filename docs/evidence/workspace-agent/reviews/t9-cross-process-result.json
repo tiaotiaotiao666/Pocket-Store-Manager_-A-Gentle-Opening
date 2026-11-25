@@ -1,0 +1,140 @@
+[
+  {
+    "id": "C01-two-processes-shared-token-dir-peak<=3",
+    "ok": true,
+    "detail": {
+      "label": "shared-token-dir",
+      "sameDir": true,
+      "peakUpstream": 3,
+      "requests": 4,
+      "tokenPeak": 3,
+      "desktopExit": {
+        "code": 0,
+        "stderr": ""
+      },
+      "serverExit": {
+        "code": 0,
+        "stderr": ""
+      },
+      "desktop": {
+        "side": "desktop",
+        "statuses": [
+          200,
+          200
+        ],
+        "stats": {
+          "maxConcurrent": 3,
+          "active": 0,
+          "queued": 0,
+          "maxQueueLength": 0,
+          "totalAcquired": 2,
+          "totalTimedOut": 0,
+          "lastWaitMs": 194
+        },
+        "global": {
+          "enabled": true,
+          "dir": "C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-shared-slots-rztTH9",
+          "maxTokens": 3,
+          "held": 0,
+          "available": true,
+          "degraded": false,
+          "reason": null
+        },
+        "elapsedMs": 323
+      },
+      "server": {
+        "side": "server",
+        "statuses": [
+          200,
+          200
+        ],
+        "stats": {
+          "maxConcurrent": 3,
+          "active": 0,
+          "queued": 0,
+          "maxQueueLength": 0,
+          "totalAcquired": 2,
+          "totalTimedOut": 0,
+          "lastWaitMs": 24
+        },
+        "global": {
+          "enabled": true,
+          "dir": "C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-shared-slots-rztTH9",
+          "maxTokens": 3,
+          "held": 0,
+          "available": true,
+          "degraded": false,
+          "reason": null
+        },
+        "elapsedMs": 176
+      }
+    }
+  },
+  {
+    "id": "C02-children-report-no-degradation",
+    "ok": true,
+    "detail": {
+      "desktop": {
+        "side": "desktop",
+        "statuses": [
+          200,
+          200
+        ],
+        "stats": {
+          "maxConcurrent": 3,
+          "active": 0,
+          "queued": 0,
+          "maxQueueLength": 0,
+          "totalAcquired": 2,
+          "totalTimedOut": 0,
+          "lastWaitMs": 194
+        },
+        "global": {
+          "enabled": true,
+          "dir": "C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-shared-slots-rztTH9",
+          "maxTokens": 3,
+          "held": 0,
+          "available": true,
+          "degraded": false,
+          "reason": null
+        },
+        "elapsedMs": 323
+      },
+      "server": {
+        "side": "server",
+        "statuses": [
+          200,
+          200
+        ],
+        "stats": {
+          "maxConcurrent": 3,
+          "active": 0,
+          "queued": 0,
+          "maxQueueLength": 0,
+          "totalAcquired": 2,
+          "totalTimedOut": 0,
+          "lastWaitMs": 24
+        },
+        "global": {
+          "enabled": true,
+          "dir": "C:\\Users\\leiji\\AppData\\Local\\Temp\\t9-shared-slots-rztTH9",
+          "maxTokens": 3,
+          "held": 0,
+          "available": true,
+          "degraded": false,
+          "reason": null
+        },
+        "elapsedMs": 176
+      }
+    }
+  },
+  {
+    "id": "C03-control-separate-dirs-peak=4",
+    "ok": true,
+    "detail": {
+      "peakUpstream": 4,
+      "tokenPeak": 2,
+      "requests": 4
+    }
+  }
+]

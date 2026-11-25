@@ -47,8 +47,9 @@ ipcRenderer.on('agent:progress', (_event, payload) => {
 });
 
 /**
- * B3：Workspace Agent 唯一受控命名空间。
- * 只暴露冻结 §3.2 的 19 个语义命令 + onProgress；渲染进程拿不到 channel 字符串、目录或通用 fs。
+ * B3/E0-W2：Workspace Agent 唯一受控命名空间。
+ * 只暴露冻结 §3.2 的 19 个语义命令 + E0-W2 追加的 `adoptAttempt`（`agent:adopt-attempt`）+ onProgress；
+ * 渲染进程拿不到 channel 字符串、目录或通用 fs。
  */
 const workspaceAgent = Object.freeze({
   getContext: (payload) => ipcRenderer.invoke('agent:get-context', payload),
@@ -64,6 +65,8 @@ const workspaceAgent = Object.freeze({
   readVerification: (payload) => ipcRenderer.invoke('agent:read-verification', payload),
   readArtifact: (payload) => ipcRenderer.invoke('agent:read-artifact', payload),
   submitCandidate: (payload) => ipcRenderer.invoke('agent:submit-candidate', payload),
+  // rev15 §3.2/§14.5：采用已提交候选（B2 adoptAttempt，经 Coordinator 校验证据）。
+  adoptAttempt: (payload) => ipcRenderer.invoke('agent:adopt-attempt', payload),
   versions: (payload) => ipcRenderer.invoke('agent:versions', payload),
   adoptVersion: (payload) => ipcRenderer.invoke('agent:adopt-version', payload),
   undo: (payload) => ipcRenderer.invoke('agent:undo', payload),

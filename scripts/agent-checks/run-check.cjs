@@ -20,18 +20,25 @@ const { execFile } = require('node:child_process');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
-/** 固定映射：checkId → 既有脚本/包装器（新增 checkId 必须同时改 checks.cjs 与这里）。 */
+/**
+ * 固定映射：checkId → 既有脚本/包装器（新增 checkId 必须同时改 checks.cjs 与这里）。
+ *
+ * rev15 §14.4 的 subject 绑定后，attempt 级检查（`source.check`/`composer.dry-run`）由
+ * `desktop/agent-workspace/checks.cjs` 在进程内对 **attempt 候选树**执行，dispatcher 不再接受这两个 id
+ * （它拿不到 attempt 主体，容易被误用成“查仓库”）。导出树级检查保留显式 `--root` 的 dispatcher 入口，
+ * 作为缺根即失败的第二道防线；仓库级检查照旧。
+ */
 const CHECKS = Object.freeze({
-  'source.check': { script: 'scripts/frontend-capabilities.cjs', args: ['--check'] },
-  'mini.check': { script: 'scripts/validate-miniprogram.cjs', args: [] },
-  'composer.dry-run': { script: 'scripts/composer/verify-cli.cjs', args: [], requiresRoot: true },
+  // 旧 `source.check` 的仓库级语义（frontend-capabilities --check）已改名为独立 checkId，语义不变。
+  'capabilities.check': { script: 'scripts/frontend-capabilities.cjs', args: ['--check'] },
+  'mini.check': { script: 'scripts/validate-miniprogram.cjs', args: [], requiresRoot: true },
   'output.consistency': { script: 'scripts/agent-checks/output-consistency.cjs', args: [], requiresRoot: true },
   'unit.targeted': { nodeTest: true, allowTarget: true },
   'unit.full': { nodeTest: true, args: ['test'] },
   'desktop.contract': { nodeTest: true, args: ['test/desktop-contract.test.cjs'] },
   'catalog.check': { script: 'scripts/component-catalog.cjs', args: ['--check'] },
   'registry.check': { script: 'scripts/registry-check.cjs', args: [] },
-  'wechat.verify': { script: 'scripts/wechat-devtools-run.cjs', args: [], requiresRoot: true, wechat: true },
+  'wechat.verify': { script: 'scripts/wechat-devtools-run.cjs', args: [], requiresRoot: true, positionalRoot: true, wechat: true },
 });
 
 /** unit.targeted 只允许仓库内固定的测试文件白名单（不在表内一律拒绝）。 */
@@ -104,6 +111,30 @@ function issuesFromText(stdout, stderr, code, source) {
     message,
     source,
   }));
+}
+
+/** 包装器单行 JSON 报告（exit 0 时用来接管真正的状态，而不是无条件 PASS）。 */
+function parseAnyReport(stdout) {
+  const text = String(stdout || '').trim();
+  if (!text) return null;
+  const candidates = [text];
+  const lastLine = text.split(/\r?\n/).filter(Boolean).pop();
+  if (lastLine && lastLine !== text) candidates.push(lastLine);
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === 'object' && typeof parsed.status === 'string') return parsed;
+    } catch (error) {
+      /* 继续尝试下一段 */
+    }
+  }
+  return null;
+}
+
+/** 状态口径：只接受四态；无法识别的状态 → NOT_RUN（由调用方补 CHECK_STATUS_UNKNOWN）。 */
+function normalizeStatus(raw) {
+  const value = String(raw || '').trim().toUpperCase();
+  return ['PASS', 'FAIL', 'BLOCKED', 'NOT_RUN'].includes(value) ? value : 'NOT_RUN';
 }
 
 function parseWechatReport(stdout) {
@@ -210,7 +241,10 @@ async function main() {
     argv = [process.execPath, '--test', ...targets];
   } else {
     const scriptPath = path.join(REPO_ROOT, definition.script);
-    const extra = definition.requiresRoot ? ['--root', args.root] : [];
+    // 导出根：wechat-devtools-run.cjs 只接受位置参数，其余包装器用显式 `--root`。
+    const extra = definition.requiresRoot
+      ? (definition.positionalRoot ? [args.root] : ['--root', args.root])
+      : [];
     argv = [process.execPath, scriptPath, ...definition.args, ...extra];
   }
 
@@ -242,6 +276,29 @@ async function main() {
     return;
   }
 
+  // 退出码 0 不等于 PASS：包装器自己报告的状态优先；报告了无法识别的状态 → NOT_RUN（绝不归一成 FAIL/PASS）。
+  const reported = parseAnyReport(result.stdout);
+  if (reported && typeof reported.status === 'string') {
+    const normalized = normalizeStatus(reported.status);
+    process.stdout.write(JSON.stringify({
+      checkId: args.checkId,
+      status: normalized,
+      durationMs: result.durationMs,
+      issues: normalized === reported.status.toUpperCase()
+        ? (Array.isArray(reported.issues) ? reported.issues.slice(0, MAX_ISSUES) : [])
+        : [{
+          file: null,
+          line: null,
+          column: null,
+          code: 'CHECK_STATUS_UNKNOWN',
+          message: '包装器报告了无法识别的状态：' + reported.status.slice(0, 40),
+          source: 'check',
+        }],
+      ...(typeof reported.evidenceRelative === 'string' ? { evidenceRelative: reported.evidenceRelative } : {}),
+    }) + '\n');
+    return;
+  }
+
   process.stdout.write(JSON.stringify({
     checkId: args.checkId,
     status: 'PASS',
@@ -269,6 +326,8 @@ module.exports = {
   parseArgs,
   runProcess,
   buildFailureReport,
+  parseAnyReport,
+  normalizeStatus,
   parseWechatReport,
   issuesFromText,
 };

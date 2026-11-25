@@ -1,0 +1,245 @@
+/*
+ * E0-U1 独立原型样式。
+ *
+ * 注意：本文件**不被 App 引用**（本轮不接 App 主链，`src/App.jsx` 属 Captain 派单范围）。
+ * E3 接线时再在正式样式入口 import；届时只调色，不改结构与可访问名称。
+ * 状态色只有四态：PASS / FAIL / BLOCKED / NOT_RUN，不使用第五种“看起来通过”的绿色。
+ */
+
+.e0-field,
+.e0-progress,
+.e0-candidate {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(41, 51, 47, 0.12);
+  border-radius: 10px;
+  background: #fdfcf9;
+}
+
+.e0-field-header,
+.e0-check-group-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.e0-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #29332f;
+}
+
+.e0-field-meta {
+  font-size: 12px;
+  color: #6a756f;
+}
+
+.e0-field-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6a756f;
+}
+
+.e0-field-error {
+  margin: 0;
+  font-size: 12px;
+  color: #a13c2c;
+}
+
+.e0-page-list {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.e0-page-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid rgba(41, 51, 47, 0.16);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.e0-page-option-active {
+  border-color: #286957;
+  background: #eef4ef;
+}
+
+.e0-page-option-disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  background: #f4f3f0;
+}
+
+.e0-page-option-id {
+  font-size: 11px;
+  color: #6a756f;
+}
+
+.e0-page-option-reason {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #8a6b2a;
+}
+
+.e0-field-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.e0-button {
+  padding: 6px 12px;
+  border: 1px solid #cfd6d1;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.e0-button-ghost {
+  background: transparent;
+}
+
+.e0-image-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px dashed #cfd6d1;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.e0-consent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.e0-consent-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #8f9a94;
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.e0-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cfd6d1;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.e0-field-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.e0-progress-list,
+.e0-check-list,
+.e0-reason-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.e0-progress-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.e0-progress-step-unknown {
+  background: #fbf4e6;
+  border: 1px dashed #d8b878;
+}
+
+.e0-progress-index {
+  color: #9aa39d;
+  font-variant-numeric: tabular-nums;
+}
+
+.e0-progress-unknown-note {
+  color: #8a6b2a;
+}
+
+.e0-progress-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.e0-status-token {
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 11px;
+}
+
+.e0-check-status[data-status='PASS'] { color: #286957; }
+.e0-check-status[data-status='FAIL'] { color: #a13c2c; }
+.e0-check-status[data-status='BLOCKED'] { color: #8a6b2a; }
+.e0-check-status[data-status='NOT_RUN'] { color: #6a756f; }
+
+.e0-candidate-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+}
+
+.e0-fact dt {
+  font-size: 11px;
+  color: #6a756f;
+}
+
+.e0-fact dd {
+  margin: 0;
+  font-size: 13px;
+}
+
+.e0-digest {
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.e0-check-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.e0-reason-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.e0-reason-title {
+  font-size: 12px;
+  font-weight: 600;
+}

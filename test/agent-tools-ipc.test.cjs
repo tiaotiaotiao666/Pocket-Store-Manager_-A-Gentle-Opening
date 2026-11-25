@@ -33,7 +33,7 @@ const COMMANDS = [
   'agent:get-context', 'agent:list-files', 'agent:read-file', 'agent:search-files',
   'agent:write-files', 'agent:delete-files', 'agent:add-image-asset', 'agent:get-diff',
   'agent:run-check', 'agent:verify-wechat', 'agent:read-verification', 'agent:read-artifact',
-  'agent:submit-candidate', 'agent:versions', 'agent:adopt-version', 'agent:undo',
+  'agent:submit-candidate', 'agent:adopt-attempt', 'agent:versions', 'agent:adopt-version', 'agent:undo',
   'agent:redo', 'agent:reopen', 'agent:cancel-run',
 ];
 
@@ -90,7 +90,7 @@ function assertNoAbsolutePath(value, needles) {
   assert.ok(!/data:[a-z0-9.+-]+\/[a-z0-9.+-]+;base64,/i.test(text), '结果不得包含 base64 data URI');
 }
 
-test('命令面：19 个 agent:* + agent:progress，全部返回统一 envelope', async (t) => {
+test('命令面：20 个 agent:* + agent:progress，全部返回统一 envelope', async (t) => {
   assert.strictEqual(toolsIpc.PROGRESS_CHANNEL, 'agent:progress');
   assert.deepStrictEqual(toolsIpc.createAgentToolsIpc({ userDataDir: 'C:/tmp' }).commandNames, COMMANDS);
 
@@ -202,6 +202,8 @@ test('version 接线：write-files → versions/undo/redo/reopen/get-diff/submit
   assertEnvelopeShape(del);
   assert.strictEqual(del.ok, true, JSON.stringify(del));
 
+  // E0-W2：submit-candidate 不再自己写 submitted，必须经 Coordinator 的静态门禁；
+  // 未注入 Coordinator 时明确 AGENT_RUNTIME_TOOL_MISSING（不静默降级、不伪造成功）。
   const submitted = await ipc.invoke('agent:submit-candidate', {
     projectId: PROJECT_ID,
     runId: RUN_ID,
@@ -211,14 +213,27 @@ test('version 接线：write-files → versions/undo/redo/reopen/get-diff/submit
     summary: 'B3 submit',
   });
   assertEnvelopeShape(submitted);
-  assert.strictEqual(submitted.ok, true, JSON.stringify(submitted));
-  assert.strictEqual(submitted.data.status, 'submitted');
-  assert.strictEqual(submitted.data.candidateId, 'attempt-1');
+  assert.strictEqual(submitted.ok, false, JSON.stringify(submitted));
+  assert.strictEqual(submitted.code, CODES.RUNTIME_TOOL_MISSING);
 
-  const badPage = await ipc.invoke('agent:submit-candidate', {
+  // X5：8 页枚举（SourceFacts 派生）—— checkout 现在**是**合法目标页（v1 的 home/menu 常量已废弃）。
+  const checkoutAccepted = await ipc.invoke('agent:submit-candidate', {
     projectId: PROJECT_ID, runId: RUN_ID, turnId: TURN_ID, attemptId: 'attempt-1', targetPage: 'checkout',
   });
+  assert.strictEqual(checkoutAccepted.code, CODES.RUNTIME_TOOL_MISSING, 'checkout 必须通过页面枚举校验');
+  // 不在 8 页内的自由字符串仍然被拒。
+  const badPage = await ipc.invoke('agent:submit-candidate', {
+    projectId: PROJECT_ID, runId: RUN_ID, turnId: TURN_ID, attemptId: 'attempt-1', targetPage: 'settings',
+  });
   assert.strictEqual(badPage.code, CODES.TARGET_PAGE_UNSUPPORTED);
+
+  // adopt-attempt：同样的 fail-closed 口径（必须经 Coordinator + 磁盘证据 + 摘要绑定）。
+  const adopted = await ipc.invoke('agent:adopt-attempt', {
+    projectId: PROJECT_ID, runId: RUN_ID, turnId: TURN_ID, attemptId: 'attempt-1', targetPage: 'menu',
+  });
+  assertEnvelopeShape(adopted);
+  assert.strictEqual(adopted.ok, false);
+  assert.strictEqual(adopted.code, CODES.RUNTIME_TOOL_MISSING);
 
   // B2 只冻结线性指针：没有历史版本可切 → 明确 AGENT_VERSION_CONFLICT，不伪造成功。
   const historical = await ipc.invoke('agent:adopt-version', { projectId: PROJECT_ID, versionId: 'v-1' });
@@ -486,7 +501,7 @@ test('B4：真实 checks 注册表（fake runner，不 spawn）→ PASS/FAIL/BLO
   });
 
   const passed = await withRunner(async () => ({ ok: true, code: 'OK', stdout: JSON.stringify({ status: 'PASS', issues: [] }), stderr: '', durationMs: 2 }))
-    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check' });
+    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'capabilities.check' });
   assertEnvelopeShape(passed);
   assert.strictEqual(passed.ok, true, JSON.stringify(passed));
   assert.strictEqual(passed.data.status, 'PASS');
@@ -497,9 +512,19 @@ test('B4：真实 checks 注册表（fake runner，不 spawn）→ PASS/FAIL/BLO
     stdout: JSON.stringify({ status: 'FAIL', issues: [{ code: 'SRC', message: '语法错误', file: 'pages/menu/index.wxml', line: 2 }] }),
     stderr: '',
     durationMs: 3,
-  })).invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check' });
+  })).invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'capabilities.check' });
   assert.strictEqual(failed.data.status, 'FAIL');
   assert.strictEqual(failed.data.issues[0].file, 'pages/menu/index.wxml');
+
+  // rev15 §14.4：IPC run-check 没有 attempt/导出树主体，attempt 级 checkId 必须 CHECK_UNKNOWN（不回落版本源码）。
+  const attemptScoped = await withRunner(async () => ({ ok: true, code: 'OK', stdout: '{"status":"PASS"}', stderr: '', durationMs: 1 }))
+    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check' });
+  assertEnvelopeShape(attemptScoped);
+  assert.strictEqual(attemptScoped.ok, false, JSON.stringify(attemptScoped));
+  assert.strictEqual(attemptScoped.code, CODES.CHECK_UNKNOWN);
+  const exportScoped = await withRunner(async () => ({ ok: true, code: 'OK', stdout: '{"status":"PASS"}', stderr: '', durationMs: 1 }))
+    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'mini.check' });
+  assert.strictEqual(exportScoped.code, CODES.CHECK_UNKNOWN);
 
   const blocked = await withRunner(async () => ({ ok: false, code: 'EPERM', killed: false, stdout: '', stderr: 'spawn EPERM', durationMs: 1 }))
     .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'catalog.check' });
@@ -509,11 +534,11 @@ test('B4：真实 checks 注册表（fake runner，不 spawn）→ PASS/FAIL/BLO
 
   // 参数白名单在 checks.cjs 内生效：command / 未知键 → AGENT_PAYLOAD_INVALID。
   const commandParam = await withRunner(async () => ({ ok: true, code: 'OK', stdout: '{"status":"PASS"}', stderr: '', durationMs: 1 }))
-    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check', params: { command: 'rm -rf /' } });
+    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'capabilities.check', params: { command: 'rm -rf /' } });
   assert.strictEqual(commandParam.ok, false);
   assert.strictEqual(commandParam.code, CODES.PAYLOAD_INVALID);
   const unknownParam = await withRunner(async () => ({ ok: true, code: 'OK', stdout: '{"status":"PASS"}', stderr: '', durationMs: 1 }))
-    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check', params: { unknown: 1 } });
+    .invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'capabilities.check', params: { unknown: 1 } });
   assert.strictEqual(unknownParam.code, CODES.PAYLOAD_INVALID);
 
   // 工具/环境不可用（同步 throw EPERM / 返回工具缺失码）→ 成功 envelope 的 data.status='BLOCKED'，不是 CHECK_FAILED。
@@ -527,7 +552,7 @@ test('B4：真实 checks 注册表（fake runner，不 spawn）→ PASS/FAIL/BLO
       },
     },
   });
-  const thrown = await throwing.invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'source.check' });
+  const thrown = await throwing.invoke('agent:run-check', { projectId: PROJECT_ID, runId: RUN_ID, checkId: 'capabilities.check' });
   assertEnvelopeShape(thrown);
   assert.strictEqual(thrown.ok, true, JSON.stringify(thrown));
   assert.strictEqual(thrown.data.status, 'BLOCKED');
@@ -549,13 +574,13 @@ test('B4：真实 checks 注册表（fake runner，不 spawn）→ PASS/FAIL/BLO
   assert.strictEqual(failedResult.ok, false);
   assert.strictEqual(failedResult.code, 'AGENT_CHECK_FAILED');
 
-  // verify-wechat：工具缺失 → BLOCKED，绝不 PASS；同一环境错误映射 CHECK_TOOL_MISSING。
+  // verify-wechat（B3 命令）：没有派生导出树主体 → rev15 §14.4 要求 CHECK_UNKNOWN，
+  // 绝不回落到仓库 miniprogram/ 镜像去“验证”一个不存在的导出成果。
   const verify = await withRunner(async () => ({ ok: false, code: 'ENOENT', killed: false, stdout: '', stderr: 'CLI missing', durationMs: 1 }))
     .invoke('agent:verify-wechat', { projectId: PROJECT_ID, runId: RUN_ID, attemptId: 'attempt-1' });
   assertEnvelopeShape(verify);
-  assert.strictEqual(verify.ok, true, JSON.stringify(verify));
-  assert.strictEqual(verify.data.status, 'BLOCKED');
-  assert.deepStrictEqual(verify.data.screenshots, []);
+  assert.strictEqual(verify.ok, false, JSON.stringify(verify));
+  assert.strictEqual(verify.code, CODES.CHECK_UNKNOWN);
 
   const verifyThrown = toolsIpc.createAgentToolsIpc({
     userDataDir,
@@ -571,10 +596,81 @@ test('B4：真实 checks 注册表（fake runner，不 spawn）→ PASS/FAIL/BLO
     projectId: PROJECT_ID, runId: RUN_ID, attemptId: 'attempt-1',
   });
   assertEnvelopeShape(verifyResult);
+  // 注入的替身没有 definitions → 不被 subject 守卫拦截，异常被如实映射成 BLOCKED + CHECK_TOOL_MISSING。
   assert.strictEqual(verifyResult.ok, true, JSON.stringify(verifyResult));
   assert.strictEqual(verifyResult.data.status, 'BLOCKED');
   assert.strictEqual(verifyResult.data.issues[0].code, 'CHECK_TOOL_MISSING');
   assert.deepStrictEqual(verifyResult.data.screenshots, []);
+});
+
+test('adopt-attempt：转调 Coordinator（唯一执行所有者），并在 IPC 层做 8 页枚举与 payload 校验', async (t) => {
+  const userDataDir = tempUserData(t);
+  initProject(userDataDir);
+  const calls = [];
+  const fakeCoordinator = {
+    adoptAttempt: (input) => {
+      calls.push(input);
+      return {
+        ok: true,
+        currentVersionId: 'v2',
+        previousVersionId: 'v1',
+        adoptedVersionId: 'v2',
+        treeDigest: 'sha256:' + 'a'.repeat(64),
+        adoption: { adoptedAt: '2026-01-01T00:00:00.000Z' },
+        targetPage: input.targetPage || 'menu',
+      };
+    },
+  };
+  const ipc = toolsIpc.createAgentToolsIpc({ userDataDir, coordinator: fakeCoordinator });
+
+  const adopted = await ipc.invoke('agent:adopt-attempt', {
+    projectId: PROJECT_ID, runId: RUN_ID, turnId: TURN_ID, attemptId: 'attempt-1', targetPage: 'checkout',
+    partialConfirmed: true,
+  });
+  assertEnvelopeShape(adopted);
+  assert.strictEqual(adopted.ok, true, JSON.stringify(adopted));
+  assert.strictEqual(adopted.data.currentVersionId, 'v2');
+  assert.strictEqual(adopted.data.adoptedVersionId, 'v2');
+  assert.strictEqual(calls.length, 1);
+  // F-T5-01：Coordinator 只接受字符串 `attempt-<n>`；IPC 必须显式适配（attempt-1 → 'attempt-1'）。
+  assert.strictEqual(calls[0].attemptId, 'attempt-1', 'attemptId 必须以字符串 attempt-<n> 交给 Coordinator');
+  assert.strictEqual(calls[0].partialConfirmed, true);
+  assert.strictEqual(calls[0].targetPage, 'checkout', 'checkout 属于 8 页枚举，必须放行到 Coordinator');
+
+  // 非法页面 / 非法布尔 / 未知键 → 不触达 Coordinator。
+  const badPage = await ipc.invoke('agent:adopt-attempt', {
+    projectId: PROJECT_ID, runId: RUN_ID, turnId: TURN_ID, attemptId: 'attempt-1', targetPage: 'settings',
+  });
+  assert.strictEqual(badPage.code, CODES.TARGET_PAGE_UNSUPPORTED);
+  const badFlag = await ipc.invoke('agent:adopt-attempt', {
+    projectId: PROJECT_ID, runId: RUN_ID, turnId: TURN_ID, attemptId: 'attempt-1', partialConfirmed: 'yes',
+  });
+  assert.strictEqual(badFlag.code, CODES.PAYLOAD_INVALID);
+  const unknownKey = await ipc.invoke('agent:adopt-attempt', {
+    projectId: PROJECT_ID, runId: RUN_ID, turnId: TURN_ID, attemptId: 'attempt-1', force: true,
+  });
+  assert.strictEqual(unknownKey.code, CODES.PAYLOAD_INVALID);
+  assert.strictEqual(calls.length, 1, '非法请求不得调用 Coordinator');
+
+  // Coordinator 的失败码原样透出（不吞成成功）。
+  const failing = toolsIpc.createAgentToolsIpc({
+    userDataDir,
+    coordinator: {
+      adoptAttempt: () => ({
+        ok: false,
+        code: 'AGENT_EVIDENCE_STALE',
+        message: '提交证据的 treeDigest 与当前候选不一致',
+        issues: [{ code: 'STALE', severity: 'high', message: 'treeDigest 不一致', source: 'coordinator' }],
+      }),
+    },
+  });
+  const rejected = await failing.invoke('agent:adopt-attempt', {
+    projectId: PROJECT_ID, runId: RUN_ID, turnId: TURN_ID, attemptId: 'attempt-1',
+  });
+  assertEnvelopeShape(rejected);
+  assert.strictEqual(rejected.ok, false);
+  assert.strictEqual(rejected.code, 'AGENT_EVIDENCE_STALE');
+  assert.strictEqual(rejected.issues.length, 1);
 });
 
 test('verify-wechat：显式禁用 checks → RUNTIME_TOOL_MISSING；注入后如实 BLOCKED', async (t) => {

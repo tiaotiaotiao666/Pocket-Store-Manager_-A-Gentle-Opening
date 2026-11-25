@@ -31,6 +31,26 @@ function toResult(error, fallbackCode, fallbackMessage) {
   return fail(fallbackCode, fallbackMessage);
 }
 
+/**
+ * 直连对话返回体归一（rev15 §14.7 modelChat 对等）：
+ * `finishReason` 与 `truncated` **必须**存在，`finish_reason=length` 一律是 truncated，
+ * 即便正文为空也不能被上层当成“无响应”。既有字段（model/content/toolCalls/usage）保持不变。
+ */
+function normalizeChatResult(raw) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const finishReason = typeof source.finishReason === 'string' ? source.finishReason : '';
+  return {
+    model: typeof source.model === 'string' ? source.model : '',
+    content: typeof source.content === 'string' ? source.content : '',
+    toolCalls: Array.isArray(source.toolCalls) ? source.toolCalls : [],
+    usage: source.usage && typeof source.usage === 'object' ? source.usage : null,
+    finishReason,
+    truncated: source.truncated === true || finishReason === 'length',
+    maxTokens: Number.isInteger(source.maxTokens) ? source.maxTokens : null,
+    profile: source.profile === 'direct-edit' ? 'direct-edit' : 'chat',
+  };
+}
+
 function createModelIpc(options) {
   const opts = options || {};
   const credentials = opts.credentials;
@@ -98,12 +118,14 @@ function createModelIpc(options) {
           model: typeof source.model === 'string' && source.model ? source.model : defaults.model,
           timeoutMs: Number.isInteger(source.timeoutMs) ? source.timeoutMs : defaults.timeoutMs,
           maxTokens: source.maxTokens,
+          // 'direct-edit' 走 §14.7 的 6000/8000 预算；省略等同普通对话（1200/4096）。
+          profile: source.profile === 'direct-edit' ? 'direct-edit' : 'chat',
           temperature: source.temperature,
           messages: source.messages,
           tools: source.tools,
           thinking: source.thinking,
         });
-        return ok(result);
+        return ok(normalizeChatResult(result));
       } catch (error) {
         return toResult(error, 'DEEPSEEK_UPSTREAM_ERROR', '模型服务暂时不可用，请稍后重试。');
       }
@@ -129,4 +151,5 @@ function registerModelIpc(ipcMain, options) {
 module.exports = {
   createModelIpc,
   registerModelIpc,
+  normalizeChatResult,
 };

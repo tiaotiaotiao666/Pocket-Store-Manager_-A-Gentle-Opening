@@ -23,6 +23,12 @@ import type {
   ChatModel,
   ChatToolCall,
 } from '../runtime.types';
+import {
+  ERROR_CODES,
+  ModelSchedulerError,
+  getSharedModelCallScheduler,
+  type ModelCallScheduler,
+} from '../../model-scheduler';
 
 export type RuntimeFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -57,6 +63,8 @@ export interface DeepseekChatModelOptions {
   /** 每次调用时读取，便于配置热更新/测试注入。 */
   settings: DeepseekChatSettings | (() => DeepseekChatSettings);
   logger?: AgentLogSink;
+  /** 上游并发调度器（E0-R1b）：默认取进程共享单例，测试可注入。 */
+  scheduler?: ModelCallScheduler;
 }
 
 export function readDeepseekChatSettings(read: ConfigReader): DeepseekChatSettings {
@@ -91,12 +99,14 @@ export class DeepseekChatModel implements ChatModel {
   private readonly fetchImpl: RuntimeFetch;
   private readonly resolveSettings: () => DeepseekChatSettings;
   private readonly logger: AgentLogSink | undefined;
+  private schedulerRef: ModelCallScheduler | null;
 
   constructor(options: DeepseekChatModelOptions) {
     this.fetchImpl = options.fetch;
     this.resolveSettings =
       typeof options.settings === 'function' ? options.settings : () => options.settings as DeepseekChatSettings;
     this.logger = options.logger;
+    this.schedulerRef = options.scheduler ?? null;
   }
 
   async complete(
@@ -111,21 +121,49 @@ export class DeepseekChatModel implements ChatModel {
     }
 
     const startedAt = Date.now();
-    const controller = new AbortController();
     const parentSignal = options.signal;
     if (parentSignal?.aborted) throw new AgentAbortedError();
 
-    let timedOut = false;
     const timeoutMs =
       typeof options.timeoutMs === 'number' && Number.isFinite(options.timeoutMs)
         ? Math.max(1, Math.min(settings.timeoutMs, Math.floor(options.timeoutMs)))
         : settings.timeoutMs;
+
+    // 上游并发上限 3（rev15 §14.6.1）：计时、发请求、读响应体全部在槽位内执行。
+    // 排队不消耗请求 timeout；槽位要等响应体读完/明确失败/超时/取消之后才释放。
+    const scheduler = this.resolveScheduler();
+    try {
+      return await scheduler.run(
+        (slot) => this.sendAndParse(request, settings, slot.signal, timeoutMs, startedAt),
+        { signal: parentSignal ?? null, label: 'chat' },
+      );
+    } catch (error) {
+      throw toModelErrorFromScheduler(error, parentSignal);
+    }
+  }
+
+  private resolveScheduler(): ModelCallScheduler {
+    if (!this.schedulerRef) this.schedulerRef = getSharedModelCallScheduler();
+    return this.schedulerRef;
+  }
+
+  /** 槽位内的一次完整上游调用（构造 body → fetch → 读 body → 解析 → 映射错误）。 */
+  private async sendAndParse(
+    request: ChatCompletionRequest,
+    settings: DeepseekChatSettings,
+    slotSignal: AbortSignal,
+    timeoutMs: number,
+    startedAt: number,
+  ): Promise<ChatCompletionResult> {
+    const controller = new AbortController();
+    let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
     }, timeoutMs);
     const onParentAbort = () => controller.abort();
-    parentSignal?.addEventListener('abort', onParentAbort, { once: true });
+    if (slotSignal.aborted) controller.abort();
+    else slotSignal.addEventListener('abort', onParentAbort, { once: true });
 
     // 有图请求切到视觉模型；无图请求保持原模型与既有行为完全一致。
     const hasImages = requestHasImagePart(request.messages);
@@ -160,7 +198,7 @@ export class DeepseekChatModel implements ChatModel {
         signal: controller.signal,
       });
     } catch (error) {
-      if (parentSignal?.aborted) throw new AgentAbortedError();
+      if (slotSignal.aborted) throw new AgentAbortedError();
       const aborted = timedOut || (error instanceof Error && error.name === 'AbortError');
       this.logger?.log({
         event: 'deepseek_request_failed',
@@ -181,7 +219,7 @@ export class DeepseekChatModel implements ChatModel {
       });
     } finally {
       clearTimeout(timer);
-      parentSignal?.removeEventListener('abort', onParentAbort);
+      slotSignal.removeEventListener('abort', onParentAbort);
     }
 
     let bodyText = '';
@@ -400,6 +438,41 @@ function truncateCharacters(text: string, maxCharacters: number): string {
   const characters = Array.from(text);
   if (characters.length <= maxCharacters) return text;
   return characters.slice(0, maxCharacters).join('');
+}
+
+/**
+ * 调度器错误 → 既有 DEEPSEEK_* 错误（**不新增服务端错误码，也不把 429 直接抛给用户**）。
+ *
+ * - `MODEL_ABORTED` → `AgentAbortedError`（沿用既有取消语义）；
+ * - `MODEL_QUEUE_TIMEOUT` → `DEEPSEEK_UNAVAILABLE`（可重试，message 明说「排队」，
+ *   绝不冒充上游超时 `DEEPSEEK_TIMEOUT`）；
+ * - `MODEL_BUSY` → `DEEPSEEK_UNAVAILABLE`，并把可读原因（令牌目录不可用 / 调度器已关闭）
+ *   写进 message：这是「HTTP 真实生成通道被禁用」的唯一对外表达。
+ */
+function toModelErrorFromScheduler(error: unknown, parentSignal?: AbortSignal): unknown {
+  if (error instanceof AgentAbortedError || error instanceof AgentModelError) return error;
+  if (parentSignal?.aborted) return new AgentAbortedError();
+  const code = (error as { code?: string } | null)?.code;
+  if (code === ERROR_CODES.ABORTED) return new AgentAbortedError();
+  if (error instanceof ModelSchedulerError && error.code === ERROR_CODES.QUEUE_TIMEOUT) {
+    return new AgentModelError(
+      'DEEPSEEK_UNAVAILABLE',
+      '模型请求排队太久（同一时间最多 3 次），请稍后重试。',
+      { retryable: true, cause: error },
+    );
+  }
+  if (error instanceof ModelSchedulerError && error.code === ERROR_CODES.BUSY) {
+    const details = (error.details ?? {}) as { reason?: unknown; cause?: unknown };
+    const detail = typeof details.cause === 'string' && details.cause.trim()
+      ? details.cause.trim()
+      : (typeof details.reason === 'string' && details.reason.trim() ? details.reason.trim() : '调度器不可用');
+    return new AgentModelError(
+      'DEEPSEEK_UNAVAILABLE',
+      `模型并发通道不可用（${detail}），HTTP 真实生成已暂停，请稍后重试。`,
+      { retryable: true, cause: error },
+    );
+  }
+  return error;
 }
 
 function mapUpstreamError(status: number): AgentModelError {

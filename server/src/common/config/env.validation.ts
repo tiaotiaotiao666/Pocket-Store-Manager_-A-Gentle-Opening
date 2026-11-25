@@ -126,12 +126,41 @@ class EnvironmentVariables {
   @Max(600)
   AGENT_RATE_LIMIT_PER_MINUTE = 120;
 
-  /** 模型接口同时进行中的请求上限；0 = 关闭。 */
+  /**
+   * Agent HTTP 入口同时进行中的请求上限；0 = 关闭。
+   *
+   * 只保护 `/api/v1/agent/**` 入口（超限先排队，排队预算耗尽才 429），
+   * **不参与**上游模型并发计算：真实上游并发由 ModelCallScheduler 负责
+   * （`MODEL_MAX_CONCURRENT`，进程内 3 槽 + 跨进程全局令牌），两者互不替代。
+   */
   @Type(() => Number)
   @IsInt()
   @Min(0)
   @Max(16)
-  AGENT_MAX_CONCURRENT = 2;
+  AGENT_MAX_CONCURRENT = 3;
+
+  // ---------------------------------------------------------------
+  // 上游模型并发（ModelCallScheduler）：与 AGENT_MAX_CONCURRENT 严格分离
+  // 口径统一为「最多同时 3 次模型请求」，>3 由调度器 clamp 到 3 并打可见警告。
+  // ---------------------------------------------------------------
+
+  /** 上游模型并发上限（只允许 1–3；>3 或非法值由调度器收敛到 3 + 可见警告）。 */
+  @IsOptional()
+  @IsString()
+  MODEL_MAX_CONCURRENT?: string;
+
+  /** 模型请求排队预算（毫秒，30s–600s），排队超时抛 MODEL_QUEUE_TIMEOUT。 */
+  @IsOptional()
+  @IsString()
+  MODEL_QUEUE_WAIT_MS?: string;
+
+  /**
+   * 跨进程全局令牌目录：桌面 direct 与 Nest HTTP 共用同一批令牌，
+   * 保证两边合计上游并发 ≤3。留空 = 系统临时目录下的 smart-store-model-slots。
+   */
+  @IsOptional()
+  @IsString()
+  MODEL_UPSTREAM_TOKEN_DIR?: string;
 
   /** 测试环境默认关闭额度护栏，需要验证 429 时显式设 1。 */
   @IsOptional()
@@ -242,7 +271,7 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     DESKTOP_SESSION_TTL_SECONDS: 900,
     DESKTOP_SESSION_ISSUE_PER_MINUTE: 10,
     AGENT_RATE_LIMIT_PER_MINUTE: 120,
-    AGENT_MAX_CONCURRENT: 2,
+    AGENT_MAX_CONCURRENT: 3,
   };
   for (const [key, fallback] of Object.entries(numericDefaults)) {
     const raw = (normalized as Record<string, unknown>)[key];

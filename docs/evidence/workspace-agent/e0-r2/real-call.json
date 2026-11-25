@@ -1,0 +1,7 @@
+{
+  "status": "BLOCKED",
+  "reason": "NO_API_KEY",
+  "message": "环境里没有 DEEPSEEK_API_KEY（或格式不对），无法执行真实多模态调用。",
+  "actualError": "DEEPSEEK_API_KEY missing",
+  "tookEffect": false
+}

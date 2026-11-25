@@ -27,7 +27,7 @@ const transactionsMod = require('./agent-workspace/transactions.cjs');
 const manifestMod = require('./agent-workspace/manifest.cjs');
 const versionsMod = require('./agent-workspace/versions.cjs');
 const checksModule = require('./agent-workspace/checks.cjs');
-const contractGenerated = require('./frontend-reconstruct/contract.generated.cjs');
+const sourceBundle = require('./agent-workspace/source-bundle.cjs');
 
 const PROGRESS_CHANNEL = 'agent:progress';
 const COMMAND_PREFIX = 'agent:';
@@ -53,9 +53,9 @@ const CODES = Object.freeze({
   PARTIAL_CONFIRM_REQUIRED: 'AGENT_PARTIAL_CONFIRM_REQUIRED',
 });
 
-/** 冻结 §3.2：run-check 只能选注册 checkId（不接受命令/脚本）。 */
+/** 冻结 §3.2：run-check 只能选注册 checkId（不接受命令/脚本）；rev15 §14.4 追加 `capabilities.check`。 */
 const CHECK_IDS = Object.freeze([
-  'source.check', 'mini.check', 'composer.dry-run', 'output.consistency',
+  'source.check', 'composer.dry-run', 'mini.check', 'output.consistency', 'capabilities.check',
   'unit.targeted', 'unit.full', 'desktop.contract', 'catalog.check',
   'registry.check', 'wechat.verify',
 ]);
@@ -478,6 +478,8 @@ function createAgentToolsIpc(options) {
   }
   const attachments = opts.attachments || null;
   const emitProgress = typeof opts.emitProgress === 'function' ? opts.emitProgress : null;
+  // E0-W2：提交/采用必须经 Coordinator（唯一执行所有者）。main.cjs 注入单例；未注入就 fail-closed。
+  const coordinator = opts.coordinator && typeof opts.coordinator === 'object' ? opts.coordinator : null;
   const locks = opts.locks || createIdLocks();
   const reads = opts.reads || createReadLimiter(opts.readConcurrency);
 
@@ -619,7 +621,9 @@ function createAgentToolsIpc(options) {
   }
 
   function validateCheckId(checkId) {
-    if (typeof checkId !== 'string' || !CHECK_IDS.includes(checkId)) {
+    // 合同别名 `capabilities.source-facts` 与 canonical `capabilities.check` 等价。
+    const aliases = checksModule && checksModule.CHECK_ALIASES ? checksModule.CHECK_ALIASES : {};
+    if (typeof checkId !== 'string' || (!CHECK_IDS.includes(checkId) && !Object.prototype.hasOwnProperty.call(aliases, checkId))) {
       return fail(CODES.CHECK_UNKNOWN, '未知 checkId');
     }
     return ok();
@@ -656,6 +660,9 @@ function createAgentToolsIpc(options) {
           redoVersionId: state ? state.redoVersionId : null,
           versionCount: state && Array.isArray(state.versions) ? state.versions.length : 0,
           checks: [...CHECK_IDS],
+          // X5：8 页枚举 + enabled/reasons 与 source.check 同一来源（SourceFacts），不再是 v1 的 home/menu。
+          targetPages: sourceBundle.enumerateTargetPages({}),
+          targetPageEnumSource: 'scripts/agent-source-facts.cjs#PAGE_IDS/PAGE_CONTRACTS',
           storeDraft: null,
           verification: { static: 'unknown', runtime: 'NOT_RUN' },
         }, { versionState });
@@ -781,6 +788,36 @@ function createAgentToolsIpc(options) {
         }
         const latest = latestAttemptNumber(context, payload.runId, payload.turnId);
         if (!latest.ok) return latest;
+        // OBS-4（t22 追加）：产品链只走 Coordinator —— 提交后必须 AGENT_ATTEMPT_IMMUTABLE，
+        // 不得用 B1 事务绕过 submitted 只读不变量（无 Coordinator 的旧测试路径保留为 legacy）。
+        if (coordinator && typeof coordinator.invokeTool === 'function') {
+          const routed = await coordinator.invokeTool({
+            projectId: payload.projectId,
+            runId: payload.runId,
+            turnId: payload.turnId,
+            attemptId: 'attempt-' + latest.attempt,
+            tool: 'write_files',
+            args: {
+              changes: payload.changes.map((change) => ({
+                path: change.path,
+                content: change.content,
+                ...(change.expectedBaseSha256 === undefined ? {} : { expectedBaseSha256: change.expectedBaseSha256 }),
+              })),
+            },
+          });
+          if (!routed || routed.ok !== true) {
+            return fail((routed && routed.code) || 'AGENT_TXN_ABORTED', (routed && routed.message) || '写入失败');
+          }
+          const routedData = routed.data || {};
+          return success(payload, startedAt, {
+            transactionId: routedData.transactionId,
+            files: (Array.isArray(routedData.files) ? routedData.files : [])
+              .map((file) => ({ path: file.path, status: file.status, sha256: file.sha256 })),
+            revision: routedData.revision,
+            treeDigest: routedData.treeDigest,
+            attemptId: 'attempt-' + latest.attempt,
+          });
+        }
         const opened = openAttemptHandle(context, payload.runId, payload.turnId, latest.attempt);
         if (!opened.ok) return opened;
         const applied = transactionsMod.applyChanges(opened.attempt, payload.changes.map((change) => ({
@@ -820,6 +857,34 @@ function createAgentToolsIpc(options) {
         }
         const latest = latestAttemptNumber(context, payload.runId, payload.turnId);
         if (!latest.ok) return latest;
+        // OBS-4：删除同样必须经 Coordinator（submitted 后 AGENT_ATTEMPT_IMMUTABLE，零落盘）。
+        if (coordinator && typeof coordinator.invokeTool === 'function') {
+          const routed = await coordinator.invokeTool({
+            projectId: payload.projectId,
+            runId: payload.runId,
+            turnId: payload.turnId,
+            attemptId: 'attempt-' + latest.attempt,
+            tool: 'delete_files',
+            args: {
+              paths: payload.paths.map((entry) => ({
+                path: entry.path,
+                ...(entry.expectedBaseSha256 === undefined ? {} : { expectedBaseSha256: entry.expectedBaseSha256 }),
+              })),
+            },
+          });
+          if (!routed || routed.ok !== true) {
+            return fail((routed && routed.code) || 'AGENT_TXN_ABORTED', (routed && routed.message) || '删除失败');
+          }
+          const routedData = routed.data || {};
+          return success(payload, startedAt, {
+            transactionId: routedData.transactionId,
+            files: (Array.isArray(routedData.files) ? routedData.files : [])
+              .map((file) => ({ path: file.path, status: file.status })),
+            revision: routedData.revision,
+            treeDigest: routedData.treeDigest,
+            attemptId: 'attempt-' + latest.attempt,
+          });
+        }
         const opened = openAttemptHandle(context, payload.runId, payload.turnId, latest.attempt);
         if (!opened.ok) return opened;
         const applied = transactionsMod.applyChanges(opened.attempt, payload.paths.map((entry) => ({
@@ -928,6 +993,15 @@ function createAgentToolsIpc(options) {
         if (!checks || typeof checks.runCheck !== 'function') {
           return fail(CODES.RUNTIME_TOOL_MISSING, '检查注册表不可用');
         }
+        // rev15 §14.4：本命令没有 attempt 候选树 / 派生导出树主体，只允许跑仓库级检查。
+        // attempt/export 级检查必须由 WorkspaceRunCoordinator 传平台派生的 root，绝不在这里回落版本源码。
+        const definition = checks.definitions ? checks.definitions[payload.checkId] : null;
+        const subject = definition && typeof definition.subject === 'string' ? definition.subject : null;
+        if (subject === 'attempt' || subject === 'export') {
+          return fail(CODES.CHECK_UNKNOWN, payload.checkId + ' 需要'
+            + (subject === 'attempt' ? ' attempt 候选树' : '派生导出树')
+            + '主体，只能由 WorkspaceRunCoordinator 触发');
+        }
         const startedAtCheck = now();
         const outcome = await withRun(payload, commandSpecs['agent:run-check'], () => checks.runCheck({
           projectId: payload.projectId,
@@ -951,7 +1025,8 @@ function createAgentToolsIpc(options) {
           return outcome || fail(CODES.CHECK_FAILED, '检查失败');
         }
         if (!outcome.ok) return outcome;
-        const status = CHECK_STATUSES.includes(outcome.status) ? outcome.status : 'FAIL';
+        // 状态口径：未知/不可判定 → NOT_RUN（绝不归一成 FAIL，也不伪造成 PASS）。
+        const status = CHECK_STATUSES.includes(outcome.status) ? outcome.status : 'NOT_RUN';
         return success(payload, startedAt, {
           checkId: payload.checkId,
           status,
@@ -1118,27 +1193,101 @@ function createAgentToolsIpc(options) {
         if (!TURN_ID_RE.test(payload.turnId || '')) return fail(CODES.ID_INVALID, 'turnId 非法');
         const attempt = parseAttemptId(payload.attemptId);
         if (!attempt.ok) return attempt;
-        const pages = Array.isArray(contractGenerated.TARGET_PAGES) ? contractGenerated.TARGET_PAGES : [];
-        if (typeof payload.targetPage !== 'string' || !pages.includes(payload.targetPage)) {
-          return fail(CODES.TARGET_PAGE_UNSUPPORTED, 'targetPage 不在允许页面内');
+        // X5：8 页枚举（SourceFacts 派生），不再使用 v1 的 home/menu 常量。
+        if (typeof payload.targetPage !== 'string' || !sourceBundle.isKnownTargetPage(payload.targetPage)) {
+          return fail(CODES.TARGET_PAGE_UNSUPPORTED, 'targetPage 不在 8 页枚举内（'
+            + sourceBundle.PAGE_IDS.join('/') + '）');
         }
         if (payload.summary !== undefined && (typeof payload.summary !== 'string' || payload.summary.length > 240)) {
           return fail(CODES.PAYLOAD_INVALID, 'summary 必须是有界字符串');
         }
-        const opened = openAttemptHandle(contextOf(payload), payload.runId, payload.turnId, attempt.attempt);
-        if (!opened.ok) return opened;
-        const metaWrite = manifestMod.writeAttemptMeta(opened.attempt, {
-          status: 'submitted',
+        // rev15 §14.5：提交必须走 Coordinator 的静态门禁（source.check + composer.dry-run + 导出树绑定），
+        // IPC 层不再自己写 submitted 状态。没有 Coordinator 就明确失败，不静默降级。
+        if (!coordinator || typeof coordinator.submitAttempt !== 'function') {
+          return fail(CODES.RUNTIME_TOOL_MISSING, '提交需要 WorkspaceRunCoordinator（当前未接线）');
+        }
+        const submitted = coordinator.submitAttempt({
+          projectId: payload.projectId,
+          runId: payload.runId,
+          turnId: payload.turnId,
+          // F-T5-01：Coordinator 只接受字符串 `attempt-<n>`（attempt.attempt 是数字），
+          // 这里显式适配，避免真实 Coordinator 下恒 AGENT_ATTEMPT_NOT_FOUND。
+          attemptId: 'attempt-' + attempt.attempt,
           targetPage: payload.targetPage,
-          ...(payload.summary ? { summary: payload.summary } : {}),
+          ...(payload.summary === undefined ? {} : { summary: payload.summary }),
         });
-        if (!metaWrite.ok) return fail(CODES.WORKSPACE_INVALID, 'attempt 元数据写入失败');
+        if (!submitted || submitted.ok !== true) {
+          const envelope = failureEnvelope(
+            (submitted && submitted.code) || CODES.CHECK_FAILED,
+            (submitted && submitted.message) || '提交失败',
+            payload,
+            startedAt,
+            { issues: submitted && submitted.issues },
+          );
+          if (submitted && typeof submitted.nextAction === 'string') envelope.nextAction = submitted.nextAction;
+          return envelope;
+        }
+        // F1（rev15 §14.5 合同 rev2）：返回体固定含导出树相对引用与摘要，缺 exportTreeDigest 不可 adopt。
         return success(payload, startedAt, {
-          candidateId: 'attempt-' + attempt.attempt,
-          revision: opened.attempt.revision,
-          treeDigest: opened.attempt.treeDigest,
-          targetPage: payload.targetPage,
-          status: 'submitted',
+          candidateId: submitted.candidateId,
+          revision: submitted.revision,
+          treeDigest: submitted.treeDigest,
+          exportRelative: submitted.exportRelative || null,
+          exportTreeDigest: submitted.exportTreeDigest || null,
+          targetPage: submitted.targetPage,
+          status: submitted.status,
+          partial: Boolean(submitted.partial),
+        });
+      },
+    },
+
+    'agent:adopt-attempt': {
+      keys: ['projectId', 'runId', 'turnId', 'attemptId', 'targetPage', 'partialConfirmed'],
+      write: true,
+      async run(payload, startedAt) {
+        if (!RUN_ID_RE.test(payload.runId || '')) return fail(CODES.ID_INVALID, 'runId 非法');
+        if (!TURN_ID_RE.test(payload.turnId || '')) return fail(CODES.ID_INVALID, 'turnId 非法');
+        const attempt = parseAttemptId(payload.attemptId);
+        if (!attempt.ok) return attempt;
+        if (payload.targetPage !== undefined
+          && (typeof payload.targetPage !== 'string' || !sourceBundle.isKnownTargetPage(payload.targetPage))) {
+          return fail(CODES.TARGET_PAGE_UNSUPPORTED, 'targetPage 不在 8 页枚举内');
+        }
+        if (payload.partialConfirmed !== undefined && typeof payload.partialConfirmed !== 'boolean') {
+          return fail(CODES.PAYLOAD_INVALID, 'partialConfirmed 必须是布尔值');
+        }
+        if (!coordinator || typeof coordinator.adoptAttempt !== 'function') {
+          return fail(CODES.RUNTIME_TOOL_MISSING, '采用需要 WorkspaceRunCoordinator（当前未接线）');
+        }
+        // B2 adoptAttempt：读磁盘上的 submitted 状态 + verification 证据（submission.json + checks/*.json），
+        // 校验 treeDigest/exportTreeDigest 后才落地新版本；返回值形状冻结 §3.2。
+        const adopted = coordinator.adoptAttempt({
+          projectId: payload.projectId,
+          runId: payload.runId,
+          turnId: payload.turnId,
+          // F-T5-01：与 submit 同口径，Coordinator 需要字符串 `attempt-<n>`。
+          attemptId: 'attempt-' + attempt.attempt,
+          ...(payload.targetPage === undefined ? {} : { targetPage: payload.targetPage }),
+          ...(payload.partialConfirmed === undefined ? {} : { partialConfirmed: payload.partialConfirmed }),
+        });
+        if (!adopted || adopted.ok !== true) {
+          const envelope = failureEnvelope(
+            (adopted && adopted.code) || CODES.VERIFICATION_MISSING,
+            (adopted && adopted.message) || '采用失败',
+            payload,
+            startedAt,
+            { issues: adopted && adopted.issues },
+          );
+          if (adopted && typeof adopted.nextAction === 'string') envelope.nextAction = adopted.nextAction;
+          return envelope;
+        }
+        return success(payload, startedAt, {
+          currentVersionId: adopted.currentVersionId,
+          previousVersionId: adopted.previousVersionId,
+          adoptedVersionId: adopted.adoptedVersionId,
+          treeDigest: adopted.treeDigest,
+          adoption: adopted.adoption || null,
+          targetPage: adopted.targetPage,
         });
       },
     },
@@ -1247,6 +1396,27 @@ function createAgentToolsIpc(options) {
       keys: ['projectId', 'runId'],
       async run(payload, startedAt) {
         if (!RUN_ID_RE.test(payload.runId || '')) return fail(CODES.ID_INVALID, 'runId 非法');
+        // OBS-4（t22 追加）：产品链取消必须落盘 run.json（state=cancelled / cancelRequested），
+        // 不能只看本进程内存表；提交/已采用 → too-late 且不改盘。无 Coordinator 的 legacy 路径保留给旧测试。
+        if (coordinator && typeof coordinator.cancelRun === 'function') {
+          const authoritative = coordinator.cancelRun({ projectId: payload.projectId, runId: payload.runId });
+          if (!authoritative || authoritative.ok !== true) {
+            if (authoritative && authoritative.code === 'AGENT_RUN_NOT_FOUND') {
+              return success(payload, startedAt, {
+                state: 'too-late', stage: 'unknown', cancelled: false, requestedAt: null,
+              });
+            }
+            return fail((authoritative && authoritative.code) || 'AGENT_TXN_ABORTED',
+              (authoritative && authoritative.message) || '取消失败');
+          }
+          const state = authoritative.state;
+          return success(payload, startedAt, {
+            state,
+            stage: state === 'cancelled' ? 'cancelled' : (state === 'requested' ? 'running' : 'submitted'),
+            cancelled: authoritative.cancelled === true,
+            requestedAt: state === 'requested' ? new Date(now()).toISOString() : null,
+          });
+        }
         const key = payload.projectId + ':' + payload.runId;
         const active = activeRuns.get(key);
         if (active) {

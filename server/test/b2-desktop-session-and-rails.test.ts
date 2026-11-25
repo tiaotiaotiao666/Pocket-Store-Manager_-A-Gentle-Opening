@@ -415,7 +415,9 @@ describe('模型接口额度护栏', () => {
     expect(readAgentRailsOptions(makeConfig({ NODE_ENV: 'test', AGENT_RAILS_ENFORCE: '1' })).perMinute).toBe(
       120,
     );
-    expect(readAgentRailsOptions(makeConfig({ NODE_ENV: 'development' })).maxConcurrent).toBe(2);
+    // E0-R1（rev15 §14.7 / Captain 2026-11-25 裁定）：入口并发默认 2 → 3，
+    // 与 env.validation.ts 的 AGENT_MAX_CONCURRENT 默认值同源（DEFAULT_AGENT_MAX_CONCURRENT）。
+    expect(readAgentRailsOptions(makeConfig({ NODE_ENV: 'development' })).maxConcurrent).toBe(3);
   });
 });
 
@@ -527,7 +529,8 @@ describe('监听来源与 CORS 白名单', () => {
       expect(localDefault.SERVER_HOST).toBe('127.0.0.1');
       expect(Number(localDefault.DESKTOP_SESSION_TTL_SECONDS)).toBe(900);
       expect(Number(localDefault.AGENT_RATE_LIMIT_PER_MINUTE)).toBe(120);
-      expect(Number(localDefault.AGENT_MAX_CONCURRENT)).toBe(2);
+      // E0-R1b：入口门槛默认 3（只保护 Agent HTTP 入口，不参与上游模型并发）。
+      expect(Number(localDefault.AGENT_MAX_CONCURRENT)).toBe(3);
     } finally {
       for (const [key, value] of saved) {
         if (value === undefined) delete process.env[key];

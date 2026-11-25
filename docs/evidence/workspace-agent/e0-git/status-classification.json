@@ -1,0 +1,788 @@
+﻿{
+    "schemaVersion":  "e0-git-baseline.v1",
+    "capturedAt":  "2026-11-25T00:06:46.9701935+08:00",
+    "head":  "437bf5f0aedb727e39aa7d898eeef9764c1b3b4c",
+    "originMain":  "a540d78b44cb817c1c1c06f2da3e02472e90cec2",
+    "aheadBehind":  "ahead 5 / behind 22",
+    "localOnlyCommits":  [
+                             "437bf5f 新增：C2 共享 source-check（WXML/WXSS/JS 真实 AST + fixtures）",
+                             "49926fd 新增：C1 全项目 SourceFacts（8 页事实 + 确定性快照）",
+                             "13928c3 新增：Workspace Agent 内核（B1 私有工作区 + B2 版本模型）",
+                             "ddb0492 新增：D0 模型能力探针与脱敏证据",
+                             "9496727 证据：建立 Workspace Agent 事实基线并收口旧 P7/T16（A0/A4）"
+                         ],
+    "remoteOnlyCommits":  [
+                              "a540d78 文档：冻结 rev14 + D1 复核证据",
+                              "6d73d5f 新增：D1 统一 Workspace Agent 服务（workspace-agent.v1 + POST /api/v1/agent/workspace）",
+                              "cf03352 文档：冻结 rev13 + C4 复核证据",
+                              "f78d6cb 新增：C4 人工 menu+product-card 垂直切片（fixture + 全链集成测试 + 证据）",
+                              "73470f6 文档：冻结 rev12 + C3 复核证据",
+                              "574458d 新增：C3 Composer 源码覆盖（source overlay + source-changes + 同源导出）",
+                              "369b885 文档：冻结 rev10 + B4 复核证据",
+                              "7afa6d0 新增：B4 验证注册表（10 checkId + 固定 dispatcher + agent-tools-ipc 真实注入）",
+                              "3d266c8 文档：冻结 rev8 + B3 复核证据 + 对齐记录",
+                              "1841c4e 修复：main.cjs 补齐 B3 的 userDataDir 注入（导出身份守卫真正生效）",
+                              "a248685 新增：B3 受控任务 RPC 与 preload（agent:* 19 命令 + workspaceAgent facade + 版本/导出接线）",
+                              "3ff97ea 同步：C1 SourceFacts 快照对齐 origin/main 模板",
+                              "d61d70d 新增：C2 共享 source-check（WXML/WXSS/JS 真实 AST + fixtures）",
+                              "183eb16 新增：C1 全项目 SourceFacts（8 页事实 + 确定性快照）",
+                              "5053118 新增：Workspace Agent 内核（B1 私有工作区 + B2 版本模型）",
+                              "8ed7e28 新增：D0 模型能力探针与脱敏证据",
+                              "fb6065d 证据：建立 Workspace Agent 事实基线并收口旧 P7/T16（A0/A4）",
+                              "f407c49 fix: 补齐堂食桌号选择并收尾会话与门店资料细节",
+                              "23674c7 fix(t0): 修复全局缩放链路，Ctrl+= 可放大、Ctrl+0 必回 100%，并钳制持久化值",
+                              "e03e287 docs(r3): 冻结最终交付入口、证据与录屏答辩材料",
+                              "e30e78b fix(r2): 稳定截图重构的 requirement 提示与工具契约，修 D1 同轮冲突误报与 D2 预览副本缺海报",
+                              "21a4b0f R1：最终联合验收（真实微信编译与 automator 全绿、截图分支 BLOCKED 附提示层修复、演示数据脚本）"
+                          ],
+    "counts":  {
+                   "total":  106,
+                   "sameAsOriginMain":  84,
+                   "localEdit":  15,
+                   "untrackedOnly":  7
+               },
+    "paths":  [
+                  {
+                      "status":  "M",
+                      "path":  "desktop/composer-ipc.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "desktop/main.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "desktop/preload.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "desktop/project-ipc.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "docs/app-assistant-contract.md",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "docs/evidence/app-assistant/README.md",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "docs/evidence/frontend-reconstruct/sidebar-t6-real-chain.md",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "docs/handoff/README.md",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "docs/handoff/Workspace-Agent-B阶段接口冻结.md",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "docs/handoff/当前工作区交接.md",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "miniprogram/MIRROR.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "miniprogram/components/fulfillment-switch/index.js",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "miniprogram/components/fulfillment-switch/index.wxml",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "miniprogram/pages/checkout/index.wxml",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "miniprogram/pages/checkout/index.wxss",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "miniprogram/pages/home/index.wxml",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "miniprogram/pages/home/index.wxss",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "miniprogram/pages/menu/index.wxml",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "miniprogram/pages/menu/index.wxss",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "scripts/app-assistant-smoke.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "scripts/composer/emit.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "scripts/composer/index.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "A",
+                      "path":  "server/seed-demo-store.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "A",
+                      "path":  "server/seed-demo-tables.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "server/src/agent/agent.module.ts",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "server/src/agent/frontend-reconstruct/capabilities.snapshot.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "server/src/agent/frontend-reconstruct/capabilities.snapshot.ts",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "server/src/agent/frontend-reconstruct/prompt.ts",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "server/src/agent/frontend-reconstruct/schema.ts",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "server/src/agent/frontend-reconstruct/tools.ts",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "server/src/agent/workspace/source-facts.components.ts",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "server/src/agent/workspace/source-facts.snapshot.ts",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "src/App.jsx",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "src/components/agent/AgentSidebarPanel.jsx",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "src/components/agent/AppAssistantChangeCard.jsx",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "src/domain/appAssistantProposal.mjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "src/state/sessionMachine.mjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "src/styles/agent-sidebar.css",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/base/ordering-base/1.0.0/src/components/fulfillment-switch/index.js",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/base/ordering-base/1.0.0/src/components/fulfillment-switch/index.wxml",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/base/ordering-base/1.0.0/src/pages/home/index.wxml",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/base/ordering-base/1.0.0/src/pages/home/index.wxss",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/base/ordering-base/1.0.0/src/pages/menu/index.wxml",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/base/ordering-base/1.0.0/src/pages/menu/index.wxss",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/catalog/components/fulfillment-switch.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/catalog/index.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/catalog/pages/checkout.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/catalog/pages/home.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/catalog/pages/menu.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/catalog/sections/ordering-base@1.0.0/checkout/checkout-items-card.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/catalog/sections/ordering-base@1.0.0/checkout/checkout-meal-card.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/catalog/sections/ordering-base@1.0.0/checkout/checkout-note-card.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/catalog/sections/ordering-base@1.0.0/checkout/checkout-submit-bar.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/catalog/sections/ordering-base@1.0.0/checkout/index.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/registry/registry.lock.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "templates/registry/registry.v1.json",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "test/app-assistant-proposal.test.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "test/app-assistant-reducer.test.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "test/app-assistant-sidebar-panel.test.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "local-edit"
+                  },
+                  {
+                      "status":  "M",
+                      "path":  "test/desktop-contract.test.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  true,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  ".resultverify/t6/evidence-run-A/summary.json",
+                      "inOriginMain":  false,
+                      "inHead":  false,
+                      "vsOriginMain":  "untracked-only"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "Untitled.md",
+                      "inOriginMain":  false,
+                      "inHead":  false,
+                      "vsOriginMain":  "untracked-only"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "contracts/workspace-agent.v1.json",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "desktop/agent-tools-ipc.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "desktop/agent-workspace/checks.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/evidence/workspace-agent/b3-review.md",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/evidence/workspace-agent/b4-review.md",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/evidence/workspace-agent/c3-review.md",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/evidence/workspace-agent/c4-manual-slice/checks.txt",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/evidence/workspace-agent/c4-manual-slice/export-tree.txt",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/evidence/workspace-agent/c4-manual-slice/report.md",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/evidence/workspace-agent/c4-manual-slice/source-changes.json",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/evidence/workspace-agent/c4-review.md",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/evidence/workspace-agent/d1-review.md",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/handoff/Workspace-Agent-E0闭环纠偏与E阶段-Flash续期计划.md",
+                      "inOriginMain":  false,
+                      "inHead":  false,
+                      "vsOriginMain":  "untracked-only"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/handoff/Workspace-Agent大规模重构与遗留收尾-Flash总计划.md",
+                      "inOriginMain":  false,
+                      "inHead":  false,
+                      "vsOriginMain":  "untracked-only"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "docs/handoff/图片驱动前端重构-raw生成方案.md",
+                      "inOriginMain":  false,
+                      "inHead":  false,
+                      "vsOriginMain":  "untracked-only"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "scripts/agent-checks/output-consistency.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "scripts/agent-checks/run-check.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "scripts/composer/source-overlay.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "server/src/agent/workspace/index.ts",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "server/src/agent/workspace/workspace-agent.contract.ts",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "server/src/agent/workspace/workspace-agent.controller.ts",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "server/src/agent/workspace/workspace-agent.mock.ts",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "server/src/agent/workspace/workspace-agent.module.ts",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "server/src/agent/workspace/workspace-agent.rpc.ts",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "server/src/agent/workspace/workspace-agent.service.ts",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "server/src/agent/workspace/workspace-agent.tools.ts",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "server/src/agent/workspace/workspace-agent.types.ts",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "server/test/workspace-agent.test.ts",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "src/services/workspaceAgent/index.js",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/agent-tools-ipc.test.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/agent-workspace.c4-slice.test.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/agent-workspace.checks.test.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/composer-source-overlay.test.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/fixtures/workspace-agent/c4-manual-slice/README.md",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/fixtures/workspace-agent/c4-manual-slice/components/product-card/index.wxml",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/fixtures/workspace-agent/c4-manual-slice/components/product-card/index.wxss",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/fixtures/workspace-agent/c4-manual-slice/pages/menu/index.wxml",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/fixtures/workspace-agent/c4-manual-slice/pages/menu/index.wxss",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/fixtures/workspace-agent/c4-manual-slice/source-bundle.json",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "test/workspace-agent-service.test.cjs",
+                      "inOriginMain":  true,
+                      "inHead":  false,
+                      "vsOriginMain":  "same-as-origin"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "华为云码道CodeArts代码智能体 2026-11-20.md",
+                      "inOriginMain":  false,
+                      "inHead":  false,
+                      "vsOriginMain":  "untracked-only"
+                  },
+                  {
+                      "status":  "??",
+                      "path":  "测试.md",
+                      "inOriginMain":  false,
+                      "inHead":  false,
+                      "vsOriginMain":  "untracked-only"
+                  }
+              ]
+}

@@ -3,7 +3,9 @@
  *
  * 边界：
  * - 工具执行只经注入的 WorkspaceRpcProxy；服务端不读本机磁盘、不执行命令；
- * - 响应只含 reply/plan/trace/stopReason/meta，模型不能声明 applied/adopted/exported/verified；
+ * - 响应只含 reply/plan/trace/stopReason/meta；采用/导出/验证状态只由本地事实与用户操作决定，
+ *   模型回复（reply）只是参考文本——服务端**只脱敏敏感信息**（本机绝对路径、file:// 引用），
+ *   不用正则把模型的「已采用/已验证」措辞改写成别的说法（rev15 §14.12-3）；
  * - mock:true 显式走离线模型与 mock 代理；真实路径使用注入的 DEEPSEEK ChatModel；
  * - 所有请求上限来自 contracts/workspace-agent.v1.json。
  */
@@ -50,8 +52,6 @@ const MODEL_ERROR_STATUS: Readonly<Record<string, number>> = Object.freeze({
   DEEPSEEK_RESPONSE_INVALID: HttpStatus.BAD_GATEWAY,
 });
 
-const FORBIDDEN_CLAIM_PATTERN = /(?:applied|adopted|exported|verified|已应用|已采用|已导出|已验证)/gi;
-
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -74,10 +74,10 @@ function patternFor(contract: WorkspaceAgentContract, key: string): RegExp | nul
   return new RegExp(property.pattern);
 }
 
+/** 只脱敏「敏感信息」（本机绝对路径 / file:// 引用）；**不改写模型措辞**。 */
 function sanitizeReply(reply: string): string {
   const text = typeof reply === 'string' ? reply.trim() : '';
   return text
-    .replace(FORBIDDEN_CLAIM_PATTERN, '待本地确认')
     .replace(/[A-Za-z]:[\\/][^\s，。；、]+/g, '[path]')
     .replace(/file:\/\/[^\s，。；、]+/gi, '[path]');
 }

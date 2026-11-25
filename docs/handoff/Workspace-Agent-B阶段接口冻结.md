@@ -1,6 +1,6 @@
 # Workspace-Agent B 阶段接口冻结（B1 范围 / B2 版本模型 / B3 RPC）
 
-> 版本：rev14。日期：2026-11-24。状态：**Captain 冻结；B1–B4、C1–C4、D1 全部通过独立复核并推送/待推送；C4 硬门禁 pass（微信/真机如实 BLOCKED/NOT_RUN）；按用户要求本轮收口后停止，E/D2+ 未启动；rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13**。
+> 版本：**rev15**。日期：2026-11-25（rev14 = 2026-11-24）。状态：**Captain 冻结；B1–B4、C1–C4、D1 全部通过独立复核；C4 硬门禁 pass（微信/真机如实 BLOCKED/NOT_RUN）。rev15 新增 E0 闭环纠偏冻结（X1–X12 → 任务边界、Coordinator/Scheduler/Bundle/Adopt 契约、E0 写入锁）；E1–E4 未开放。rev2 的 F1–F9 见 §9/§10；D0 见 §12；A0/环境/仓库同步见 §13；E0 见 §14**。
 > 所有者：Captain（`lead`）。团队：`workspace-agent-refactor`（workspace-lead / runtime-engineer / product-ui / verifier）。
 > 上游：`docs/handoff/Workspace-Agent大规模重构与遗留收尾-Flash总计划.md` §5、§14.4；`AGENTS.md`；
 > `docs/handoff/当前工作区交接.md` §1.6/§4.7/§8。
@@ -800,4 +800,361 @@ server `tsc --noEmit` → 0；`agent:smoke` → 2（`spawnSync node.exe EPERM`�
 - 本地 `main` 仍与远端分叉，**未做 `reset --hard`/`checkout -- .`**（工作区有用户未提交改动）；
   后续阶段提交继续用“worktree 叠到 origin/main + push”的方式，等用户决定是否整体对齐本地分支。
 - 推送通道：`socks5h://127.0.0.1:7877` + `http.sslBackend=openssl` 一次性参数；未改全局 git 配置、未 force push。
+
+---
+
+## 14. rev15：E0 闭环纠偏冻结（2026-11-25）
+
+> 上游：`docs/handoff/Workspace-Agent-E0闭环纠偏与E阶段-Flash续期计划.md`（审计 X1–X12）。
+> 本 rev 只冻结**E0 的接口、写入锁、门禁和证据口径**，不实现、不放宽 §6 汇报口径。
+> **E1–E4 未开放**：E0 独立验收（E0-V1）通过前，禁止接 App 主链、禁止真实图片生成。
+
+### 14.0 基线（E0-Git 实测，Captain）
+
+见 `docs/evidence/workspace-agent/e0-git/{baseline.md,status-classification.json}`。结论：
+
+```text
+基线树 = origin/main(a540d78) 的内容
+       + 15 个 local-edit（app-assistant 未提交改动，禁止回滚/覆盖）
+       + 7 个 untracked-only（计划文档 / 用户笔记 / 验证残留）
+```
+
+- B3/B4/C3/C4/D1 的磁盘文件与 `origin/main` **逐字节一致**（84/106 条路径 `vsOriginMain=same`）；
+  本地 `HEAD=437bf5f` 只到 C2，**不是**基线，任何 E0 交付必须按“磁盘 = origin/main 内容”声明起点。
+- 禁止 `reset --hard` / `checkout -- .` / `clean -fd` / `stash` 丢弃 / `-X ours|theirs` 整包吞冲突；
+  需要改这 15 个 `local-edit` 文件时先报 Captain 确认归属。
+- 提交/对齐只允许“临时 worktree 叠到 `origin/main` + 逐文件裁决 + push”。
+
+### 14.1 X1–X12 → E0 任务/关闭口径（冻结映射）
+
+| ID | 关闭方 | 必须落地的可判定事实 |
+|---|---|---|
+| X1 | E0-W1 | 主进程 `WorkspaceRunCoordinator` 是唯一执行所有者；direct 工具直接调本地模块，不经 renderer 回环；`WorkspaceRpcProxy` 不再是默认路径 |
+| X2 | E0-R2 | 按 assetId 解析受控资产 → 校验 → 内存 data URL → 真实 `image_url` content part；证据须证明回答依赖图像内容 |
+| X3 | E0-W1 | `startWorkspaceRun` 创建 run/turn/attempt；工具上下文固定含 `subject:{kind:"attempt"}`；写只落 attempt |
+| X4 | E0-W2 | `source.check` 执行 `frontend-source/check.cjs#checkProject`（attempt 树）；`composer.dry-run` 先 compose attempt；`mini.check`/`output.consistency` 只查派生导出树；新增独立 `capabilities.check` |
+| X5 | E0-W2 | 8 页枚举单一来源（SourceFacts/page-contract 派生），不复用 v1 `home/menu` 常量 |
+| X6 | E0-W2 | `source-bundle.json` 由平台 `deriveSourceBundle` 从 base version→attempt diff 派生并重算 treeDigest；模型不写摘要清单 |
+| X7 | E0-W2 | `submit-candidate` 静态门禁通过才置 submitted；`adopt-attempt` 读磁盘证据并校验 treeDigest |
+| X8 | E0-R1 | `requestChat` 返回 `finishReason/truncated`；截断时不回放 tool_calls，返回 `output_truncated`；direct 预算合法 |
+| X9 | E0-R1 | 删除“已验证/已采用”正则改写；UI 状态只来自本地证据 |
+| X10 | E0-U1 | 只冻结接入项（统一 run 状态、单页枚举、截图走 `read-artifact` 二进制、未知 stage 不丢步）；**本轮不改** App/旧链 |
+| X11 | E0-Git | 已完成：唯一基线树 + 变更归属（§14.0） |
+| X12 | E0-R1a | `ModelCallScheduler` 覆盖**上游每次 chat/completions**，上限 3、FIFO 排队、槽位释放语义与取消/重试规则 |
+
+### 14.2 Coordinator 与 attempt 生命周期（E0-W1 冻结形状）
+
+新增 `desktop/agent-workspace/run-coordinator.cjs`（纯 CJS，不依赖 Electron，可被 Node 测试直接 require）：
+
+```js
+createRunCoordinator({
+  userDataDir,            // 必需，项目私有根由 B1 workspacePaths 推导
+  checks?,                // 注入 B4 checks 注册表；缺省懒加载真实实现
+  directRuntime?,         // 注入 E0-R1 的 direct 通道；缺省 null（此时只能走平台工具，不调模型）
+  emitProgress?,          // (event) => void，payload 见 §3.2/§14.9
+  limits?, now?,          // 测试可注入
+}) => coordinator
+
+coordinator.startRun({ projectId, baseVersionId?, targetPage, operation, utterance, imageAssetIds? })
+  => { runId, turnId, attemptId, baseVersionId, baseTreeDigest, revision, targetPage, operation }
+coordinator.getRun({ projectId, runId })            => { runId, projectId, state, turns:[…], attempts:[…] }
+coordinator.invokeTool({ projectId, runId, turnId, attemptId, tool, args }) => envelope（§14.3）
+coordinator.getAttemptState({ projectId, runId, turnId, attemptId })
+coordinator.cancelRun({ projectId, runId })          => { state:'requested'|'cancelled'|'too-late', cancelled:bool }
+coordinator.submitAttempt({ projectId, runId, turnId, attemptId, targetPage, summary? })
+coordinator.adoptAttempt({ projectId, runId, turnId, attemptId, targetPage, partialConfirmed? })
+```
+
+不变量：
+
+1. `runId` 用 B1 `RUN_ID_PATTERN`（`frun-…`），平台生成，模型/UI 不得自造；`turnId`/`attemptId` 由 B1 布局推导。
+2. `baseVersionId` 缺省取 `project.json.currentVersionId`；无工作区/无版本 → `AGENT_VERSION_NOT_FOUND`，**不回落 Base 冒充**。
+3. attempt 工作树来源 = 该 version 的 `source/` 副本；`baseTreeDigest` 记录创建时值。
+4. 同一 attempt 的写操作产生新 `revision` 并重算 `treeDigest`；**submitted 之后该 attempt 只读**（`AGENT_ATTEMPT_IMMUTABLE`），
+   repair 建新 attempt，不覆盖已提交候选。
+5. 跨项目/跨 run/跨 turn 的句柄一律拒绝（`AGENT_PROJECT_MISMATCH` / `AGENT_ATTEMPT_NOT_FOUND`），
+   `assertAttemptHandle` 只能放行 `runs/<runId>/turns/<turnId>/attempts/attempt-<n>/` 布局。
+6. 迟到工具调用（run 已取消/提交后）不得落盘。
+7. 不向 renderer/模型暴露目录或绝对路径；Coordinator 是 `desktop/main.cjs` 内部单例，由 workspace-lead 串行接线。
+
+### 14.3 工具上下文与 subject（冻结）
+
+```text
+工具上下文（平台注入，模型不可传）：
+{ projectId, runId, turnId, attemptId, subject:{ kind:"attempt", attemptId } }
+```
+
+模型可见工具（11 个，命名固定）：`get_context`、`list_files`、`read_file`、`search_files`、`write_files`、
+`delete_files`、`get_diff`、`run_check`、`verify_wechat`、`read_verification`、`submit_candidate`。
+
+平台专用（**不得出现在模型工具列表**）：`derive_source_bundle`、`adopt_attempt`、`attach_image_asset`。
+模型若调用平台专用名 → `AGENT_TOOL_NOT_ALLOWED`。
+
+- 默认 subject 为当前 attempt；`read_file` 允许 `subjectOverride:{kind:"version",versionId}` 只读 base 版本（写入永不接受）。
+- 工具返回沿用 §3.3 envelope；`data` 只含相对路径与摘要，不含绝对路径/base64/源码全文（`read_file` 只回内容与 sha）。
+
+### 14.4 检查目标绑定（X4 冻结；checkId → subject）
+
+| checkId | 执行对象 | 实现 | 缺上下文 |
+|---|---|---|---|
+| `source.check` | **attempt 树** | `scripts/frontend-source/check.cjs#checkProject` | `AGENT_CHECK_UNKNOWN` |
+| `composer.dry-run` | **attempt**（先 `deriveSourceBundle`，再 compose） | `scripts/composer/verify-cli.cjs --root <attempt>`；导出树落 `attempt/verification/dry-run/` | 同上 |
+| `mini.check` | **派生导出树**（`root` 由平台给） | `scripts/validate-miniprogram.cjs --root <exportedRoot>` | `AGENT_CHECK_UNKNOWN`，**绝不允许回落仓库 `miniprogram/` 镜像** |
+| `output.consistency` | 派生导出树 | `scripts/agent-checks/output-consistency.cjs --root <exportedRoot>` | 同上 |
+| `capabilities.check`（新增，独立） | 仓库级只读 | `scripts/frontend-capabilities.cjs --check`（旧语义保留原名，**不冒名 source.check**） | — |
+| `wechat.verify` | 派生导出树 | `scripts/wechat-devtools-run.cjs --root <exportedRoot>`；工具缺失 → `BLOCKED` | `AGENT_CHECK_UNKNOWN` |
+| `unit.targeted`/`unit.full`/`desktop.contract`/`catalog.check`/`registry.check` | 仓库级 | 不变（§3.8） | — |
+
+- 每条检查证据必须记录 `{checkId,status,treeDigest|exportTreeDigest,subjectKind,attemptId,at,issues[]}`，
+  `attempt/verification/` 落盘；`status ∈ PASS|FAIL|BLOCKED|NOT_RUN`（单一口径，不再混用 pass/unknown）。
+- `run_check` 的 `params` 白名单：模型只能给 `checkId`、`timeoutMs`、`targetFiles`（unit.targeted）与 `appId`（wechat.verify）；
+  `root`/`attempt`/`versionId` 由平台填，模型给路径 → `AGENT_PAYLOAD_INVALID`。
+
+### 14.5 SourceBundle 派生与提交/采用（X5/X6/X7 冻结）
+
+```text
+写完成 → deriveSourceBundle(attempt)            # 平台派生，模型不可调
+       → source.check(attempt)                   # 必须 PASS
+       → composer.dry-run(attempt)               # 必须 PASS，产出 exportedRoot
+       → mini.check(exportedRoot) / output.consistency(exportedRoot)
+       → submitAttempt(...)                      # 静态门禁 + 证据绑定 treeDigest
+       → verify_wechat(exportedRoot)（可用时）
+       → adoptAttempt(...)                       # B2 adoptAttempt + 证据校验
+```
+
+- `source-bundle.json`（`frontend-source-bundle.v1`，形状见 §4.1）由平台从
+  “base version `source/` → attempt `candidate/`” diff 派生：`files` 为**最终完整内容**、`deleted` 显式列出、
+  `components[]` 带 scope、`assets[]` 真实字节；派生后**重写 attempt manifest 并重算 treeDigest**，
+  记录 `bundleDigest`。缺失时 `submit` 必须自动补派生，不得让模型写清单。
+- **8 页目标枚举（单一来源）**：`home / menu / product-detail / checkout / orders / order-detail / mine / merchant-orders`，
+  由 SourceFacts/page-contract 可用性派生 `{id,enabled,reasons}`；非 menu 页 `enabled` 由事实存在性决定，
+  **不得硬编码成 8 个 true**，不复用 v1 `home/menu` DSL 常量。非法页 → `AGENT_TARGET_PAGE_UNSUPPORTED`。
+- **submit 静态门禁**（缺一即 `AGENT_STATIC_GATE_FAILED`，不得置 submitted）：
+  ① `source.check` = PASS；② `composer.dry-run` = PASS 且导出自当前 treeDigest；
+  ③ `mini.check` 与 `output.consistency` 若已执行必须 PASS（`FAIL` 拒绝；`BLOCKED`/`NOT_RUN` 允许但记 `partial`）。
+- **adopt-attempt**：调 B2 `adoptAttempt`，读磁盘 `submitted` + `verification/**` 证据，校验
+  `treeDigest`/`exportTreeDigest` 与记录一致；证据陈旧 → `AGENT_EVIDENCE_STALE`；
+  运行时证据为 `BLOCKED/NOT_RUN` 时必须 `partialConfirmed:true`，否则 `AGENT_PARTIAL_CONFIRM_REQUIRED`。
+  新增 IPC 命令 `agent:adopt-attempt`（§3.2 已列，B3 未实现，E0 补）。
+
+### 14.6 ModelCallScheduler（X12 / E0-R1a 冻结）
+
+新增 `desktop/model-call-scheduler.cjs`（纯 CJS，无 Electron 依赖）：
+
+```js
+createModelCallScheduler({ maxConcurrent = 3, queueTimeoutMs = 180000, requestTimeoutMs?, now?, timers? })
+scheduler.run(async ({ signal, slotId }) => upstreamPromise, { signal?, label? }) => result
+scheduler.stats() => { maxConcurrent, active, queued, maxQueueLength, totalAcquired, totalTimedOut, lastWaitMs }
+scheduler.configure({ maxConcurrent?, queueTimeoutMs? })
+常量：MAX_UPSTREAM_CONCURRENCY = 3；MIN_QUEUE_TIMEOUT_MS = 30000；MAX_QUEUE_TIMEOUT_MS = 600000；DEFAULT_QUEUE_TIMEOUT_MS = 180000
+错误码：MODEL_QUEUE_TIMEOUT / MODEL_BUSY / MODEL_ABORTED / MODEL_CONFIG_INVALID
+```
+
+冻结语义（逐条对应计划 §4 E0-R1a）：
+
+1. **唯一出口**：`desktop/model-credentials.cjs#requestChat` 内部持有模块级单例，
+   `settings:model:test`、`settings:model:chat`、direct workspace 调用全部经它；**不得**在 UI/IPC 层另加限流。
+2. 上限读 `MODEL_MAX_CONCURRENT`（1–3）；>3 或非法 → **clamp 到 3 并给出可见警告**，绝不静默接受。
+   未配置时按 3。**任何路径不得配置成 >3。**
+3. FIFO 公平排队；排队超时 → `MODEL_QUEUE_TIMEOUT`（不是上游超时、不是 429）；默认 180s（30–600s 可配）。
+4. **请求自身 timeout 从拿到槽位后开始计时**；排队时间不消耗请求 timeout。
+5. 槽位在**响应 body 读完 / 明确失败 / 超时 / 取消之后**才释放；只拿到 HTTP 头不得释放。
+6. 429/5xx 重试**继续持有同一槽位**（或先释放再重新排队），任何时刻不得出现第 4 个并发。
+7. 取消（用户取消/项目切换/run abort）必须出队并释放已占槽位，取消后不得再发起上游请求。
+8. 可观测性：只记 入队/出队/等待时长/active/queued/maxQueue；**不记 prompt、源码、图片、Key**。
+9. **配置名以用户确认为准**：`MODEL_MAX_CONCURRENT=3`、`MODEL_QUEUE_WAIT_MS=180000`、
+   `AGENT_MAX_CONCURRENT=3`。`MODEL_QUEUE_TIMEOUT_MS` 只作为 `MODEL_QUEUE_WAIT_MS` 的兼容别名接受，
+   文档与 `.env.example` 主名用前者。
+10. `AGENT_MAX_CONCURRENT` **只**是 Nest Agent HTTP 入口保护，不能替代调度器；入口超限应排队，
+    不得因为并发 3 就把合法 Agent 请求直接 429。服务端默认值从 2 改为 3，并注明它是入口门槛。
+
+#### 14.6.1 rev15 修订（2026-11-25，用户确认）：服务端同源 + 跨进程不叠加
+
+此前 §14.6 的“跨进程无法共享限流器，故只走 direct”是**未实现的退让**，本轮改为真正实现：
+
+1. **两侧都要包**：桌面 `desktop/model-credentials.cjs#requestChat` **与** 服务端所有实际发往
+   `chat/completions` 的模型适配器外层，都必须 `acquire → 发请求 → 读完响应/失败/超时/取消 → release`。
+   只在 UI、Agent Runtime 或某个 transport 加不算完成。
+2. **服务端实现**：`server/src/agent/model-scheduler/` 提供与桌面同语义的调度器（FIFO、排队超时、
+   槽位释放、取消、429 重试不增并发）。两侧语言不同，但**契约与行为用例同源**：
+   `test/fixtures/model-scheduler/cases.json` 由 E0-R1a 产出，服务端 parity 测试必须跑同一批用例。
+3. **跨进程不得叠加**：进程内槽位之前先拿**全局令牌**（文件原子创建 + 心跳续租 + 过期回收，
+   目录 `MODEL_UPSTREAM_TOKEN_DIR`，默认系统临时目录下 `smart-store-model-slots`）。
+   桌面与服务端共用该目录，因此无论几条通道，发往上游的实际请求 ≤3。
+4. 令牌目录不可用（只读盘/EPERM/路径被占）→ **明确 warning + 禁用 HTTP 真实生成通道**并在 UI 说明原因；
+   **不得**静默退回“各算 3”。E0 期真实 Workspace 生成仍默认只走 direct，全局令牌是二道保护。
+5. 验收必须给出**两个进程同时请求时的实际并发观测值**；环境不允许 spawn 两个进程时记 `BLOCKED` 并说明，
+   不得用单进程结果冒充。
+6. **团队并发纪律（执行纪律，不是产品代码）**：同时最多 3 个成员处于“调用模型的活跃”状态；
+   Captain 与 verifier 的只读、跑测试、整理证据不计入这 3 个槽位；超出部分由调度器排队。
+   成员 4 人时，第 4 人只做只读/验证工作，或等空槽位再唤醒。
+
+### 14.7 direct 通道与 modelChat 对等（X8/X9 / E0-R1 冻结）
+
+- `desktop/model-credentials.cjs#requestChat` 返回体**增加** `finishReason` 与 `truncated`（既有字段不变）；
+  空正文 + `finish_reason=length` 必须作为 `truncated` 返回，**不得**当“无响应”。
+- Workspace direct 循环：`truncated=true` → **立即停止本批工具执行**，返回 `output_truncated`（可定向重试），
+  不得把截断内容当完整源码写入。
+- 预算：direct 源码编辑 `maxTokens` 默认 6000、硬上限 8000；**禁止**回退到 1200；超限明确报错而非静默裁剪。
+- 复用 D0 已验证的 tools/tool_calls 回填、预算、取消、loop detection、安全 trace 形状；不新建第二套 Workspace/状态链。
+- X9：**删除**“已验证/已采用 → 待本地确认”的正则改写。模型 reply 仅供参考；adopted/verified/exported 只由本地证据决定。
+- HTTP 桥：只冻结接口（由 Coordinator 注册短期、项目/run 绑定的 RPC channel；服务端不猜桌面地址、不开公网文件代理）；
+  E0 只需保证“未连接时明确 unavailable 且不影响 direct”。
+
+### 14.8 图片资产与多模态消息（X2 / E0-R2 冻结）
+
+```js
+resolveAssetImage({ userDataDir, projectId, assetId, limits? })
+  => { assetId, mime, bytes, sha256, dataUrl }     // 只在本次调用内存，函数返回后不落任何持久层
+buildMultimodalContent({ utterance, images }) => [{type:'text',text}, {type:'image_url',image_url:{url:'data:...'}}]
+```
+
+冻结约束：
+
+1. 输入只有 `assetId`（既有 `project:pick-images`/`attach-images` 产物），**不接受路径/base64 文本**。
+2. 主进程从 assetId 派生路径 → canonical 校验（`realpath` 在项目资产根内、拒 symlink/junction/越界）。
+3. 魔数 + 真实 MIME（PNG/JPEG/WebP）+ 解码校验 + E0 只接受 **1 张**目标页参考图。
+   **大小口径（rev15 修订）**：平台解析上限 2 MiB，通道 `MAX_IMAGE_BYTES_PER_IMAGE` 硬上限 400 KiB，
+   **最终生效值取二者较小者 = 400 KiB**；超限一律 `AGENT_IMAGE_INVALID`，不得静默裁图或丢图。
+   E0 典型参考图 < 200 KiB，该收紧不阻塞正常使用。
+4. data URL **只存在于调用内存**：不写日志、不写 `attempt.json`/`run.json`/项目快照/trace。
+5. 缺图/坏图/超限 → `AGENT_IMAGE_INVALID`；模型无视觉能力 → `AGENT_VISION_UNAVAILABLE` 或 needs-input，
+   **不得静默退化成纯文本生成**，也不得把 assetId 字符串当视觉输入。
+6. 验收（E0-R2）：真实小图走 direct 模型，证明回答**依赖图像内容**；仅凭 assetId 文本不能作为多模态证据。
+
+### 14.9 错误码 / 进度 / 口径增补（rev15）
+
+- 新增 `AGENT_*`：`AGENT_RUN_NOT_FOUND`、`AGENT_RUN_ALREADY_SUBMITTED`、`AGENT_ATTEMPT_IMMUTABLE`、
+  `AGENT_BUNDLE_INVALID`、`AGENT_EVIDENCE_STALE`、`AGENT_STATIC_GATE_FAILED`、`AGENT_TOOL_NOT_ALLOWED`、
+  `AGENT_IMAGE_INVALID`、`AGENT_VISION_UNAVAILABLE`、`AGENT_OUTPUT_TRUNCATED`；
+  以及调度器族 `MODEL_QUEUE_TIMEOUT`/`MODEL_BUSY`/`MODEL_ABORTED`/`MODEL_CONFIG_INVALID`。**不得私增**，需 rev。
+- `agent:progress` stage 白名单**追加**（§9.1 原文保留）：`queue`、`image`、`bundle`、`submit`、`adopt`。
+  UI 遇未知 stage 仍必须显示“未知阶段（<stage>）”，不得静默丢步。
+- 状态词继续只用 `PASS / FAIL / BLOCKED / NOT_RUN`；`partial` ≠ 通过；`mock` 只用于测试并显式标识。
+
+### 14.10 E0 写入锁（单写者，违反即停）
+
+| 路径 | 唯一写入者 |
+|---|---|
+| `desktop/agent-workspace/**`（含新增 `run-coordinator.cjs`）、`desktop/agent-tools-ipc.cjs`、`desktop/main.cjs`、`desktop/preload.cjs`、`desktop/project-ipc.cjs`、`desktop/composer-ipc.cjs`、`scripts/agent-checks/**`、`src/services/workspaceAgent/**`、`test/agent-workspace*`、`test/agent-tools-ipc*`、`test/desktop-contract.test.cjs` | **workspace-lead**（E0-W1→W2 串行） |
+| `desktop/model-call-scheduler.cjs`（新）、`desktop/model-credentials.cjs`、`desktop/model-ipc.cjs`、`desktop/agent-runtime/**`（新）、`test/agent-runtime*`、`test/model-call-scheduler.test.cjs` | **runtime-engineer**（E0-R1a→R1→R2 串行） |
+| `src/components/agent/e0/**`（新，独立原型）、`test/e0-ui*.test.cjs` | **product-ui**（E0-U1；**禁止**改 `App.jsx`/`sessionMachine.mjs`/`RightPanel.jsx`） |
+| `scripts/e0-verify/**`（新，独立验证器）、`docs/evidence/workspace-agent/e0-v1/**` | **verifier**（E0-V1） |
+| `docs/handoff/**`、`docs/evidence/workspace-agent/e0-git/**` | **Captain** |
+
+- `desktop/main.cjs` 只由 workspace-lead 改：Coordinator 单例与 `agent:adopt-attempt` 接线都在这里一次性完成；
+  runtime-engineer 的 scheduler 通过 `model-credentials` 内部单例生效，**不改 `main.cjs`**。
+- 需要跨锁改动时先报 Captain 出 rev，不得“先按另一种形状写”。
+
+### 14.11 E0 验收门禁（等价命令；官方命令如实记）
+
+```powershell
+node --test --experimental-test-isolation=none "test/agent-workspace*.test.cjs"
+node --test --experimental-test-isolation=none test/agent-tools-ipc.test.cjs test/desktop-contract.test.cjs
+node --test --experimental-test-isolation=none test/model-call-scheduler.test.cjs "test/agent-runtime*.test.cjs"
+node -e "require('./desktop/agent-workspace/run-coordinator.cjs');require('./desktop/model-call-scheduler.cjs');console.log('e0 modules ok')"
+node scripts/frontend-source/check.cjs --help   # 仅确认入口存在，不替代真实检查
+```
+
+- 官方 `npm test` / `npm run build` / `test:desktop` 允许在可执行环境下真实跑并记录退出码；
+  不可执行（`spawn EPERM` 等）记 `BLOCKED`，**等价门禁 ≠ 官方门禁 ≠ 微信/UIA 验收**。
+- E0 通过条件（计划 §4）：无 UI 垂直链 + 负例通过；X1–X12 有代码与测试关闭（X12 = 上游并发 ≤3）；
+  X10 接入项冻结；X11 基线明确；且 **verifier 独立出具 PASS**。
+- E0 未通过前：禁止接 App 主链、禁止真实图片生成（E1–E4）、禁止把 mock 当真实证据。
+
+### 14.12 rev15 裁定（2026-11-25，依据 verifier t4 的 Q1–Q4 与两条事实登记）
+
+1. **Q1 「未 submitted 就 adopt」的错误码**：不新增码。
+   - `attempt.state ≠ submitted`（含从未提交、已取消、已被取代）→ **`AGENT_ADOPTION_FAILED`**，issue code `NOT_SUBMITTED`；
+   - 已 submitted 但证据里的 `treeDigest`/`exportTreeDigest` 与当前 attempt 不一致 → **`AGENT_EVIDENCE_STALE`**；
+   - 运行时证据 `BLOCKED/NOT_RUN` 且未显式 `partialConfirmed` → `AGENT_PARTIAL_CONFIRM_REQUIRED`。
+   三者语义不同，不得互相顶替（A10 记录作废，按此三分）。
+2. **Q2 B1 句柄只校验布局、不校验 `handle.projectId` 与私有根一致**（A21O）：
+   - 产品链唯一入口是 Coordinator，跨项目拒绝由 §14.2-5 承担；**B1 直调不构成产品攻击面**，不因此判 FAIL。
+   - 但为避免“直调可绕过”，**E0-W2 必须在 Coordinator 句柄校验层补一条 `projectId ↔ 私有根` 一致性断言**
+     （伪造 `projectId` 句柄 → `AGENT_PROJECT_MISMATCH`，零落盘），并在证据里写明 B1 直调属非产品链。
+3. **Q3 X9 服务端副本**：`server/src/agent/workspace/workspace-agent.service.ts` 仍有
+   “已验证/已采用 → 待本地确认”的正则改写 —— **必须在 E0 关闭前删除**（与桌面同一条产品事实规则），
+   指派 **E0-R1b（t9）**；E0-V1 判定 X9 时以“桌面侧已删 + 服务端副本已删或证明不可达”为准。
+   在该副本删除前，X9 记为 `未关闭`，不得因为“E0 主链走 direct”而放过。
+4. **Q4 真实模型/微信环境**：
+   - **真实 Flash 是 E0 PASS 的必需项**（计划 §4 E0-V1 明文要求一轮真实多模态 + 一次 issue→repair）。
+     `server/.env` 的 `DEEPSEEK_API_KEY` 存在且非占位（本轮实测），因此**不得以“无 Key”为由跳过**；
+     网络/网关不可用属实 → 记 `BLOCKED` 并附实际错误。
+   - **微信/UIA 不可用仍记 `BLOCKED`，不阻塞 E0 判定**（计划 §4 明文）；但 E0 结论只能写
+     `静态+负例 PASS / 真实模型 BLOCKED / 整体 PARTIAL`，**不得写 PASS**，E1–E4 继续不开放。
+   - 允许的 E0 结论三选一：`PASS`（垂直链+负例+真实 Flash 全通过，X1–X12 关闭）、
+     `PARTIAL`（真实模型或运行时环境 BLOCKED）、`FAIL`（有代码/证据缺陷）。
+5. **X4 现状登记（verifier A11O，非 verdict）**：`source.check` 仍映射 frontend-capabilities 且不带 `--root`、
+   `composer.dry-run --root` 指向已采用版本 source、`mini.check.scoped=false`、无独立 `capabilities.check`。
+   这正是 E0-W2（t5）的关闭项；在 t5 交付前 X4 一律记 `未关闭`。
+6. **product-ui（E0-U1）的 R1–R8 处置**（2026-11-25 裁定，需求只登记、不改冻结文本）：
+   - **R2**（`agent:adopt-attempt`）→ **E0 内**，已并入 t5 验收；
+   - **R3/R4/R5/R6**（`get-context.targetPages` 派生、submit 8 页单一来源、`run-check` 证据字段、
+     未知状态不得归一 FAIL）→ **E0 内**，已并入 t5 验收（其中 R4 = X5、R5/R6 = X4 的可判定部分）；
+   - **R1/R7/R8**（`agent:start-run/get-run/get-attempt-state` 命令面、attempt 卡字段、
+     `progress.tool`）→ **rev16**，E0 通过后随 E1/E3 接线冻结，**不阻塞 E0**；
+   - product-ui 已交付的锚点（`e0-target-page-*`、`e0-consent-checkbox`、`e0-utterance-*`、`e0-progress`、
+     `e0-candidate-summary` 等）、`uia-checklist.md`（U-01…U-50，全部 NOT_RUN）与
+     `src/components/agent/e0/**`（23 tests）作为 E3 接线输入，本轮不接入 App。
+7. **X12 分侧记录**：桌面侧已关闭（`desktop/model-call-scheduler.cjs` + `model-credentials` 接入，
+   27 tests、5 并发 `active=3/queued=2`、两进程上游峰值 3，证据 `docs/evidence/workspace-agent/e0-r1a/`）；
+   服务端侧待 E0-R1b（t9）。**t9 交付前 X12 整体记“未关闭”。**
+
+### 14.13 rev15 裁定之二（2026-11-25，依据 verifier t10 的 F1–F4/F6 与顺序契约）
+
+1. **F1 submit 返回体**：`submitAttempt` 成功返回必须含
+   `{candidateId, revision, treeDigest, exportRelative, exportTreeDigest, targetPage, status:"submitted"}`；
+   `exportRelative` 为**相对路径**（不得绝对路径）。缺 `exportTreeDigest` 即不可 adopt。
+2. **F2 检查注册表缺参**：`run_check` 在 lacks subject/root/definitions 时必须**先拒绝、后执行**——
+   返回 `AGENT_CHECK_UNKNOWN`/`AGENT_PAYLOAD_INVALID` 且**上游 runner 调用次数为 0**（禁止“先按仓库跑一次再拒”）。
+3. **F3 顺序契约（写入即失效）**：`deriveSourceBundle` **只能发生在检查阶段**（`composer.dry-run` 前置或独立平台步骤），
+   **`submitAttempt` 不得再派生 bundle**（此前“submit 缺 bundle 自动补派生”会改变 treeDigest、把已通过的检查作废）。
+   由此定死唯一合法顺序：
+
+   ```text
+   写(可多次) → derive bundle(一次) → source.check → composer.dry-run → mini/output → submit → (wechat) → adopt
+   ```
+
+   任何写入都会使既有检查证据失效。`submitAttempt`/`adoptAttempt` 遇证据与当前 `revision`/`treeDigest` 不一致时：
+   返回 `AGENT_EVIDENCE_STALE` + issue code **`EVIDENCE_STALE_RERUN_CHECKS`** + `nextAction:"rerun-checks"`，
+   **不得**自动补 bundle 或静默放行。direct 循环的工具说明与停止条件必须写明这条（E0-R1/t6 落实）。
+4. **F4 partial 判定**：`adoptAttempt` 判断“是否需要显式 partial 确认”时，必须先校验证据是否新鲜；
+   证据陈旧 → 先 `AGENT_EVIDENCE_STALE`，**不得**因为“运行时 NOT_RUN”就只报 partial。
+5. **F6 码表措辞（只改文档，不改码）**：§14.2-5 的“跨项目/跨 run/跨 turn 句柄一律拒绝”按以下粒度解释——
+   run 级查找失败（`runId` 不存在或不属于该 `projectId`）→ `AGENT_RUN_NOT_FOUND`；
+   turn/attempt 级查找失败 → `AGENT_ATTEMPT_NOT_FOUND`；`handle.projectId` 与私有根不一致 → `AGENT_PROJECT_MISMATCH`。
+   三者均为拒绝且零落盘，不合并、不改实现。
+6. **验证器结论的时间绑定**：verifier 的判定只对被测文件的 sha256 生效
+   （t10 钉 `run-coordinator.cjs` = `232F24F2A35920CB…`，85 904 B）。E0-W2（t5）会继续改同一文件，
+   因此 t10 的 X1/X3/X12 桌面侧结论**不可口头复用到 t8**；t8 必须对最终版本重跑。
+   t5 交付后的最终钉版（t8/t11 用，必须自行复算）：
+   `run-coordinator.cjs eedd1823…cf36f2 (88 235 B)`、`checks.cjs 7974b039…44a0c`、
+   `source-bundle.cjs 7cd641ea…dfee0e`、`direct-runtime.cjs 2b8fab79…87b636`、
+   `agent-tools-ipc.cjs b35f0e6b…8badb4`、`run-check.cjs 3e2eb923…b59866`、
+   `preload.cjs 4146d71c…ab0de4`、`main.cjs 481870ef…0c3d27`。
+7. **overlay 范围（E0 保持收紧）**：Composer source overlay 在 E0 只接受 `pages/**`、`components/**`、
+   `assets/**`；agent 写 `services/**` 等数据层必须 **fail-closed**。
+   E1 若要改数据层，由 **rev16** 扩 overlay 契约并补对应检查，**不得在 E0 内悄悄放宽**。
+8. **微信 BLOCKED 与 adopt**：本机 `wechat.verify` 恒 `BLOCKED`，因此 adopt **必须显式 `partialConfirmed`**
+   （`AGENT_PARTIAL_CONFIRM_REQUIRED` 不放宽、不自动通过）。E0 结论因此最高只能是 `PARTIAL`——
+   这是事实，不是缺陷；不得为了“能 adopt”而降低门禁。
+9. **checkId 单一名称**：canonical = **`capabilities.check`**；别名 `capabilities.source-facts` 只是过渡，
+   属 rev16 清理项。E0 期间只有 canonical 允许进证据、日志与 UI 文案。
+10. **legacy B3 命令不得绕过 Coordinator（2026-11-25，t14 OBS-4）**：实测 `agent:write-files` 在
+    Coordinator 已 submit 之后仍能写（revision 到 4、候选页被改），`agent:cancel-run` 只看内存表、
+    **不更新 `run.json`**。这与 X1「唯一执行所有者」直接冲突，必须二选一收口：
+   (A) `agent:write-files`/`agent:delete-files`/`agent:cancel-run` 统一转调 Coordinator
+       （提交后 → `AGENT_ATTEMPT_IMMUTABLE`；取消 → 落盘 `run.json` 状态）；或
+   (B) 明确禁用 legacy 写入路径（返回明确码 + 测试证明零落盘），并在证据里声明
+       「B3 legacy 非产品链，E1 前隔离」。
+   **未收口前，X1 不得判“已关闭”**（t8 必须独立复验这一条）。
+11. **缺 `exportTreeDigest` 必须 fail-closed（t14 OBS-2 / t15 F-T5-02）**：`submission.json` 缺该字段时
+   adopt 不能跳过导出树校验；缺失/非字符串一律按陈旧处理
+   （`AGENT_EVIDENCE_STALE` + `EVIDENCE_STALE_RERUN_CHECKS` + `nextAction:"rerun-checks"`）。
+12. **IPC→真实 Coordinator 的 attempt 标识（t15 F-T5-01，blocker）**：`agent:submit-candidate` /
+   `agent:adopt-attempt` 必须传字符串 `attempt-N`，不得把 `attempt-1` 解析成数字 `1`；
+   验收必须包含「IPC → 真实 Coordinator（非 stub）」的端到端用例，且禁止把数字标识写成预期。
+13. **review/repair 的独立性**：实现者对自身交付出具最终 verdict 一律无效（t8 attempt 4 因此中止）。
+   review 由非实现者做、repair 由实现者做、re-review 由原 review 者做。
 

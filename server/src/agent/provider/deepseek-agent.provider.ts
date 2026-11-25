@@ -1,12 +1,34 @@
 import { HttpException, HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AGENT_FETCH } from '../agent.types';
+import {
+  ERROR_CODES,
+  ModelSchedulerError,
+  getSharedModelCallScheduler,
+  type ModelCallScheduler,
+} from '../model-scheduler';
 import type {
   AgentFetch,
   AgentProvider,
   AgentProviderExtractInput,
   AgentProviderExtractResult,
 } from './agent-provider.interface';
+
+/**
+ * 调度器错误 → 既有 failure 语义（**不新增对外错误码，也不把 429 直接抛给用户**）。
+ * 具体文案由 `toHttpException()` 统一映射成既有的 DEEPSEEK_* 错误码。
+ */
+function schedulerFailureOf(
+  error: ModelSchedulerError,
+): { ok: false; failure: string; retryable: boolean } {
+  if (error.code === ERROR_CODES.QUEUE_TIMEOUT) return { ok: false, failure: 'queue_timeout', retryable: false };
+  if (error.code === ERROR_CODES.ABORTED) return { ok: false, failure: 'aborted', retryable: false };
+  const details = (error.details ?? {}) as { reason?: unknown; cause?: unknown };
+  const detail = typeof details.cause === 'string' && details.cause.trim()
+    ? details.cause.trim()
+    : (typeof details.reason === 'string' && details.reason.trim() ? details.reason.trim() : '调度器不可用');
+  return { ok: false, failure: `channel_unavailable:${detail}`, retryable: false };
+}
 
 /**
  * DeepSeek OpenAI 兼容 Provider。
@@ -178,10 +200,18 @@ export class DeepseekAgentProvider implements AgentProvider {
 
   private readonly logger = new Logger('DeepseekAgentProvider');
 
+  /** 上游并发调度器（E0-R1b）：默认取进程共享单例；测试可注入替换。 */
+  private schedulerRef: ModelCallScheduler | null = null;
+
   constructor(
     @Inject(ConfigService) private readonly config: ConfigService,
     @Inject(AGENT_FETCH) private readonly fetchImpl: AgentFetch,
   ) {}
+
+  /** 测试/高级用法：替换调度器（生产路径无需调用）。 */
+  attachScheduler(scheduler: ModelCallScheduler | null): void {
+    this.schedulerRef = scheduler;
+  }
 
   private readSettings(): DeepseekSettings {
     const rawBaseUrl = String(this.config.get('DEEPSEEK_API_BASE_URL') ?? DEFAULT_BASE_URL).trim();
@@ -281,6 +311,47 @@ export class DeepseekAgentProvider implements AgentProvider {
 
     // 视觉请求允许一次重试：上游偶发 5xx/429、空回复或半截 JSON 都值得再要一次。
     // 文本请求保持单次，v1 语义不变。
+    // 上游并发上限 3（rev15 §14.6.1）：整段「重试 + 解析」共用一个槽位 + 一个全局令牌，
+    // 请求计时器在槽位内创建（排队不消耗请求 timeout），槽位等响应体读完才释放。
+    const scheduler = this.resolveScheduler();
+    try {
+      return await scheduler.run(
+        (slot) => this.runAttempts({
+          requestBody,
+          settings,
+          requestId: input.requestId,
+          model,
+          imageCount: hasImages ? images.length : 0,
+          hasImages,
+          hasReference,
+          maxTokens,
+          startedAt,
+          slotSignal: slot.signal,
+        }),
+        { label: hasImages ? 'agent-extract-vision' : 'agent-extract' },
+      );
+    } catch (error) {
+      if (error instanceof ModelSchedulerError) {
+        throw this.toHttpException(schedulerFailureOf(error).failure, hasImages);
+      }
+      throw error;
+    }
+  }
+
+  /** 槽位内的一次完整抽取：重试循环 + 结果归一。 */
+  private async runAttempts(ctx: {
+    requestBody: Record<string, unknown>;
+    settings: DeepseekSettings;
+    requestId: string | undefined;
+    model: string;
+    imageCount: number;
+    hasImages: boolean;
+    hasReference: boolean;
+    maxTokens: number;
+    startedAt: number;
+    slotSignal: AbortSignal;
+  }): Promise<AgentProviderExtractResult> {
+    const { requestBody, settings, requestId, model, imageCount, hasImages, hasReference, maxTokens, startedAt, slotSignal } = ctx;
     const maxAttempts = hasImages ? VISION_MAX_ATTEMPTS : 1;
     let parsed: unknown = null;
     let lastCause = 'unknown';
@@ -289,16 +360,17 @@ export class DeepseekAgentProvider implements AgentProvider {
       const outcome = await this.callCompletion(
         requestBody,
         settings,
-        input.requestId,
+        requestId,
         model,
-        hasImages ? images.length : 0,
+        imageCount,
         startedAt,
+        slotSignal,
       );
       if (!outcome.ok) {
         lastCause = outcome.failure;
         if (outcome.retryable && attempt < maxAttempts) {
           this.logger.warn(
-            `deepseek vision retry requestId=${input.requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause}`,
+            `deepseek vision retry requestId=${requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause}`,
           );
           continue;
         }
@@ -311,7 +383,7 @@ export class DeepseekAgentProvider implements AgentProvider {
         lastCause = outcome.finishReason === 'length' ? 'empty_content_truncated' : 'empty_content';
         if (attempt < maxAttempts) {
           this.logger.warn(
-            `deepseek vision retry requestId=${input.requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause} maxTokens=${maxTokens}`,
+            `deepseek vision retry requestId=${requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause} maxTokens=${maxTokens}`,
           );
           continue;
         }
@@ -325,7 +397,7 @@ export class DeepseekAgentProvider implements AgentProvider {
         lastCause = 'invalid_json';
         if (attempt < maxAttempts) {
           this.logger.warn(
-            `deepseek vision retry requestId=${input.requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause} contentLen=${content.length}`,
+            `deepseek vision retry requestId=${requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause} contentLen=${content.length}`,
           );
           continue;
         }
@@ -336,7 +408,7 @@ export class DeepseekAgentProvider implements AgentProvider {
         lastCause = 'invalid_shape';
         if (attempt < maxAttempts) {
           this.logger.warn(
-            `deepseek vision retry requestId=${input.requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause}`,
+            `deepseek vision retry requestId=${requestId ?? '-'} model=${model} attempt=${attempt} cause=${lastCause}`,
           );
           continue;
         }
@@ -369,7 +441,7 @@ export class DeepseekAgentProvider implements AgentProvider {
 
     const latencyMs = Math.max(0, Date.now() - startedAt);
     this.logger.log(
-      `deepseek turn ok requestId=${input.requestId ?? '-'} model=${model}${hasImages ? ` images=${images.length}` : ''} latencyMs=${latencyMs} hasReply=${reply.length > 0}`,
+      `deepseek turn ok requestId=${requestId ?? '-'} model=${model}${hasImages ? ` images=${imageCount}` : ''} latencyMs=${latencyMs} hasReply=${reply.length > 0}`,
     );
 
     return {
@@ -378,7 +450,7 @@ export class DeepseekAgentProvider implements AgentProvider {
       model,
       latencyMs,
       // 无图片时不添加该键，保证 v1 的 Provider 结果形状与旧实现完全一致。
-      ...(hasImages ? { visionAnalyzed: true } : {}),
+      ...(hasImages ? { visionAnalyzed: true as const } : {}),
     };
   }
 
@@ -387,6 +459,20 @@ export class DeepseekAgentProvider implements AgentProvider {
    * 只回传判定所需的最小信息（状态、失败原因、finish_reason），
    * 绝不把 base64、dataUrl 或完整 payload 写进日志或异常。
    */
+  private resolveScheduler(): ModelCallScheduler {
+    if (!this.schedulerRef) this.schedulerRef = getSharedModelCallScheduler();
+    return this.schedulerRef;
+  }
+
+  /**
+   * 发一次 /chat/completions。
+   * 只回传判定所需的最小信息（状态、失败原因、finish_reason），
+   * 绝不把 base64、dataUrl 或完整 payload 写进日志或异常。
+   *
+   * **调用方必须已经在调度器槽位内**（`slotSignal` 来自 `ScheduleSlot.signal`）：
+   * 一次 `extractTurn` 的整段重试循环共用一个槽位 + 一个全局令牌，
+   * 所以重试永远不会制造第 4 个并发。
+   */
   private async callCompletion(
     requestBody: Record<string, unknown>,
     settings: DeepseekSettings,
@@ -394,6 +480,7 @@ export class DeepseekAgentProvider implements AgentProvider {
     model: string,
     imageCount: number,
     startedAt: number,
+    slotSignal: AbortSignal,
   ): Promise<
     | { ok: true; payload: unknown; finishReason: string }
     | { ok: false; failure: string; retryable: boolean }
@@ -404,6 +491,9 @@ export class DeepseekAgentProvider implements AgentProvider {
       timedOut = true;
       controller.abort();
     }, settings.timeoutMs);
+    const onSlotAbort = () => controller.abort();
+    if (slotSignal.aborted) controller.abort();
+    else slotSignal.addEventListener('abort', onSlotAbort, { once: true });
 
     let response: Response;
     try {
@@ -425,6 +515,7 @@ export class DeepseekAgentProvider implements AgentProvider {
       return { ok: false, failure: aborted ? 'timeout' : 'network', retryable: false };
     } finally {
       clearTimeout(timer);
+      slotSignal.removeEventListener('abort', onSlotAbort);
     }
 
     const status = Number(response?.status ?? 0);
@@ -472,6 +563,34 @@ export class DeepseekAgentProvider implements AgentProvider {
    * 上游 5xx / 空回复 / 半截 JSON / 上游拒图。
    */
   private toHttpException(cause: string, hasImages: boolean): HttpException {
+    // 调度器侧失败：复用既有 DEEPSEEK_UNAVAILABLE，不新增对外错误码、不把 429 抛给用户。
+    if (cause === 'queue_timeout') {
+      return new HttpException(
+        {
+          code: 'DEEPSEEK_UNAVAILABLE',
+          message: '模型请求排队太久（同一时间最多 3 次），请稍后重试。',
+          retryable: true,
+        },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+    if (cause.startsWith('channel_unavailable')) {
+      const detail = cause.includes(':') ? cause.slice(cause.indexOf(':') + 1) : '调度器不可用';
+      return new HttpException(
+        {
+          code: 'DEEPSEEK_UNAVAILABLE',
+          message: `模型并发通道不可用（${detail}），HTTP 真实生成已暂停，请稍后重试。`,
+          retryable: true,
+        },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+    if (cause === 'aborted') {
+      return new HttpException(
+        { code: 'DEEPSEEK_UNAVAILABLE', message: '模型请求已取消，请稍后重试。', retryable: true },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
     if (cause === 'timeout') {
       return new HttpException(
         { code: 'DEEPSEEK_TIMEOUT', message: 'DeepSeek 响应超时，请稍后重试。' },

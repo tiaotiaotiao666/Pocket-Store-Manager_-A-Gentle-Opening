@@ -1,0 +1,315 @@
+[
+  {
+    "id": "P00-fixture-meta",
+    "ok": true,
+    "detail": {
+      "count": 12,
+      "contractVersion": "model-scheduler.v1"
+    }
+  },
+  {
+    "id": "P01-fifo-order-single-slot",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "dispatchOrder": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "maxUpstreamConcurrency": 1,
+        "queueLengthPeak": 3
+      },
+      "serverObserved": {
+        "dispatchOrder": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "maxUpstreamConcurrency": 1,
+        "queueLengthPeak": 3
+      },
+      "desktopObserved": {
+        "dispatchOrder": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "maxUpstreamConcurrency": 1,
+        "queueLengthPeak": 3
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-local-queue-timeout-code",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "errorCode": "MODEL_QUEUE_TIMEOUT",
+        "upstreamCallsForTimedOutRequest": 0,
+        "notUpstreamTimeoutCode": "DEEPSEEK_TIMEOUT"
+      },
+      "serverObserved": {
+        "errorCode": "MODEL_QUEUE_TIMEOUT",
+        "upstreamCallsForTimedOutRequest": 0,
+        "totalTimedOut": 1,
+        "notUpstreamTimeoutCode": "DEEPSEEK_TIMEOUT"
+      },
+      "desktopObserved": {
+        "errorCode": "MODEL_QUEUE_TIMEOUT",
+        "upstreamCallsForTimedOutRequest": 0,
+        "totalTimedOut": 1,
+        "notUpstreamTimeoutCode": "DEEPSEEK_TIMEOUT"
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-release-after-body-read",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "secondStartsBeforeBodyRead": false,
+        "secondStartsAfterBodyRead": true
+      },
+      "serverObserved": {
+        "secondStartsBeforeBodyRead": false,
+        "secondStartsAfterBodyRead": true,
+        "bodyDone": true
+      },
+      "desktopObserved": {
+        "secondStartsBeforeBodyRead": false,
+        "secondStartsAfterBodyRead": true,
+        "bodyDone": true
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-cancel-queued",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "errorCode": "MODEL_ABORTED",
+        "upstreamCallsForCancelled": 0,
+        "totalAcquiredUnchanged": true
+      },
+      "serverObserved": {
+        "errorCode": "MODEL_ABORTED",
+        "upstreamCallsForCancelled": 0,
+        "totalAcquiredUnchanged": true,
+        "queuedAfter": 0
+      },
+      "desktopObserved": {
+        "errorCode": "MODEL_ABORTED",
+        "upstreamCallsForCancelled": 0,
+        "totalAcquiredUnchanged": true,
+        "queuedAfter": 0
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-cancel-running",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "errorCode": "MODEL_ABORTED",
+        "slotReleased": true,
+        "nextDispatched": true
+      },
+      "serverObserved": {
+        "errorCode": "MODEL_ABORTED",
+        "slotReleased": true,
+        "nextDispatched": true
+      },
+      "desktopObserved": {
+        "errorCode": "MODEL_ABORTED",
+        "slotReleased": true,
+        "nextDispatched": true
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-retry-holds-slot",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "maxUpstreamConcurrency": 3,
+        "attemptsPerRequest": 2,
+        "allSucceeded": true
+      },
+      "serverObserved": {
+        "maxUpstreamConcurrency": 3,
+        "attemptsPerRequest": 2,
+        "allSucceeded": true,
+        "totalAcquired": 5
+      },
+      "desktopObserved": {
+        "maxUpstreamConcurrency": 3,
+        "attemptsPerRequest": 2,
+        "allSucceeded": true,
+        "totalAcquired": 5
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-clamp-above-max",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "maxConcurrent": 3,
+        "warningCount": 1
+      },
+      "serverObserved": {
+        "maxConcurrent": 3,
+        "warningCount": 1,
+        "configWarnings": 1
+      },
+      "desktopObserved": {
+        "maxConcurrent": 3,
+        "warningCount": 1,
+        "configWarnings": 1
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-clamp-invalid",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "maxConcurrent": 3,
+        "warningCount": 1
+      },
+      "serverObserved": {
+        "maxConcurrent": 3,
+        "warningCount": 1,
+        "configWarnings": 1
+      },
+      "desktopObserved": {
+        "maxConcurrent": 3,
+        "warningCount": 1,
+        "configWarnings": 1
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-queue-wait-env-primary",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "queueWaitMs": 60000,
+        "aliasWarning": false
+      },
+      "serverObserved": {
+        "queueWaitMs": 60000,
+        "aliasWarning": false
+      },
+      "desktopObserved": {
+        "queueWaitMs": 60000,
+        "aliasWarning": false
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-queue-wait-env-alias",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "queueWaitMs": 60000,
+        "aliasWarning": true
+      },
+      "serverObserved": {
+        "queueWaitMs": 60000,
+        "aliasWarning": true
+      },
+      "desktopObserved": {
+        "queueWaitMs": 60000,
+        "aliasWarning": true
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-agent-entry-env-ignored",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "maxConcurrent": 3,
+        "warningCount": 0
+      },
+      "serverObserved": {
+        "maxConcurrent": 3,
+        "warningCount": 0
+      },
+      "desktopObserved": {
+        "maxConcurrent": 3,
+        "warningCount": 0
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  },
+  {
+    "id": "P01-stats-purity",
+    "ok": true,
+    "detail": {
+      "expect": {
+        "keys": [
+          "maxConcurrent",
+          "active",
+          "queued",
+          "maxQueueLength",
+          "totalAcquired",
+          "totalTimedOut",
+          "lastWaitMs"
+        ]
+      },
+      "serverObserved": {
+        "keys": [
+          "maxConcurrent",
+          "active",
+          "queued",
+          "maxQueueLength",
+          "totalAcquired",
+          "totalTimedOut",
+          "lastWaitMs"
+        ],
+        "leaked": []
+      },
+      "desktopObserved": {
+        "keys": [
+          "maxConcurrent",
+          "active",
+          "queued",
+          "maxQueueLength",
+          "totalAcquired",
+          "totalTimedOut",
+          "lastWaitMs"
+        ],
+        "leaked": []
+      },
+      "mismatched": [],
+      "serverVsDesktop": []
+    }
+  }
+]

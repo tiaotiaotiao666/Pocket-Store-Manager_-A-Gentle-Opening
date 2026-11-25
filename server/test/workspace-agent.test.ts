@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { HttpException, RequestMethod } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { PATH_METADATA, METHOD_METADATA } from '@nestjs/common/constants';
@@ -217,14 +220,29 @@ describe('真实路径（注入 fake ChatModel + fake RPC proxy，不访问网�
     );
   });
 
-  it('回复脱敏：不声称 applied/adopted/exported/verified，不泄漏本机绝对路径', async () => {
+  it('回复只做敏感信息脱敏：不泄漏本机绝对路径，且不再把模型措辞改写为「待本地确认」', async () => {
     const model = new ScriptedModel([
       completion({ role: 'assistant', content: '已采用并导出到 E:\\tmp\\secret\\index.wxml，已验证通过。' }),
     ]);
     const response = await serviceWith(model, new FakeProxy()).run({ ...READ_REQUEST, mock: false }, { requestId: 'req-sanitize' });
-    expect(response.reply).not.toMatch(/已采用|已导出|已验证/);
+    // 敏感信息照样 scrub。
     expect(response.reply).not.toContain('E:\\tmp');
-    expect(response.reply).toContain('待本地确认');
+    expect(response.reply).toContain('[path]');
+    // rev15 §14.12-3：模型回复仅供参考，服务端不得用正则把「已采用/已验证」改写成别的说法。
+    expect(response.reply).toContain('已采用');
+    expect(response.reply).not.toContain('待本地确认');
+    // 结构字段仍是权威：采用/导出/验证状态不由模型回复决定。
+    expect(response.trace.toolCalls.length).toBe(0);
+  });
+
+  it('不再有「已验证/已采用 → 待本地确认」的正则改写（源码断言）', () => {
+    const source = readFileSync(
+      path.join(process.cwd(), 'src/agent/workspace/workspace-agent.service.ts'),
+      'utf8',
+    );
+    expect(source).not.toContain('FORBIDDEN_CLAIM_PATTERN');
+    expect(source).not.toContain("'待本地确认'");
+    expect(source).not.toMatch(/已采用\|已导出\|已验证/);
   });
 
   it('真实模型缺失时返回 503，不伪造真实调用', async () => {

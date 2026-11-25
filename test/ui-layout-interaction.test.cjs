@@ -176,6 +176,7 @@ test('等待提示：参考图候选待采用、导出前体检待处理也必�
   });
   assert.equal(adopt?.jumpId, 'frontend-candidates', '候选待采用要指向真实采用入口');
   assert.match(adopt.title, /等你确认/);
+  assert.match(adopt.detail, /需要你确认后才会继续/, '提示必须直说「要你确认才会继续」');
   assert.match(adopt.detail, /采用/, '要说清点哪个按钮才会写进项目');
 
   // 正在跑 / 已经采用 / 没有候选：都不是「等你」
@@ -187,6 +188,7 @@ test('等待提示：参考图候选待采用、导出前体检待处理也必�
 
   const idle = selectAgentWaitingHint({ phase: 'deploy', deploy: { preflight: { status: 'idle' } } });
   assert.equal(idle?.jumpId, 'export-preflight');
+  assert.match(idle.detail, /需要你确认后才会继续/);
   const failed = selectAgentWaitingHint({ phase: 'deploy', deploy: { preflight: { status: 'failed' } } });
   assert.equal(failed?.jumpId, 'export-preflight', '体检失败也要能一键回到体检区');
   const pendingAck = selectAgentWaitingHint({

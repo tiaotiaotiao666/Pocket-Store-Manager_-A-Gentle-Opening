@@ -617,6 +617,9 @@
 }
 
 .agent-chat-attachments-count {
+  /* 头行里「已选 1/3 张」不能折成两行，标签让它先换行。 */
+  flex: none;
+  white-space: nowrap;
   color: #927e71;
   font-size: 10.5px;
 }

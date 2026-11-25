@@ -35,7 +35,7 @@ export function selectAgentWaitingHint({ phase, agent, build, presentation, fron
     if (status === 'reviewing' && missing === 0 && errors === 0) {
       return {
         title: '等你确认门店资料',
-        detail: '资料已齐全：看中间对话栏底部的「资料无误，继续」按钮，点它才会写入门店信息。',
+        detail: '资料已齐全，需要你确认后才会继续：点中间对话栏底部的「资料无误，继续」才会写入门店信息。',
         jumpId: 'store-info-confirm',
         actionLabel: '前往处理',
       };
@@ -51,7 +51,7 @@ export function selectAgentWaitingHint({ phase, agent, build, presentation, fron
     if (candidates.length > 0 && !selectedId && !revising) {
       return {
         title: '等你挑一套页面骨架',
-        detail: '在中间「页面骨架」区先点卡片看预览，再点详情里的「就用这套」。',
+        detail: '需要你确认后才会继续：先点中间「页面骨架」的卡片看预览，再点详情里的「就用这套」。',
         jumpId: 'template-apply',
         actionLabel: '前往处理',
       };
@@ -60,7 +60,7 @@ export function selectAgentWaitingHint({ phase, agent, build, presentation, fron
     if (!revising && frontend && typeof frontend === 'object' && frontend.canAdopt === true) {
       return {
         title: '等你确认候选前端',
-        detail: '参考图候选已生成并通过静态检查：看中间「参考图候选」卡片，点「采用」才会写进项目，撤销也在这里。',
+        detail: '需要你确认后才会继续：参考图候选已生成并通过静态检查，点中间「参考图候选」卡片上的「采用」才会写进项目，撤销也在这里。',
         jumpId: 'frontend-candidates',
         actionLabel: '前往处理',
       };
@@ -84,8 +84,8 @@ export function selectAgentWaitingHint({ phase, agent, build, presentation, fron
       return {
         title: status === 'done' ? '等你确认导出风险项' : '等你做导出前体检',
         detail: status === 'done'
-          ? '体检还有风险项没勾选：看中间「导出前检查」区，逐条勾选后才会放行导出。'
-          : '看中间「导出前检查」区的「开始体检」，体检通过才允许导出；失败可以直接重试。',
+          ? '需要你确认后才会继续：体检还有风险项没勾选，看中间「导出前检查」区逐条勾选后才会放行导出。'
+          : '需要你确认后才会继续：看中间「导出前检查」区的「开始体检」，体检通过才允许导出；失败可以直接重试。',
         jumpId: 'export-preflight',
         actionLabel: '前往处理',
       };

@@ -126,6 +126,14 @@ async function writeText(coord, handle, relative, content) {
   });
 }
 
+/** 新门禁：dry-run 后必须跑两项导出检查；source/dry-run 的旧证据会由平台刷新。 */
+async function runExportGateChecks(coord, handle) {
+  for (const checkId of ['mini.check', 'output.consistency']) {
+    const result = await coord.invokeTool({ ...handle, tool: 'run_check', args: { checkId } });
+    assert(result.ok === true && result.data.status === 'PASS', checkId + ' 失败：' + JSON.stringify(result));
+  }
+}
+
 const CASES = [
   /* ---------------- X4 / A11O 复核：检查真的落在 attempt 与派生导出树 ---------------- */
   {
@@ -540,6 +548,7 @@ const CASES = [
       const dryRun = await coord.invokeTool({ ...handle, tool: 'run_check', args: { checkId: 'composer.dry-run' } });
       assert(dryRun.ok === true, 'dry-run 失败：' + JSON.stringify(dryRun.code));
       assertEqual(dryRun.data.status, 'PASS', 'home 页 dry-run 应 PASS');
+      await runExportGateChecks(coord, handle);
 
       const submitted = coord.submitAttempt(handle);
       assert(submitted.ok === true, 'home 页 submit 应成功：' + JSON.stringify({ code: submitted.code, message: submitted.message }));
@@ -630,6 +639,7 @@ const CASES = [
       const dryRun = await coord.invokeTool({ ...handle, tool: 'run_check', args: { checkId: 'composer.dry-run' } });
       assert(dryRun.ok === true, 'dry-run 失败：' + JSON.stringify(dryRun.code));
       assertEqual(dryRun.data.status, 'PASS', 'dry-run 应 PASS');
+      await runExportGateChecks(coord, handle);
       const stateBeforeSubmit = coord.getAttemptState(handle);
       const bundleBytesAfterChecks = sha256File(bundleFile);
 
@@ -698,6 +708,7 @@ const CASES = [
       const dryRun = await coord.invokeTool({ ...handle, tool: 'run_check', args: { checkId: 'composer.dry-run' } });
       assert(dryRun.ok === true, 'dry-run 失败：' + JSON.stringify(dryRun.code));
       assertEqual(dryRun.data.status, 'PASS', 'dry-run 应 PASS');
+      await runExportGateChecks(coord, handle);
       const submittedAfter = coord.submitAttempt(handle);
       assert(submittedAfter.ok === true, '补检查后 submit 应成功：' + JSON.stringify(submittedAfter.code));
 
@@ -791,14 +802,14 @@ const CASES = [
     async run(ctx) {
       const mainPath = path.join(REPO_ROOT, 'desktop', 'main.cjs');
       const text = fs.readFileSync(mainPath, 'utf8');
-      assert(text.includes("require('./agent-workspace/direct-runtime.cjs')"),
-        'main.cjs 应 require direct-runtime.cjs');
+      assert(text.includes("require('./agent-runtime')") && !text.includes("require('./agent-workspace/direct-runtime.cjs')"),
+        'main.cjs 产品主链必须接多轮 agent-runtime，不得接旧单次 direct-runtime');
       assert(/createDirectWorkspaceRuntime\s*\(\s*\{[\s\S]{0,400}?coordinator\s*:\s*\(\s*\)\s*=>\s*workspaceRunCoordinator/.test(text),
         'main.cjs 应以 getter（() => workspaceRunCoordinator）惰性提供 coordinator');
       assert(/credentials\s*:\s*modelCredentials/.test(text), 'main.cjs 应注入主进程唯一凭据 modelCredentials');
       assert(/directRuntime\s*:/.test(text), 'createRunCoordinator 调用里应设置 directRuntime');
       const topology = {
-        requiresDirectRuntime: true,
+        requiresMultiTurnRuntime: true,
         lazyCoordinatorGetter: true,
         credentialsWired: true,
         lines: text.split('\n').length,

@@ -11,6 +11,8 @@
  */
 
 export const WORKSPACE_AGENT_METHODS = Object.freeze([
+  'runTurn',
+  'getAttempt',
   'getContext',
   'listFiles',
   'readFile',
@@ -24,6 +26,7 @@ export const WORKSPACE_AGENT_METHODS = Object.freeze([
   'readVerification',
   'readArtifact',
   'submitCandidate',
+  'adoptAttempt',
   'versions',
   'adoptVersion',
   'undo',

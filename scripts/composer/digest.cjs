@@ -72,16 +72,23 @@ function relativePosix(from, file) {
   return path.relative(from, file).replace(/\\/g, '/');
 }
 
-/** 目录树摘要：按相对路径排序 + 文本 LF 归一化后逐文件摘要。 */
-function treeSha256(dir) {
+/**
+ * 目录树摘要：按相对路径排序 + 文本 LF 归一化后逐文件摘要。
+ * `options.exclude` 可排除由后续步骤写入的元数据文件（例如 composition.lock / 生成报告），
+ * 使摘要与 compose 完成校验时的产物树一致。
+ */
+function treeSha256(dir, options) {
+  const opts = options && typeof options === 'object' ? options : {};
+  const excluded = new Set(Array.isArray(opts.exclude) ? opts.exclude : []);
   const entries = walk(dir).filter((file) => path.basename(file) !== '.DS_Store');
   const lines = entries.map((file) => {
     const rel = relativePosix(dir, file);
+    if (excluded.has(rel)) return null;
     const raw = fs.readFileSync(file);
     const isText = !/\.(png|jpe?g|webp|gif|ico|zip)$/i.test(file);
     const content = isText ? Buffer.from(normalizedText(raw.toString('utf8')), 'utf8') : raw;
     return rel + ':' + sha256(content);
-  });
+  }).filter(Boolean);
   return sha256(lines.join('\n'));
 }
 

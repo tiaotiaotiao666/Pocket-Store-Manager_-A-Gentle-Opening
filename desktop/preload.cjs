@@ -47,11 +47,13 @@ ipcRenderer.on('agent:progress', (_event, payload) => {
 });
 
 /**
- * B3/E0-W2：Workspace Agent 唯一受控命名空间。
- * 只暴露冻结 §3.2 的 19 个语义命令 + E0-W2 追加的 `adoptAttempt`（`agent:adopt-attempt`）+ onProgress；
+ * B3/E0：Workspace Agent 唯一受控命名空间。
+ * 原 19 个语义命令 + `adoptAttempt` + 平台创建/查询 attempt 的 `runTurn/getAttempt` + onProgress；
  * 渲染进程拿不到 channel 字符串、目录或通用 fs。
  */
 const workspaceAgent = Object.freeze({
+  runTurn: (payload) => ipcRenderer.invoke('agent:run-turn', payload),
+  getAttempt: (payload) => ipcRenderer.invoke('agent:get-attempt', payload),
   getContext: (payload) => ipcRenderer.invoke('agent:get-context', payload),
   listFiles: (payload) => ipcRenderer.invoke('agent:list-files', payload),
   readFile: (payload) => ipcRenderer.invoke('agent:read-file', payload),

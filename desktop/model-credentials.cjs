@@ -144,6 +144,9 @@ function estimateBase64Bytes(data) {
  * - 单张 ≤ 400 KiB、合计 ≤ 1 MiB、最多 3 张，与 `AGENT_IMAGE_LIMITS` 对齐。
  */
 function normalizeMessageContent(content, role) {
+  // OpenAI 兼容语义：assistant 只发 tool_calls 时 content 可以是 null。
+  // 运行时必须能把这个真实回包原样回填，不能因本地规范器过窄而中断工具循环。
+  if ((content === null || content === undefined) && role === 'assistant') return null;
   if (typeof content === 'string') {
     if (content.length > MAX_MESSAGE_CHARS) {
       throw new ModelCredentialError('MODEL_REQUEST_INVALID', '单条对话内容过长。');

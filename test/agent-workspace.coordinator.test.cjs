@@ -27,6 +27,7 @@ const workspaceMod = h.loadModule('workspace');
 const versionsMod = h.loadModule('versions');
 const manifestMod = h.loadModule('manifest');
 const constants = h.loadModule('constants');
+const composerDigest = require(path.join(h.REPO, 'scripts', 'composer', 'digest.cjs'));
 
 const PROJECT_ID = 'proj-w1';
 const OTHER_PROJECT_ID = 'proj-w1-other';
@@ -75,7 +76,7 @@ function fakeChecks(state) {
         if (request.checkId === 'composer.dry-run') {
           const exportedRoot = path.join(request.exportParentDir, 'dry-run');
           fs.mkdirSync(exportedRoot, { recursive: true });
-          counters.exportTreeDigest = 'sha256:' + 'e'.repeat(64);
+          counters.exportTreeDigest = composerDigest.treeSha256(exportedRoot);
           return {
             ok: true,
             checkId: request.checkId,

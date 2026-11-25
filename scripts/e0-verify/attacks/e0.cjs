@@ -86,7 +86,7 @@ function countingRegistry(ctx, options) {
   };
 }
 
-/** 真实检查链：写入本用例专属标记 → source.check → composer.dry-run。 */
+/** 真实检查链：写入本用例专属标记 → source/dry-run → 两项导出检查。 */
 async function driveRealChecks(coord, handle, project, run, marker) {
   const paths = attemptPaths(project, run);
   const current = readTextOrNull(path.join(paths.candidateDir, 'pages', 'menu', 'index.wxml'));
@@ -97,7 +97,13 @@ async function driveRealChecks(coord, handle, project, run, marker) {
   if (!sourceCheck.ok) return { ok: false, stage: 'source.check', result: sourceCheck, paths };
   const dryRun = await runCheck(coord, handle, 'composer.dry-run');
   if (!dryRun.ok) return { ok: false, stage: 'composer.dry-run', result: dryRun, paths };
-  return { ok: true, sourceCheck, dryRun, paths };
+  const exportChecks = [];
+  for (const checkId of ['mini.check', 'output.consistency']) {
+    const result = await runCheck(coord, handle, checkId);
+    if (!result.ok) return { ok: false, stage: checkId, result, paths };
+    exportChecks.push(result);
+  }
+  return { ok: true, sourceCheck, dryRun, exportChecks, paths };
 }
 
 /** 真实链路到 submitted。 */

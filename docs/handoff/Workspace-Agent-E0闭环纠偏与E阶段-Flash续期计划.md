@@ -4,7 +4,9 @@
 >
 > 审计基线：当前工作区 HEAD `437bf5f`，`origin/main=a540d78`，本地 ahead 5 / behind 22；存在 staged、unstaged 和 untracked 交付/用户改动。禁止 reset/checkout/clean，禁止在未做集成身份确认前继续叠加 E。
 >
-> 本计划不是否定 B/C/D1，而是修复抽查发现的实际断点。**E0 未通过，不开放真实图片生成 E1–E4。**
+> 本计划不是否定 B/C/D1，而是修复抽查发现的实际断点。
+> **2026-11-26 更新：E0 技术闭环已通过（离线 114/114、真实 Flash 链 PASS、微信 BLOCKED）；E1 任务书见
+> `Workspace-Agent-E1-下一轮任务-2026-11-26.md`。**
 
 ---
 

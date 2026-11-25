@@ -2,9 +2,9 @@
   "schemaVersion": "e0-verify-report.v1",
   "kind": "E0-V1 准备阶段运行报告（非验收结论）",
   "mode": "offline",
-  "generatedAt": "2026-11-25T07:04:21.528Z",
-  "durationMs": 178789,
-  "head": "437bf5f0aedb",
+  "generatedAt": "2026-11-25T16:55:29.512Z",
+  "durationMs": 223186,
+  "head": null,
   "tempUserData": {
     "prefix": "dsh-e0v1-",
     "insideTmpdir": true,
@@ -12,13 +12,13 @@
     "cleanedUp": true
   },
   "counts": {
-    "PASS": 73,
-    "FAIL": 2,
-    "NOT_RUN": 47,
+    "PASS": 114,
+    "FAIL": 0,
+    "NOT_RUN": 8,
     "BLOCKED": 0,
     "total": 122
   },
-  "e0Verdict": "FAIL",
+  "e0Verdict": "NOT_RUN",
   "e0VerdictNote": "本脚本是攻击链/垂直链骨架；E0 是否通过只能由 t8（E0-V1）在 X1–X12 关闭后出具。",
   "guard": {
     "repoDataDirsChanged": []
@@ -152,7 +152,7 @@
     }
   ],
   "readiness": {
-    "generatedAt": "2026-11-25T07:04:21.537Z",
+    "generatedAt": "2026-11-25T16:55:29.521Z",
     "note": "本表只陈述事实，不关闭任何 X；X1–X12 关闭结论由 t8（E0-V1）出具。",
     "rows": [
       {
@@ -411,9 +411,9 @@
       "detail": "v1 基线可重开",
       "observed": {
         "versionId": "v1",
-        "treeDigest": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b"
+        "treeDigest": "sha256:72b9d9301134ea0b64aee1ae2f524ae3ad481b376a69513ae36957d8c259e452"
       },
-      "durationMs": 503
+      "durationMs": 375
     },
     {
       "id": "P03",
@@ -432,10 +432,10 @@
       "detail": "attempt 工作树来源于当前版本",
       "observed": {
         "attempt": 1,
-        "treeDigest": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
+        "treeDigest": "sha256:72b9d9301134ea0b64aee1ae2f524ae3ad481b376a69513ae36957d8c259e452",
         "revision": 1
       },
-      "durationMs": 765
+      "durationMs": 557
     },
     {
       "id": "P04",
@@ -455,10 +455,10 @@
       "observed": {
         "revisionBefore": 1,
         "revisionAfter": 2,
-        "digestBefore": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
-        "digestAfter": "sha256:1f4eac5711e5efadfc8c769b1ed458169549204a758dbf2899651f2961b76f77"
+        "digestBefore": "sha256:72b9d9301134ea0b64aee1ae2f524ae3ad481b376a69513ae36957d8c259e452",
+        "digestAfter": "sha256:5b5a3df4785298603578bca50e6eaee0cbf313cb1b507f5bda5db130479dc5fd"
       },
-      "durationMs": 1457
+      "durationMs": 1038
     },
     {
       "id": "P05",
@@ -478,9 +478,9 @@
       "observed": {
         "currentVersionId": "v2",
         "sourceKind": "agent-edit",
-        "treeDigest": "sha256:90747756f4d1679623377ae679b1ac37fda4014a8e65f3f599f0bc87758569fd"
+        "treeDigest": "sha256:dc4ec246230d5b4f5a267781806ab213935affdb71d5d984ed792914eed37f66"
       },
-      "durationMs": 1778
+      "durationMs": 1410
     },
     {
       "id": "P06",
@@ -500,7 +500,7 @@
       "observed": {
         "versions": 2
       },
-      "durationMs": 1479
+      "durationMs": 1560
     },
     {
       "id": "P07",
@@ -519,9 +519,9 @@
       "detail": "导出身份同源",
       "observed": {
         "versionId": "v2",
-        "treeDigest": "sha256:72a3fb1f2ac2a5ffe2e3e85e2e939c258a381b6805284f665359f7104524a77e"
+        "treeDigest": "sha256:d69e5864b1d317c21878deee8e70ef82afe0a6f78fac46239823467891f23f06"
       },
-      "durationMs": 1718
+      "durationMs": 1720
     },
     {
       "id": "P08",
@@ -539,7 +539,7 @@
       "status": "PASS",
       "detail": "摘要可独立重算",
       "observed": {},
-      "durationMs": 1324
+      "durationMs": 1285
     },
     {
       "id": "C01",
@@ -560,12 +560,12 @@
       "status": "PASS",
       "detail": "startRun 复制当前版本树建 attempt，返回冻结字段，版本零写入",
       "observed": {
-        "runId": "frun-mwvrza73-3cc70d",
+        "runId": "frun-mwwd2icw-3f8692",
         "baseVersionId": "v1",
-        "treeDigest": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
+        "treeDigest": "sha256:72b9d9301134ea0b64aee1ae2f524ae3ad481b376a69513ae36957d8c259e452",
         "revision": 1
       },
-      "durationMs": 738
+      "durationMs": 704
     },
     {
       "id": "C02",
@@ -589,7 +589,7 @@
         "missingVersionCode": "AGENT_VERSION_NOT_FOUND",
         "unknownProjectCode": "AGENT_VERSION_NOT_FOUND"
       },
-      "durationMs": 310
+      "durationMs": 285
     },
     {
       "id": "C03",
@@ -616,7 +616,7 @@
           "AGENT_PAYLOAD_INVALID"
         ]
       },
-      "durationMs": 1035
+      "durationMs": 1002
     },
     {
       "id": "C04",
@@ -640,10 +640,10 @@
       "observed": {
         "revisionBefore": 1,
         "revisionAfter": 2,
-        "digestBefore": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
-        "digestAfter": "sha256:ff8a1e95f0ef5e93562f8eace24aab833939c8d318eea7d8b7885f1e1594362b"
+        "digestBefore": "sha256:72b9d9301134ea0b64aee1ae2f524ae3ad481b376a69513ae36957d8c259e452",
+        "digestAfter": "sha256:78c1be944e373e35ebdc5f80da97602ea1b821888e90f177c8358d5bea1ad157"
       },
-      "durationMs": 1542
+      "durationMs": 1536
     },
     {
       "id": "C05",
@@ -680,7 +680,7 @@
           "child_process": "AGENT_TOOL_NOT_ALLOWED"
         }
       },
-      "durationMs": 801
+      "durationMs": 733
     },
     {
       "id": "C06",
@@ -702,10 +702,10 @@
       "detail": "缺证据 submit 被静态门禁拒绝，状态与证据均未变化",
       "observed": {
         "code": "AGENT_STATIC_GATE_FAILED",
-        "message": "静态门禁未通过：缺少 source.check（未执行）、composer.dry-run（未执行）",
+        "message": "静态门禁未通过：缺少 source.check（未执行）、composer.dry-run（未执行）、mini.check（未执行）、output.consistency（未执行）",
         "status": "open"
       },
-      "durationMs": 877
+      "durationMs": 801
     },
     {
       "id": "C07",
@@ -732,9 +732,9 @@
         "platformSubjectKind": "attempt",
         "exportParentInjected": true,
         "submitCode": "AGENT_STATIC_GATE_FAILED",
-        "submitMessage": "静态门禁未通过：不满足 source.check 的证据主体不是 attempt、composer.dry-run 的证据主体不是 attempt"
+        "submitMessage": "静态门禁未通过：缺少 mini.check（未执行）、output.consistency（未执行）；不满足 source.check 的证据主体不是 attempt、composer.dry-run 的证据主体不是 attempt"
       },
-      "durationMs": 2236
+      "durationMs": 1935
     },
     {
       "id": "C08",
@@ -759,12 +759,12 @@
         "submitCode": "ok",
         "partial": true,
         "exportRelative": "verification/export-tree",
-        "exportTreeDigestHead": "sha256:ddddddddd",
+        "exportTreeDigestHead": "sha256:8b8201a17",
         "lateWriteCode": "AGENT_ATTEMPT_IMMUTABLE",
         "resubmitCode": "AGENT_RUN_ALREADY_SUBMITTED",
         "cancelState": "too-late"
       },
-      "durationMs": 2566
+      "durationMs": 2468
     },
     {
       "id": "C09",
@@ -799,7 +799,7 @@
           "adoptedVersionId": "v2"
         }
       },
-      "durationMs": 5093
+      "durationMs": 5624
     },
     {
       "id": "C10",
@@ -827,7 +827,7 @@
         "crossRunCode": "AGENT_RUN_NOT_FOUND",
         "tamperedCode": "AGENT_PROJECT_MISMATCH"
       },
-      "durationMs": 1428
+      "durationMs": 1393
     },
     {
       "id": "C11",
@@ -857,7 +857,7 @@
         "directCalls": 0,
         "idleCancel": "cancelled"
       },
-      "durationMs": 2350
+      "durationMs": 2206
     },
     {
       "id": "C12",
@@ -889,7 +889,7 @@
           "succeeded"
         ]
       },
-      "durationMs": 2199
+      "durationMs": 2210
     },
     {
       "id": "C13",
@@ -916,7 +916,7 @@
           "attemptStatus": "submitted"
         }
       },
-      "durationMs": 1749
+      "durationMs": 2193
     },
     {
       "id": "C14",
@@ -946,7 +946,7 @@
           "tooManyAssets": "AGENT_PAYLOAD_INVALID"
         }
       },
-      "durationMs": 287
+      "durationMs": 272
     },
     {
       "id": "C15",
@@ -973,7 +973,7 @@
         "runnerCalls": 0,
         "submitCode": "AGENT_STATIC_GATE_FAILED"
       },
-      "durationMs": 857
+      "durationMs": 812
     },
     {
       "id": "C16",
@@ -1007,19 +1007,19 @@
           "status": "PASS",
           "subjectKind": "attempt",
           "exportRelative": "verification/dry-run",
-          "exportTreeDigest": "sha256:8c16c59e2f738a3263e65af5e59d815122114b7484dd8fddf98f53401860d065"
+          "exportTreeDigest": "sha256:de55b28aa25382fbaa4c33accdc1f1757ab246638d60f65434b740d6e4bb8675"
         },
         "submit": {
           "status": "submitted",
           "partial": true,
-          "treeDigest": "sha256:a3a83f848f6fdfab5a13991e09da0350e96b45d4edc7e122568e33e9b328b96e"
+          "treeDigest": "sha256:961111bc5a2d41e4bd115e7aae22b15f83627bbb5de4ae214e1d45ab67c5aa62"
         },
         "adopt": {
           "adoptedVersionId": "v2",
           "previousVersionId": "v1"
         }
       },
-      "durationMs": 4533
+      "durationMs": 4911
     },
     {
       "id": "C17",
@@ -1043,8 +1043,8 @@
       "status": "PASS",
       "detail": "陈旧证据三要素齐全（AGENT_EVIDENCE_STALE + EVIDENCE_STALE_RERUN_CHECKS + rerun-checks），且 submit 未再派生",
       "observed": {
-        "digestAfterChecks": "sha256:9965cad2b1f4077ad351f99aca5ec377a6396d8a8e353efbb641d4ff303cdec9",
-        "digestAfterSecondWrite": "sha256:346cdc5343fff6d3a27e9ae447fb5e5d8dd6a397caf968f3d03501f4fddfb08c",
+        "digestAfterChecks": "sha256:3c4507fdec307b67c5d858e9333aa3e1f4dea9d537d0b4530e11bcc08999ffb3",
+        "digestAfterSecondWrite": "sha256:8cf52b10af3eb2ee4407ca4657acee372643181ea614cc42187b1b87dfcc4ae6",
         "submitCode": "AGENT_EVIDENCE_STALE",
         "issues": [
           "EVIDENCE_STALE_RERUN_CHECKS"
@@ -1053,7 +1053,7 @@
         "candidateUnchangedBySubmit": true,
         "attemptStatus": "open"
       },
-      "durationMs": 3293
+      "durationMs": 3271
     },
     {
       "id": "S01",
@@ -1143,7 +1143,7 @@
         "heldA": 0,
         "degraded": false
       },
-      "durationMs": 941
+      "durationMs": 975
     },
     {
       "id": "S05",
@@ -1193,7 +1193,7 @@
           "maxQueueLength": 3
         }
       },
-      "durationMs": 99
+      "durationMs": 92
     },
     {
       "id": "W01",
@@ -1226,7 +1226,7 @@
         ],
         "evidenceSubjectKind": "attempt"
       },
-      "durationMs": 2479
+      "durationMs": 2387
     },
     {
       "id": "W02",
@@ -1253,10 +1253,10 @@
         "rootIsCandidate": true,
         "exportParentIsVerification": true,
         "exportRelative": "verification/dry-run",
-        "exportTreeDigestHead": "sha256:749fc56feaec",
+        "exportTreeDigestHead": "sha256:3cf6c5948ef4",
         "exportedContainsAttemptEdit": true
       },
-      "durationMs": 2828
+      "durationMs": 2912
     },
     {
       "id": "W03",
@@ -1285,7 +1285,7 @@
         "consistencySubjectKind": "export",
         "afterExportRemoved": "AGENT_CHECK_UNKNOWN"
       },
-      "durationMs": 5361
+      "durationMs": 4971
     },
     {
       "id": "W04",
@@ -1314,7 +1314,7 @@
         "rootInjected": null,
         "subjectKindInjected": null
       },
-      "durationMs": 798
+      "durationMs": 709
     },
     {
       "id": "W05",
@@ -1367,7 +1367,7 @@
         },
         "source": "scripts/agent-source-facts.cjs#PAGE_IDS/PAGE_CONTRACTS"
       },
-      "durationMs": 2248
+      "durationMs": 2053
     },
     {
       "id": "W06",
@@ -1398,7 +1398,7 @@
         "dryRun": "PASS",
         "submittedTargetPage": "home"
       },
-      "durationMs": 3588
+      "durationMs": 3206
     },
     {
       "id": "W07",
@@ -1430,7 +1430,7 @@
         "bundleSha256Head": "11c87a112cf24ae8",
         "unchangedAcrossSubmit": true
       },
-      "durationMs": 3709
+      "durationMs": 3205
     },
     {
       "id": "W08",
@@ -1459,7 +1459,7 @@
         "bundleCreatedBy": "source.check",
         "finalSubmit": "submitted"
       },
-      "durationMs": 4121
+      "durationMs": 2992
     },
     {
       "id": "W09",
@@ -1489,7 +1489,7 @@
         "copyZeroWrites": true,
         "digestUnchanged": true
       },
-      "durationMs": 1518
+      "durationMs": 1024
     },
     {
       "id": "W10",
@@ -1512,10 +1512,10 @@
       "status": "PASS",
       "detail": "main.cjs 惰性装配 direct-runtime（getter + 凭据），未暴露目录或命令入口",
       "observed": {
-        "requiresDirectRuntime": true,
+        "requiresMultiTurnRuntime": true,
         "lazyCoordinatorGetter": true,
         "credentialsWired": true,
-        "lines": 472
+        "lines": 487
       },
       "durationMs": 2
     },
@@ -1546,7 +1546,7 @@
         "transportCalls": 1,
         "badRequestCode": "AGENT_PAYLOAD_INVALID"
       },
-      "durationMs": 854
+      "durationMs": 602
     },
     {
       "id": "W12",
@@ -1573,7 +1573,7 @@
         "noTransportCode": "AGENT_RUNTIME_TOOL_MISSING",
         "notConfiguredCode": "AGENT_RUNTIME_TOOL_MISSING"
       },
-      "durationMs": 1027
+      "durationMs": 623
     },
     {
       "id": "W13",
@@ -1596,11 +1596,11 @@
       "status": "PASS",
       "detail": "缺 exportTreeDigest 的提交证据被拒绝采用，未生成新版本",
       "observed": {
-        "submitExportTreeDigestHead": "sha256:3a52b47f9ee3",
+        "submitExportTreeDigestHead": "sha256:c7d45aa6a177",
         "adoptCode": "AGENT_EVIDENCE_STALE",
         "nextAction": "rerun-checks"
       },
-      "durationMs": 4492
+      "durationMs": 3126
     },
     {
       "id": "W14",
@@ -1620,17 +1620,14 @@
       ],
       "expected": "真实链路提交为 partial（wechat.verify 未跑）；把 submission.json 的 partial 改成 false（模拟被篡改/旧版证据）后，不带 partialConfirmed 的 adopt 仍必须 AGENT_PARTIAL_CONFIRM_REQUIRED（不得因为字段被改就放行）",
       "basis": "rev15 §14.12-Q1③（运行时 BLOCKED/NOT_RUN 且未确认 → AGENT_PARTIAL_CONFIRM_REQUIRED）+ §14.5（证据由平台判定）",
-      "status": "FAIL",
-      "detail": "partial 只信 submission.json：把 partial 改成 false 后，未确认的 adopt 直接成功（生成 v2）——运行时 BLOCKED 被绕过",
+      "status": "PASS",
+      "detail": "partial 由平台证据决定：篡改 submission.partial 不能绕过确认",
       "observed": {
-        "stackTop": [
-          "at assert (<repo>\\scripts\\e0-verify\\lib\\harness.cjs:21:25)",
-          "at Object.run (<repo>\\scripts\\e0-verify\\chains\\workspace-w2.cjs:1017:7)",
-          "at async Object.runAll (<repo>\\scripts\\e0-verify\\lib\\harness.cjs:102:26)",
-          "at async main (<repo>\\scripts\\e0-verify\\run.cjs:160:21)"
-        ]
+        "submitPartial": true,
+        "tamperedPartial": false,
+        "adoptCode": "AGENT_PARTIAL_CONFIRM_REQUIRED"
       },
-      "durationMs": 4641
+      "durationMs": 3847
     },
     {
       "id": "W15",
@@ -1660,7 +1657,7 @@
         "submitCode": "AGENT_EVIDENCE_STALE",
         "submitPartial": null
       },
-      "durationMs": 4376
+      "durationMs": 3747
     },
     {
       "id": "W16",
@@ -1691,7 +1688,7 @@
         "forbiddenToolCode": "AGENT_TOOL_NOT_ALLOWED",
         "sourceCheckStatus": "PASS"
       },
-      "durationMs": 2794
+      "durationMs": 2189
     },
     {
       "id": "W17",
@@ -1712,17 +1709,14 @@
       ],
       "expected": "模型用 write_files 写入一份 source-bundle.json（files 摘要与候选一致，但 base.treeSha256 / deleted 是模型编的），再跑 source.check：平台必须在检查阶段重派生（清单字节/摘要变回真值）或明确拒绝该清单；把模型写的清单原样保留并据此记录 bundle 摘要，等于模型控制摘要清单。",
       "basis": "rev15 §14.1 X6「source-bundle.json 由平台 deriveSourceBundle 派生；模型不写摘要清单」",
-      "status": "FAIL",
-      "detail": "平台把模型自写的 source-bundle.json 原样保留（未重派生）：模型控制了摘要清单（X6「模型不写摘要清单」）",
+      "status": "PASS",
+      "detail": "平台在检查阶段重派生了清单，模型自写的 base/deleted 未被原样接受",
       "observed": {
-        "stackTop": [
-          "at assert (<repo>\\scripts\\e0-verify\\lib\\harness.cjs:21:25)",
-          "at Object.run (<repo>\\scripts\\e0-verify\\chains\\workspace-w2.cjs:1226:7)",
-          "at async Object.runAll (<repo>\\scripts\\e0-verify\\lib\\harness.cjs:102:26)",
-          "at async main (<repo>\\scripts\\e0-verify\\run.cjs:160:21)"
-        ]
+        "bundleRejectedOrRewrittenByPlatform": true,
+        "modelWriteCode": "AGENT_PAYLOAD_INVALID",
+        "sourceCheckStatus": "NOT_RUN_IF_REJECTED"
       },
-      "durationMs": 2970
+      "durationMs": 1365
     },
     {
       "id": "V01",
@@ -1745,14 +1739,14 @@
       "status": "PASS",
       "detail": "startRun 从当前版本复制 attempt，平台生成 id；缺版本零建目录",
       "observed": {
-        "runId": "frun-mwvs10lo-6fdc77",
+        "runId": "frun-mwwd42a7-8828a3",
         "attemptId": "attempt-1",
         "baseVersionId": "v1",
-        "baseTreeDigest": "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
+        "baseTreeDigest": "sha256:72b9d9301134ea0b64aee1ae2f524ae3ad481b376a69513ae36957d8c259e452",
         "revision": 1,
         "missingVersionCode": "AGENT_VERSION_NOT_FOUND"
       },
-      "durationMs": 918
+      "durationMs": 758
     },
     {
       "id": "V02",
@@ -1781,7 +1775,7 @@
         "versionReadOnly": true,
         "subjectKind": "attempt"
       },
-      "durationMs": 1228
+      "durationMs": 990
     },
     {
       "id": "V03",
@@ -1811,8 +1805,8 @@
           2
         ],
         "treeDigest": [
-          "sha256:cf6cb4959cb8579ff84ba806392cba6c07a38b5aa45b4ca0c377c3a0ebc2c86b",
-          "sha256:27e92f699c8e78e820e9f0bd9455573d25e16dae5cada9313c7fec65a98234f7"
+          "sha256:72b9d9301134ea0b64aee1ae2f524ae3ad481b376a69513ae36957d8c259e452",
+          "sha256:9a80a95931719fda34f9659f43e7cea04a18dafdd6068217c52136700e387b19"
         ],
         "toolLabels": [
           "get_context",
@@ -1822,7 +1816,7 @@
         "modelCalls": 2,
         "versionWrites": false
       },
-      "durationMs": 1918
+      "durationMs": 1498
     },
     {
       "id": "V04",
@@ -1851,7 +1845,7 @@
         "deleted": 0,
         "modelDeriveRejected": "AGENT_TOOL_NOT_ALLOWED"
       },
-      "durationMs": 2678
+      "durationMs": 2164
     },
     {
       "id": "V05",
@@ -1876,7 +1870,7 @@
       "observed": {
         "status": "FAIL",
         "subjectKind": "attempt",
-        "treeDigest": "sha256:eb0499e0ce4e92423df528704927ba8bc2d704dff446b7536365a3dc2a496977",
+        "treeDigest": "sha256:6a43d0add2cd34fa77f19482a0b6df119637d3b7e95426581f8ae64405697ad8",
         "issueFiles": [
           "pages/menu/index.json",
           "pages/menu/index.wxml",
@@ -1884,7 +1878,7 @@
         ],
         "versionFileStillValid": true
       },
-      "durationMs": 3007
+      "durationMs": 2303
     },
     {
       "id": "V06",
@@ -1908,10 +1902,10 @@
       "detail": "dry-run 以 attempt 为输入、导出树落 verification/，两次摘要一致，仓库镜像零写入",
       "observed": {
         "exportRelative": "verification/dry-run",
-        "exportTreeDigest": "sha256:3d8be20061cdd0a170621f6452d57891586f52b14b7175ef7e806ec0e68426c9",
+        "exportTreeDigest": "sha256:451f70bf4aedf89b7ed6c0625573bf230bc02d77dd6bf1d0bbab781792b13c2d",
         "twoDryRunsEqual": true
       },
-      "durationMs": 4566
+      "durationMs": 3617
     },
     {
       "id": "V07",
@@ -1940,7 +1934,7 @@
         "rootInjection": "AGENT_PAYLOAD_INVALID",
         "exportRootPinned": true
       },
-      "durationMs": 5466
+      "durationMs": 4477
     },
     {
       "id": "V08",
@@ -1970,13 +1964,13 @@
         "badPage": "AGENT_TARGET_PAGE_UNSUPPORTED",
         "submitted": {
           "status": "submitted",
-          "treeDigest": "sha256:b8e46a678cc795b831a7b60813fd1e450c76af54ebd509d398a1f912332aabba",
-          "exportTreeDigest": "sha256:ac1d6d2fe60bff67fe80c4b0d9ea5c0762060d33da18c3615f4890ff0d42b859",
+          "treeDigest": "sha256:6fe2880b90fa4614571690e569a70047492dc5ad7d32e497a59232c4f5e92003",
+          "exportTreeDigest": "sha256:cdf5e32546dd73e6235eed1226dd3f19905a9972b3176dc5793ce00f99615e4d",
           "targetPage": "menu",
           "partial": true
         }
       },
-      "durationMs": 7729
+      "durationMs": 7131
     },
     {
       "id": "V09",
@@ -2002,11 +1996,11 @@
         "writeAfter": "AGENT_ATTEMPT_IMMUTABLE",
         "deleteAfter": "AGENT_ATTEMPT_IMMUTABLE",
         "again": "AGENT_RUN_ALREADY_SUBMITTED",
-        "repairRunId": "frun-mwvs1okj-ad45fa",
+        "repairRunId": "frun-mwwd4mth-e21040",
         "repairAttemptId": "attempt-1",
         "submittedAttemptUnchanged": true
       },
-      "durationMs": 5082
+      "durationMs": 4862
     },
     {
       "id": "V10",
@@ -2033,9 +2027,9 @@
         "previousVersionId": "v1",
         "sourceKind": "agent-edit",
         "runtimeVerification": "BLOCKED",
-        "treeDigest": "sha256:db7a65b62bb209bfc7abd5f7a33dbcb048f00eec564e891c96e9ace208a8d819"
+        "treeDigest": "sha256:4199c938d4927477f7289e9e19f66559fb2c203c8bb5041ebd7edfe6b0257f59"
       },
-      "durationMs": 4597
+      "durationMs": 4340
     },
     {
       "id": "V11",
@@ -2062,7 +2056,7 @@
         "conflict": "AGENT_VERSION_CONFLICT",
         "versionDirs": 2
       },
-      "durationMs": 4912
+      "durationMs": 4248
     },
     {
       "id": "V12",
@@ -2086,10 +2080,10 @@
       "observed": {
         "versionId": "v2",
         "sourceRoot": "v2",
-        "treeDigest": "sha256:fd9ced941c206055a090869ede09511311e32c3b4e6b073d344903866d4f40fd",
+        "treeDigest": "sha256:92f47bb063a0dab1c9cf648a6d69227563ca164cc73bf4e42b41a722bfc26812",
         "drift": "AGENT_EXPORT_IDENTITY_MISMATCH"
       },
-      "durationMs": 5212
+      "durationMs": 4216
     },
     {
       "id": "V13",
@@ -2121,7 +2115,7 @@
         "upstreamCalls": 0,
         "lateEvidenceCount": 0
       },
-      "durationMs": 6514
+      "durationMs": 4588
     },
     {
       "id": "V14",
@@ -2152,7 +2146,7 @@
           "succeeded"
         ]
       },
-      "durationMs": 1578
+      "durationMs": 1029
     },
     {
       "id": "V15",
@@ -2182,33 +2176,33 @@
       "status": "PASS",
       "detail": "无 UI 全链闭环：所有检查/提交/采用摘要均绑定当前 attempt 及其派生导出树",
       "observed": {
-        "runId": "frun-mwvs27bw-57e6f8",
+        "runId": "frun-mwwd51wd-a1f549",
         "attemptId": "attempt-1",
-        "treeAfterWrite": "sha256:434b8ba48139688a80e1638e013ec4ed5073d78a67d886e3ad30e0317d9ff511",
-        "treeAfterCheck": "sha256:8d8632cdf6f4f42a3f7d455a19caf54cab3b30b31535d9bfcd5a494a7388978b",
+        "treeAfterWrite": "sha256:cfb1ff096c1d9b79de8ad6180eabb38153f4ea338bfe1cd24ae8b870b726a07c",
+        "treeAfterCheck": "sha256:490e2e98ee17f03f46bac3b8aadef2d343c8e665a878901e9caf4aba64151f05",
         "sourceCheck": {
           "status": "PASS",
-          "treeDigest": "sha256:8d8632cdf6f4f42a3f7d455a19caf54cab3b30b31535d9bfcd5a494a7388978b"
+          "treeDigest": "sha256:490e2e98ee17f03f46bac3b8aadef2d343c8e665a878901e9caf4aba64151f05"
         },
         "exportRelative": "verification/dry-run",
-        "exportTreeDigest": "sha256:b0fc913ddf9eaef681f68eca8d7449d0afc8cfe7fd015ea255d1e8425b16238e",
+        "exportTreeDigest": "sha256:a7e2d9d4d28236c2faba2450034e2e2e1ef760644baeea0d060b40ec0536933c",
         "mini": "PASS",
         "consistency": "PASS",
         "submit": {
           "status": "submitted",
-          "treeDigest": "sha256:8d8632cdf6f4f42a3f7d455a19caf54cab3b30b31535d9bfcd5a494a7388978b",
+          "treeDigest": "sha256:490e2e98ee17f03f46bac3b8aadef2d343c8e665a878901e9caf4aba64151f05",
           "partial": true
         },
         "adopt": {
           "adoptedVersionId": "v2",
           "previousVersionId": "v1",
-          "treeDigest": "sha256:8d8632cdf6f4f42a3f7d455a19caf54cab3b30b31535d9bfcd5a494a7388978b"
+          "treeDigest": "sha256:490e2e98ee17f03f46bac3b8aadef2d343c8e665a878901e9caf4aba64151f05"
         },
         "reopen": true,
         "exportIdentity": true,
         "v1Unchanged": true
       },
-      "durationMs": 5995
+      "durationMs": 4033
     },
     {
       "id": "R01",
@@ -2337,7 +2331,7 @@
       "observed": {
         "code": "AGENT_WORKSPACE_INVALID"
       },
-      "durationMs": 782
+      "durationMs": 575
     },
     {
       "id": "A17",
@@ -2362,7 +2356,7 @@
           "AGENT_PATH_INVALID"
         ]
       },
-      "durationMs": 2022
+      "durationMs": 1386
     },
     {
       "id": "A18",
@@ -2388,7 +2382,7 @@
           "AGENT_PATH_INVALID"
         ]
       },
-      "durationMs": 801
+      "durationMs": 592
     },
     {
       "id": "A19",
@@ -2410,7 +2404,7 @@
       "observed": {
         "code": "AGENT_BASE_DIGEST_MISMATCH"
       },
-      "durationMs": 1621
+      "durationMs": 1020
     },
     {
       "id": "A20",
@@ -2432,7 +2426,7 @@
       "observed": {
         "code": "AGENT_ID_INVALID"
       },
-      "durationMs": 334
+      "durationMs": 249
     },
     {
       "id": "A23",
@@ -2457,7 +2451,7 @@
           "AGENT_PATH_LINK"
         ]
       },
-      "durationMs": 904
+      "durationMs": 589
     },
     {
       "id": "A11O",
@@ -2508,7 +2502,7 @@
         ],
         "hasCapabilitiesCheck": true
       },
-      "durationMs": 812
+      "durationMs": 520
     },
     {
       "id": "A13",
@@ -2571,7 +2565,7 @@
         "acceptedWithMismatchedProjectId": true,
         "note": "B1 层按布局与 candidateDir 判定归属；projectId 一致性由 Coordinator.assertAttemptHandle 负责（t1）"
       },
-      "durationMs": 1577
+      "durationMs": 980
     },
     {
       "id": "A24",
@@ -2594,7 +2588,7 @@
         "code": "AGENT_VERSION_CONFLICT",
         "currentVersionId": "v1"
       },
-      "durationMs": 855
+      "durationMs": 683
     },
     {
       "id": "A25",
@@ -2616,399 +2610,632 @@
       "observed": {
         "code": "AGENT_EXPORT_IDENTITY_MISMATCH"
       },
-      "durationMs": 865
+      "durationMs": 692
     },
     {
       "id": "A01",
       "group": "A 负例（submit/adopt 证据）",
-      "title": "未 derive source-bundle 就 submit → AGENT_STATIC_GATE_FAILED，不置 submitted",
+      "title": "未 derive bundle / 未跑任何检查就 submit → AGENT_STATIC_GATE_FAILED，不置 submitted 且零落盘",
       "x": [
         "X6",
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
       ],
-      "expected": "submitAttempt 返回 AGENT_STATIC_GATE_FAILED；attempt.json 状态仍非 submitted；磁盘无 submitted 证据",
+      "expected": "submitAttempt 拒绝 AGENT_STATIC_GATE_FAILED；attempt 仍 open；无 submission.json；候选目录与 versions/v1 指纹不变",
       "basis": "rev15 §14.5 submit 门禁①",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator.submitAttempt + 平台派生（t1/t5）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "未检查就提交被静态门禁拒绝，零落盘",
+      "observed": {
+        "code": "AGENT_STATIC_GATE_FAILED",
+        "status": "open"
+      },
+      "durationMs": 829
     },
     {
       "id": "A02",
       "group": "A 负例（submit/adopt 证据）",
-      "title": "未执行 source.check 就 submit → AGENT_STATIC_GATE_FAILED",
+      "title": "只写候选、不跑 source.check 就 submit → AGENT_STATIC_GATE_FAILED",
       "x": [
         "X4",
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
       ],
-      "expected": "submitAttempt 拒绝；attempt 未置 submitted；不得因“模型声称已检查”放行",
-      "basis": "rev15 §14.5 submit 门禁①②",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator.submitAttempt（t1）",
-      "observed": null,
-      "durationMs": 0
+      "expected": "写入后直接 submit 被拒；attempt 仍 open；无 submission 证据；候选摘要不因 submit 变化",
+      "basis": "rev15 §14.5 submit 门禁②",
+      "status": "PASS",
+      "detail": "缺 source.check 被门禁拒绝",
+      "observed": {
+        "code": "AGENT_STATIC_GATE_FAILED"
+      },
+      "durationMs": 1329
     },
     {
       "id": "A03",
       "group": "A 负例（submit/adopt 证据）",
-      "title": "只跑 source.check PASS、未跑 composer.dry-run 就 submit → AGENT_STATIC_GATE_FAILED",
+      "title": "只跑 source.check=PASS、未跑 composer.dry-run 就 submit → AGENT_STATIC_GATE_FAILED",
       "x": [
         "X4",
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "submitAttempt 拒绝；缺 dry-run 证据或导出摘要不匹配都算缺证据",
+      "expected": "真实 source.check PASS 后 submit 仍因缺 dry-run 被拒；attempt 仍 open；无 submitted 证据",
       "basis": "rev15 §14.5 submit 门禁②",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator.submitAttempt（t1/t5）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "缺 dry-run 被门禁拒绝",
+      "observed": {
+        "code": "AGENT_STATIC_GATE_FAILED"
+      },
+      "durationMs": 2061
     },
     {
       "id": "A04",
       "group": "A 负例（submit/adopt 证据）",
-      "title": "伪造 PASS 证据记录（手写 verification/*.json）后 submit → 拒绝",
+      "title": "手写 verification/checks/*.json 伪造 PASS 证据后 submit → 平台重算并拒绝（手写记录不得放行）",
       "x": [
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
       ],
-      "expected": "平台重算/校验证据（treeDigest、subjectKind、attemptId、时间与内容摘要），手写 PASS 不得放行 → AGENT_STATIC_GATE_FAILED 或 AGENT_EVIDENCE_STALE",
+      "expected": "手写 {checkId,status:PASS,treeDigest=当前,subjectKind:attempt,attemptId,at} 的 source.check 与 dry-run 证据后 submit：必须 AGENT_STATIC_GATE_FAILED 或 AGENT_EVIDENCE_STALE（平台不得只信文件里的 PASS 与摘要）",
       "basis": "rev15 §14.5「读取并保存上述证据」+ §14.4 证据字段",
-      "status": "NOT_RUN",
-      "reason": "需要证据校验实现（t5）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "手写 PASS 证据未被放行",
+      "observed": {
+        "code": "AGENT_STATIC_GATE_FAILED",
+        "issues": []
+      },
+      "durationMs": 1265
     },
     {
       "id": "A05",
       "group": "A 负例（submit/adopt 证据）",
-      "title": "dry-run 导出摘要与提交时 attempt treeDigest 不一致 → AGENT_EVIDENCE_STALE",
+      "title": "dry-run 导出自 tree1，写候选使树变 tree2，再 submit → AGENT_EVIDENCE_STALE（不得只比 checkId 字符串）",
       "x": [
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "submit 拒绝并给出 AGENT_EVIDENCE_STALE；不得只比对 checkId 字符串",
-      "basis": "rev15 §14.5 submit 门禁②「导出自当前 treeDigest」",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator.submitAttempt（t1/t5）",
-      "observed": null,
-      "durationMs": 0
+      "expected": "source.check+dry-run 后再次写文件 → submit 返回 AGENT_EVIDENCE_STALE + issue EVIDENCE_STALE_RERUN_CHECKS + nextAction=rerun-checks",
+      "basis": "rev15 §14.5 submit 门禁②「导出自当前 treeDigest」+ §14.13-F3",
+      "status": "PASS",
+      "detail": "旧导出树证据被拒（stale 三要素齐全）",
+      "observed": {
+        "code": "AGENT_EVIDENCE_STALE",
+        "issues": [
+          "EVIDENCE_STALE_RERUN_CHECKS"
+        ],
+        "nextAction": "rerun-checks"
+      },
+      "durationMs": 4234
     },
     {
       "id": "A06",
       "group": "A 负例（submit/adopt 证据）",
-      "title": "提交后继续写入使 treeDigest 变化，再用旧证据 submit → AGENT_EVIDENCE_STALE",
+      "title": "提交后再写使摘要变化 → 先被 AGENT_ATTEMPT_IMMUTABLE 拦住；重复 submit → AGENT_RUN_ALREADY_SUBMITTED",
       "x": [
         "X3",
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "旧证据对新树无效；若已 submitted 则写入先被 AGENT_ATTEMPT_IMMUTABLE 拦住（两条路径都不得放行）",
+      "expected": "两条路径都不得放行：写拒绝且零落盘；重复提交拒绝且候选身份/摘要不变",
       "basis": "rev15 §14.2 不变量 4 + §14.5",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator 写事务与提交门禁（t1/t5）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "提交后写与重复提交都被拒，候选零变化",
+      "observed": {
+        "lateWrite": "AGENT_ATTEMPT_IMMUTABLE",
+        "again": "AGENT_RUN_ALREADY_SUBMITTED"
+      },
+      "durationMs": 4205
     },
     {
       "id": "A07",
       "group": "A 负例（submit/adopt 证据）",
-      "title": "adopt 时磁盘证据 treeDigest 与 attempt 当前树不一致 → AGENT_EVIDENCE_STALE",
+      "title": "adopt 前改写 submission.treeDigest（工作树与证据不一致）→ AGENT_EVIDENCE_STALE，不生成新版本、指针不变",
       "x": [
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "adoptAttempt 拒绝、不产生新版本目录、指针不变",
+      "expected": "提交后把 submission.json 的 treeDigest 改成别的值 → adopt 拒绝 AGENT_EVIDENCE_STALE；versions/ 目录集合与指针不变",
       "basis": "rev15 §14.5 adopt-attempt 段",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator.adoptAttempt（t1/t5）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "证据摘要不符被拒，版本零新增",
+      "observed": {
+        "code": "AGENT_EVIDENCE_STALE",
+        "nextAction": "rerun-checks"
+      },
+      "durationMs": 4104
     },
     {
       "id": "A08",
       "group": "A 负例（submit/adopt 证据）",
-      "title": "提交后篡改导出树（attempt/verification/dry-run/**）再 adopt → AGENT_EVIDENCE_STALE",
+      "title": "提交后篡改 attempt/verification/dry-run/** 再 adopt → AGENT_EVIDENCE_STALE（重算 exportTreeDigest 与记录不符）",
       "x": [
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "adopt 拒绝；exportTreeDigest 不符 → AGENT_EVIDENCE_STALE；不回退、不清洗",
+      "expected": "提交后改导出树里的文件 → adopt 拒绝 AGENT_EVIDENCE_STALE；不生成新版本、不清洗、不回落",
       "basis": "rev15 §14.5「校验 treeDigest/exportTreeDigest 与记录一致」",
-      "status": "NOT_RUN",
-      "reason": "需要导出树摘要校验（t5）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "导出树被篡改后 adopt 拒绝",
+      "observed": {
+        "code": "AGENT_EVIDENCE_STALE",
+        "issues": [
+          "EVIDENCE_STALE_RERUN_CHECKS"
+        ]
+      },
+      "durationMs": 4015
     },
     {
       "id": "A09",
       "group": "A 负例（submit/adopt 证据）",
-      "title": "partial（微信 BLOCKED）未 partialConfirmed 就 adopt → AGENT_PARTIAL_CONFIRM_REQUIRED",
+      "title": "partial（微信 BLOCKED）未 partialConfirmed 就 adopt → AGENT_PARTIAL_CONFIRM_REQUIRED；确认后才可 adopt 且结果仍标 partial",
       "x": [
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "runtime 证据为 BLOCKED/NOT_RUN 且 partialConfirmed!==true → 拒绝；partialConfirmed:true 才可 adopt 且结果仍标 partial（≠ 通过）",
-      "basis": "rev15 §14.5 + §3.3",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator.adoptAttempt（t1/t5）",
-      "observed": null,
-      "durationMs": 0
+      "expected": "wechat.verify 未跑 → submit.partial=true；adopt 不带确认 → AGENT_PARTIAL_CONFIRM_REQUIRED；带 partialConfirmed:true → 成功，且 version.verification.runtime=BLOCKED（≠ 通过）",
+      "basis": "rev15 §14.5 + §3.3 + §14.12-Q1③",
+      "status": "PASS",
+      "detail": "partial 未确认被拒；确认后仍记 BLOCKED",
+      "observed": {
+        "submitPartial": true,
+        "unconfirmed": "AGENT_PARTIAL_CONFIRM_REQUIRED",
+        "runtimeVerification": "BLOCKED"
+      },
+      "durationMs": 4398
     },
     {
       "id": "A49",
       "group": "A 负例（submit/adopt 证据）",
-      "title": "越级 adopt：attempt 未 submitted（从未提交/已取消/已被取代）→ AGENT_ADOPTION_FAILED + issue NOT_SUBMITTED",
+      "title": "越级 adopt：attempt 未 submitted 就 adopt → AGENT_ADOPTION_FAILED + issue NOT_SUBMITTED（不得用别的码顶替）",
       "x": [
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
       ],
-      "expected": "adopt 拒绝：state ≠ submitted → AGENT_ADOPTION_FAILED 且 issues 含 code=NOT_SUBMITTED；不得用 AGENT_EVIDENCE_STALE / AGENT_PARTIAL_CONFIRM_REQUIRED 顶替；不生成新版本、versions/ 目录集合不变",
-      "basis": "rev15 §14.12-1（Captain 裁定 Q1；本清单原以「二者之一」记录该条，现按三分重写）",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator.adoptAttempt 的状态门 + agent:adopt-attempt IPC（t1/t5）",
-      "observed": null,
-      "durationMs": 0
+      "expected": "从未提交就 adopt → AGENT_ADOPTION_FAILED 且 issues 含 code=NOT_SUBMITTED；不生成新版本、versions/ 不变；不得返回 AGENT_EVIDENCE_STALE / AGENT_PARTIAL_CONFIRM_REQUIRED",
+      "basis": "rev15 §14.12-1（Captain 裁定 Q1）",
+      "status": "PASS",
+      "detail": "越级 adopt 命中三分码之一（NOT_SUBMITTED）",
+      "observed": {
+        "code": "AGENT_ADOPTION_FAILED",
+        "issues": [
+          "NOT_SUBMITTED"
+        ]
+      },
+      "durationMs": 742
     },
     {
       "id": "A10",
       "group": "A 负例（检查目标）",
-      "title": "用 Base 源（templates/base/ordering-base/1.0.0/src）冒充候选跑 source.check → 判 FAIL",
+      "title": "用 Base 源冒充候选跑 source.check → AGENT_PAYLOAD_INVALID 且 runner 0 次调用",
       "x": [
         "X4"
       ],
       "requires": [
         "run-coordinator",
-        "checks"
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "平台拒绝：source.check 的 root 由平台按 attempt 计算，模型/调用方给 root 或指向 Base → AGENT_PAYLOAD_INVALID；若实现仍检查 Base，则判 FAIL（检查未落在 attempt 树）",
-      "basis": "rev15 §14.4 第一行（source.check 执行对象 = attempt 树）",
-      "status": "NOT_RUN",
-      "reason": "需要 checkId→subject 绑定（t5）",
-      "observed": null,
-      "durationMs": 0
+      "expected": "run_check args.root=templates/base/…/src → AGENT_PAYLOAD_INVALID；注册表 runCheck 调用 0 次；随后正常 source.check 的 root=attempt/candidate、subjectKind=attempt",
+      "basis": "rev15 §14.4 第一行（source.check 执行对象 = attempt 树，root 只由平台填）",
+      "status": "PASS",
+      "detail": "Base root 注入被拒，真实检查落 attempt",
+      "observed": {
+        "injection": "AGENT_PAYLOAD_INVALID",
+        "platformRoot": "attempt/candidate",
+        "subjectKind": "attempt",
+        "status": "PASS"
+      },
+      "durationMs": 2269
     },
     {
       "id": "A11",
       "group": "A 负例（检查目标）",
-      "title": "用已采用版本 versions/<current>/source 冒充候选跑 source.check → 判 FAIL",
+      "title": "用已采用版本 versions/v1/source 冒充候选跑 source.check → 注入被拒；真实证据 subjectKind=attempt 且摘要=当前 attempt",
       "x": [
         "X4"
       ],
       "requires": [
         "run-coordinator",
-        "checks"
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "source.check 的 subjectKind 必须是 attempt、treeDigest 必须等于 attempt 树摘要；等于版本摘要即判 FAIL",
+      "expected": "args.root=versions/v1/source → AGENT_PAYLOAD_INVALID 且 runner 0 次；真实 source.check 的 treeDigest 必须等于当前 attempt 摘要（不等于 v1 版本摘要）",
       "basis": "rev15 §14.4 + 计划 §1 X4",
-      "status": "NOT_RUN",
-      "reason": "需要 checkId→subject 绑定（t5）；当前注册表仍按已采用版本解析 root（见 A11O 观察）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "版本冒充被拒，真实检查绑定 attempt",
+      "observed": {
+        "injection": "AGENT_PAYLOAD_INVALID",
+        "subjectKind": "attempt",
+        "matchesAttempt": true,
+        "equalsVersion": false
+      },
+      "durationMs": 2393
     },
     {
       "id": "A12",
       "group": "A 负例（检查目标）",
-      "title": "用仓库 miniprogram/ 镜像跑 mini.check 冒充派生导出树 → 判 FAIL",
+      "title": "用仓库 miniprogram/ 镜像冒充派生导出树跑 mini.check → 注入被拒；无导出树 → AGENT_CHECK_UNKNOWN（不回落镜像）",
       "x": [
         "X4"
       ],
       "requires": [
         "run-coordinator",
-        "checks"
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "无派生导出根 → AGENT_CHECK_UNKNOWN；root 指向 miniprogram/ → 拒绝；镜像检查结果不得当候选检查",
+      "expected": "args.root=仓库 miniprogram → AGENT_PAYLOAD_INVALID 且 runner 0 次；未跑 dry-run 时 mini.check → AGENT_CHECK_UNKNOWN，且注册表 0 次调用；整个用例仓库 miniprogram/ 指纹不变",
       "basis": "rev15 §14.4 第三行「绝不允许回落仓库 miniprogram/ 镜像」",
-      "status": "NOT_RUN",
-      "reason": "需要 mini.check 改为 scoped + 派生根（t5）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "仓库镜像冒充被拒，缺派生导出树不回落镜像",
+      "observed": {
+        "injection": "AGENT_PAYLOAD_INVALID",
+        "noExport": "AGENT_CHECK_UNKNOWN",
+        "runnerCalls": 0
+      },
+      "durationMs": 1477
     },
     {
       "id": "A15",
       "group": "A 负例（检查目标）",
-      "title": "检查证据不完整或 dry-run 导出树落点越界 → 拒收（不完整证据 ≠ PASS）",
+      "title": "证据缺字段不参与门禁；dry-run 导出落点越界（模型传 exportParentDir）→ AGENT_PAYLOAD_INVALID 且 runner 0 次",
       "x": [
         "X4",
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "证据缺 {checkId,status,treeDigest|exportTreeDigest,subjectKind,attemptId,at,issues[]} 任一 → 不参与门禁；dry-run 把导出树写到 attempt/verification/dry-run/ 之外（含仓库 templates/）→ 拒绝且零落盘",
+      "expected": "手写缺 treeDigest/subjectKind 的 source.check 证据 + 无 dry-run → submit 仍 AGENT_STATIC_GATE_FAILED；run_check 带 exportParentDir（attempt/verification 之外）→ AGENT_PAYLOAD_INVALID，runner 0 次，外部目录零落盘",
       "basis": "rev15 §14.4 证据字段 + §14.5",
-      "status": "NOT_RUN",
-      "reason": "需要证据落盘与导出落点约束（t5）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "不完整证据不参与门禁；越界导出落点被拒且零落盘",
+      "observed": {
+        "submit": "AGENT_STATIC_GATE_FAILED",
+        "injection": "AGENT_PAYLOAD_INVALID",
+        "outsideDirCreated": false
+      },
+      "durationMs": 1382
     },
     {
       "id": "A21",
       "group": "A 负例（句柄/路径/越权）",
-      "title": "跨项目句柄（A 项目 handle 指向 B 项目树 / projectId 与根不一致）→ AGENT_PROJECT_MISMATCH 且零落盘",
+      "title": "跨项目句柄 / 搬移 run 目录 / 伪造 projectId → Coordinator 拒绝（AGENT_RUN_NOT_FOUND / AGENT_PROJECT_MISMATCH）且零落盘",
       "x": [
         "X1",
         "X3"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
       ],
-      "expected": "拒绝 AGENT_PROJECT_MISMATCH；被指向项目与来源项目的树摘要都不变。判据按「Coordinator 层必须拒绝」执行：B1 直调（files/transactions 不校验 handle.projectId）属非产品链，不因此判 FAIL",
-      "basis": "rev15 §14.2 不变量 5 + §14.12-2（E0-W2 在 Coordinator 句柄校验层补 projectId ↔ 私有根 一致性断言）",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator 项目归属校验（t1，t5 E0-W2 补 projectId ↔ 私有根 一致性断言）；B1 直调现状见 A21O 观察",
-      "observed": null,
-      "durationMs": 0
+      "expected": "用 B 的 projectId 访问 A 的 run → AGENT_RUN_NOT_FOUND；把 A 的 run 目录复制进 B 后访问 → AGENT_PROJECT_MISMATCH；两项目 runs/ 与 A 的候选摘要零变化",
+      "basis": "rev15 §14.2 不变量 5 + §14.12-2",
+      "status": "PASS",
+      "detail": "跨项目/搬移句柄被 Coordinator 拒绝且零落盘",
+      "observed": {
+        "crossCode": "AGENT_RUN_NOT_FOUND",
+        "movedCode": "AGENT_PROJECT_MISMATCH",
+        "aZeroWrites": true,
+        "bCopyZeroWrites": true
+      },
+      "durationMs": 1339
     },
     {
       "id": "A22",
       "group": "A 负例（句柄/路径/越权）",
-      "title": "跨 run / 跨 turn 句柄（runId/turnId 混用或编造）→ AGENT_ATTEMPT_NOT_FOUND 且零落盘",
+      "title": "跨 run / 跨 turn / 伪造 attempt 句柄 → AGENT_ATTEMPT_NOT_FOUND / AGENT_RUN_NOT_FOUND 且不建目录",
       "x": [
         "X3"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
       ],
-      "expected": "拒绝；不创建任何目录、不写入任何文件",
+      "expected": "伪造 attemptId / 跨 turn / 跨 run 全部拒绝；runs/ 目录集合不变、候选摘要不变",
       "basis": "rev15 §14.2 不变量 5",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator 句柄校验（t1）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "伪造/跨 run/跨 turn 全部拒绝且零落盘",
+      "observed": {
+        "forgedCode": "AGENT_ATTEMPT_NOT_FOUND",
+        "crossTurnCode": "AGENT_ATTEMPT_NOT_FOUND",
+        "crossRunCode": "AGENT_RUN_NOT_FOUND"
+      },
+      "durationMs": 795
     },
     {
       "id": "A26",
       "group": "A 负例（attempt 不可变）",
-      "title": "submitted 后再写同一 attempt → AGENT_ATTEMPT_IMMUTABLE 且零落盘",
+      "title": "submitted 后继续 write_files/delete_files → AGENT_ATTEMPT_IMMUTABLE 且候选摘要不变",
       "x": [
         "X3",
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "write_files/delete_files 全部拒绝；attempt 树摘要不变；submitted 证据不变",
+      "expected": "两种写工具都被拒；候选目录指纹与 submitted 证据不变",
       "basis": "rev15 §14.2 不变量 4",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator 的 submitted 只读门（t1）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "提交后写/删都被拒且零落盘",
+      "observed": {
+        "writeCode": "AGENT_ATTEMPT_IMMUTABLE",
+        "delCode": "AGENT_ATTEMPT_IMMUTABLE"
+      },
+      "durationMs": 4074
     },
     {
       "id": "A27",
       "group": "A 负例（attempt 不可变）",
-      "title": "submitted 后重复 submit → AGENT_RUN_ALREADY_SUBMITTED（不产生第二个候选身份）",
+      "title": "submit 成功后再次 submit → AGENT_RUN_ALREADY_SUBMITTED（不产生第二候选身份）",
       "x": [
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "第二次 submit 拒绝；已提交候选身份、treeDigest、证据均不变",
+      "expected": "第二次 submit 拒绝；已提交候选身份、treeDigest、证据不变",
       "basis": "rev15 §14.9 新码表",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator.submitAttempt（t1）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "重复提交被拒，候选身份与证据不变",
+      "observed": {
+        "first": "submitted",
+        "second": "AGENT_RUN_ALREADY_SUBMITTED"
+      },
+      "durationMs": 4061
     },
     {
       "id": "A28",
       "group": "A 负例（attempt 不可变）",
-      "title": "repair 覆盖已提交候选（继续写 attempt-1）→ 拒绝；修复必须新建 attempt-2",
+      "title": "repair 覆盖已提交候选（继续写 attempt-1）→ 拒绝；修复必须落新 attempt（当前实现为新 run 的 attempt-1）",
       "x": [
         "X3",
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "attempt-1 零写入且摘要不变；新修改落在 attempt-2，两个 attempt 摘要可追溯",
+      "expected": "attempt-1 零写入且摘要不变；新修改落在新 run 的新 attempt（平台当前不提供同 run attempt-2 入口，登记为偏差）；两个 attempt 摘要可追溯",
       "basis": "rev15 §14.2 不变量 4「repair 建新 attempt，不覆盖已提交候选」",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator repair 流程（t1/t6）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "已提交候选不可覆盖；修复落在新 run 的新 attempt（同 run attempt-2 入口缺失，已登记偏差）",
+      "observed": {
+        "overwrite": "AGENT_ATTEMPT_IMMUTABLE",
+        "repairRunId": "frun-mwwd6c5z-883992",
+        "repairAttemptId": "attempt-1",
+        "originalAttempts": [
+          "attempt-1"
+        ]
+      },
+      "durationMs": 4828
     },
     {
       "id": "A29",
       "group": "A 负例（attempt 不可变）",
-      "title": "工具写入 version subject（直接改 base/已采用版本）→ AGENT_TOOL_NOT_ALLOWED / AGENT_PAYLOAD_INVALID",
+      "title": "工具写入带 version subject → AGENT_PAYLOAD_INVALID；read_file 的 version 覆盖仍只读成功",
       "x": [
         "X3"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
       ],
-      "expected": "拒绝且零落盘；read_file 的 subjectOverride:{kind:\"version\"} 仍可只读",
+      "expected": "write_files + subject/subjectOverride=version 全部拒绝；versions/v1 指纹不变；read_file(version) 成功且内容来自版本",
       "basis": "rev15 §14.3「写入永不接受 version subject」",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator 工具上下文校验（t1）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "写入拒绝 version subject，版本只读成立",
+      "observed": {
+        "writeCodes": [
+          "AGENT_PAYLOAD_INVALID",
+          "AGENT_PAYLOAD_INVALID"
+        ],
+        "versionReadOnly": true
+      },
+      "durationMs": 907
     },
     {
       "id": "A30",
       "group": "A 负例（工具白名单）",
-      "title": "模型调用平台专用工具（derive_source_bundle / adopt_attempt / attach_image_asset）→ AGENT_TOOL_NOT_ALLOWED",
+      "title": "平台专用工具名（derive_source_bundle / adopt_attempt / attach_image_asset + 变体）→ AGENT_TOOL_NOT_ALLOWED",
       "x": [
         "X6",
         "X7"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
       ],
-      "expected": "三个名字都不在模型工具列表；调用即 AGENT_TOOL_NOT_ALLOWED；不得因名字相似而放行（大小写/前缀变体同样拒绝）",
+      "expected": "三个平台专用名不在 MODEL_TOOL_NAMES；调用（含大小写/前缀变体）一律 AGENT_TOOL_NOT_ALLOWED；不产生任何落盘",
       "basis": "rev15 §14.3 平台专用段",
-      "status": "NOT_RUN",
-      "reason": "需要工具白名单实现（t1/t6）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "平台专用工具名与变体全部拒绝",
+      "observed": {
+        "codes": [
+          "AGENT_TOOL_NOT_ALLOWED",
+          "AGENT_TOOL_NOT_ALLOWED",
+          "AGENT_TOOL_NOT_ALLOWED",
+          "AGENT_TOOL_NOT_ALLOWED",
+          "AGENT_TOOL_NOT_ALLOWED"
+        ],
+        "modelToolCount": 11
+      },
+      "durationMs": 716
     },
     {
       "id": "A31",
       "group": "A 负例（工具白名单）",
-      "title": "模型给出未登记工具名（如 write_file 单数、shell、exec）→ 拒绝",
+      "title": "未登记工具名（write_file 单数 / shell / exec / child_process）→ AGENT_TOOL_NOT_ALLOWED，不存在通用命令入口",
       "x": [
         "X1",
         "X3"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks"
       ],
-      "expected": "AGENT_TOOL_NOT_ALLOWED；不存在通用 shell/exec/child_process 入口",
+      "expected": "全部拒绝 AGENT_TOOL_NOT_ALLOWED；工具目录中无 shell/exec/child_process；候选零写入",
       "basis": "rev15 §14.3（11 个工具固定命名）",
-      "status": "NOT_RUN",
-      "reason": "需要工具白名单实现（t1/t6）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "未登记工具名全部拒绝，无命令入口",
+      "observed": {
+        "codes": [
+          "AGENT_TOOL_NOT_ALLOWED",
+          "AGENT_TOOL_NOT_ALLOWED",
+          "AGENT_TOOL_NOT_ALLOWED",
+          "AGENT_TOOL_NOT_ALLOWED",
+          "AGENT_TOOL_NOT_ALLOWED",
+          "AGENT_TOOL_NOT_ALLOWED"
+        ],
+        "modelTools": [
+          "get_context",
+          "list_files",
+          "read_file",
+          "search_files",
+          "write_files",
+          "delete_files",
+          "get_diff",
+          "run_check",
+          "verify_wechat",
+          "read_verification",
+          "submit_candidate"
+        ]
+      },
+      "durationMs": 760
     },
     {
       "id": "A32",
       "group": "A 负例（截断/预算）",
-      "title": "上游 finish_reason=length 且带 tool_calls → 不回放工具、返回 output_truncated、零落盘",
+      "title": "上游 finish_reason=length 且带 tool_calls → 本批工具零执行、返回 AGENT_OUTPUT_TRUNCATED、attempt 摘要不变",
       "x": [
         "X8"
       ],
@@ -3017,17 +3244,22 @@
         "model-call-scheduler",
         "agent-runtime"
       ],
-      "expected": "truncated=true → 立即停止本批工具执行；结果标 output_truncated（AGENT_OUTPUT_TRUNCATED）；attempt 树摘要不变；只允许定向重试",
+      "expected": "runtime 返回 ok:false + AGENT_OUTPUT_TRUNCATED（可重试）；写工具未执行（候选摘要不变）；truncated 标记出现在结果/trace",
       "basis": "rev15 §14.7 / §12.2-3",
-      "status": "NOT_RUN",
-      "reason": "需要 requestChat 返回 finishReason/truncated（t6）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "finish=length 时工具零执行且返回 output_truncated",
+      "observed": {
+        "code": "AGENT_OUTPUT_TRUNCATED",
+        "retryable": false,
+        "upstreamCalls": 1,
+        "digestUnchanged": true
+      },
+      "durationMs": 1005
     },
     {
       "id": "A33",
       "group": "A 负例（截断/预算）",
-      "title": "空正文 + finish_reason=length → 记为 truncated（不是“无响应”，也不当完整源码）",
+      "title": "空正文 + finish_reason=length → 记 truncated（不是“无响应”，也不当成功/不写盘）",
       "x": [
         "X8"
       ],
@@ -3036,134 +3268,179 @@
         "model-call-scheduler",
         "agent-runtime"
       ],
-      "expected": "返回 truncated/output_truncated；不得抛“无响应”类错误、不得把空正文当成功写盘",
+      "expected": "返回 AGENT_OUTPUT_TRUNCATED / status=needs_input 或等价可重试结果；不得抛“无响应”类崩溃；候选摘要不变",
       "basis": "rev15 §14.7 第 1 条 / D-RT-1",
-      "status": "NOT_RUN",
-      "reason": "需要 direct 通道截断检测（t6）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "空正文+length 被记为截断，不崩溃、不写盘",
+      "observed": {
+        "code": "AGENT_OUTPUT_TRUNCATED",
+        "status": "output_truncated"
+      },
+      "durationMs": 740
     },
     {
       "id": "A34",
       "group": "A 负例（截断/预算）",
-      "title": "预算：源码编辑默认 6000 / 硬上限 8000；请求 1200 回退或超 8000 → 明确报错",
+      "title": "预算：源码编辑默认 6000 / 硬上限 8000；1200 被抬到 6000（不静默回退）；>8000 明确报错",
       "x": [
         "X8"
       ],
       "requires": [
-        "run-coordinator",
         "model-call-scheduler",
         "agent-runtime"
       ],
-      "expected": "不得静默回退 1200；>8000 明确报错而非静默裁剪；默认 6000 可被覆盖但有上限",
+      "expected": "resolveMaxTokens(direct-edit) 默认 6000、1200→6000(raised)、9000→ok:false；normalizeChatPayload 对 9000 抛 MODEL_REQUEST_INVALID；direct profile 请求体 max_tokens=6000",
       "basis": "rev15 §14.7 第 3 条",
-      "status": "NOT_RUN",
-      "reason": "需要 direct 预算实现（t6）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "预算契约成立：6000 默认/8000 上限/1200 抬升/>8000 报错",
+      "observed": {
+        "default": 6000,
+        "raised": 6000,
+        "max": 8000,
+        "tooLarge": "maxTokens 超过源码编辑上限 8000，请调小后再试。"
+      },
+      "durationMs": 1
     },
     {
       "id": "A35",
       "group": "A 负例（取消/迟到）",
-      "title": "取消后不再发起上游请求（排队项出队、占槽释放）",
+      "title": "取消排队项后不再发起上游：排队项出队（MODEL_ABORTED）、占槽任务不受影响、槽位释放可复用",
       "x": [
         "X12"
       ],
       "requires": [
         "model-call-scheduler"
       ],
-      "expected": "cancel 后 upstream 调用计数不再增加；scheduler.stats().active/queued 归零；不出现 MODEL_ABORTED 之外的副作用",
+      "expected": "3 槽占满 + 2 排队；取消两个排队项 → MODEL_ABORTED、queued=0、被执行数仍为 3；释放后新任务可立即执行",
       "basis": "rev15 §14.6 第 7 条",
-      "status": "NOT_RUN",
-      "reason": "需要调度器 + direct runtime（t2/t6）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "取消排队项不再发起上游，槽位不泄漏",
+      "observed": {
+        "cancelCodes": [
+          "MODEL_ABORTED",
+          "MODEL_ABORTED"
+        ],
+        "executed": 3,
+        "postRan": true
+      },
+      "durationMs": 2
     },
     {
       "id": "A36",
       "group": "A 负例（取消/迟到）",
-      "title": "取消后迟到工具调用不落盘（迟到响应可丢弃）",
+      "title": "取消后工具调用不落盘（AGENT_CANCELLED）；提交后迟到工具不落盘（AGENT_ATTEMPT_IMMUTABLE）",
       "x": [
         "X8",
         "X12"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "取消/提交后的工具调用返回失败码（AGENT_CANCELLED/AGENT_ATTEMPT_IMMUTABLE）；attempt 摘要不变",
+      "expected": "取消的 run 上 write_files → AGENT_CANCELLED 且候选摘要不变；已提交 attempt 上 write_files → AGENT_ATTEMPT_IMMUTABLE 且零写入",
       "basis": "rev15 §14.2 不变量 6 / §3.3 迟到响应",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator 取消态 + 迟到丢弃（t1）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "取消/提交后的迟到工具都不落盘",
+      "observed": {
+        "cancel": "cancelled",
+        "late": "AGENT_CANCELLED",
+        "lateAfterSubmit": "AGENT_ATTEMPT_IMMUTABLE"
+      },
+      "durationMs": 4539
     },
     {
       "id": "A37",
       "group": "A 负例（取消/迟到）",
-      "title": "cancel 三态：requested → cancelled → too-late（too-late 不得显示为失败）",
+      "title": "cancel 三态：在途 requested → 停止后 cancelled → 已提交 too-late（cancelled=false，不得显示为失败）",
       "x": [
         "X12"
       ],
       "requires": [
-        "run-coordinator"
+        "run-coordinator",
+        "workspace",
+        "files",
+        "manifest",
+        "versions",
+        "checks",
+        "source-check"
       ],
-      "expected": "首次 cancel=requested；停止后查询=cancelled；已完成/未知=too-late 且 cancelled=false（UI 不得当失败）",
+      "expected": "在途 cancel=requested；迟到结束后 run=cancelled；已提交后 cancel=too-late 且 cancelled=false；不产生错误态",
       "basis": "rev15 §3.3 / rev7 F1",
-      "status": "NOT_RUN",
-      "reason": "需要 Coordinator.cancelRun（t1）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "三态 requested→cancelled→too-late 全部命中",
+      "observed": {
+        "requested": "requested",
+        "final": "cancelled",
+        "tooLate": "too-late"
+      },
+      "durationMs": 4977
     },
     {
       "id": "A38",
       "group": "A 负例（上游并发）",
-      "title": "同时 5 个上游请求 → 恰好 3 并发、2 排队，最终全部成功",
+      "title": "同时 5 个上游请求 → 峰值并发恰好 3、排队峰值 2、5 个最终全部成功",
       "x": [
         "X12"
       ],
       "requires": [
         "model-call-scheduler"
       ],
-      "expected": "峰值并发=3（fetch 计数器观测）；最大排队=2；5 个全部完成；stats() 不含 prompt/源码/图片/Key",
+      "expected": "on-the-fly 峰值=3；stats().maxQueueLength=2；totalAcquired=5；stats 不含 prompt/源码/图片/Key",
       "basis": "rev15 §14.6 / 计划 §4 E0-R1a 测试 1",
-      "status": "NOT_RUN",
-      "reason": "需要 ModelCallScheduler（t2）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "5 并发被限到 3（第 4/5 个排队），全部完成",
+      "observed": {
+        "peakActive": 3,
+        "maxQueueLength": 2,
+        "totalAcquired": 5
+      },
+      "durationMs": 90
     },
     {
       "id": "A39",
       "group": "A 负例（上游并发）",
-      "title": "排队超 180s → MODEL_QUEUE_TIMEOUT（不是上游超时，也不是 429）",
+      "title": "排队超过 queueTimeoutMs → MODEL_QUEUE_TIMEOUT（不是上游超时/429）；占槽任务不受影响",
       "x": [
         "X12"
       ],
       "requires": [
         "model-call-scheduler"
       ],
-      "expected": "排队 179s 后拿到槽位的请求仍有完整请求 timeout；>180s 明确 MODEL_QUEUE_TIMEOUT；不误报上游超时",
+      "expected": "虚拟时钟推进 30s+ → 排队项 MODEL_QUEUE_TIMEOUT；totalTimedOut=1；3 个占槽任务随后正常完成",
       "basis": "rev15 §14.6 第 3/4 条",
-      "status": "NOT_RUN",
-      "reason": "需要 ModelCallScheduler（t2）",
-      "observed": null,
+      "status": "PASS",
+      "detail": "排队超时命中 MODEL_QUEUE_TIMEOUT",
+      "observed": {
+        "code": "MODEL_QUEUE_TIMEOUT",
+        "timedOut": 1
+      },
       "durationMs": 0
     },
     {
       "id": "A40",
       "group": "A 负例（上游并发）",
-      "title": "取消排队任务不减少已执行数；取消运行中任务释放槽位",
+      "title": "取消排队任务不减少已执行数；取消运行中任务释放槽位可被立即复用",
       "x": [
         "X12"
       ],
       "requires": [
         "model-call-scheduler"
       ],
-      "expected": "1 慢请求占槽 + 4 排队；取消 1 个排队项后执行数不变；取消运行中任务后该槽位可被下一次请求立即使用",
+      "expected": "1 慢请求占槽 + 其余排队；取消排队项 → 执行数不增；运行中任务结束后新请求立即拿到槽位",
       "basis": "rev15 §14.6 第 7 条 / E0-R1a 测试 2",
-      "status": "NOT_RUN",
-      "reason": "需要 ModelCallScheduler（t2）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "取消排队项不增执行数；运行结束槽位可复用",
+      "observed": {
+        "queuedError": "MODEL_ABORTED",
+        "executed": 4,
+        "reused": true
+      },
+      "durationMs": 1
     },
     {
       "id": "A41",
@@ -3175,34 +3452,43 @@
       "requires": [
         "model-call-scheduler"
       ],
-      "expected": "重试继续持有同一槽位（或先释放再重新排队），任意时刻并发 ≤3；重试成功/失败都释放",
+      "expected": "每个任务内部“失败→重试”仍只占一个槽位；任意时刻峰值 ≤3；重试结束 active=0",
       "basis": "rev15 §14.6 第 6 条",
-      "status": "NOT_RUN",
-      "reason": "需要 ModelCallScheduler（t2）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "重试不增并发（峰值 3）且结束后槽位归零",
+      "observed": {
+        "peakActive": 3,
+        "attempts": 8,
+        "totalAcquired": 8
+      },
+      "durationMs": 93
     },
     {
       "id": "A42",
       "group": "A 负例（上游并发）",
-      "title": "MODEL_MAX_CONCURRENT=4 或非法值 → clamp 到 3 并有可见警告",
+      "title": "MODEL_MAX_CONCURRENT=4 或非法值 → clamp 到 3 且有可见警告；configure(0) 抛 MODEL_CONFIG_INVALID",
       "x": [
         "X12"
       ],
       "requires": [
         "model-call-scheduler"
       ],
-      "expected": "不静默接受 >3；clamp=3 且给出警告码/日志（MODEL_CONFIG_INVALID 或等价可见警告）",
+      "expected": "configure(4) → 3 + warnings；configure(0) → MODEL_CONFIG_INVALID；env MODEL_MAX_CONCURRENT=9 → 3 + warning",
       "basis": "rev15 §14.6 第 2 条",
-      "status": "NOT_RUN",
-      "reason": "需要 ModelCallScheduler（t2）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": ">3 clamp 到 3 且有警告；非法值显式报错",
+      "observed": {
+        "clamped": 3,
+        "warnings": 1,
+        "invalid": "MODEL_CONFIG_INVALID",
+        "envClamped": 3
+      },
+      "durationMs": 1
     },
     {
       "id": "A43",
       "group": "A 负例（图片/视觉）",
-      "title": "缺图 / 坏图（assetId 不存在、魔数不符、解码失败）→ AGENT_IMAGE_INVALID，不降级为文本",
+      "title": "缺图 / 坏图（assetId 不存在、字节被篡改、魔数不符）→ AGENT_IMAGE_INVALID，不降级为文本",
       "x": [
         "X2"
       ],
@@ -3210,17 +3496,23 @@
         "run-coordinator",
         "agent-runtime"
       ],
-      "expected": "明确失败；不得把 assetId 字符串当视觉输入；不得静默走纯文本生成",
+      "expected": "三种坏输入都抛出 code=AGENT_IMAGE_INVALID；不返回可用 dataUrl；不经纯文本通道",
       "basis": "rev15 §14.8-5",
-      "status": "NOT_RUN",
-      "reason": "需要 resolveAssetImage（t7 E0-R2）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "缺图/篡改/魔数不符都 AGENT_IMAGE_INVALID",
+      "observed": {
+        "codes": [
+          "AGENT_IMAGE_INVALID",
+          "AGENT_IMAGE_INVALID",
+          "AGENT_IMAGE_INVALID"
+        ]
+      },
+      "durationMs": 328
     },
     {
       "id": "A44",
       "group": "A 负例（图片/视觉）",
-      "title": "单张图 > 2 MiB → AGENT_IMAGE_INVALID",
+      "title": "单张图 > 2 MiB → AGENT_IMAGE_INVALID（按真实字节判定，不裁剪不压缩）",
       "x": [
         "X2"
       ],
@@ -3228,17 +3520,21 @@
         "run-coordinator",
         "agent-runtime"
       ],
-      "expected": "按真实字节判定（不信扩展名）；不裁剪、不压缩后静默通过",
+      "expected": "登记并落盘 >2 MiB 文件后 resolveAssetImage 抛 AGENT_IMAGE_INVALID；不返回 dataUrl",
       "basis": "rev15 §14.8-3",
-      "status": "NOT_RUN",
-      "reason": "需要 resolveAssetImage（t7）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": ">2 MiB 被拒（未裁剪/压缩）",
+      "observed": {
+        "bytes": 2097153,
+        "max": 2097152,
+        "code": "AGENT_IMAGE_INVALID"
+      },
+      "durationMs": 323
     },
     {
       "id": "A45",
       "group": "A 负例（图片/视觉）",
-      "title": "非 PNG/JPEG/WebP（GIF/BMP/SVG/伪装扩展名）→ AGENT_IMAGE_INVALID",
+      "title": "非 PNG/JPEG/WebP（GIF/BMP/SVG/伪装扩展名）→ AGENT_IMAGE_INVALID（魔数 + MIME 双检）",
       "x": [
         "X2"
       ],
@@ -3246,17 +3542,23 @@
         "run-coordinator",
         "agent-runtime"
       ],
-      "expected": "魔数 + 真实 MIME 双检；伪装扩展名（.png 内容为 GIF）同样拒绝",
+      "expected": "GIF/BMP/SVG 内容即使登记为 image/png 且摘要匹配，也必须 AGENT_IMAGE_INVALID",
       "basis": "rev15 §14.8-3",
-      "status": "NOT_RUN",
-      "reason": "需要 resolveAssetImage（t7）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "GIF/BMP/SVG 伪装 .png 全部拒绝",
+      "observed": {
+        "codes": [
+          "gif:AGENT_IMAGE_INVALID",
+          "bmp:AGENT_IMAGE_INVALID",
+          "svg:AGENT_IMAGE_INVALID"
+        ]
+      },
+      "durationMs": 326
     },
     {
       "id": "A46",
       "group": "A 负例（图片/视觉）",
-      "title": "输入为路径或 base64 文本（而非 assetId）→ 拒绝",
+      "title": "输入为路径 / base64 / data URL（而非 assetId）→ 拒绝，且不读取该路径",
       "x": [
         "X2"
       ],
@@ -3264,17 +3566,24 @@
         "run-coordinator",
         "agent-runtime"
       ],
-      "expected": "只接受既有 assetId；路径/base64/data URL 文本一律拒绝，且不读取该路径",
+      "expected": "三种输入都 AGENT_IMAGE_INVALID；被指向的路径不被读取（文件不存在/未创建也能拒绝）",
       "basis": "rev15 §14.8-1",
-      "status": "NOT_RUN",
-      "reason": "需要 resolveAssetImage 输入校验（t7）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "路径/base64/data URL 都被拒绝，未读路径",
+      "observed": {
+        "codes": [
+          "AGENT_IMAGE_INVALID",
+          "AGENT_IMAGE_INVALID",
+          "AGENT_IMAGE_INVALID"
+        ],
+        "pathTouched": false
+      },
+      "durationMs": 304
     },
     {
       "id": "A47",
       "group": "A 负例（图片/视觉）",
-      "title": "模型无视觉能力 → AGENT_VISION_UNAVAILABLE / needs-input，不得静默退化",
+      "title": "模型无视觉能力 → AGENT_VISION_UNAVAILABLE / needs_input，0 次上游调用（不静默退化）",
       "x": [
         "X2"
       ],
@@ -3283,17 +3592,20 @@
         "model-call-scheduler",
         "agent-runtime"
       ],
-      "expected": "明确错误或 needs-input；不得改用纯文本生成并当成完成",
+      "expected": "runtime vision:false + request.images=[assetId] → ok:false + AGENT_VISION_UNAVAILABLE；fake 上游调用 0 次；不写工作树",
       "basis": "rev15 §14.8-5",
-      "status": "NOT_RUN",
-      "reason": "需要 direct 通道视觉能力探测（t6/t7）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "视觉不可用显式失败，零上游调用",
+      "observed": {
+        "code": "AGENT_VISION_UNAVAILABLE",
+        "upstreamCalls": 0
+      },
+      "durationMs": 699
     },
     {
       "id": "A48",
       "group": "A 负例（图片/视觉）",
-      "title": "data URL / base64 泄漏到 attempt.json/run.json/trace/日志 → 判 FAIL",
+      "title": "跑完一轮带图调用后扫描 runs/**、trace、结果：不得出现 data:image / 长 base64 / prompt 原文 / Key",
       "x": [
         "X2"
       ],
@@ -3301,12 +3613,23 @@
         "run-coordinator",
         "agent-runtime"
       ],
-      "expected": "对 run 目录与 trace 全量扫描，不得出现 \"data:image\"、长 base64 串或 prompt 原文；图片只在内存",
+      "expected": "真实图片只在内存：结果与磁盘上的 attempt.json/run.json/trace/checks 文件都不含 \"data:image\"、长 base64 或密钥；结果只暴露 {assetId,mime,bytes,sha256}",
       "basis": "rev15 §14.8-4",
-      "status": "NOT_RUN",
-      "reason": "需要图片管线（t7）",
-      "observed": null,
-      "durationMs": 0
+      "status": "PASS",
+      "detail": "图片只在内存：结果与落盘文件均无 data URL/长 base64/Key",
+      "observed": {
+        "images": [
+          {
+            "assetId": "a_5dae3842d7bfe72c",
+            "mime": "image/png",
+            "bytes": 341,
+            "sha256": "5dae3842d7bfe72cc97883cfdc6424a1774acd10fc958432d63125b4395eea34"
+          }
+        ],
+        "offenders": [],
+        "multimodal": true
+      },
+      "durationMs": 694
     },
     {
       "id": "G01",

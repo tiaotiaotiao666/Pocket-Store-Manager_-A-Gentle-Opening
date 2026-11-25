@@ -6,8 +6,9 @@
 
 | 文档 | 适用任务 | 当前状态 |
 | --- | --- | --- |
-| `Workspace-Agent-E0-当前交接-2026-11-25.md` | **继续 E0 的第一入口**：已完成/未完成、本轮修复、真实命令、已知缺口、下一步 | E0 部分完成，未最终验收；E1–E4 未开放 |
-| `Workspace-Agent-E0闭环纠偏与E阶段-Flash续期计划.md` | **当前执行任务书**：B–D1 抽查后的 X1–X12 架构纠偏、direct Coordinator、真实图片输入、attempt 验证/采用，随后 E1–E4 | E0 实现大部分落地，待真实模型与独立终验 |
+| `Workspace-Agent-E1-下一轮任务-2026-11-26.md` | **当前执行任务书**：真实图片→源码→验证→采用的用户 UI、`continueTurn` 修复、product-card、独立真实验收 | 下一轮；E0 技术闭环已通过，E1 可开工 |
+| `Workspace-Agent-E0-当前交接-2026-11-25.md` | **E0 事实入口**：已完成/未完成、真实命令、真实 Flash 证据、已知缺口 | E0 离线 114/114 PASS + 真实 direct PASS；微信 BLOCKED，正式 t8 待签署 |
+| `Workspace-Agent-E0闭环纠偏与E阶段-Flash续期计划.md` | **E0 历史任务书**：X1–X12 纠偏、Coordinator、真实图片、attempt 验证/采用 | 主体已落地；保留为根因与边界依据 |
 | `Workspace-Agent大规模重构与遗留收尾-Flash总计划.md` | 总体路线图：通用源码 Workspace Agent、8 页图片重构、版本/采用/导出、旧 P7/T16 与业务/安装包欠账 | A–D1 部分落地；下一步先读 E0 续期计划，再回原总计划 F/G/H/I |
 | `当前工作区交接.md` | **当前活动**：了解未提交改动、全链路 Agent 打通进度、图片驱动前端重构 P0–P6 与环境阻塞 | 持续更新；T1–T14 已完成，T15/T16 为 `INCOMPLETE`；2026-11-17 新增图片驱动前端重构 P0–P6（契约/视觉服务/私有 workspace/overlay/dry-run/桌面主链/采用持久化/导出同源 + 四个 skills + 过程可观测性）；P7 执行结果见 `docs/evidence/frontend-reconstruct/`（整体 `INCOMPLETE`） |
 | `Agent工具体系与交互健壮性.md` | Agent 运行时改造方案（function calling + 工具权限 + 轮次约束 + markdown 渲染与输入边界校验） | 服务端部分已由上游 `agent-run.v1` 落地（2026-11-12）；**桌面端接线与 UI 侧改造仍待做** |

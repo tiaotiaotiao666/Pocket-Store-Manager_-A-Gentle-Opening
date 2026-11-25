@@ -28,9 +28,9 @@ function fakeBridge(overrides) {
     onProgress: null,
   };
   for (const method of [
-    'getContext', 'listFiles', 'readFile', 'searchFiles', 'writeFiles', 'deleteFiles',
+    'runTurn', 'getAttempt', 'getContext', 'listFiles', 'readFile', 'searchFiles', 'writeFiles', 'deleteFiles',
     'addImageAsset', 'getDiff', 'runCheck', 'verifyWechat', 'readVerification', 'readArtifact',
-    'submitCandidate', 'versions', 'adoptVersion', 'undo', 'redo', 'reopen', 'cancelRun',
+    'submitCandidate', 'adoptAttempt', 'versions', 'adoptVersion', 'undo', 'redo', 'reopen', 'cancelRun',
   ]) {
     bridge[method] = (payload) => {
       calls.push({ method, payload });
@@ -41,12 +41,12 @@ function fakeBridge(overrides) {
   return { bridge, calls };
 }
 
-test('facade：19 个语义方法全部映射到 bridge 并归一 envelope', async () => {
+test('facade：22 个语义方法全部映射到 bridge 并归一 envelope', async () => {
   const facadeModule = await loadFacade();
   assert.deepStrictEqual([...facadeModule.WORKSPACE_AGENT_METHODS], [
-    'getContext', 'listFiles', 'readFile', 'searchFiles', 'writeFiles', 'deleteFiles',
+    'runTurn', 'getAttempt', 'getContext', 'listFiles', 'readFile', 'searchFiles', 'writeFiles', 'deleteFiles',
     'addImageAsset', 'getDiff', 'runCheck', 'verifyWechat', 'readVerification', 'readArtifact',
-    'submitCandidate', 'versions', 'adoptVersion', 'undo', 'redo', 'reopen', 'cancelRun',
+    'submitCandidate', 'adoptAttempt', 'versions', 'adoptVersion', 'undo', 'redo', 'reopen', 'cancelRun',
   ]);
 
   const { bridge, calls } = fakeBridge();

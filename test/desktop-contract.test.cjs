@@ -563,7 +563,7 @@ test('P5c 未在对话框确认的任意路径仍然被拒绝', async () => {
 
 // ---- B3：Workspace Agent preload 命名空间（只做加法断言，不改既有 preload 断言） ----
 
-test('B3：preload workspaceAgent 只暴露 19 个语义命令 + onProgress，旧 API 与订阅不变', () => {
+test('B3/E0：preload workspaceAgent 暴露 22 个语义命令（含 runTurn/getAttempt/adoptAttempt）+ onProgress', () => {
   const source = fs.readFileSync(path.join(REPO, 'desktop', 'preload.cjs'), 'utf8');
   const listenerSets = new Map();
   const invocations = [];
@@ -592,9 +592,9 @@ test('B3：preload workspaceAgent 只暴露 19 个语义命令 + onProgress，�
   assert.strictEqual(Object.isFrozen(workspaceAgent), true);
 
   const methods = [
-    'getContext', 'listFiles', 'readFile', 'searchFiles', 'writeFiles', 'deleteFiles',
+    'runTurn', 'getAttempt', 'getContext', 'listFiles', 'readFile', 'searchFiles', 'writeFiles', 'deleteFiles',
     'addImageAsset', 'getDiff', 'runCheck', 'verifyWechat', 'readVerification', 'readArtifact',
-    'submitCandidate', 'versions', 'adoptVersion', 'undo', 'redo', 'reopen', 'cancelRun',
+    'submitCandidate', 'adoptAttempt', 'versions', 'adoptVersion', 'undo', 'redo', 'reopen', 'cancelRun',
   ];
   assert.deepStrictEqual(Object.keys(workspaceAgent).sort(), [...methods, 'onProgress'].sort());
   for (const method of methods) {
@@ -610,12 +610,12 @@ test('B3：preload workspaceAgent 只暴露 19 个语义命令 + onProgress，�
     assert.strictEqual(typeof api[legacy], 'function', '旧 API 丢失：' + legacy);
   }
 
-  // 19 个方法只映射到冻结的 agent:* channel；payload 原样交给主进程再校验。
+  // 22 个语义方法只映射到 agent:* channel；不暴露任意 channel/路径/命令。
   const expectedChannels = [
-    'agent:get-context', 'agent:list-files', 'agent:read-file', 'agent:search-files',
+    'agent:run-turn', 'agent:get-attempt', 'agent:get-context', 'agent:list-files', 'agent:read-file', 'agent:search-files',
     'agent:write-files', 'agent:delete-files', 'agent:add-image-asset', 'agent:get-diff',
     'agent:run-check', 'agent:verify-wechat', 'agent:read-verification', 'agent:read-artifact',
-    'agent:submit-candidate', 'agent:versions', 'agent:adopt-version', 'agent:undo',
+    'agent:submit-candidate', 'agent:adopt-attempt', 'agent:versions', 'agent:adopt-version', 'agent:undo',
     'agent:redo', 'agent:reopen', 'agent:cancel-run',
   ];
   for (const [index, method] of methods.entries()) {

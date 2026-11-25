@@ -18,6 +18,7 @@ const path = require('node:path');
 
 const { assert, assertEqual, assertRejected } = require('../lib/harness.cjs');
 const { openProject } = require('../chains/preconditions.cjs');
+const { treeSha256 } = require(path.resolve(__dirname, '..', '..', '..', 'scripts', 'composer', 'digest.cjs'));
 
 const COORDINATOR_REQUIRES = ['run-coordinator', 'workspace', 'files', 'manifest', 'versions'];
 
@@ -105,13 +106,15 @@ function passResult(checkId, subjectKind) {
 function dryRunResult(checkId, request, options) {
   const opts = options || {};
   const subjectKind = Object.prototype.hasOwnProperty.call(opts, 'subjectKind') ? opts.subjectKind : 'attempt';
-  const exportTreeDigest = opts.exportTreeDigest === undefined ? 'sha256:' + 'd'.repeat(64) : opts.exportTreeDigest;
   const parent = typeof request.exportParentDir === 'string' ? request.exportParentDir : null;
   if (!parent) return passResult(checkId, subjectKind);
   const exportRoot = path.join(parent, 'export-tree');
   fs.mkdirSync(path.join(exportRoot, 'pages', 'menu'), { recursive: true });
   fs.writeFileSync(path.join(exportRoot, 'app.json'), '{"pages":["pages/menu/index"]}\n', 'utf8');
   fs.writeFileSync(path.join(exportRoot, 'pages', 'menu', 'index.js'), '// exported by verifier stub\n', 'utf8');
+  // 平台 adopt 会重算导出树；替身摘要必须等于真实树，不能再用固定的假 sha。
+  const actualDigest = treeSha256(exportRoot);
+  const exportTreeDigest = opts.exportTreeDigest === undefined ? actualDigest : opts.exportTreeDigest;
   return {
     ...passResult(checkId, subjectKind),
     exportedRoot: exportRoot,
@@ -119,17 +122,24 @@ function dryRunResult(checkId, request, options) {
   };
 }
 
-/** 让一条 run 走到“可提交”的证据状态（source.check + composer.dry-run 都是 attempt 主体 PASS）。 */
+/** 让一条 run 走到“可提交”：两项 attempt 检查 + 两项 export 检查，主体不可混写。 */
 async function driveToSubmittable(ctx, coord, run) {
-  const registry = makeRegistry(ctx, (request) => (
-    request.checkId === 'composer.dry-run'
-      ? dryRunResult(request.checkId, request)
-      : passResult(request.checkId, 'attempt')
-  ));
+  let dryRunDigest = null;
+  const registry = makeRegistry(ctx, (request) => {
+    if (request.checkId === 'composer.dry-run') {
+      const result = dryRunResult(request.checkId, request);
+      dryRunDigest = result.exportTreeDigest || null;
+      return result;
+    }
+    const subjectKind = ['mini.check', 'output.consistency'].includes(request.checkId) ? 'export' : 'attempt';
+    const result = passResult(request.checkId, subjectKind);
+    if (subjectKind === 'export') result.exportTreeDigest = dryRunDigest;
+    return result;
+  });
   const handle = { projectId: run.projectId === undefined ? undefined : run.projectId, runId: run.runId, turnId: run.turnId, attemptId: run.attemptId };
   // 重新建实例：注册表在 Coordinator 构造时注入。
   const withChecks = newCoordinator(ctx, { checks: registry });
-  for (const checkId of ['source.check', 'composer.dry-run']) {
+  for (const checkId of ['source.check', 'composer.dry-run', 'mini.check', 'output.consistency']) {
     const result = await withChecks.invokeTool({
       projectId: handle.projectId, runId: run.runId, turnId: run.turnId, attemptId: run.attemptId,
       tool: 'run_check', args: { checkId },
@@ -1071,13 +1081,18 @@ const CASES = [
         'dry-run 应给出导出根相对引用');
       assert(typeof dryRun.data.exportTreeDigest === 'string', 'dry-run 应给出导出树摘要');
 
+      for (const checkId of ['mini.check', 'output.consistency']) {
+        const result = await coord.invokeTool({ ...handle, tool: 'run_check', args: { checkId } });
+        assert(result.ok === true && result.data.status === 'PASS', checkId + ' 应 PASS：' + JSON.stringify(result));
+      }
+
       const candidateBeforeSubmit16 = ctx.env.fingerprintDir(path.join(project.paths.workspaceDir, 'runs', run.runId,
         'turns', run.turnId, 'attempts', run.attemptId, 'candidate'));
 
       const submitted = coord.submitAttempt(handle);
       assert(submitted.ok === true, '真实链路 submit 应通过：' + JSON.stringify({ code: submitted.code, message: submitted.message }));
       assertEqual(submitted.status, 'submitted', 'submit 后状态应为 submitted');
-      assertEqual(submitted.partial, true, '缺 mini/output/wechat 证据时应为 partial');
+      assertEqual(submitted.partial, true, 'wechat 未跑时仍应为 partial');
       const candidateDir16 = path.join(project.paths.workspaceDir, 'runs', run.runId, 'turns', run.turnId,
         'attempts', run.attemptId, 'candidate');
       const submissionFile = path.join(project.paths.workspaceDir, 'runs', run.runId, 'turns', run.turnId,

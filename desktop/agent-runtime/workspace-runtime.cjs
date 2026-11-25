@@ -483,7 +483,10 @@ function createDirectWorkspaceRuntime(options) {
             code: RUNTIME_CODES.TXN_ABORTED,
             message: (error && error.message) || '模型调用失败。',
             issues: [{ code: 'model_call_failed', step }],
-            data: { status: 'failed', stopReason: null, modelCalls, toolCalls: toolTraces, steps },
+            data: {
+              status: 'failed', stopReason: null, modelCalls, toolCalls: toolTraces, steps,
+              images: imageMeta, multimodal: images.length > 0,
+            },
           };
         }
 
@@ -654,7 +657,10 @@ function createDirectWorkspaceRuntime(options) {
                 code: RUNTIME_CODES.EVIDENCE_STALE,
                 message: '模型未按 nextAction="' + NEXT_ACTION_RERUN_CHECKS + '" 重跑检查就重复 submit，已终止本轮。',
                 issues: [{ code: EVIDENCE_STALE_ISSUE, nextAction: NEXT_ACTION_RERUN_CHECKS }],
-                data: { status: 'failed', stopReason: null, modelCalls, toolCalls: toolTraces, steps },
+                data: {
+                  status: 'failed', stopReason: null, modelCalls, toolCalls: toolTraces, steps,
+                  images: imageMeta, multimodal: images.length > 0,
+                },
               };
             }
             continue;
@@ -716,7 +722,10 @@ function createDirectWorkspaceRuntime(options) {
               code: RUNTIME_CODES.ATTEMPT_IMMUTABLE,
               message: envelope.message || '该 attempt 已提交/已采用，只读',
               issues: [{ code: 'attempt_immutable', step }],
-              data: { status: 'failed', stopReason: null, modelCalls, toolCalls: toolTraces, steps },
+              data: {
+                status: 'failed', stopReason: null, modelCalls, toolCalls: toolTraces, steps,
+                images: imageMeta, multimodal: images.length > 0,
+              },
             };
           }
           // §14.13-3：观察证据陈旧 → 上闸；重跑检查成功 → 解锁。

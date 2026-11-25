@@ -482,6 +482,13 @@ function createAgentToolsIpc(options) {
   const coordinator = opts.coordinator && typeof opts.coordinator === 'object' ? opts.coordinator : null;
   const locks = opts.locks || createIdLocks();
   const reads = opts.reads || createReadLimiter(opts.readConcurrency);
+  function requireCoordinator() {
+    if (!coordinator || typeof coordinator.startRun !== 'function'
+      || typeof coordinator.invokeDirect !== 'function' || typeof coordinator.getAttemptState !== 'function') {
+      return fail(CODES.RUNTIME_TOOL_MISSING, 'WorkspaceRunCoordinator 当前未接线');
+    }
+    return ok({ coordinator });
+  }
 
   const activeRuns = new Map();
   const finishedRuns = new Map();
@@ -646,6 +653,72 @@ function createAgentToolsIpc(options) {
   }
 
   const commandSpecs = {
+    // E0 用户主链：平台创建 run/turn/attempt，再执行一次 direct 回合。
+    // 渲染层不能传 channel、路径、命令或模型请求结构；图片仍只认既有 assetId。
+    'agent:run-turn': {
+      keys: ['projectId', 'targetPage', 'utterance', 'imageAssetIds'],
+      write: true,
+      timeoutMs: 600000,
+      async run(payload, startedAt) {
+        if (typeof payload.targetPage !== 'string' || !sourceBundle.isKnownTargetPage(payload.targetPage)) {
+          return fail(CODES.TARGET_PAGE_UNSUPPORTED, 'targetPage 不在 8 页枚举内');
+        }
+        if (typeof payload.utterance !== 'string' || payload.utterance.trim() === '' || payload.utterance.length > 2000) {
+          return fail(CODES.PAYLOAD_INVALID, 'utterance 必须是非空字符串且不超过 2000 字');
+        }
+        if (payload.imageAssetIds !== undefined && (!Array.isArray(payload.imageAssetIds) || payload.imageAssetIds.length > 1
+          || !payload.imageAssetIds.every((id) => typeof id === 'string' && /^a_[a-f0-9]{16}$/.test(id)))) {
+          return fail(CODES.PAYLOAD_INVALID, 'imageAssetIds 最多一个，且必须是既有 assetId');
+        }
+        const controller = requireCoordinator();
+        if (!controller.ok) return controller;
+        const started = controller.coordinator.startRun({
+          projectId: payload.projectId,
+          targetPage: payload.targetPage,
+          operation: 'edit-source',
+          utterance: payload.utterance,
+          ...(payload.imageAssetIds ? { imageAssetIds: payload.imageAssetIds } : {}),
+        });
+        if (!started.ok) return started;
+        const context = {
+          projectId: payload.projectId,
+          runId: started.runId,
+          turnId: started.turnId,
+          attemptId: started.attemptId,
+        };
+        const direct = await controller.coordinator.invokeDirect({
+          ...context,
+          request: {
+            utterance: payload.utterance,
+            ...(payload.imageAssetIds ? { images: payload.imageAssetIds } : {}),
+          },
+        });
+        if (!direct || direct.ok !== true) {
+          return failureEnvelope((direct && direct.code) || CODES.RUNTIME_TOOL_MISSING,
+            (direct && direct.message) || 'direct Runtime 不可用', context, startedAt);
+        }
+        const state = controller.coordinator.getAttemptState(context);
+        const attemptState = { ...state };
+        delete attemptState.ok;
+        return success(context, startedAt, {
+          ...context,
+          run: direct.data,
+          attempt: state.ok ? attemptState : { code: state.code, message: state.message },
+        });
+      },
+    },
+    'agent:get-attempt': {
+      keys: ['projectId', 'runId', 'turnId', 'attemptId'],
+      async run(payload, startedAt) {
+        const controller = requireCoordinator();
+        if (!controller.ok) return controller;
+        const state = controller.coordinator.getAttemptState(payload);
+        if (!state.ok) return state;
+        const attemptState = { ...state };
+        delete attemptState.ok;
+        return success(payload, startedAt, attemptState);
+      },
+    },
     'agent:get-context': {
       keys: ['projectId', 'runId', 'turnId'],
       async run(payload, startedAt) {

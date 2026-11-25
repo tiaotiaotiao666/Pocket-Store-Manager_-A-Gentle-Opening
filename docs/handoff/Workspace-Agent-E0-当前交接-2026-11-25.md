@@ -1,8 +1,22 @@
 # Workspace Agent E0 当前交接（2026-11-25）
 
-> 状态：**E0 部分完成，未通过最终独立验收；E1–E4 未开放。**
-> 基线：原工作区 HEAD `437bf5f`，`origin/main` 已含 A0–D1；本轮 E0 增量从远端 `main` 单独叠加推送。
-> 执行者：上一轮 Flash Team + 本轮收口修复。后续接线人先读本文，再读 `Workspace-Agent-E0闭环纠偏与E阶段-Flash续期计划.md` 与接口冻结 rev15。
+> 状态：**E0 技术闭环通过（静态 + 真实 Flash direct）；微信运行时仍 BLOCKED；E1 可开工。**
+> 基线：`origin/main@f481e85`。2026-11-26 本轮继续修复 E0 并已真实调用 Flash；下一轮见
+> `Workspace-Agent-E1-下一轮任务-2026-11-26.md`。
+> 执行者：上一轮 Flash Team + 2026-11-26 收口。接口冻结仍以 rev15 为准。
+
+## 0. 2026-11-26 最新结论（优先阅读）
+
+- **真实 Flash 最小链 PASS**（`docs/evidence/workspace-agent/e0-v1/real-chain.json`）：
+  真实首页图 sha256 `50c57435…f527`、91,690 B → 3 次真实调用 → `get_context`/`read_file`/`write_files`
+  全部成功 → 四项检查 PASS → submit(partial) → 未确认被拒 → 确认后 v2 → undo v1 → redo v2。
+- **图片确实进入多模态消息**：`multimodal=true`，返回图片 sha256 与输入逐字节一致；证据不含 Key/data URL。
+- **新补用户入口**：`agent:run-turn`（平台创建 run/turn/attempt 并执行 direct 回合）与
+  `agent:get-attempt`；preload/facade 共 22 个语义方法。渲染层仍无法传 channel/路径/命令。
+- **修复**：assistant 只带 tool_calls 时 `content:null` 被本地规范器误拒（真实第三次调用失败点）；
+  adopt 时重算导出树摘要（排除 compose 后写入的 Lock/报告），篡改导出树必然 `AGENT_EVIDENCE_STALE`；
+  无微信证据时 runtime 记 `BLOCKED`（不是 `NOT_RUN`）；失败回包保留 `images/multimodal`。
+- **仍不能宣称**：微信真实编译/截图、真机/UIA、E0 UI 已接 App、产品卡内部视觉变化、真实视觉修复多轮。
 
 ## 1. 现在能做什么、不能做什么
 
@@ -17,9 +31,11 @@
 
 还不能宣称：
 
-- 真实 Flash 端到端工具循环 + 参考图生成：**NOT_RUN**（本轮未消耗真实 Key）。
+- 用户可用功能已交付：E0 UI 原型**尚未接 App 主链**，真实图片入口还不在产品界面里。
 - 微信真实编译/截图、UIA/Electron、真机：**BLOCKED/NOT_RUN**。
-- E0 最终 verdict：**未由 verifier 出具 PASS**；用户可用功能仍为 0，E1–E4 未开始。
+- 正式 t8 已签署 E0 PASS：`run.cjs` 的阶段 verdict 仍按设计固定 `NOT_RUN`；当前是
+  “离线 114/114 可执行用例 PASS + 真实 direct 链 PASS”，签署权仍在 verifier。
+- 真实视觉理解已验证”（A 图能描述红色圆/蓝色方块），但**页面级视觉还原质量**未做基准评测。
 
 ## 2. 本轮修复（相对上一轮交付）
 
@@ -30,44 +46,40 @@
 5. **图片证据卫生测试**：只扫描证据输出（json/md/txt/log），不误扫取证脚本里的普通 JS `data: null`。
 6. **独立 W 组**：W13/W14/W15/W17 已更新到新契约并通过。
 
-## 3. 本轮真实命令与结果
+## 3. 2026-11-26 真实命令与结果
 
 | 命令 | 结果 |
 | --- | --- |
-| `node --test --experimental-test-isolation=none test/agent-workspace.vertical-chain.test.cjs test/agent-workspace.direct-runtime.test.cjs` | **15/15 PASS** |
-| `node --test ... test/runtime/images.test.cjs` | **26 pass / 1 skip**（skip：本机不允许创建文件 symlink） |
-| `node scripts/e0-verify/run.cjs --mode offline --only W13,W14,W15,W17` | 产品用例 **W13–W17 全 PASS**；脚本随后因写 `e0-v1/run-report.json` 触发 sandbox EPERM，报告未更新 |
-| 早前 `test/runtime` + scheduler | 84/86（图象卫生失败已修复；1 项环境 skip），调度器全绿 |
+| `node scripts/e0-verify/run.cjs --mode offline` | **114 PASS / 0 FAIL / 8 NOT_RUN**（7 条 R 真实模型用例 + A21O 观察项按设计 NOT_RUN） |
+| `node docs/evidence/workspace-agent/e0-v1/run-real-chain.cjs` | **PASS**：3 次真实 Flash、图片 sha 一致、四项检查 PASS、partial adopt、undo/redo |
+| `node docs/evidence/workspace-agent/e0-r2/run-real-call.cjs` | **PASS**：A 带图正确描述红圆/蓝方；B 不带图、C 只给 assetId 都明确拒绝编造 |
+| `node --test ... agent-tools-ipc / desktop-contract / workspace-agent-service` | 新增 run-turn/get-attempt；IPC 与 22 方法桥接回归通过 |
+| `node --test ... agent-workspace.coordinator / vertical-chain` | **31/31 PASS**（A08/A09 修复后） |
+| 服务端 `workspace-agent.test.ts` + scheduler + `tsc` | **17 + 32 例 PASS，tsc 0** |
 
-未运行：真实 Flash 调用、微信 CLI、Electron/UIA、安装包、server DB、全量 npm 门禁。
+未运行：真实微信 CLI/编译截图、Electron/UIA、安装包、MySQL DB 集成、完整 `npm test`。
 
-## 4. 已知问题 / 下一步（按优先级）
+## 4. 已知问题 / 下一轮（详见 E1 任务书）
 
-### P0 真实模型最小闭环
+### P0 用户 UI（下一轮第一优先）
 
-1. 用真实 `deepseek-flash` Key 走 `run-real-call.cjs` 或新增主进程脚本：真实参考图 → 模型图片理解 → `read_file` → `write_files` → `source.check` → `composer.dry-run` → `mini/output` → submit → partial adopt。
-2. 验证图片真实出现在 content parts、工具结果回填、截断零执行、最多 3 并发。
-3. 真实证据归档输入图片 sha、模型名、trace、treeDigest；不得保存 data URL/Key。
+- E0 UI 原型还没接 `App.jsx/sessionMachine`；渲染层已有 22 个语义方法，但用户仍不能在应用里上传图并启动。
+- 需要 `continueTurn`：同一 open attempt 的第二轮修复；当前只能新 run，失败候选不能就地修复。
+- 需要产品卡内部修改的真实验收，当前真实链只改了页面 WXML。
 
-### P0 E0 独立验收
+### P1 微信/UIA
 
-- 在可写环境下运行完整 `scripts/e0-verify/run.cjs --mode offline --write`，由 verifier 对稳定 revision 出具 verdict。
-- 当前 run-report 过期且不是 verdict，不得当作 PASS。
-- 仍需覆盖真实模型、微信/BLOCKED、E0 UI 的不冒充口径。
-
-### P1 UI 接线
-
-- E0 UI 原型目前未接 `App.jsx/sessionMachine`；按总计划 E3 接入图片输入、diff、截图、采用/undo，串行修改，避免多人冲突。
-- 旧链 progress/截图 IPC 缺陷仍在，见 `docs/evidence/workspace-agent/ui-survey.md`。
+- 本机微信 CLI 不可用 → `BLOCKED`；不得用 React 截图冒充。UI 必须有 `BLOCKED/NOT_RUN` 展示路径。
+- E1-D 在可用环境补 before/after 同 route/尺寸截图；不可用则明确 partial。
 
 ### P1 服务端/HTTP
 
-- HTTP `workspace-agent.v1` 仍没有真实桌面 RPC bridge；E 主链用 direct，HTTP 保持 unavailable，不要伪装可用。
+- HTTP `workspace-agent.v1` 仍没有真实桌面 RPC bridge；E 主链用 direct，HTTP 保持 unavailable。
 - X9 服务端伪状态正则仍需删除（桌面已不做）。
 
 ### P2 基线
 
-- `AGENT_MAX_CONCURRENT` 已为 3；上游真正限制由 `ModelCallScheduler` 保证，不能只看入口变量。
+- `AGENT_MAX_CONCURRENT` 入口限制为 3；上游真正限制由 `ModelCallScheduler` 保证，不能只看入口变量。
 - 旧 catalog/mirror、DB、微信、UIA、安装包环境阻塞未变。
 
 ## 5. 写入边界
@@ -75,7 +87,7 @@
 - 不修改正式 `templates/**`、只读 `miniprogram/**`、全局 Registry。
 - 不执行模型/用户提供的命令；不写任意路径；不读取 Key。
 - 不 reset/checkout/clean，不覆盖用户未提交资产。
-- E0 未 PASS 前，不开放 E1–E4、不做全 8 页视觉验收。
+- E1 用户路径未验收前，不扩全 8 页视觉、不宣称产品已交付；微信不可用必须如实 partial。
 
 ## 6. 关键入口
 

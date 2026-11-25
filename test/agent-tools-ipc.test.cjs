@@ -30,7 +30,7 @@ const versionsMod = require(path.join(REPO, 'desktop', 'agent-workspace', 'versi
 
 const CODES = toolsIpc.CODES;
 const COMMANDS = [
-  'agent:get-context', 'agent:list-files', 'agent:read-file', 'agent:search-files',
+  'agent:run-turn', 'agent:get-attempt', 'agent:get-context', 'agent:list-files', 'agent:read-file', 'agent:search-files',
   'agent:write-files', 'agent:delete-files', 'agent:add-image-asset', 'agent:get-diff',
   'agent:run-check', 'agent:verify-wechat', 'agent:read-verification', 'agent:read-artifact',
   'agent:submit-candidate', 'agent:adopt-attempt', 'agent:versions', 'agent:adopt-version', 'agent:undo',
@@ -90,7 +90,7 @@ function assertNoAbsolutePath(value, needles) {
   assert.ok(!/data:[a-z0-9.+-]+\/[a-z0-9.+-]+;base64,/i.test(text), '结果不得包含 base64 data URI');
 }
 
-test('命令面：20 个 agent:* + agent:progress，全部返回统一 envelope', async (t) => {
+test('命令面：22 个 agent:* + agent:progress，全部返回统一 envelope', async (t) => {
   assert.strictEqual(toolsIpc.PROGRESS_CHANNEL, 'agent:progress');
   assert.deepStrictEqual(toolsIpc.createAgentToolsIpc({ userDataDir: 'C:/tmp' }).commandNames, COMMANDS);
 
@@ -102,6 +102,13 @@ test('命令面：20 个 agent:* + agent:progress，全部返回统一 envelope'
   assert.deepStrictEqual(context.data.checks, [...toolsIpc.CHECK_IDS]);
   assert.strictEqual(context.data.versionState.status, 'ok');
 
+  const noRuntime = await ipc.invoke('agent:run-turn', {
+    projectId: PROJECT_ID, targetPage: 'menu', utterance: '改菜单',
+  });
+  assertEnvelopeShape(noRuntime);
+  assert.strictEqual(noRuntime.ok, false);
+  assert.strictEqual(noRuntime.code, CODES.RUNTIME_TOOL_MISSING);
+
   const versions = await ipc.invoke('agent:versions', { projectId: PROJECT_ID });
   assertEnvelopeShape(versions);
   assert.strictEqual(versions.ok, true);
@@ -112,6 +119,42 @@ test('命令面：20 个 agent:* + agent:progress，全部返回统一 envelope'
   const unknown = await ipc.invoke('agent:nope', { projectId: PROJECT_ID });
   assertEnvelopeShape(unknown);
   assert.strictEqual(unknown.code, CODES.PAYLOAD_INVALID);
+});
+
+test('E0 用户入口：run-turn 平台创建 attempt 后调真实 Coordinator；get-attempt 返回本地证据', async (t) => {
+  const coordinatorMod = require(path.join(REPO, 'desktop', 'agent-workspace', 'run-coordinator.cjs'));
+  const { userDataDir } = setup(t);
+  let coordinator;
+  const directRuntime = {
+    invoke: async ({ context, request }) => {
+      const read = await coordinator.invokeTool({ ...context, tool: 'read_file', args: { path: 'pages/menu/index.wxml' } });
+      assert.strictEqual(read.ok, true, JSON.stringify(read));
+      assert.strictEqual(request.utterance, '改菜单');
+      assert.deepStrictEqual(request.images, []);
+      return { ok: true, data: { status: 'completed', reply: '已读取候选页', modelCalls: 1, toolCalls: [] } };
+    },
+  };
+  coordinator = coordinatorMod.createRunCoordinator({ userDataDir, checks: false, directRuntime });
+  const ipc = toolsIpc.createAgentToolsIpc({ userDataDir, coordinator });
+  const run = await ipc.invoke('agent:run-turn', {
+    projectId: PROJECT_ID, targetPage: 'menu', utterance: '改菜单', imageAssetIds: [],
+  });
+  assert.strictEqual(run.ok, true, JSON.stringify(run));
+  assert.match(run.data.runId, /^frun-/);
+  assert.strictEqual(run.data.turnId, 'turn-1');
+  assert.strictEqual(run.data.attemptId, 'attempt-1');
+  assert.strictEqual(run.data.run.reply, '已读取候选页');
+  const state = await ipc.invoke('agent:get-attempt', {
+    projectId: PROJECT_ID, runId: run.data.runId, turnId: run.data.turnId, attemptId: run.data.attemptId,
+  });
+  assert.strictEqual(state.ok, true, JSON.stringify(state));
+  assert.strictEqual(state.data.targetPage, 'menu');
+  assert.strictEqual(state.data.status, 'open');
+  assertNoAbsolutePath(state, [userDataDir]);
+  const invalid = await ipc.invoke('agent:run-turn', {
+    projectId: PROJECT_ID, targetPage: 'menu', utterance: '改菜单', channel: 'shell',
+  });
+  assert.strictEqual(invalid.code, CODES.PAYLOAD_INVALID);
 });
 
 test('参数校验：未知键/绝对路径/非法 id/超限 payload 全部拒绝', async (t) => {

@@ -50,6 +50,7 @@ const transactionsMod = require('./transactions.cjs');
 const manifestMod = require('./manifest.cjs');
 const versionsMod = require('./versions.cjs');
 const sourceBundle = require('./source-bundle.cjs');
+const composerDigest = require('../../scripts/composer/digest.cjs');
 
 const { PROJECT_ID_PATTERN } = require('../frontend-reconstruct/contract.generated.cjs');
 
@@ -1981,13 +1982,29 @@ function createRunCoordinator(options) {
     if (exportEntry.treeDigest !== attempt.treeDigest) {
       return staleEvidenceFailure(['导出树证据绑定的候选已变化，请重跑 check 并重新提交']);
     }
+    // A08：证据记录也可能在提交后被伪造/改写；adopt 必须按当前派生导出树**重算**摘要。
+    const exported = exportedRootOf(attempt);
+    if (!exported.ok) return staleEvidenceFailure(['导出树不可用，请重跑 composer.dry-run 并重新提交']);
+    let actualExportTreeDigest = null;
+    try {
+      // compose 在校验完产物树后才写 Lock/报告；它们不是候选源码，重算时必须排除。
+      actualExportTreeDigest = composerDigest.treeSha256(exported.root, {
+        exclude: ['composition.lock.json', 'generation-report.json', '生成报告.md'],
+      });
+    } catch (error) {
+      return staleEvidenceFailure(['导出树无法重算摘要，请重跑 composer.dry-run 并重新提交']);
+    }
+    if (actualExportTreeDigest !== submittedExportTreeDigest) {
+      return staleEvidenceFailure(['导出树内容与提交时摘要不一致，请重跑 composer.dry-run 并重新提交']);
+    }
     // partial/runtime 只能由当前静态与运行时证据派生，不能信任 submission.json 中可被改写的布尔值。
     const gate = evaluateStaticGate(attempt);
     if (!gate.ok) return gate;
     const runtimeEntry = evidenceIndex(attempt).get('wechat.verify');
+    // 没有微信证据时是“当前环境无法验证”（BLOCKED），不是“已运行但未判定”（NOT_RUN）。
     const runtimeStatus = runtimeEntry && ['PASS', 'FAIL', 'BLOCKED', 'NOT_RUN'].includes(runtimeEntry.status)
       ? runtimeEntry.status
-      : 'NOT_RUN';
+      : 'BLOCKED';
     if (runtimeStatus === 'FAIL') {
       return failure(CODES.ADOPTION_FAILED, '微信运行时验证失败，不能采用该候选');
     }

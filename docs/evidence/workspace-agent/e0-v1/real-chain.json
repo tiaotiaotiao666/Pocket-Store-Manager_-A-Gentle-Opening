@@ -1,0 +1,128 @@
+{
+  "schemaVersion": "e0-real-chain.v1",
+  "status": "PASS",
+  "model": "deepseek-flash",
+  "reference": {
+    "file": "docs/evidence/m7/wechat/order-classic-home.png",
+    "sha256": "50c574353d27bb4d7c79057a627ff639a3bd36a53f7acc7d0f5fc0ff837ef527",
+    "bytes": 91690,
+    "assetId": "a_50c574353d27bb4d"
+  },
+  "steps": {
+    "startRun": {
+      "ok": true,
+      "targetPage": "menu",
+      "baseVersionId": "v1"
+    },
+    "direct": {
+      "ok": true,
+      "code": null,
+      "message": null,
+      "issues": [],
+      "status": "completed",
+      "stopReason": "final_answer",
+      "modelCalls": 3,
+      "truncated": false,
+      "multimodal": true,
+      "images": [
+        {
+          "assetId": "a_50c574353d27bb4d",
+          "bytes": 91690,
+          "sha256": "50c574353d27bb4d7c79057a627ff639a3bd36a53f7acc7d0f5fc0ff837ef527"
+        }
+      ],
+      "toolCalls": [
+        {
+          "name": "get_context",
+          "ok": true,
+          "code": null,
+          "path": null
+        },
+        {
+          "name": "read_file",
+          "ok": true,
+          "code": null,
+          "path": null
+        },
+        {
+          "name": "write_files",
+          "ok": true,
+          "code": null,
+          "path": null
+        }
+      ],
+      "reply": "我已在 `pages/menu/index.wxml` 末尾、最后一个 `</view>` 之前插入 `<view class=\"e0-real-note\">参考图样式已应用</view>`，其余内容未改动；按你的要求未运行检查，因此该改动尚未经过 source.check / composer.dry-run 等平台校验，且 `.e0-real-note` 暂无对应样式定义。"
+    },
+    "attempt": {
+      "revision": 2,
+      "treeDigest": "sha256:67caeffefe55da53fcb9bf6e0b36619c4a810fa907920ffca806238d7b080444",
+      "status": "open"
+    },
+    "source": {
+      "hasMarker": true,
+      "revision": "sha256:8dcd5f76f1626706b3086191787ada4f9a183bfc65afcf4ea5a59ad92498baa9"
+    },
+    "checks": [
+      {
+        "checkId": "source.check",
+        "ok": true,
+        "status": "PASS",
+        "issues": []
+      },
+      {
+        "checkId": "composer.dry-run",
+        "ok": true,
+        "status": "PASS",
+        "issues": []
+      },
+      {
+        "checkId": "mini.check",
+        "ok": true,
+        "status": "PASS",
+        "issues": []
+      },
+      {
+        "checkId": "output.consistency",
+        "ok": true,
+        "status": "PASS",
+        "issues": []
+      }
+    ],
+    "submit": {
+      "candidateId": "attempt-1",
+      "revision": 3,
+      "treeDigest": "sha256:55b71cb9a56a44e8345121d0aea96e308dd59d2a701fa6a47e3270c04e851ffd",
+      "partial": true,
+      "exportRelative": "verification/dry-run",
+      "exportTreeDigest": "sha256:46b81a48eaa493a5c3010a1b91758cd3b4ae35bb6edc5f27a88f922ea3de45aa"
+    },
+    "adopt": {
+      "withoutConfirm": {
+        "ok": false,
+        "code": "AGENT_PARTIAL_CONFIRM_REQUIRED",
+        "nextAction": "confirm-partial"
+      },
+      "confirmed": {
+        "adoptedVersionId": "v2",
+        "currentVersionId": "v2",
+        "treeDigest": "sha256:55b71cb9a56a44e8345121d0aea96e308dd59d2a701fa6a47e3270c04e851ffd"
+      }
+    },
+    "undoRedo": {
+      "undo": "v1",
+      "redo": "v2"
+    }
+  },
+  "cleanup": true,
+  "verdict": {
+    "realImageSent": true,
+    "realToolLoop": true,
+    "sourceEdited": true,
+    "fourChecksPass": true,
+    "partialConfirmed": true,
+    "adoptedNewVersion": true,
+    "undoRedo": true,
+    "runtimeStatus": "wechat BLOCKED/NOT_RUN (真实微信未跑)"
+  },
+  "durationMs": 20933
+}

@@ -71,13 +71,19 @@ async function runCheck(coord, handle, checkId) {
   return coord.invokeTool({ ...handle, tool: 'run_check', args: { checkId } });
 }
 
-/** 真实检查链到“可提交”：写改已由调用方完成；这里跑 source.check + dry-run（真实实现）。 */
+/** 真实检查链到“可提交”：四项门禁都由平台绑定 attempt/导出树。 */
 async function realChecks(coord, handle) {
   const sourceCheck = await runCheck(coord, handle, 'source.check');
   if (!sourceCheck.ok) return { ok: false, stage: 'source.check', result: sourceCheck };
   const dryRun = await runCheck(coord, handle, 'composer.dry-run');
   if (!dryRun.ok) return { ok: false, stage: 'composer.dry-run', result: dryRun };
-  return { ok: true, sourceCheck, dryRun };
+  const results = [];
+  for (const checkId of ['mini.check', 'output.consistency']) {
+    const result = await runCheck(coord, handle, checkId);
+    if (!result.ok) return { ok: false, stage: checkId, result };
+    results.push(result);
+  }
+  return { ok: true, sourceCheck, dryRun, exportChecks: results };
 }
 
 function probeAssetBytes() {

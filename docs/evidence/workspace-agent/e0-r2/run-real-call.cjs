@@ -124,10 +124,13 @@ function seedProjectAsset(userDataDir, projectId, bytes) {
 
 function judge(reply, expectImage) {
   const text = typeof reply === 'string' ? reply : '';
+  // 明确否认看到图时，后面即使出现“圆角/方形”等举例也不得判为看图证据。
+  const explicitDenial = /没有(?:真正)?看到|看不到|无法描述|没有(?:拿到|收到).{0,8}(?:图|图像|画面)|不会凭猜测|没有图像内容/.test(text);
   const hitsColor = /红|蓝|白/.test(text);
   const hitsShape = /圆|方/.test(text);
   const claims = hitsColor || hitsShape;
-  return expectImage ? { sawImageEvidence: claims } : { sawImageEvidence: claims, mustNotClaim: true };
+  if (expectImage) return { sawImageEvidence: claims };
+  return { sawImageEvidence: claims && !explicitDenial, mustNotClaim: true, explicitDenial };
 }
 
 async function runCase(label, runtime, baseRequest, expectImage) {

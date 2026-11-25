@@ -169,6 +169,26 @@ test('上游完全没给 finish_reason → 字段仍存在，并标记 finishRea
 
 /* ------------------------------ 2. maxTokens ------------------------------ */
 
+test('工具循环：assistant 只带 tool_calls 时 content 允许 null（真实上游回包可回填）', () => {
+  const normalized = normalizeChatPayload({
+    messages: [
+      { role: 'user', content: '读页面' },
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [{
+          id: 'call-1',
+          type: 'function',
+          function: { name: 'read_file', arguments: '{"path":"pages/menu/index.wxml"}' },
+        }],
+      },
+      { role: 'tool', tool_call_id: 'call-1', content: '{"ok":true}' },
+    ],
+  });
+  assert.strictEqual(normalized.body.messages[1].content, null);
+  assert.strictEqual(normalized.body.messages[1].tool_calls[0].function.name, 'read_file');
+});
+
 test('maxTokens：direct-edit 默认 6000、上限 8000，绝不出现 1200', () => {
   assert.deepEqual(DIRECT_EDIT_MAX_TOKENS, { default: 6000, max: 8000 });
   assert.deepEqual(CHAT_MAX_TOKENS, { default: 1200, max: 4096 });

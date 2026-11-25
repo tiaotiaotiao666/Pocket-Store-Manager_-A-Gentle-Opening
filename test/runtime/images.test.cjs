@@ -620,7 +620,7 @@ test('进度回调出现 image 阶段（§14.9 stage 白名单），且 detail �
   }
 });
 
-test('data URL 只进调用内存：落盘全量扫描对任意 data: 字面量/样本 base64 均 0 命中', async () => {
+test('data URL 只进调用内存：落盘扫描对真实内联图片载荷/样本 base64 均 0 命中', async () => {
   const asset = makeProjectAsset();
   const run = createDirectWorkspaceRuntime({
     coordinator: makeCoordinator(),
@@ -642,8 +642,9 @@ test('data URL 只进调用内存：落盘全量扫描对任意 data: 字面量/
         }
         if (!entry.isFile()) continue;
         const text = fs.readFileSync(full, 'latin1');
-        // E0-Fix2 / OBS-E：判据从“内联图片前缀”收紧为**任意 data: 字面量**（含 base64 样本）。
-        if (text.includes('data:') || text.includes(base64Needle)) found.push(full);
+        // 判据是**真实内联图片载荷**：完整 data URL 前缀或样本 base64。
+        // 报告里的说明文字（例如“不得出现 data:image”本身）不是图片载荷，不能误报。
+        if (/data:image\/(?:png|jpeg|webp);base64,/i.test(text) || text.includes(base64Needle)) found.push(full);
       }
     };
     walk(root);
@@ -658,7 +659,9 @@ test('data URL 只进调用内存：落盘全量扫描对任意 data: 字面量/
   // 证据目录里的 real-call.json 单列断言（t21 OBS-E 的判据）
   const realCallFile = path.join(EVIDENCE_DIR, 'real-call.json');
   const realCallText = fs.readFileSync(realCallFile, 'latin1');
-  assert.ok(!realCallText.includes('data:'), 'real-call.json 不得出现任意 data: 字面量');
+  // 模型回复可能出现普通 JSON 字段字样（data: null），不是图片载荷；只拒绝真实内联图片 URL。
+  assert.ok(!/data:image\/(?:png|jpeg|webp);base64,/i.test(realCallText),
+    'real-call.json 不得出现真实内联图片 URL');
   assert.ok(!realCallText.includes(base64Needle), 'real-call.json 不得出现样本 base64');
 
   // 项目文档与结果对象都没有被追加图片内容

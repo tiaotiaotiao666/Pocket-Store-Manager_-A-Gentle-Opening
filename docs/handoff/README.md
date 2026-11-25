@@ -6,7 +6,8 @@
 
 | 文档 | 适用任务 | 当前状态 |
 | --- | --- | --- |
-| `Workspace-Agent-E1-下一轮任务-2026-11-26.md` | **当前执行任务书**：真实图片→源码→验证→采用的用户 UI、`continueTurn` 修复、product-card、独立真实验收 | 下一轮；E0 技术闭环已通过，E1 可开工 |
+| `Workspace-Agent-E1-下一轮任务-2026-11-26.md` | **E1 目标与验收定义**：真实图片→源码→验证→采用的用户 UI、`continueTurn` 修复、product-card、独立真实验收 | 下一轮；E0 技术闭环已通过，E1 可开工 |
+| `Workspace-Agent-E1-AgentTeams执行方案-2026-11-26.md` | **交给 AgentTeams 的完整分工**：3 个屏障、7 个任务卡、文件所有权、DAG、建队参数、停止条件 | 按方案 staged plan 后执行 |
 | `Workspace-Agent-E0-当前交接-2026-11-25.md` | **E0 事实入口**：已完成/未完成、真实命令、真实 Flash 证据、已知缺口 | E0 离线 114/114 PASS + 真实 direct PASS；微信 BLOCKED，正式 t8 待签署 |
 | `Workspace-Agent-E0闭环纠偏与E阶段-Flash续期计划.md` | **E0 历史任务书**：X1–X12 纠偏、Coordinator、真实图片、attempt 验证/采用 | 主体已落地；保留为根因与边界依据 |
 | `Workspace-Agent大规模重构与遗留收尾-Flash总计划.md` | 总体路线图：通用源码 Workspace Agent、8 页图片重构、版本/采用/导出、旧 P7/T16 与业务/安装包欠账 | A–D1 部分落地；下一步先读 E0 续期计划，再回原总计划 F/G/H/I |

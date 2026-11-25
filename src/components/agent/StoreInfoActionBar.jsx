@@ -1,14 +1,8 @@
 import { CheckCircle2 } from 'lucide-react';
 
+import { canConfirmStoreInfo } from '../../domain/agentDraft.mjs';
+import { storeInfoActionSummary } from '../../domain/storeInfoActionText.mjs';
 import { MAX_DISHES } from '../../domain/storeLimits.mjs';
-
-function summaryText(status, pendingCount, canConfirm) {
-  if (status === 'requesting') return '正在整理资料，请稍候';
-  if (status === 'failed') return `请求失败，还有 ${pendingCount} 项待处理`;
-  if (canConfirm) return '资料已齐全，可以继续';
-  if (pendingCount > 0) return `还有 ${pendingCount} 项待补充`;
-  return '等待输入开店资料';
-}
 
 export default function StoreInfoActionBar({
   status = 'idle',
@@ -18,14 +12,14 @@ export default function StoreInfoActionBar({
   errorCount = 0,
   onConfirm,
 }) {
-  const canConfirm = status === 'reviewing' && missingCount === 0 && errorCount === 0;
+  const canConfirm = canConfirmStoreInfo(status, missingCount, errorCount);
   const pendingCount = missingCount + errorCount;
 
   return (
     <div className="agent-action-bar" role="group" aria-label="开店资料操作">
       <div className="agent-action-meta">
         <span className={`agent-action-dot agent-action-dot-${status}`} aria-hidden="true" />
-        <span className="agent-action-text">{summaryText(status, pendingCount, canConfirm)}</span>
+        <span className="agent-action-text">{storeInfoActionSummary(status, pendingCount, canConfirm)}</span>
         <span className="agent-action-count">{dishCount}/{maxDishes} 道菜</span>
       </div>
       <div className="agent-action-buttons">

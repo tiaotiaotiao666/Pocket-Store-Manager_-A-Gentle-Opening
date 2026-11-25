@@ -47,7 +47,7 @@ import {
   selectPresentationState,
   selectAgentChatState,
 } from './state/sessionMachine.mjs';
-import { formatCents } from './domain/agentDraft.mjs';
+import { canConfirmStoreInfo, formatCents } from './domain/agentDraft.mjs';
 import { analyzeComposerInput, createSubmitGuard } from './domain/composerInput.mjs';
 // 项目级 Agent 对话（右侧栏）的纯函数口径：能否发送、本轮路由、安全过程视图。
 // App 只做接线与派发，判断与文案全部来自 domain/agentSidebar.mjs，不在这里另写一套。
@@ -4765,9 +4765,8 @@ export default function App() {
         );
       case PHASES.STORE_INFO: {
         const agent = state.agent;
-        const canConfirm = agent.status === 'reviewing'
-          && agent.missingFields.length === 0
-          && agent.errors.length === 0;
+        // 是否可「资料无误，继续」只看资料本身，不看可能滞后的 agent.status（见 canConfirmStoreInfo 注释）。
+        const canConfirm = canConfirmStoreInfo(agent.status, agent.missingFields.length, agent.errors.length);
         const confirmed = agent.status === 'confirmed';
         const validation = {
           missingFields: agent.missingFields,

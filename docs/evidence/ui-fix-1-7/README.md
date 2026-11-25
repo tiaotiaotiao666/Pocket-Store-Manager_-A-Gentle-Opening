@@ -58,9 +58,31 @@
 - 高亮：点击后目标 `class=is-jump-flash`，`animation: jump-flash-twice 0.62s × 2`；
   `prefers-reduced-motion: reduce` 下 `animation: none` 且保留 `outline 3px` 稳定高亮（实测 `reduce:true, anim:none`）。
 
+## 阻断排查轮（J 系列，2026-11-25）
+
+从干净新项目 `空锅小馆`（隔离 profile）走真实 UI：新建 → 开始 → 环境指引「稍后再做」→ 命名并开始 →
+轻启一次写入 5 个字段 + 1 道菜 → 确认 → 能力与定制「暂不定制，跳过」→ 页面骨架（3 套真实候选）。
+
+| 证据 | 内容 | 尺寸 |
+| --- | --- | --- |
+| `J1-store-gate-ready-1280.png` | 资料齐全后操作栏为「资料已齐全，可以继续」，按钮可用（无需再改任意字段） | 1280×912 |
+| `J2-candidates-new-project-1280.png` | 干净项目直达页面骨架，真实候选 3 套（人气样板 / 简洁清单 / 推荐精选） | 1280×912 |
+| `J3-rematch-done-1280.png` | 「重新匹配候选」执行完成：面板记录本轮要求，候选被原地重建 | 1280×912 |
+
+实测数字：
+
+- 死路缺陷（已修）：改前 `agent.status` 滞后时资料其实齐全，操作栏仍写「等待输入开店资料」且「资料无误，继续」
+  禁用，只能随便改一个字段才解冻；改后同一状态直接给出「资料已齐全，可以继续」，按钮可用。
+  判定口径收敛到 `canConfirmStoreInfo()`（`src/domain/agentDraft.mjs`），文案收敛到
+  `storeInfoActionSummary()`（`src/domain/storeInfoActionText.mjs`），回归测试 `test/store-info-confirm-gate.test.cjs`。
+- 重匹配（不是缺陷）：`0 项 → 请求中「正在按你的描述重新匹配候选…」→ 完成`，候选顺序由
+  `人气样板 / 简洁清单 / 推荐精选` 变为 `人气样板 / 推荐精选 / 简洁清单`，面板保留「你刚才要求：…」。
+  看起来「没执行」的原因是候选集合仍是同一批 3 套模板 + `TEMPLATE_REBUILD_READY` 自动选中第一套。
+
 ## 未完成的验证（见交付报告）
 
-- 第三个不同阶段的等待态截图（候选骨架待选 / 参考图候选待采用）：
-  这两类需要重新生成候选或调用参考图链路，本轮只实拍到「门店资料待确认」「导出风险项待确认」两个阶段，
-  其余分支由 `test/ui-layout-interaction.test.cjs` 的纯函数断言覆盖。
+- 第三个不同阶段的等待态截图：「候选骨架待选」在正常链路下不会出现——
+  `BUILD_READY` 与 `TEMPLATE_REBUILD_READY` 都直接 `selectedId = candidates[0].id`（既有
+  `test/template-refine.test.cjs` 锁定该行为），因此该等待态只在「已选后又失效」时才可能触发。
+  「参考图候选待采用」需要真实模型链路，本轮不调用。
 - 待确认卡「提案过期」单独触发（本轮验证的是「切换项目后消失」这一等价场景）。

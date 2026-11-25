@@ -308,6 +308,19 @@ export function validateAgentDraft(draft) {
   };
 }
 
+/**
+ * 「资料无误，继续」是否可点：唯一口径。
+ *
+ * 只看资料本身（缺什么/错什么）和两个进行中状态；**不看 `agent.status === 'reviewing'`**。
+ * 原因：`agent.status` 是派生值，AI 一次写入多字段后可能滞后在 collecting/idle，
+ * 此时资料其实已经齐全，按钮却一直禁用、文案还写「等待输入开店资料」，
+ * 用户只能随便改一个字才解冻——这是静默死路，必须按资料判定。
+ */
+export function canConfirmStoreInfo(status, missingCount = 0, errorCount = 0) {
+  if (status === 'requesting' || status === 'confirmed') return false;
+  return missingCount === 0 && errorCount === 0;
+}
+
 export function buildNextQuestion(validation) {
   const result = isPlainObject(validation) ? validation : { missingFields: [], errors: [] };
   const missing = Array.isArray(result.missingFields) ? result.missingFields : [];

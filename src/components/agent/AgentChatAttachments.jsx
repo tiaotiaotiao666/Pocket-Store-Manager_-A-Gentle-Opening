@@ -85,6 +85,7 @@ export default function AgentChatAttachments({
   const [kind, setKind] = useState(allowedKinds[0] || 'menu');
   const [working, setWorking] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [localError, setLocalError] = useState(null);
 
   useEffect(() => {
@@ -100,6 +101,9 @@ export default function AgentChatAttachments({
   const activeCount = list.filter((item) => item && item.kind === activeKind).length;
   const room = Math.max(0, Math.min(config.limit - activeCount, AGENT_IMAGE_LIMITS.maxTotalImages - list.length));
   const isBusy = Boolean(busy) || working;
+  // 0 张且用户没主动要看说明时只留一行「+ 添加图片」：原来这一块标题+用途标签+两行说明常驻，
+  // 在侧栏里占掉一大截高度。选图本身不受影响（拖拽、点击都还能用），用途说明点一下再展开。
+  const collapsed = list.length === 0 && !expanded;
   const isDisabled = Boolean(disabled);
   const activeError = localError
     ?? (error && typeof error === 'object' && typeof error.message === 'string' ? error : null);
@@ -152,7 +156,7 @@ export default function AgentChatAttachments({
 
   return (
     <section
-      className={`agent-chat-attachments${dragging ? ' is-dragging' : ''}${list.length === 0 ? ' is-compact' : ''}`}
+      className={`agent-chat-attachments${dragging ? ' is-dragging' : ''}${collapsed ? ' is-compact is-collapsed' : ''}`}
       aria-label="本轮图片附件"
       onDragOver={(event) => {
         if (isDisabled || isBusy) return;
@@ -169,7 +173,34 @@ export default function AgentChatAttachments({
         ingestFiles(event.dataTransfer?.files);
       }}
     >
-      <div className="agent-chat-attachments-head">
+      {collapsed ? (
+        <div className="agent-chat-attachments-compact-row">
+          <button
+            type="button"
+            className="agent-chat-attachments-add is-plus"
+            aria-label="添加图片"
+            disabled={isDisabled || isBusy || room === 0}
+            onClick={() => inputRef.current?.click()}
+          >
+            <ImagePlus size={15} aria-hidden="true" />
+            <span className="agent-chat-attachments-add-label">添加图片</span>
+          </button>
+          <span className="agent-chat-attachments-count">
+            已选 {list.length}/{AGENT_IMAGE_LIMITS.maxTotalImages} 张
+          </span>
+          <button
+            type="button"
+            className="agent-chat-attachments-more"
+            aria-label="查看图片用途与限制"
+            aria-expanded={false}
+            onClick={() => setExpanded(true)}
+          >
+            用途说明
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="agent-chat-attachments-head">
         <span className="agent-chat-attachments-title">
           <ImagePlus size={14} aria-hidden="true" />
           本轮图片
@@ -259,7 +290,20 @@ export default function AgentChatAttachments({
         <span className="agent-chat-attachments-count">
           已选 {list.length}/{AGENT_IMAGE_LIMITS.maxTotalImages} 张
         </span>
+        {list.length === 0 ? (
+          <button
+            type="button"
+            className="agent-chat-attachments-more"
+            aria-label="收起图片用途与限制"
+            aria-expanded
+            onClick={() => setExpanded(false)}
+          >
+            收起
+          </button>
+        ) : null}
       </div>
+        </>
+      )}
 
       {activeError ? (
         <p className="agent-chat-attachments-error" role="alert">{activeError.message}</p>

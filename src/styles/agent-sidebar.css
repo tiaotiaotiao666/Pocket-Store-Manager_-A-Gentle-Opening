@@ -1013,3 +1013,50 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* 本轮 UI 修复 4：0 张图片时整块收成一行「+ 添加图片」，用途标签与说明点「用途说明」再展开。 */
+.agent-chat-attachments.is-collapsed {
+  padding: 6px 8px;
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+}
+
+.agent-chat-attachments-compact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.agent-chat-attachments.is-collapsed .agent-chat-attachments-add.is-plus {
+  width: auto;
+  min-width: 0;
+  height: 26px;
+  padding: 0 10px;
+  gap: 5px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.agent-chat-attachments.is-collapsed .agent-chat-attachments-count {
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.agent-chat-attachments-more {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.agent-chat-attachments-more:hover {
+  color: var(--accent);
+  background: var(--accent-soft, rgba(99, 91, 255, 0.08));
+}

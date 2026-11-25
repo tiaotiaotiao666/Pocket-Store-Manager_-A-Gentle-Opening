@@ -126,17 +126,24 @@ test('布局：模板详情两栏按容器宽度换行，文字不会被挤成�
   assert.match(flow, /\[data-jump-id\]\.is-jump-flash/);
 });
 
-test('本轮图片：0 张时是紧凑入口，选图后才展开；保留用途选择与逐张删除', () => {
+test('本轮图片：0 张时收成一行加号入口，点「用途说明」才展开；保留用途选择与逐张删除', () => {
   const source = read('src/components/agent/AgentChatAttachments.jsx');
-  assert.match(source, /list\.length === 0 \? ' is-compact' : ''/, '0 张时走紧凑样式');
+  assert.match(source, /const collapsed = list\.length === 0 && !expanded;/, '0 张且未展开时走收起态');
+  assert.match(source, /is-compact is-collapsed/, '收起态复用紧凑样式');
   assert.match(source, /aria-label="添加图片"/);
+  assert.match(source, /aria-label="查看图片用途与限制"/, '用途说明必须可发现');
   assert.match(source, /title=\{KIND_CONFIG\[item\]\.hint\}/, '用途说明必须可发现');
   assert.match(source, /aria-label=\{`移除\$\{item\.name \|\| '已选图片'\}`\}/, '逐张删除必须保留');
   assert.match(source, /AGENT_IMAGE_LIMITS\.maxTotalImages/, '数量上限仍复用同一份限制');
 
   const css = read('src/styles/agent-sidebar.css');
-  assert.match(css, /\.agent-chat-attachments\.is-compact \.agent-chat-attachments-hint \{[^}]*-webkit-line-clamp: 1;/);
-  assert.match(css, /\.agent-chat-attachments\.is-compact \.agent-chat-attachments-add \{[^}]*width: 30px;/);
+  assert.match(css, /\.agent-chat-attachments\.is-collapsed \{[^}]*box-shadow: none;/, '收起态不再占一块卡片高度');
+  assert.match(
+    css,
+    /\.agent-chat-attachments\.is-collapsed \.agent-chat-attachments-add\.is-plus \{[^}]*height: 26px;/,
+    '加号入口保持单行高度',
+  );
+  assert.match(css, /\.agent-chat-attachments-compact-row \{[^}]*display: flex;/, '收起态是一行');
 });
 
 test('本轮图片：有图态标题单行、标签换行，中文不被挤成竖排，说明最多两行', () => {

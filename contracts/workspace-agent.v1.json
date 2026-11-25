@@ -1,0 +1,356 @@
+{
+  "schemaVersion": "workspace-agent.contract.v1",
+  "contractVersion": "workspace-agent.v1",
+  "endpoint": "POST /api/v1/agent/workspace",
+  "operations": ["plan", "edit", "repair", "explain"],
+  "request": {
+    "allowedKeys": ["contractVersion", "projectId", "runId", "turnId", "operation", "utterance", "images", "toolResults", "mock"],
+    "requiredKeys": ["contractVersion", "projectId", "operation", "utterance"],
+    "properties": {
+      "contractVersion": { "const": "workspace-agent.v1" },
+      "projectId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$" },
+      "runId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$" },
+      "turnId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$" },
+      "operation": { "type": "string", "enum": ["plan", "edit", "repair", "explain"] },
+      "utterance": { "type": "string", "minLength": 1, "maxLength": 2000 },
+      "images": {
+        "type": "array",
+        "maxItems": 3,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "assetId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$" },
+            "caption": { "type": "string", "maxLength": 120 }
+          },
+          "required": ["assetId"]
+        }
+      },
+      "toolResults": {
+        "type": "array",
+        "maxItems": 8,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "callId": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,47}$" },
+            "ok": { "type": "boolean" },
+            "dataRef": { "type": "string", "maxLength": 2048 }
+          },
+          "required": ["callId", "name", "ok"]
+        }
+      },
+      "mock": { "type": "boolean" }
+    }
+  },
+  "response": {
+    "allowedKeys": ["contractVersion", "runId", "operation", "reply", "plan", "trace", "stopReason", "meta"],
+    "forbiddenKeys": ["applied", "adopted", "exported", "verified"],
+    "properties": {
+      "contractVersion": { "const": "workspace-agent.v1" },
+      "runId": { "type": "string" },
+      "operation": { "type": "string", "enum": ["plan", "edit", "repair", "explain"] },
+      "reply": { "type": "string", "maxLength": 4000 },
+      "plan": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": { "type": "string" },
+          "targetPage": { "type": ["string", "null"] },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "status": { "type": "string", "enum": ["planned", "done", "failed"] }
+              },
+              "required": ["name", "status"]
+            }
+          }
+        },
+        "required": ["operation", "steps"]
+      },
+      "trace": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "modelCalls": { "type": "integer", "minimum": 0 },
+          "toolCalls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "ok": { "type": "boolean" },
+                "latencyMs": { "type": "integer", "minimum": 0 },
+                "attempts": { "type": "integer", "minimum": 1 },
+                "bytes": { "type": "integer", "minimum": 0 },
+                "truncated": { "type": "boolean" }
+              },
+              "required": ["name", "ok", "latencyMs", "attempts", "bytes", "truncated"]
+            }
+          },
+          "stopReason": { "type": "string" },
+          "degraded": { "type": "boolean" }
+        },
+        "required": ["modelCalls", "toolCalls", "stopReason", "degraded"]
+      },
+      "stopReason": { "type": "string" },
+      "meta": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "mock": { "type": "boolean" },
+          "model": { "type": "string" },
+          "latencyMs": { "type": "integer", "minimum": 0 }
+        },
+        "required": ["mock", "model", "latencyMs"]
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "get_context",
+      "rpc": "agent:get-context",
+      "description": "读取当前项目/版本/目标页/可用检查项的安全上下文。只读。",
+      "sideEffect": "read",
+      "parameters": { "type": "object", "additionalProperties": false, "properties": {} }
+    },
+    {
+      "name": "list_files",
+      "rpc": "agent:list-files",
+      "description": "列出当前版本工作区文件；只返回路径、字节数与摘要，不返回绝对路径。只读。",
+      "sideEffect": "read",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "pathPrefix": { "type": "string", "maxLength": 200 },
+          "maxDepth": { "type": "integer", "minimum": 1, "maximum": 8 },
+          "maxResults": { "type": "integer", "minimum": 1, "maximum": 200 }
+        }
+      }
+    },
+    {
+      "name": "read_file",
+      "rpc": "agent:read-file",
+      "description": "读取当前版本工作区的一个相对路径文件（有界）。只读。",
+      "sideEffect": "read",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "offset": { "type": "integer", "minimum": 0 },
+          "limitBytes": { "type": "integer", "minimum": 1, "maximum": 65536 }
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "search_files",
+      "rpc": "agent:search-files",
+      "description": "按文件名或内容搜索工作区文件，返回有界预览。只读。",
+      "sideEffect": "read",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "query": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "mode": { "type": "string", "enum": ["name", "content", "both"] },
+          "maxResults": { "type": "integer", "minimum": 1, "maximum": 100 }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "get_diff",
+      "rpc": "agent:get-diff",
+      "description": "读取当前 attempt/version 相对基线的文件差异摘要。只读。",
+      "sideEffect": "read",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "comparedTo": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "basePath": { "type": "string", "maxLength": 200 }
+        },
+        "required": ["comparedTo"]
+      }
+    },
+    {
+      "name": "write_files",
+      "rpc": "agent:write-files",
+      "description": "在一次受控事务中写入一个或多个相对路径文件。写操作串行，必须带 baseVersionId。",
+      "sideEffect": "write",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "baseVersionId": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "changes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": { "type": "string", "minLength": 1, "maxLength": 200 },
+                "content": { "type": "string", "maxLength": 262144 },
+                "expectedBaseSha256": { "type": "string", "maxLength": 80 }
+              },
+              "required": ["path", "content"]
+            }
+          }
+        },
+        "required": ["baseVersionId", "changes"]
+      }
+    },
+    {
+      "name": "delete_files",
+      "rpc": "agent:delete-files",
+      "description": "在一次受控事务中删除一个或多个相对路径文件。写操作串行。",
+      "sideEffect": "write",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "baseVersionId": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "paths": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": { "type": "string", "minLength": 1, "maxLength": 200 },
+                "expectedBaseSha256": { "type": "string", "maxLength": 80 }
+              },
+              "required": ["path"]
+            }
+          }
+        },
+        "required": ["baseVersionId", "paths"]
+      }
+    },
+    {
+      "name": "run_check",
+      "rpc": "agent:run-check",
+      "description": "运行一个冻结注册表中的检查项，返回 PASS/FAIL/BLOCKED/NOT_RUN 与有界 issues。只读。",
+      "sideEffect": "read",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "checkId": {
+            "type": "string",
+            "enum": ["source.check", "mini.check", "composer.dry-run", "output.consistency", "unit.targeted", "unit.full", "desktop.contract", "catalog.check", "registry.check", "wechat.verify"]
+          },
+          "params": { "type": "object", "additionalProperties": true }
+        },
+        "required": ["checkId"]
+      }
+    },
+    {
+      "name": "read_verification",
+      "rpc": "agent:read-verification",
+      "description": "读取当前 attempt 或版本的有界验证结果与截图引用。只读。",
+      "sideEffect": "read",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "source": { "type": "string", "enum": ["attempt", "version"] },
+          "attemptId": { "type": "string", "maxLength": 120 },
+          "versionId": { "type": "string", "maxLength": 80 }
+        },
+        "required": ["source"]
+      }
+    },
+    {
+      "name": "verify_wechat",
+      "rpc": "agent:verify-wechat",
+      "description": "通过固定包装器运行真实微信开发者工具验证；工具不可用时返回 BLOCKED，不伪造截图。",
+      "sideEffect": "read",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "appId": { "type": "string", "maxLength": 64 },
+          "timeoutMs": { "type": "integer", "minimum": 1000, "maximum": 120000 }
+        }
+      }
+    },
+    {
+      "name": "submit_candidate",
+      "rpc": "agent:submit-candidate",
+      "description": "把当前 attempt 提交为候选版本（状态只能是 submitted；不能 adopted/exported/verified）。",
+      "sideEffect": "write",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "targetPage": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,47}$" },
+          "summary": { "type": "string", "maxLength": 200 }
+        },
+        "required": ["targetPage"]
+      }
+    }
+  ],
+  "operationTools": {
+    "plan": ["get_context", "list_files", "search_files", "read_file", "get_diff"],
+    "edit": ["get_context", "read_file", "write_files", "run_check", "read_verification", "verify_wechat", "submit_candidate"],
+    "repair": ["get_context", "list_files", "read_file", "write_files", "run_check", "read_verification"],
+    "explain": ["get_context", "list_files", "search_files", "read_file", "get_diff"]
+  },
+  "limits": {
+    "maxRequestBytes": 262144,
+    "maxUtteranceCharacters": 2000,
+    "maxImages": 3,
+    "maxImageCaptionCharacters": 120,
+    "maxToolResults": 8,
+    "maxToolResultReferenceBytes": 2048,
+    "maxModelCalls": 8,
+    "maxToolCalls": 16,
+    "maxWallClockMs": 120000,
+    "maxParallelToolCalls": 4,
+    "maxReplyCharacters": 4000,
+    "maxToolResultBytes": 16384,
+    "toolTimeoutMs": 15000,
+    "modelMaxAttempts": 2,
+    "modelRetryBackoffMs": 300,
+    "maxFileChanges": 20,
+    "maxFileContentBytes": 262144
+  },
+  "errorCodes": [
+    "WORKSPACE_REQUEST_INVALID",
+    "WORKSPACE_CONTRACT_MISMATCH",
+    "WORKSPACE_OPERATION_UNSUPPORTED",
+    "WORKSPACE_IMAGE_LIMIT",
+    "WORKSPACE_TOOL_RESULT_LIMIT",
+    "WORKSPACE_BODY_TOO_LARGE",
+    "WORKSPACE_RPC_UNAVAILABLE",
+    "WORKSPACE_RPC_FAILED",
+    "AGENT_INTERNAL_ERROR",
+    "AGENT_ABORTED",
+    "DEEPSEEK_NOT_CONFIGURED",
+    "DEEPSEEK_TIMEOUT",
+    "DEEPSEEK_UNAVAILABLE",
+    "DEEPSEEK_AUTH_FAILED",
+    "DEEPSEEK_RATE_LIMITED",
+    "DEEPSEEK_UPSTREAM_ERROR",
+    "DEEPSEEK_REQUEST_REJECTED",
+    "DEEPSEEK_RESPONSE_INVALID"
+  ],
+  "mock": {
+    "requestKey": "mock",
+    "responseMetaKey": "mock",
+    "tools": ["get_context", "read_file", "write_files", "run_check", "submit_candidate"]
+  }
+}

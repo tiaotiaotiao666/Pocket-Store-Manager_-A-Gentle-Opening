@@ -6,7 +6,7 @@
       "id": "ordering-base",
       "version": "1.0.0",
       "root": "templates/base/ordering-base/1.0.0/src",
-      "digest": "sha256:0b0c97ac1e4f8213f19352a36f11779da97393839b9dccdd3f0150de6bad4883"
+      "digest": "sha256:df05a2625d343acf6d9936e55a27d63dbb8941783fc087fb6c20c0a22247303a"
     },
     "registryVersion": "2026.11.0",
     "sourceOfTruth": "templates/base/** + templates/registry/registry.v1.json + templates/{components,features,frontend-packs}/**",
@@ -107,8 +107,10 @@
       "card": "components/fulfillment-switch.json",
       "props": [
         "dineInEnabled",
+        "tableCount",
         "tableName",
         "tableRequired",
+        "tablesLoading",
         "takeawayEnabled",
         "value"
       ],

@@ -14,7 +14,7 @@
       "index.wxml",
       "index.wxss"
     ],
-    "digest": "sha256:e5476d55c798b5133784c73206618e6fb3c0f435129d62fb76a0e5a980160f3c"
+    "digest": "sha256:7e31b265c8ac945dfadb2bde00ac2fe645516526f2ad034620fe67166ff9a123"
   },
   "components": [
     {
@@ -43,13 +43,13 @@
       "componentId": "fulfillment-switch",
       "mode": "always",
       "sourceLine": 47,
-      "usage": "<fulfillment-switch value=\"{{mode}}\" dine-in-enabled=\"{{store.fulfillment.dineIn}}\" takeaway-enabled=\"{{store.fulfillment.takeaway}}\" table-name=\"{{tableName}}\" table-required=\"{{true}}\" bind:change=\""
+      "usage": "<fulfillment-switch value=\"{{mode}}\" dine-in-enabled=\"{{store.fulfillment.dineIn}}\" takeaway-enabled=\"{{store.fulfillment.takeaway}}\" table-name=\"{{tableName}}\" table-required=\"{{true}}\" table-count=\""
     },
     {
       "tag": "order-card",
       "componentId": "order-card",
       "mode": "always",
-      "sourceLine": 99,
+      "sourceLine": 106,
       "usage": "<order-card order=\"{{item}}\" role=\"CUSTOMER\" actionable=\"{{false}}\" bind:open=\"onOpenOrder\" />"
     },
     {

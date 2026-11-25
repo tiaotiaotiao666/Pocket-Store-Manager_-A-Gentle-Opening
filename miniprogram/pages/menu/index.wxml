@@ -15,32 +15,39 @@
         takeaway-enabled="{{store.fulfillment.takeaway}}"
         table-name="{{tableName}}"
         table-required="{{true}}"
+        table-count="{{tableOptions.length}}"
+        tables-loading="{{tablesLoading}}"
         bind:change="onModeChange"
       />
       <view wx:if="{{mode === 'DINE_IN'}}" class="menu__tables">
-        <text class="menu__tables-label">门店桌号</text>
-        <block wx:if="{{tablesLoading}}">
+        <view class="menu__tables-head">
+          <text class="menu__tables-title">选择桌号</text>
+          <text wx:if="{{tableName}}" class="menu__tables-picked">已选 {{tableName}} 桌</text>
+        </view>
+        <view wx:if="{{tablesLoading}}" class="menu__tables-status">
           <text class="menu__tables-hint">正在读取门店桌号…</text>
-        </block>
-        <block wx:elif="{{tablesError}}">
+        </view>
+        <view wx:elif="{{tablesError}}" class="menu__tables-status">
           <text class="menu__tables-hint">{{tablesError}}</text>
           <view class="menu__tables-retry" bind:tap="onRetryTables">重试</view>
-        </block>
-        <block wx:elif="{{tableOptions.length === 0}}">
+        </view>
+        <view wx:elif="{{tableOptions.length === 0}}" class="menu__tables-status">
           <text class="menu__tables-hint">当前门店还没有可用桌号，请联系店员确认</text>
-        </block>
-        <block wx:else>
-          <view
-            wx:for="{{tableOptions}}"
-            wx:key="id"
-            class="menu__table {{tableName === item.name ? 'menu__table--active' : ''}}"
-            data-id="{{item.id}}"
-            data-name="{{item.name}}"
-            bind:tap="onPickTable"
-          >
-            {{item.name}}
+        </view>
+        <scroll-view wx:else class="menu__tables-scroll" scroll-x enable-flex>
+          <view class="menu__tables-list">
+            <view
+              wx:for="{{tableOptions}}"
+              wx:key="id"
+              class="menu__table {{tableName === item.name ? 'menu__table--active' : ''}}"
+              data-id="{{item.id}}"
+              data-name="{{item.name}}"
+              bind:tap="onPickTable"
+            >
+              {{item.name}}
+            </view>
           </view>
-        </block>
+        </scroll-view>
       </view>
     </view>
   </view>

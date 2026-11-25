@@ -18,10 +18,41 @@ const { spawn } = require('node:child_process');
 const { applyAppid } = require('./appid-postprocess.cjs');
 const { sanitizeProjectName, suggestName } = require('../scripts/composer/atomic.cjs');
 const adoption = require('./frontend-reconstruct/adoption.cjs');
+const versionsMod = require('./agent-workspace/versions.cjs');
 const { inspectOutput } = require('./output-consistency.cjs');
 
 const APP_ROOT = path.join(__dirname, '..');
 const COMPOSER_CLI = path.join(APP_ROOT, 'scripts', 'composer', 'cli.cjs');
+
+/**
+ * B3：正式导出前的版本身份守卫（纯只读）。
+ *
+ * - 没有 `projects/<projectId>/agent-workspace/project.json`（旧项目/未接 B2）→ 跳过，旧路径行为不变；
+ * - 有 workspace → 调 B2 `verifyExportIdentity`；不一致返回 AGENT_EXPORT_IDENTITY_MISMATCH 并要求中止导出，
+ *   绝不回落 Base。真实“源码树导出”仍属 C3，这里只做身份守卫。
+ */
+function verifyAgentWorkspaceExport(options) {
+  const opts = options || {};
+  if (typeof opts.userDataDir !== 'string' || !opts.userDataDir) return { ok: true, skipped: true };
+  if (typeof opts.projectId !== 'string' || !opts.projectId) return { ok: true, skipped: true };
+  const projectFile = path.join(opts.userDataDir, 'projects', opts.projectId, 'agent-workspace', 'project.json');
+  let exists = false;
+  try {
+    exists = fs.existsSync(projectFile);
+  } catch (error) {
+    exists = false;
+  }
+  if (!exists) return { ok: true, skipped: true };
+  const verified = versionsMod.verifyExportIdentity({ userDataDir: opts.userDataDir, projectId: opts.projectId });
+  if (!verified.ok) {
+    return {
+      ok: false,
+      code: verified.code || 'AGENT_EXPORT_IDENTITY_MISMATCH',
+      message: verified.message || '版本身份校验失败，已中止导出',
+    };
+  }
+  return { ok: true, skipped: false, versionId: verified.versionId, treeDigest: verified.treeDigest };
+}
 
 /**
  * 用 node 子进程跑 Composer CLI（--json 输出）。
@@ -348,6 +379,11 @@ function createComposerIpc(options) {
     if (overlayState.error) return overlayState.error;
     const resolvedCandidate = overlayState.resolved;
 
+    // B3：有 agent-workspace 的项目，任何写盘前先校验版本身份（currentVersionId/treeDigest/
+    // 指针/overlay+Registry 摘要）。不一致 → AGENT_EXPORT_IDENTITY_MISMATCH 并中止，不回落 Base。
+    const identity = verifyAgentWorkspaceExport({ userDataDir, projectId: payload && payload.projectId });
+    if (!identity.ok) return resultError(identity.code, identity.message);
+
     const taskId = (payload.taskId && String(payload.taskId)) || 'task-' + Date.now();
     const signal = { cancelled: false };
     active = { taskId, signal, startedAt: Date.now() };
@@ -635,6 +671,7 @@ module.exports = {
   createComposerIpc,
   registerComposerIpc,
   isTrustedSender,
+  verifyAgentWorkspaceExport,
   MAX_PAYLOAD_BYTES,
   MAX_PLAN_BYTES,
   FORBIDDEN_MEDIA_KEYS,

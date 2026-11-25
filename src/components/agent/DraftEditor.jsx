@@ -149,7 +149,8 @@ export default function DraftEditor({
                     aria-describedby={categoryError ? 'agent-error-category' : undefined}
                     onChange={(event) => onChangeField?.('category', event.target.value)}
                   />
-                  <FieldMessage error={categoryError} missing={fieldMissing(validation, 'category')} />
+                  {/* 品类输入框已有 placeholder 提示，不再重复显示下方黄色缺项说明。 */}
+                  <FieldMessage error={categoryError} />
                 </label>
               </div>
 

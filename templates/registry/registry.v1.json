@@ -15,7 +15,7 @@
       "version": "1.0.0",
       "kind": "base",
       "path": "templates/base/ordering-base/1.0.0",
-      "integrity": "sha256:a9c2ff9a6cfe16dcdb611980b5388e776417fe6925f8d80a62ee9e5d93a2f2e7"
+      "integrity": "sha256:0356bbfabab916f020d655986fa2a4d4a60a30333a363503b208f65cdf0f6b50"
     },
     {
       "id": "store-header",

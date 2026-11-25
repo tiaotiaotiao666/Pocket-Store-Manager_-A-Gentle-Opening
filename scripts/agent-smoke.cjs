@@ -28,10 +28,8 @@ const WORKBENCH_TEXTS = ['我的项目', '新建项目：创建空白门店项�
 const SETTINGS_TEXTS = ['模型与 API', '返回项目', '重新自检', '保存设置'];
 // P4：候选前端主链只在「开店资料」阶段出现；控件必须有唯一可读名称（UIA name）。
 const FRONTEND_PANEL_TEXTS = [
-  '门店基本资料',
-  '菜品资料与菜单图片',
-  '门店环境图片',
-  '参考小程序截图',
+  '门店经营资料',
+  '风格与图片素材',
   '识别菜品并回写',
   '添加环境图片',
   '上传截图',
@@ -215,7 +213,7 @@ function main(argv) {
   line(`[6/7] 最终快照 ${back.snapshotId} | refs=${back.refCount} | ${elapsedSinceLast()}ms`);
   const frontend = assertFrontendPanel(win, waitTimeoutMs);
   if (frontend.visible) {
-    line('[7/7] 四分区与候选前端主链控件已通过 UIA 断言（识别/补充要求/目标页面）');
+    line('[7/7] 两分区与候选前端主链控件已通过 UIA 断言（识别/补充要求/目标页面）');
   } else {
     line(`[7/7] 候选前端主链 NOT_VISIBLE：${frontend.reason}（未在「开店资料」阶段，未伪造断言）`);
   }

@@ -65,21 +65,22 @@ test('T3 AgentSidebarPanel：不直连服务、不发请求、不 dispatch、不
   assert.ok(!/useReducer|useState/.test(source), '会话状态只能来自 App 传入的视图模型');
 });
 
-test('T3 AgentSidebarPanel：复用 ChatStream 的 ProcessSummary 与 chat/Composer', () => {
+test('T3 AgentSidebarPanel：复用 chat/Composer，且不再渲染「本轮已完成 + 用时」过程卡', () => {
   const source = readSource(AGENT_PANEL);
   assert.match(source, /import Composer from '\.\.\/chat\/Composer\.jsx'/);
-  assert.match(source, /import \{ ProcessSummary \} from '\.\.\/chat\/ChatStream\.jsx'/);
-  assert.match(source, /<ProcessSummary process=\{/, '过程卡必须复用 ProcessSummary');
+  assert.ok(!source.includes('ProcessSummary'), '侧栏不再渲染过程卡');
+  assert.ok(!source.includes("'本轮已完成'"), '侧栏不再出现「本轮已完成」');
+  assert.ok(!source.includes('用时 '), '侧栏不再显示本轮耗时');
+  assert.ok(!source.includes('run: view.lastRun'), '只含运行结果的一轮不再留下空结果块');
 });
 
-test('T3 AgentSidebarPanel：partial 显示「部分完成」，没有真实 trace 不造工具步骤', () => {
+test('T3 AgentSidebarPanel：移除过程卡后仍保留失败与重试入口', () => {
   const source = readSource(AGENT_PANEL);
-  assert.match(source, /partial: '部分完成'/, 'partial 必须显示「部分完成」');
-  assert.ok(!/title: '全部成功'/.test(source), '不得把 partial 说成全部成功');
-  assert.ok(source.includes('只完成了一部分'), '必须显式声明 partial 不等于全部成功');
-  // 步骤只由真实 toolLabels 生成：没有标签时 steps 为空，ProcessSummary 不渲染步骤列表
-  assert.match(source, /const steps = toolLabels\.map/);
-  assert.match(source, /Array\.isArray\(run\.toolLabels\)/, '工具标签必须来自领域层安全视图');
+  assert.ok(!source.includes('buildAgentChatProcessView'), '过程卡视图映射已删除');
+  assert.ok(!source.includes('formatDuration'), '耗时格式化已删除');
+  assert.match(source, /上一轮没有成功/, '失败说明必须保留');
+  assert.match(source, /重试上一轮/, '失败后必须保留重试入口');
+  assert.match(source, /失败不会写进消息列表/, '失败仍由错误区 + 重试表达');
 });
 
 test('T3 AgentSidebarPanel：本轮附件区只在允许的阶段出现，且支持拖拽落图', () => {

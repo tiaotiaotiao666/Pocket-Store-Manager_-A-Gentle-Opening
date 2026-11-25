@@ -258,16 +258,29 @@ test('L6 布局不变量：关键容器不横向溢出，长文本换行不撑�
   assert.match(app, /<FlowStepper[\s\S]{0,400}renderStage\(\)/, '步骤条与阶段内容同屏，先看进度再看内容');
 });
 
-test('L7 门店资料固定四分区，菜单图、环境图与参考图入口都直接可见', () => {
+test('L7 门店资料两分区，菜单图、环境图与参考图入口都直接可见', () => {
   const sections = readSource('src/components/flow/StoreInfoSections.jsx');
   const app = readSource('src/App.jsx');
   const css = readSource('src/styles/store-info-sections.css');
 
-  ['门店基本资料', '菜品资料与菜单图片', '门店环境图片', '参考小程序截图'].forEach((label) => {
+  ['门店经营资料', '风格与图片素材'].forEach((label) => {
     assert.ok(sections.includes(label), `缺少固定分区：${label}`);
   });
-  assert.match(sections, /aria-label="门店资料四分区"/);
-  assert.match(app, /<StoreInfoSections[\s\S]*?basic=\{basicSection\}[\s\S]*?dishes=\{dishesSection\}[\s\S]*?environment=\{environmentSection\}[\s\S]*?reference=\{referenceSection\}/);
+  assert.match(sections, /aria-label="门店资料两分区"/);
+  ['operations', 'appearance'].forEach((id) => {
+    assert.ok(sections.includes(`id: '${id}'`), `缺少分区：${id}`);
+  });
+  ['store-basic', 'store-dishes', 'store-style', 'store-environment', 'store-reference'].forEach((anchor) => {
+    assert.ok(sections.includes(`id: '${anchor}'`), `缺少内部定位锚点：${anchor}`);
+  });
+  const operationsBlock = sections.slice(sections.indexOf("id: 'operations'"), sections.indexOf("id: 'appearance'"));
+  assert.ok(operationsBlock.indexOf("prop: 'basic'") < operationsBlock.indexOf("prop: 'dishes'"), 'operations 必须先渲染 basic 再渲染 dishes');
+  const appearanceBlock = sections.slice(sections.indexOf("id: 'appearance'"));
+  const appearanceOrder = ["prop: 'style'", "prop: 'environment'", "prop: 'reference'"].map((token) => appearanceBlock.indexOf(token));
+  assert.ok(appearanceOrder.every((index) => index > -1), 'appearance 必须包含 style/environment/reference');
+  assert.deepEqual([...appearanceOrder].sort((a, b) => a - b), appearanceOrder, 'appearance 顺序必须是 style → environment → reference');
+  assert.match(app, /const styleSection = \([\s\S]*?showContact=\{false\}[\s\S]*?onStyleChange=/);
+  assert.match(app, /<StoreInfoSections[\s\S]*?basic=\{basicSection\}[\s\S]*?dishes=\{dishesSection\}[\s\S]*?style=\{styleSection\}[\s\S]*?environment=\{environmentSection\}[\s\S]*?reference=\{referenceSection\}/);
   assert.match(app, /kinds=\{\['menu'\]\}/);
   assert.match(app, /onRecognize=\{handleRecognizeMenuImages\}/);
   assert.match(app, /onAnalyzeImage=\{handleAnalyzeStoreImage\}/);

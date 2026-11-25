@@ -136,6 +136,24 @@ test('侧栏入口统一走 app-assistant，任意阶段同一路径', () => {
   assert.doesNotMatch(turn, /fetch\(/, '侧栏入口不能自己发 HTTP 请求');
 });
 
+test('统一入口拿到回应后一律清空输入框，只有请求异常才保留草稿', () => {
+  const source = readApp();
+  const turn = sliceBlock(source, 'const runAppAssistantTurn = async ({');
+  assert.ok(!turn.includes('keepInput'), '不得再按 proposal 状态跳过清空输入框');
+  assert.match(
+    turn,
+    /AGENT_CHAT_SUCCESS[\s\S]{0,2500}dispatch\(\{ type: 'AGENT_CHAT_DRAFT_SET', value: '' \}\)/,
+    'proposal / needs-input / rejected 拿到回应后都要清空输入框',
+  );
+  assert.match(
+    turn,
+    /const keepAttachments = preserveAttachments[\s\S]{0,200}proposal\.status === 'needs-input'[\s\S]{0,120}proposal\.status === 'rejected'/,
+    '追问/拒收时保留图片，方便用户补充说明后继续发送',
+  );
+  const catchBlock = turn.slice(turn.indexOf('} catch (error) {'));
+  assert.ok(!catchBlock.includes("type: 'AGENT_CHAT_DRAFT_SET'"), '请求异常时保留草稿，重试才有内容可重放');
+});
+
 test('参考图使用资料写回后的 projectState 自动构建，不再以本地指引结束', () => {
   const source = readApp();
   const turn = sliceBlock(source, 'const runAppAssistantTurn = async ({');

@@ -1,0 +1,24 @@
+C4 manual slice export tree
+===========================
+
+Source: test/agent-workspace.c4-slice.test.cjs (temp userData + temp parentDir; repo not polluted)
+Overlay: frontend-source-bundle.v1, targetPage=menu, product-card page-scoped
+Result tree SHA256: sha256:b69daa9874fdff6b4c7ebcbda45cb016cbcf53c82ae85e4509c89b2e21d5c522
+File count: 146
+Repeat export: treeSha256 + lockDigest identical (different generatedAt / parentDir)
+
+Key files (sha256 of file bytes):
+pages/menu/index.wxml        sha256:1547a4fe5305f465cd390b765f9c9a7efd4d7165ec978cebb1218dd5bf87b2c9
+pages/menu/index.wxss        sha256:f9aecdcee8bff52de05ae785c8be4ae5a4d58c7fe8c70de2b71292191c118e68
+pages/menu/index.js          sha256:633621f0a51200172027cc2ed4f33e5ad64a2169076a2b932b054d00721681af
+pages/menu/index.json        sha256:f35bdcba976c2b8f91609762b3dbe3dd16177c0a6808ae923172966d8c57aa84
+components/product-card--menu/index.js   sha256:036dcf904fe543a5a4da6bc994392569b682fdf0091a8f07e3f106eef6e3500e
+components/product-card--menu/index.json sha256:6e72dadc3680e796aee6cd518838aed27738a42c14bf6b1e9a9067044115c815
+components/product-card--menu/index.wxml sha256:cebe896a6cceb8ee2b620b6c6bd495ee49e6ce868541e72ed37fa3f540dd3fcf
+components/product-card--menu/index.wxss sha256:469ffa7178929dc775bc7e7a48fa7c0c8f19a2e7dbe6a40d2ee2b58136ecce0e
+source-changes.json          sha256:3d553f9758ba6299c4e87fe30a6a62a0d0cc73c0bc5f737309b8e87e798b45d1
+
+Note: tree SHA is computed before generation-report/lock write (Composer's treeSha256 semantics);
+report/lock are volatile metadata and excluded from cross-run determinism comparison.
+Full 146-file list is reproducible by running the test; the four page/variant files above are the
+C4 acceptance surface and match the fixture byte-for-byte.

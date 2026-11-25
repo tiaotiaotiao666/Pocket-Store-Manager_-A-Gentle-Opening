@@ -14,7 +14,7 @@
       "index.wxml",
       "index.wxss"
     ],
-    "digest": "sha256:6df7b23db5aa5ecb9e877af50d0f797524418382426783b2ddbe4a6618830ec8"
+    "digest": "sha256:254e319b91e2f8fe31ac14a9c82b38624163923796fe67492af5332d4be06ed2"
   },
   "components": [
     {
@@ -29,55 +29,55 @@
       "componentId": "fulfillment-switch",
       "mode": "always",
       "sourceLine": 12,
-      "usage": "<fulfillment-switch value=\"{{mode}}\" dine-in-enabled=\"{{store.fulfillment.dineIn}}\" takeaway-enabled=\"{{store.fulfillment.takeaway}}\" table-name=\"{{tableName}}\" table-required=\"{{true}}\" bind:change=\""
+      "usage": "<fulfillment-switch value=\"{{mode}}\" dine-in-enabled=\"{{store.fulfillment.dineIn}}\" takeaway-enabled=\"{{store.fulfillment.takeaway}}\" table-name=\"{{tableName}}\" table-required=\"{{true}}\" table-count=\""
     },
     {
       "tag": "state-view",
       "componentId": "state-view",
       "mode": "conditional",
-      "sourceLine": 48,
+      "sourceLine": 55,
       "usage": "<state-view wx:if=\"{{loading}}\" state=\"loading\" title=\"正在加载菜单\" />"
     },
     {
       "tag": "error-banner",
       "componentId": "error-banner",
       "mode": "always",
-      "sourceLine": 51,
+      "sourceLine": 58,
       "usage": "<error-banner message=\"{{error}}\" action=\"{{errorAction}}\" request-id=\"{{requestId}}\" bind:retry=\"onRetry\" bind:close=\"onRetry\" />"
     },
     {
       "tag": "category-nav",
       "componentId": "category-nav",
       "mode": "always",
-      "sourceLine": 64,
+      "sourceLine": 71,
       "usage": "<category-nav id=\"menu-category-nav\" class=\"menu__nav-host\" categories=\"{{categories}}\" active-id=\"{{activeCategoryId}}\" bind:select=\"onSelectCategory\" />"
     },
     {
       "tag": "product-card",
       "componentId": "product-card",
       "mode": "always",
-      "sourceLine": 76,
+      "sourceLine": 83,
       "usage": "<product-card id=\"menu-product-{{item.id}}\" class=\"menu__card-host\" product=\"{{item}}\" quantity=\"{{quantityMap[item.id] || 0}}\" disabled=\"{{item.available === false}}\" bind:add=\"onProductAdd\" bind:rem"
     },
     {
       "tag": "cart-bar",
       "componentId": "cart-bar",
       "mode": "always",
-      "sourceLine": 99,
+      "sourceLine": 106,
       "usage": "<cart-bar id=\"menu-cart-bar\" class=\"menu__cart-host\" total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" submitting=\"{{false}}\" bind:expand=\"onExpandCart\" bind:chec"
     },
     {
       "tag": "cart-panel",
       "componentId": "cart-panel",
       "mode": "modal",
-      "sourceLine": 109,
+      "sourceLine": 116,
       "usage": "<cart-panel visible=\"{{cartVisible}}\" items=\"{{cartSummary.items}}\" total-cents=\"{{cartSummary.totalCents}}\" total-quantity=\"{{cartSummary.totalQuantity}}\" submitting=\"{{false}}\" bind:close=\"onPanelCl"
     },
     {
       "tag": "product-detail",
       "componentId": "product-detail",
       "mode": "modal",
-      "sourceLine": 121,
+      "sourceLine": 128,
       "usage": "<product-detail visible=\"{{detailVisible}}\" product=\"{{detailProduct}}\" quantity=\"{{detailQuantity}}\" bind:close=\"onDetailClose\" bind:add=\"onDetailAdd\" bind:remove=\"onDetailRemove\" />"
     },
     {

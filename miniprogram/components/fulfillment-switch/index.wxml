@@ -17,5 +17,7 @@
   </view>
 </view>
 <view wx:if="{{tableRequired && value === 'DINE_IN' && !tableName}}" class="fulfillment__hint">
-  堂食需要桌号，请扫描桌上的二维码，或在下方选择门店桌号。
+  <text wx:if="{{tablesLoading}}">正在读取门店桌号…</text>
+  <text wx:elif="{{tableCount > 0}}">堂食需要桌号，请在下方选择桌号，或扫描桌上的二维码。</text>
+  <text wx:else>堂食需要桌号，当前门店还没有可用桌号，请联系店员确认。</text>
 </view>

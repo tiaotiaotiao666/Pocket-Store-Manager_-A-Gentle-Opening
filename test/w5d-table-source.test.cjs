@@ -114,6 +114,8 @@ test('三个页面共用同一桌号实现，且源码里不再有 DEMO_TABLES',
     assert.match(wxml, /tablesError/, name + ' 模板未渲染失败态');
     assert.match(wxml, /onRetryTables/, name + ' 模板未渲染重试按钮');
     assert.match(wxml, /还没有可用桌号/, name + ' 模板未渲染空列表文案');
+    assert.match(wxml, /选择桌号/, name + ' 模板缺少“选择桌号”标题');
+    assert.match(wxml, /scroll-x/, name + ' 桌号列表未使用横向滚动容器');
   });
 });
 

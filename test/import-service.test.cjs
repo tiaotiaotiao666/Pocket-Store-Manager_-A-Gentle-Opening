@@ -57,7 +57,9 @@ test('AgentDraft 映射为导入 payload：3 道菜、整数分、营业时段�
   assert.ok(payload.products.every((item) => Number.isInteger(item.priceCents)));
   assert.ok(payload.products.every((item) => !('priceText' in item)));
   assert.deepStrictEqual(payload.categories.map((item) => item.name), ['社区餐馆']);
-  assert.strictEqual(payload.tables.length, 0);
+  assert.deepStrictEqual(payload.tables.map((item) => item.name), ['A01', 'A02', 'A03', 'A04', 'A05', 'A06']);
+  assert.strictEqual(new Set(payload.tables.map((item) => item.draftId)).size, payload.tables.length);
+  assert.deepStrictEqual(payload.tables.map((item) => item.sortOrder), [1, 2, 3, 4, 5, 6]);
   assert.strictEqual(payload.delivery, false);
   assert.deepStrictEqual(payload.unsupported, { images: true, modifiers: false, specs: false });
   assert.match(payload.sourceDraftDigest, /^[0-9a-f]{64}$/);

@@ -58,8 +58,10 @@ export const FRONTEND_CAPABILITIES_SNAPSHOT = {
     "fulfillment-switch": {
       "props": [
         "dineInEnabled",
+        "tableCount",
         "tableName",
         "tableRequired",
+        "tablesLoading",
         "takeawayEnabled",
         "value"
       ],

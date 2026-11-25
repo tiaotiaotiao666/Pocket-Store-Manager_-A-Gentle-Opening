@@ -1,0 +1,13 @@
+{
+  "navigationBarTitleText": "菜单",
+  "usingComponents": {
+    "product-card": "/components/product-card/index"
+  },
+  "pages": [
+    "pages/menu/index"
+  ],
+  "networkTimeout": {
+    "request": 10000
+  },
+  "unknownKey": true
+}

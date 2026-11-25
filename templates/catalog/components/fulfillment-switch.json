@@ -16,7 +16,7 @@
     ],
     "registryAsset": null,
     "registryMirror": null,
-    "digest": "sha256:70711e11f64a4ff668a96d1d9c1da65981fab4a9aba5cb8ab73301e958b95302"
+    "digest": "sha256:3eecba570db37b4422aeea04685d2d02306cb31a0d4eb99b044503d077d0fe21"
   },
   "runtime": {
     "mode": "base-page-fixed",
@@ -33,6 +33,13 @@
         "description": "门店是否支持堂食"
       },
       {
+        "name": "tableCount",
+        "type": "number",
+        "required": false,
+        "defaultValue": 0,
+        "description": ""
+      },
+      {
         "name": "tableName",
         "type": "string",
         "required": false,
@@ -45,6 +52,13 @@
         "required": false,
         "defaultValue": false,
         "description": "堂食是否必须桌号；只控制提示，不发起校验"
+      },
+      {
+        "name": "tablesLoading",
+        "type": "boolean",
+        "required": false,
+        "defaultValue": false,
+        "description": ""
       },
       {
         "name": "takeawayEnabled",
@@ -122,6 +136,6 @@
   "preview": null,
   "verify": {
     "command": "node scripts/component-catalog.cjs --check",
-    "digest": "sha256:70711e11f64a4ff668a96d1d9c1da65981fab4a9aba5cb8ab73301e958b95302"
+    "digest": "sha256:3eecba570db37b4422aeea04685d2d02306cb31a0d4eb99b044503d077d0fe21"
   }
 }

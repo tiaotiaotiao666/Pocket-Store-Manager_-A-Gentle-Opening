@@ -34,6 +34,49 @@ ipcRenderer.on('frontend:progress', (_event, payload) => {
   });
 });
 
+// B3：Workspace Agent 进度（payload 只含 projectId/runId/turnId/attemptId/phase/stage/status/at/message）。
+const workspaceAgentProgressListeners = new Set();
+ipcRenderer.on('agent:progress', (_event, payload) => {
+  workspaceAgentProgressListeners.forEach((listener) => {
+    try {
+      listener(payload);
+    } catch (error) {
+      /* 单个监听器失败不影响其他监听器 */
+    }
+  });
+});
+
+/**
+ * B3：Workspace Agent 唯一受控命名空间。
+ * 只暴露冻结 §3.2 的 19 个语义命令 + onProgress；渲染进程拿不到 channel 字符串、目录或通用 fs。
+ */
+const workspaceAgent = Object.freeze({
+  getContext: (payload) => ipcRenderer.invoke('agent:get-context', payload),
+  listFiles: (payload) => ipcRenderer.invoke('agent:list-files', payload),
+  readFile: (payload) => ipcRenderer.invoke('agent:read-file', payload),
+  searchFiles: (payload) => ipcRenderer.invoke('agent:search-files', payload),
+  writeFiles: (payload) => ipcRenderer.invoke('agent:write-files', payload),
+  deleteFiles: (payload) => ipcRenderer.invoke('agent:delete-files', payload),
+  addImageAsset: (payload) => ipcRenderer.invoke('agent:add-image-asset', payload),
+  getDiff: (payload) => ipcRenderer.invoke('agent:get-diff', payload),
+  runCheck: (payload) => ipcRenderer.invoke('agent:run-check', payload),
+  verifyWechat: (payload) => ipcRenderer.invoke('agent:verify-wechat', payload),
+  readVerification: (payload) => ipcRenderer.invoke('agent:read-verification', payload),
+  readArtifact: (payload) => ipcRenderer.invoke('agent:read-artifact', payload),
+  submitCandidate: (payload) => ipcRenderer.invoke('agent:submit-candidate', payload),
+  versions: (payload) => ipcRenderer.invoke('agent:versions', payload),
+  adoptVersion: (payload) => ipcRenderer.invoke('agent:adopt-version', payload),
+  undo: (payload) => ipcRenderer.invoke('agent:undo', payload),
+  redo: (payload) => ipcRenderer.invoke('agent:redo', payload),
+  reopen: (payload) => ipcRenderer.invoke('agent:reopen', payload),
+  cancelRun: (payload) => ipcRenderer.invoke('agent:cancel-run', payload),
+  onProgress: (listener) => {
+    if (typeof listener !== 'function') return () => {};
+    workspaceAgentProgressListeners.add(listener);
+    return () => workspaceAgentProgressListeners.delete(listener);
+  },
+});
+
 contextBridge.exposeInMainWorld('smartStore', Object.freeze({
   isDesktop: true,
   chooseExportDirectory: () => ipcRenderer.invoke('composer:choose-directory'),
@@ -110,4 +153,7 @@ contextBridge.exposeInMainWorld('smartStore', Object.freeze({
     frontendProgressListeners.add(listener);
     return () => frontendProgressListeners.delete(listener);
   },
+
+  // B3：Workspace Agent（版本/读改验/diff/检查/证据）唯一出口。
+  workspaceAgent,
 }));

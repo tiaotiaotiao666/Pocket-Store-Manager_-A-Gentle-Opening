@@ -3,6 +3,9 @@ const API_BASE_URL = String(ENV.VITE_API_BASE_URL || 'http://127.0.0.1:3000/api/
 const AUTH_MODE = String(ENV.VITE_IMPORT_AUTH_MODE || 'demo');
 const DEMO_OWNER_OPEN_ID = 'demo-owner-001';
 const DEFAULT_STORE_ID = String(ENV.VITE_DEMO_STORE_ID || 'store-demo-001');
+// 预览门店需要一组可用的堂食桌号，否则小程序“堂食”模式只能看到空态。
+// 真源仍是后端 /stores/:id/tables，这里只是导入时为演示门店补齐默认桌位。
+const DEFAULT_DINE_IN_TABLES = Object.freeze(['A01', 'A02', 'A03', 'A04', 'A05', 'A06']);
 
 const IMPORT_ERROR_TEXT = Object.freeze({
   AUTH_REQUIRED: '登录已失效，请重新进入导入。',
@@ -113,6 +116,14 @@ function businessHoursSegments(text) {
   return segments.length ? segments : [{ start: '10:00', end: '21:00' }];
 }
 
+function defaultDineInTables() {
+  return DEFAULT_DINE_IN_TABLES.map((name, index) => ({
+    draftId: 'table-' + name.toLowerCase(),
+    name,
+    sortOrder: index + 1,
+  }));
+}
+
 export async function buildImportPayload(agentDraft, store = {}) {
   const draft = agentDraft || {};
   const categoryName = String(draft.category || store.type || '全部菜品').trim().slice(0, 48) || '全部菜品';
@@ -127,6 +138,7 @@ export async function buildImportPayload(agentDraft, store = {}) {
       description: String(dish.description || '').trim().slice(0, 255),
       available: true,
     }));
+  const dineInEnabled = !(draft.fulfillment && draft.fulfillment.dineIn === false);
 
   const payload = {
     profile: {
@@ -139,7 +151,7 @@ export async function buildImportPayload(agentDraft, store = {}) {
     },
     categories: [{ draftId: categoryDraftId, name: categoryName, sortOrder: 1 }],
     products,
-    tables: [],
+    tables: dineInEnabled ? defaultDineInTables() : [],
     sourceDraftDigest: '',
     unsupported: { images: true, modifiers: false, specs: false },
     delivery: false,
@@ -255,6 +267,7 @@ export async function prepareProjectPreview({ bindingKey, agentDraft, store }) {
       'profile.phone',
       'profile.businessHours',
       ...payload.products.map((product) => `product:${product.draftId}`),
+      ...payload.tables.map((table) => `table:${table.draftId}`),
       ...(Array.isArray(previewData.conflicts) ? previewData.conflicts : []),
     ])].sort();
     const idempotencyKey = 'preview-' + (await sha256Hex(key)).slice(0, 16) + '-' + payload.sourceDraftDigest;

@@ -12,6 +12,45 @@ const path = require('node:path');
 const { isTrustedSender } = require('./composer-ipc.cjs');
 const { ProjectStoreError } = require('./project-store.cjs');
 const adoption = require('./frontend-reconstruct/adoption.cjs');
+const versionsMod = require('./agent-workspace/versions.cjs');
+
+/**
+ * B3：项目加载时的版本身份校验（只读，不写 renderer 快照、不回退 Base）。
+ * - 没有 agent-workspace/project.json（旧项目）→ status:'none'；
+ * - 版本可用 → status:'ok' + 指针；
+ * - 漂移/缺失 → status:'unavailable' + AGENT_* 码，项目仍可打开。
+ */
+function inspectProjectVersionState(userDataDir, projectId) {
+  if (typeof userDataDir !== 'string' || !userDataDir || typeof projectId !== 'string' || !projectId) {
+    return { status: 'none', available: false, code: 'AGENT_WORKSPACE_NOT_FOUND' };
+  }
+  try {
+    const reopened = versionsMod.reopenProject({ userDataDir, projectId });
+    if (reopened.ok) {
+      return {
+        status: 'ok',
+        available: true,
+        currentVersionId: reopened.currentVersionId,
+        previousVersionId: reopened.previousVersionId,
+        redoVersionId: reopened.redoVersionId,
+        treeDigest: reopened.treeDigest,
+      };
+    }
+    if (reopened.code === 'AGENT_WORKSPACE_NOT_FOUND') {
+      return { status: 'none', available: false, code: reopened.code };
+    }
+    const state = reopened.state || {};
+    return {
+      status: 'unavailable',
+      available: false,
+      code: reopened.code,
+      currentVersionId: state.currentVersionId || null,
+      reason: state.reason || null,
+    };
+  } catch (error) {
+    return { status: 'unavailable', available: false, code: 'AGENT_VERSION_CONFLICT', currentVersionId: null, reason: 'error' };
+  }
+}
 
 const MAX_CREATE_PAYLOAD = 8 * 1024;
 const MAX_SAVE_PAYLOAD = 1.2 * 1024 * 1024;
@@ -62,6 +101,10 @@ function createProjectIpc(options) {
     throw new Error('createProjectIpc 需要 store / assets / settings / dialog / shell');
   }
 
+  const userDataDir = typeof opts.userDataDir === 'string' && opts.userDataDir
+    ? opts.userDataDir
+    : (store.userDataDir || '');
+
   const handlers = {
     'project:list': async () => {
       try {
@@ -97,13 +140,12 @@ function createProjectIpc(options) {
       try {
         const loaded = await store.loadProject(projectId);
         const doc = loaded && loaded.doc && typeof loaded.doc === 'object' ? loaded.doc : null;
+        // B3：项目加载必须做版本身份校验；漂移只是 unavailable，不阻断打开、不改写快照。
+        const versionState = inspectProjectVersionState(userDataDir, projectId);
         if (!doc || !doc.frontendCandidate || doc.frontendCandidate.status !== 'adopted') {
-          return ok(loaded);
+          return ok({ ...loaded, versionState });
         }
         // P5：重开项目必须校验私有候选 overlay 的摘要；缺失/漂移 → 安全回退并提示。
-        const userDataDir = typeof opts.userDataDir === 'string' && opts.userDataDir
-          ? opts.userDataDir
-          : (store.userDataDir || '');
         const inspection = adoption.inspectAdoption({
           userDataDir,
           projectId,
@@ -132,7 +174,7 @@ function createProjectIpc(options) {
               issue: { code: candidateCheck.code, message: candidateCheck.message },
             }),
           };
-        return ok({ ...loaded, doc: safeDoc, candidateCheck });
+        return ok({ ...loaded, doc: safeDoc, candidateCheck, versionState });
       } catch (error) {
         return toResult(error, 'PROJECT_READ_FAILED', '项目读取失败');
       }
@@ -340,6 +382,7 @@ module.exports = {
   createProjectIpc,
   registerProjectIpc,
   isInsideProjects,
+  inspectProjectVersionState,
   MAX_CREATE_PAYLOAD,
   MAX_SAVE_PAYLOAD,
   MAX_SETTINGS_PAYLOAD,

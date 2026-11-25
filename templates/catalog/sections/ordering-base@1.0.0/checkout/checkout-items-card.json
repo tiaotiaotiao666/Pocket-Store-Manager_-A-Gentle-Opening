@@ -20,8 +20,8 @@
   "source": {
     "wxml": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxml",
     "wxss": "templates/base/ordering-base/1.0.0/src/pages/checkout/index.wxss",
-    "lineStart": 62,
-    "lineEnd": 80,
+    "lineStart": 67,
+    "lineEnd": 85,
     "digest": "sha256:cd0fc5d50559c3423207b2718a436c79f644c8395bab1be89fc82c5cdfc143ab"
   },
   "template": {
@@ -29,8 +29,8 @@
     "rootTag": "view",
     "snippets": [
       {
-        "lineStart": 62,
-        "lineEnd": 80,
+        "lineStart": 67,
+        "lineEnd": 85,
         "code": "<view class=\"surface-card checkout__card\">\n        <view class=\"checkout__card-head\">\n          <text class=\"checkout__card-title\">菜品明细</text>\n          <text class=\"checkout__card-extra\">{{totalQuantity}} 件</text>\n        </view>\n        <view class=\"checkout__divider\"></view>\n        <view wx:for=\"{{items}}\" wx:key=\"productId\" class=\"checkout__item\">\n          <view class=\"checkout__item-main\">\n            <text class=\"checkout__item-name\">{{item.name}}</text>\n            <text class=\"checkout__item-unit\">{{item.unitPriceText}} × {{item.quantity}}</text>\n          </view>\n          <text class=\"checkout__item-line\">{{item.lineTotalText}}</text>\n        </view>\n        <view class=\"checkout__divider\"></view>\n        <view class=\"checkout__total\">\n          <text class=\"checkout__total-label\">合计（服务端将重新计价）</text>\n          <text class=\"checkout__total-value\">{{totalText}}</text>\n        </view>\n      </view>"
       }
     ]
